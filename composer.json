@@ -1,0 +1,11 @@
+{
+    "require": {
+        "symfony/yaml": "^5.0",
+        "amphp/amp": "^2.4",
+        "amphp/socket": "^1.1",
+        "amphp/http-client": "^4.3",
+        "ext-simplexml": "*",
+        "ext-json": "*",
+        "ext-pcntl": "*"
+    }
+}

@@ -1,0 +1,8 @@
+name: pee
+server: localhost
+port: 6667
+bindIp: 0
+ssl: false
+channels: ['#h4x', '#art']
+waKey: 'key'
+iexKey: 'key'
