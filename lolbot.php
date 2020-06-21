@@ -53,13 +53,11 @@ Loop::run( function() {
                 global $config;
                 unset($a[0]);
                 $query = urlencode(htmlentities(implode(' ', $a)));
-                $url = $config['bingEP'] . "search?q=$query";
+                $url = $config['bingEP'] . "search?q=$query&mkt=$config[bingLang]&setLang=$config[bingLang]";
                 try {
                     $client = HttpClientBuilder::buildDefault();
                     $request = new Request($url);
                     $request->setHeader('Ocp-Apim-Subscription-Key', $config['bingKey']);
-                    $request->setHeader('Accept-Language', $config['bingLang']);
-                    $request->setHeader('cc', $config['bingCC']);
                     /** @var Response $response */
                     $response = yield $client->request($request);
                     $body = yield $response->getBody()->buffer();
