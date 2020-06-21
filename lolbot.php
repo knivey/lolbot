@@ -58,7 +58,8 @@ Loop::run( function() {
                     $client = HttpClientBuilder::buildDefault();
                     $request = new Request($url);
                     $request->setHeader('Ocp-Apim-Subscription-Key', $config['bingKey']);
-                    $request->setHeader('BingAPIs-Market', $config['bingMarket']);
+                    $request->setHeader('Accept-Language', $config['bingLang']);
+                    $request->setHeader('cc', $config['bingCC']);
                     /** @var Response $response */
                     $response = yield $client->request($request);
                     $body = yield $response->getBody()->buffer();

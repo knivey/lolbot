@@ -8,4 +8,5 @@ waKey: 'key'
 iexKey: 'key'
 bingKey: 'key'
 bingEP: "https://api.cognitive.microsoft.com/bing/v7.0/"
-bingMarket: "en-US"
+bingLang: "en-US"
+bingCC: "en-US"
