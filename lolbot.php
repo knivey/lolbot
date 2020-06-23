@@ -23,6 +23,23 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
+function kToF($temp) {
+    return (1.8 * ($temp - 273)) + 32;
+}
+
+function kToC($temp) {
+    return $temp - 273;
+}
+
+function displayTemp($temp) {
+    return kToF($temp) . '°F ' . kToC($temp) . '°C';
+}
+
+function windDir($deg) {
+    $dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    return $dirs[round((($deg % 360) / 45))];
+}
+
 Loop::run( function() {
     global $config;
     $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
@@ -41,6 +58,68 @@ Loop::run( function() {
         if ($a[0] == '.knio') {
             $bot->pm($chan, "Knio is a cool guy");
             return;
+        }
+
+        if ($a[0] == '.wz') {
+            if(!isset($a[1])) {
+                $bot->pm($chan, "give me something to lookup");
+                return;
+            }
+
+            \Amp\asyncCall(function () use ($a, $bot, $chan) {
+                global $config;
+                unset($a[0]);
+                $query = urlencode(htmlentities(implode(' ', $a)));
+                //First we need lat lon
+                $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
+
+                try {
+                    $client = HttpClientBuilder::buildDefault();
+                    /** @var Response $response */
+                    $response = yield $client->request(new Request($url));
+                    $body = yield $response->getBody()->buffer();
+                    if($response->getStatus() != 200) {
+                        // Just in case its huge or some garbage
+                        $body = substr($body, 0, 200);
+                        $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+                        return;
+                    }
+                    $j = json_decode($body, true);
+                    $res = $j['resourceSets'][0]['resources'];
+                    if(empty($res)) {
+                        $bot->pm($chan, "\2wz:\2 Location not found");
+                        return;
+                    }
+                    $location = $res[0]['address']['formattedAddress'];
+                    $lat = $res[0]['point']['coordinates'][0];
+                    $lon = $res[0]['point']['coordinates'][1];
+
+                    //Now use lat lon to get weather
+
+                    $url = "https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&appid=$config[openweatherKey]&exclude=minutely,hourly";
+
+                    $client = HttpClientBuilder::buildDefault();
+                    /** @var Response $response */
+                    $response = yield $client->request(new Request($url));
+                    $body = yield $response->getBody()->buffer();
+                    if($response->getStatus() != 200) {
+                        // Just in case its huge or some garbage
+                        $body = substr($body, 0, 200);
+                        $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+                        return;
+                    }
+                    $j = json_decode($body, true);
+                    $cur = $j['current'];
+                    $temp = displayTemp($cur['temp']);
+
+                    $bot->pm($chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s");
+                } catch (HttpException $error) {
+                    // If something goes wrong Amp will throw the exception where the promise was yielded.
+                    // The HttpClient::request() method itself will never throw directly, but returns a promise.
+                    echo $error;
+                    $bot->pm($chan, "\2wz:\2" . $error);
+                }
+            });
         }
 
         if ($a[0] == '.bing') {
@@ -81,7 +160,7 @@ Loop::run( function() {
                     // If something goes wrong Amp will throw the exception where the promise was yielded.
                     // The HttpClient::request() method itself will never throw directly, but returns a promise.
                     echo $error;
-                    $bot->pm($chan, "\2WA:\2" . $error);
+                    $bot->pm($chan, "\2Bing:\2" . $error);
                 }
             });
         }
@@ -119,7 +198,7 @@ Loop::run( function() {
                     // If something goes wrong Amp will throw the exception where the promise was yielded.
                     // The HttpClient::request() method itself will never throw directly, but returns a promise.
                     echo $error;
-                    $bot->pm($chan, "\2WA:\2" . $error);
+                    $bot->pm($chan, "\2Stocks:\2" . $error);
                 }
             });
         }
