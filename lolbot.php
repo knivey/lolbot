@@ -32,7 +32,7 @@ function kToC($temp) {
 }
 
 function displayTemp($temp) {
-    return kToF($temp) . '°F(' . kToC($temp) . '°C)';
+    return round(kToF($temp)) . '°F(' . round(kToC($temp), 1) . '°C)';
 }
 
 function windDir($deg) {
