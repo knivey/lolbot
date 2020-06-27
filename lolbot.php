@@ -32,7 +32,7 @@ function kToC($temp) {
 }
 
 function displayTemp($temp) {
-    return kToF($temp) . '°F ' . kToC($temp) . '°C';
+    return kToF($temp) . '°F(' . kToC($temp) . '°C)';
 }
 
 function windDir($deg) {
@@ -60,7 +60,7 @@ Loop::run( function() {
             return;
         }
 
-        if ($a[0] == '.wz') {
+        if ($a[0] == '.wz' || $a[0] == '.weather' || $a[0] == '.fc') {
             if(!isset($a[1])) {
                 $bot->pm($chan, "give me something to lookup");
                 return;
@@ -68,6 +68,9 @@ Loop::run( function() {
 
             \Amp\asyncCall(function () use ($a, $bot, $chan) {
                 global $config;
+                $fc = false;
+                if($a[0] == '.fc')
+                    $fc = true;
                 unset($a[0]);
                 $query = urlencode(htmlentities(implode(' ', $a)));
                 //First we need lat lon
@@ -110,9 +113,31 @@ Loop::run( function() {
                     }
                     $j = json_decode($body, true);
                     $cur = $j['current'];
+                    $tz = new DateTimeZone($j['timezone']);
+                    $fmt = "g:ia";
+                    $sunrise = new DateTime('@' . $cur['sunrise']);
+                    $sunrise->setTimezone($tz);
+                    $sunrise = $sunrise->format($fmt);
+                    $sunset = new DateTime('@' . $cur['sunset']);
+                    $sunset->setTimezone($tz);
+                    $sunset = $sunset->format($fmt);
                     $temp = displayTemp($cur['temp']);
-
-                    $bot->pm($chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s");
+                    if(!$fc) {
+                        $bot->pm($chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s Sun: $sunrise - $sunset");
+                    } else {
+                        $out = '';
+                        $cnt = 0;
+                        foreach ($j['daily'] as $d) {
+                            if($cnt++ >=3) break;
+                            $day = new DateTime('@' . $d['dt']);
+                            $day = $day->format('D');
+                            $tempMin = displayTemp($d['temp']['min']);
+                            $tempMax = displayTemp($d['temp']['max']);
+                            $w = $d['weather'][0]['main'];
+                            $out .= "\2$day:\2 $w $tempMin/$tempMax $d[humidity]% humidity ";
+                        }
+                        $bot->pm($chan, "\2$location:\2 Forecast: $out");
+                    }
                 } catch (HttpException $error) {
                     // If something goes wrong Amp will throw the exception where the promise was yielded.
                     // The HttpClient::request() method itself will never throw directly, but returns a promise.
