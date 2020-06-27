@@ -128,9 +128,13 @@ Loop::run( function() {
                         $out = '';
                         $cnt = 0;
                         foreach ($j['daily'] as $d) {
-                            if($cnt++ >=3) break;
+                            if($cnt++ >=4) break;
                             $day = new DateTime('@' . $d['dt']);
+                            $day->setTimezone($tz);
                             $day = $day->format('D');
+                            if($cnt == 1) {
+                                $day = "Today";
+                            }
                             $tempMin = displayTemp($d['temp']['min']);
                             $tempMax = displayTemp($d['temp']['max']);
                             $w = $d['weather'][0]['main'];
