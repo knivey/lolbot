@@ -12,6 +12,8 @@ spl_autoload_register( function($class)
     return class_exists($class, false);
 });
 
+require_once 'youtube.php';
+
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
 
@@ -59,6 +61,8 @@ Loop::run( function() {
             $bot->pm($chan, "Knio is a cool guy");
             return;
         }
+        global $config;
+        \Amp\asyncCall('youtube', $bot, $config['gkey'], $args->channel, $args->text);
 
         if ($a[0] == '.wz' || $a[0] == '.weather' || $a[0] == '.fc') {
             if(!isset($a[1])) {
