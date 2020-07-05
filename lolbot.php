@@ -56,8 +56,8 @@ Loop::run( function() {
             \Amp\asyncCall('bing', $a, $bot, $chan);
         }
 
-        if ($a[0] == '.stock') {
-            \Amp\asyncCall('bing', $a, $bot, $chan);
+        if ($a[0] == '.stock' || $a[0] == '.stocks') {
+            \Amp\asyncCall('stock', $a, $bot, $chan);
         }
 
         if ($a[0] == '.calc') {
