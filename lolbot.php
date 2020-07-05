@@ -67,11 +67,12 @@ Loop::run( function() {
     Loop::onSignal(SIGINT, function () use ($bot) {
         echo "Caught SIGINT! exiting ...\n";
         yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
-        //Loop::delay(2000, function() {exit;});
-        exit;
+        Loop::delay(2000, function() {exit;});
+        exit();
     });
 
     yield from notifier($bot);
+
     while(1) {
         yield from $bot->go();
     }
