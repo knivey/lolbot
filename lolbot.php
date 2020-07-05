@@ -17,6 +17,7 @@ require_once 'weather.php';
 require_once 'bing.php';
 require_once 'stocks.php';
 require_once 'wolfram.php';
+require_once 'notifier.php';
 
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
@@ -70,6 +71,7 @@ Loop::run( function() {
         exit;
     });
 
+    yield from notifier($bot);
     while(1) {
         yield from $bot->go();
     }

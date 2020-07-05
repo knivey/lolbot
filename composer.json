@@ -6,6 +6,9 @@
         "amphp/http-client": "^4.3",
         "ext-simplexml": "*",
         "ext-json": "*",
-        "ext-pcntl": "*"
+        "ext-pcntl": "*",
+        "amphp/http-server": "^2.1",
+        "monolog/monolog": "^2.1",
+        "amphp/log": "^1.1"
     }
 }
