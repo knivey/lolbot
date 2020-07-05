@@ -5,8 +5,10 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
-function youtube(\Irc\Client $bot, $key, $chan, $text)
+function youtube(\Irc\Client $bot, $chan, $text)
 {
+    global $config;
+    $key = $config['gkey'];
     $URL = '/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/';
     foreach (explode(' ', $text) as $word) {
         if (!preg_match($URL, $word, $m)) {
