@@ -13,3 +13,4 @@ openweatherKey: "key"
 bingMapsKey: "key"
 gkey: "AIzaSyAaEHZbtAc2TexZI7FShOI4jcNqP3ga4Ws"
 youtube: true
+listen: "0.0.0.0:1337"

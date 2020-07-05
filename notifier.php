@@ -13,14 +13,14 @@ use Amp\Socket;
 use Monolog\Logger;
 
 function notifier($bot) {
+    global $config;
     //$cert = new Socket\Certificate(__DIR__ . '/../test/server.pem');
 
     //$context = (new Socket\BindContext)
     //    ->withTlsContext((new Socket\ServerTlsContext)->withDefaultCertificate($cert));
 
     $servers = [
-        Socket\Server::listen("0.0.0.0:1337"),
-        Socket\Server::listen("[::]:1337"),
+        Socket\Server::listen($config['listen'])
     ];
     //Probably setup logging from main later
     $logHandler = new StreamHandler(new ResourceOutputStream(STDOUT));
