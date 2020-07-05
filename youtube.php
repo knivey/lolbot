@@ -41,8 +41,6 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $response = yield $client->request(new Request("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key=$key"));
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() != 200) {
-                // Just in case its huge or some garbage
-                $body = substr($body, 0, 200);
                 $bot->pm($chan, "Error (" . $response->getStatus() . ")");
                 echo "Error (" . $response->getStatus() . ")\n";
                 var_dump($body);

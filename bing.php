@@ -24,6 +24,7 @@ function bing($a, $bot, $chan)
         $response = yield $client->request($request);
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
+            var_dump($body);
             // Just in case its huge or some garbage
             $body = substr($body, 0, 200);
             $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
