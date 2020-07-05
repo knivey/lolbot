@@ -51,6 +51,7 @@ function notifier($bot) {
                 ], "Must specify a chan to privmsg");
             }
             $msg = yield $request->getBody()->buffer();
+            $msg = str_replace("\r", "\n", $msg);
             $msg = explode("\n", $msg);
             foreach($msg as $line) {
                 $bot->pm("#$chan", substr($line, 0, 400));
