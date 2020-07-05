@@ -32,6 +32,7 @@ function youtube(\Irc\Client $bot, $key, $chan, $text)
         echo "Looking up youtube video $id\n";
 
         $data = null;
+        $body = null;
         try {
             $client = HttpClientBuilder::buildDefault();
             /** @var Response $response */
@@ -40,8 +41,9 @@ function youtube(\Irc\Client $bot, $key, $chan, $text)
             if ($response->getStatus() != 200) {
                 // Just in case its huge or some garbage
                 $body = substr($body, 0, 200);
-                $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
-                echo "Error (" . $response->getStatus() . ") $body\n";
+                $bot->pm($chan, "Error (" . $response->getStatus() . ")");
+                echo "Error (" . $response->getStatus() . ")\n";
+                var_dump($body);
                 return;
             }
             $data = json_decode($body, false);
@@ -75,6 +77,7 @@ function youtube(\Irc\Client $bot, $key, $chan, $text)
         } catch (Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
             echo "\2YouTube Error:\2 Unknown data received.\n";
+            var_dump($body);
         }
     }
 }
