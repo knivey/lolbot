@@ -34,6 +34,7 @@ Loop::run( function() {
     });
 
     $bot->on('chat', function ($args, $bot) {
+        global $config;
         $chan = $args->channel;
         $a = explode(' ', $args->text);
         $a[0] = strtolower($a[0]);
@@ -42,7 +43,9 @@ Loop::run( function() {
             return;
         }
 
-        \Amp\asyncCall('youtube', $bot, $chan, $args->text);
+        if ($config['youtube']) {
+            \Amp\asyncCall('youtube', $bot, $chan, $args->text);
+        }
 
         if ($a[0] == '.wz' || $a[0] == '.weather' || $a[0] == '.fc') {
             \Amp\asyncCall('weather', $a, $bot, $chan);
