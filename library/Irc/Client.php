@@ -16,7 +16,7 @@ class Client extends EventEmitter {
 
     const DEFAULT_PORT = 6667;
 
-
+    public $exit = false;
     protected $nick = 'phpump';
     protected $name = 'phpump';
     protected $realName = 'we pumpin!';
@@ -65,10 +65,17 @@ class Client extends EventEmitter {
         echo "Bot made";
     }
 
+    public function exit() {
+        $this->exit = true;
+    }
+
     public function go() {
+        if($this->exit)
+            return;
+
         echo "run called\n";
         //return;
-        while($this->reconnect) {
+        while($this->reconnect && !$this->exit) {
             echo "connecting...\n";
             try {
                 $this->socket = yield connect($this->server . ':' . $this->port, $this->connectContext);
@@ -95,6 +102,7 @@ class Client extends EventEmitter {
         $s = yield $this->socket->read();
         if ($s === null) {
             $this->onDisconnect();
+            Loop::cancel($this->timeoutWatcherID);
             return;
         }
         $this->lastRecvTime = time();

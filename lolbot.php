@@ -25,6 +25,8 @@ use Amp\Loop;
 
 Loop::run( function() {
     global $config;
+    $exit = false;
+
     $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
 
     $bot->on('welcome', function ($e, \Irc\Client $bot) {
@@ -64,16 +66,22 @@ Loop::run( function() {
             \Amp\asyncCall('calc', $a, $bot, $chan);
         }
     });
-    Loop::onSignal(SIGINT, function () use ($bot) {
+    $server = yield from notifier($bot);
+
+    Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server, $exit) {
         echo "Caught SIGINT! exiting ...\n";
         yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
-        Loop::delay(2000, function() {exit;});
-        exit();
+        $bot->exit();
+        $exit = true;
+        $server->stop();
+        Amp\Loop::cancel($watcherId);
     });
 
-    yield from notifier($bot);
-
-    while(1) {
+    while(!$exit) {
         yield from $bot->go();
+    }
+    if($exit) {
+        Amp\Loop::stop();
+        exit();
     }
 });
