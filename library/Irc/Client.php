@@ -97,12 +97,14 @@ class Client extends EventEmitter {
             }
         }
     }
-
+    
     function doRead() {
         $s = yield $this->socket->read();
         if ($s === null) {
             $this->onDisconnect();
-            Loop::cancel($this->timeoutWatcherID);
+            if($this->timeoutWatcherID != null) {
+                Loop::cancel($this->timeoutWatcherID);
+            }
             return;
         }
         $this->lastRecvTime = time();
