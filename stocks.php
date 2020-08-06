@@ -33,7 +33,14 @@ function stock($a, $bot, $chan)
         }
         $j = json_decode($body, true);
 
-        $bot->pm($chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $j[change] ($j[changePercent]%)");
+        $change = $j['change'];
+        if($change > 0) {
+            $change = "\x0309$change\x0F";
+        } else {
+            $change = "\x0304$change\x0F";
+        }
+
+        $bot->pm($chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $change ($j[changePercent]%)");
     } catch (HttpException $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
