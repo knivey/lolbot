@@ -508,7 +508,7 @@ class Client extends EventEmitter {
                 $this->send( CMD_PONG, $message->getArg( 0, $this->server ) );
                 break;
             case CMD_PONG:
-                if ($message->getArg(0) == $this->awaitingPong) {
+                if ($this->awaitingPong != null) {
                     $this->awaitingPong = null;
                 }
                 break;
