@@ -35,6 +35,7 @@ class Client extends EventEmitter {
     protected $inQ;
 
     protected $lastRecvTime;
+    protected ?string $awaitingPong;
     protected $timeoutWatcherID = null;
     /**
      * If we have connected and recieved the welcome thus ready to do any command
@@ -120,8 +121,13 @@ class Client extends EventEmitter {
 
     public function pingCheck() {
         $this->timeoutWatcherID = null;
-        $this->send("PING");
-        //TODO sched another timer to see if we got pong?
+        if ($this->awaitingPong != null) {
+            $this->socket->close();
+            return;
+        }
+        $this->awaitingPong = time();
+        $this->send("PING :" . $this->awaitingPong);
+        $this->timeoutWatcherID = Loop::delay(160000, [$this, 'pingCheck']);
     }
 
     public function sendNow($line) {
@@ -500,6 +506,11 @@ class Client extends EventEmitter {
             case CMD_PING:
                 //Reply to pings
                 $this->send( CMD_PONG, $message->getArg( 0, $this->server ) );
+                break;
+            case CMD_PONG:
+                if ($message->getArg(0) == $this->awaitingPong) {
+                    $this->awaitingPong = null;
+                }
                 break;
             case CMD_JOIN:
                 //Emit channel join events
