@@ -64,8 +64,29 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $title = $v->snippet->title;
 
             $di = new DateInterval($v->contentDetails->duration);
-            $dur = $di->format('%hh %im %ss');
-
+            if($di->s > 0) {
+                $dur = "{$di->s}s";
+            }
+            if ($di->i > 0) {
+                $dur = "{$di->i}m $dur";
+            }
+            if ($di->h > 0) {
+                $dur = "{$di->h}h $dur";
+            }
+            if ($di->d > 0) {
+                $dur = "{$di->d}d $dur";
+            }
+            //Seems unlikely, months and years
+            if ($di->m > 0) {
+                $dur = "{$di->m}M $dur";
+            }
+            if ($di->y > 0) {
+                $dur = "{$di->y}y $dur";
+            }
+            $dur = trim($dur);
+            if($dur == '') {
+                $dur = 'LIVE';
+            }
             $chanTitle = $v->snippet->channelTitle;
             $datef = 'M j, Y';
             $date = date($datef, strtotime($v->snippet->publishedAt));
@@ -73,7 +94,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $likes = number_format($v->statistics->likeCount);
             $hates = number_format($v->statistics->dislikeCount);
 
-            $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 $title by $chanTitle ($dur)");
+            $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 $title | $chanTitle | $dur)");
         } catch (Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
             echo "\2YouTube Error:\2 Unknown data received.\n";

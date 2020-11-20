@@ -18,6 +18,7 @@ require_once 'bing.php';
 require_once 'stocks.php';
 require_once 'wolfram.php';
 require_once 'notifier.php';
+require_once 'lastfm.php';
 
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
@@ -52,6 +53,10 @@ Loop::run( function() {
 
         if ($a[0] == '.wz' || $a[0] == '.weather' || $a[0] == '.fc') {
             \Amp\asyncCall('weather', $a, $bot, $chan);
+        }
+
+        if ($a[0] == '.np' || $a[0] == '.lastfm') {
+            \Amp\asyncCall('lastfm', $args->from, $a, $bot, $chan);
         }
 
         if ($a[0] == '.bing') {
