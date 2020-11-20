@@ -35,7 +35,7 @@ class Client extends EventEmitter {
     protected $inQ;
 
     protected $lastRecvTime;
-    protected ?string $awaitingPong;
+    protected ?string $awaitingPong = null;
     protected $timeoutWatcherID = null;
     /**
      * If we have connected and recieved the welcome thus ready to do any command
