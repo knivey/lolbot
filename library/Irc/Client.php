@@ -103,9 +103,6 @@ class Client extends EventEmitter {
         $s = yield $this->socket->read();
         if ($s === null) {
             $this->onDisconnect();
-            if($this->timeoutWatcherID != null) {
-                Loop::cancel($this->timeoutWatcherID);
-            }
             return;
         }
         $this->lastRecvTime = time();
@@ -119,10 +116,30 @@ class Client extends EventEmitter {
         }
     }
 
+    public function onDisconnect() {
+        echo "disconnected\n";
+        $this->sendQ = [];
+        if($this->sendWatcherID != null) {
+            Loop::cancel($this->sendWatcherID);
+            $this->sendWatcherID = null;
+        }
+        if($this->timeoutWatcherID != null) {
+            Loop::cancel($this->timeoutWatcherID);
+        }
+        //$timer = new Timer([$this, 'connect']);
+        //$timer->in(90);
+        //EventLoop::addTimer($timer);
+        //$this->emit('reconnecting');
+        $this->ircEstablished = false;
+        $this->isConnected = false;
+        $this->awaitingPong = null;
+    }
+
     public function pingCheck() {
         $this->timeoutWatcherID = null;
         if ($this->awaitingPong != null) {
             $this->socket->close();
+            echo "Closed connection do to ping timeout.\n";
             return;
         }
         $this->awaitingPong = time();
@@ -176,21 +193,6 @@ class Client extends EventEmitter {
 
     public function isEstablished() {
         return $this->ircEstablished;
-    }
-
-    public function onDisconnect() {
-        echo "disconnected\n";
-        $this->sendQ = [];
-        if($this->sendWatcherID != null) {
-            Loop::cancel($this->sendWatcherID);
-            $this->sendWatcherID = null;
-        }
-        //$timer = new Timer([$this, 'connect']);
-        //$timer->in(90);
-        //EventLoop::addTimer($timer);
-        //$this->emit('reconnecting');
-        $this->ircEstablished = false;
-        $this->isConnected = false;
     }
 
     public function getNick() {
