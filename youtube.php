@@ -94,7 +94,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $likes = number_format($v->statistics->likeCount);
             $hates = number_format($v->statistics->dislikeCount);
 
-            $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 $title | $chanTitle | $dur)");
+            $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 $title | $chanTitle | $dur");
         } catch (Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
             echo "\2YouTube Error:\2 Unknown data received.\n";
