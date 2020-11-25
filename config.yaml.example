@@ -3,6 +3,7 @@ server: localhost
 port: 6667
 bindIp: 0
 ssl: false
+throttle: true
 trigger: "-"
 channels: ['#h4x', '#art']
 waKey: 'key'

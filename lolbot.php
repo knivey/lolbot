@@ -45,6 +45,7 @@ Loop::run( function() {
     $exit = false;
 
     $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
+    $bot->setThrottle($config['throttle'] ?? true);
 
     $bot->on('welcome', function ($e, \Irc\Client $bot) {
         global $config;

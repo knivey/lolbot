@@ -346,6 +346,10 @@ class Client extends EventEmitter {
                     ->connect();
     }
 
+    public function setThrottle(bool $throttle) {
+        $this->doThrottle = $throttle;
+    }
+
     public $msg_since;
     public $sendQ = Array();
     public $doThrottle = true;
