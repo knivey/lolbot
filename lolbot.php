@@ -37,6 +37,7 @@ require_once 'scripts/notifier/notifier.php';
 require_once 'scripts/lastfm/lastfm.php';
 require_once 'scripts/info/info.php';
 require_once 'scripts/cumfacts/cumfacts.php';
+require_once 'scripts/artfart/artfart.php';
 
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
@@ -65,16 +66,8 @@ Loop::run( function() {
 
         handleCommand($text, $args->from, $args->channel, $bot);
 
-        $chan = $args->channel;
-        $a = explode(' ', $args->text);
-        $a[0] = strtolower($a[0]);
-        if ($a[0] == '.knio') {
-            $bot->pm($chan, "Knio is a cool guy");
-            return;
-        }
-
         if ($config['youtube']) {
-            \Amp\asyncCall('youtube', $bot, $chan, $args->text);
+            \Amp\asyncCall('youtube', $bot, $args->channel, $args->text);
         }
     });
     $server = yield from notifier($bot);
