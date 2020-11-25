@@ -28,13 +28,13 @@ function handleCommand($text, $nick, $chan, $bot) {
     }
 }
 
-require_once 'youtube.php';
-require_once 'weather.php';
-require_once 'bing.php';
-require_once 'stocks.php';
-require_once 'wolfram.php';
-require_once 'notifier.php';
-require_once 'lastfm.php';
+require_once 'scripts/youtube/youtube.php';
+require_once 'scripts/weather/weather.php';
+require_once 'scripts/bing/bing.php';
+require_once 'scripts/stocks/stocks.php';
+require_once 'scripts/wolfram/wolfram.php';
+require_once 'scripts/notifier/notifier.php';
+require_once 'scripts/lastfm/lastfm.php';
 
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
