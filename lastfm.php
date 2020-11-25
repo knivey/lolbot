@@ -14,7 +14,7 @@ function lastfm($args, $nick, $chan, \Irc\Client $bot)
         echo "lastfm key not set on config\n";
         return;
     }
-    var_dump($args);
+
     if (isset($args['user'])) {
         $user = $args['user'];
     } else {
@@ -44,7 +44,6 @@ function lastfm($args, $nick, $chan, \Irc\Client $bot)
         return;
     }
     //Fix case :)
-    var_dump($res);
     $user = $res['recenttracks']['@attr']['user'] ?? $user;
     $track = $res['recenttracks']['track'][0];
     $title = $track['name'] ?? 'No Title';

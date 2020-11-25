@@ -43,7 +43,7 @@ function weather($args, $nick, $chan, \Irc\Client $bot)
         //TODO users will have default for them in db
         return;
     }
-    var_dump($args);
+
     $si = false;
     if (isset($args['si']) || isset($args['metric']))
         $si = true;
