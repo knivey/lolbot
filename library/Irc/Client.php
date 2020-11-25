@@ -482,6 +482,11 @@ class Client extends EventEmitter {
         return $this;
     }
 
+    public function notice($nick, $message) {
+        $this->send(CMD_NOTICE, $nick, $message);
+        return $this;
+    }
+
     public function nick( $nick = null ) {
         if( !$nick )
             $nick = $this->nick;

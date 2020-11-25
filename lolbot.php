@@ -35,6 +35,8 @@ require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/notifier/notifier.php';
 require_once 'scripts/lastfm/lastfm.php';
+require_once 'scripts/info/info.php';
+require_once 'scripts/cumfacts/cumfacts.php';
 
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
