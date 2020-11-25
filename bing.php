@@ -5,16 +5,23 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
-function bing($a, $bot, $chan)
+$router->add('bing <query>...', 'bing');
+function bing($args, $nick, $chan, \Irc\Client $bot)
 {
-    if (!isset($a[1])) {
-        $bot->pm($chan, "give me something to lookup");
+    global $config;
+    if(!isset($config['bingKey'])) {
+        echo "bingKey not set in config\n";
         return;
     }
-
-    global $config;
-    unset($a[0]);
-    $query = urlencode(htmlentities(implode(' ', $a)));
+    if(!isset($config['bingEP'])) {
+        echo "bingKbingEPey not set in config\n";
+        return;
+    }
+    if(!isset($config['bingLang'])) {
+        echo "bingLang not set in config\n";
+        return;
+    }
+    $query = urlencode(htmlentities(implode(' ', $args['query'])));
     $url = $config['bingEP'] . "search?q=$query&mkt=$config[bingLang]&setLang=$config[bingLang]";
     try {
         $client = HttpClientBuilder::buildDefault();

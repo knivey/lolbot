@@ -5,16 +5,20 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
-function lastfm($from, $a, \Irc\Client $bot, $chan)
+$router->add('lastfm [<user>]', 'lastfm');
+function lastfm($args, $nick, $chan, \Irc\Client $bot)
 {
     global $config;
     $key = $config['lastfm'] ?? false;
-    if(!$key)
+    if(!$key) {
+        echo "lastfm key not set on config\n";
         return;
-    if (!isset($a[1])) {
-        $user = $from;
+    }
+    var_dump($args);
+    if (isset($args['user'])) {
+        $user = $args['user'];
     } else {
-        $user = $a[1];
+        $user = $nick;
     }
     $user = urlencode(htmlentities($user));
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";

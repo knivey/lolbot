@@ -12,6 +12,22 @@ spl_autoload_register( function($class)
     return class_exists($class, false);
 });
 
+use Amp\Loop;
+
+$router = new Clue\Commander\Router();
+
+function handleCommand($text, $nick, $chan, $bot) {
+    global $router;
+    foreach ($router->getRoutes() as $route) {
+        $input = explode(' ', $text);
+        $output = array();
+        if ($route->matches($input, $output)) {
+            \Amp\asyncCall($route->handler, $output, $nick, $chan, $bot);
+            return;
+        }
+    }
+}
+
 require_once 'youtube.php';
 require_once 'weather.php';
 require_once 'bing.php';
@@ -21,8 +37,6 @@ require_once 'notifier.php';
 require_once 'lastfm.php';
 
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
-
-use Amp\Loop;
 
 Loop::run( function() {
     global $config;
@@ -37,8 +51,17 @@ Loop::run( function() {
         $bot->join(implode(',', $config['channels']));
     });
 
-    $bot->on('chat', function ($args, $bot) {
+    $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config;
+
+        if(substr($args->text, 0, 1) != $config['trigger']) {
+            return;
+        } else {
+            $text = substr($args->text, 1);
+        }
+
+        handleCommand($text, $args->from, $args->channel, $bot);
+
         $chan = $args->channel;
         $a = explode(' ', $args->text);
         $a[0] = strtolower($a[0]);
@@ -49,26 +72,6 @@ Loop::run( function() {
 
         if ($config['youtube']) {
             \Amp\asyncCall('youtube', $bot, $chan, $args->text);
-        }
-
-        if ($a[0] == '.wz' || $a[0] == '.weather' || $a[0] == '.fc') {
-            \Amp\asyncCall('weather', $a, $bot, $chan);
-        }
-
-        if ($a[0] == '.np' || $a[0] == '.lastfm') {
-            \Amp\asyncCall('lastfm', $args->from, $a, $bot, $chan);
-        }
-
-        if ($a[0] == '.bing') {
-            \Amp\asyncCall('bing', $a, $bot, $chan);
-        }
-
-        if ($a[0] == '.stock' || $a[0] == '.stocks') {
-            \Amp\asyncCall('stock', $a, $bot, $chan);
-        }
-
-        if ($a[0] == '.calc') {
-            \Amp\asyncCall('calc', $a, $bot, $chan);
         }
     });
     $server = yield from notifier($bot);

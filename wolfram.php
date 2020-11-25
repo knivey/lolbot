@@ -7,13 +7,16 @@ use Amp\Http\Client\Response;
 
 const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 
-function calc($a, $bot, $chan)
+$router->add('calc <query>...', 'calc');
+function calc($args, $nick, $chan, \Irc\Client $bot)
 {
     global $config;
-    echo "starting calc\n";
-    unset($a[0]);
-    $arg2 = implode(' ', $a);
-    $query = waURL . urlencode(htmlentities($arg2)) . '&appid=' . $config['waKey'] . '&format=plaintext';
+    if(!isset($config['waKey'])) {
+        echo "waKey not set in config\n";
+        return;
+    }
+    var_dump($args);
+    $query = waURL . urlencode(htmlentities(implode(' ', $args['query']))) . '&appid=' . $config['waKey'] . '&format=plaintext';
     try {
         $client = HttpClientBuilder::buildDefault();
         // Make an asynchronous HTTP request

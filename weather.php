@@ -13,28 +13,45 @@ function kToC($temp) {
     return $temp - 273;
 }
 
-function displayTemp($temp) {
-    return round(kToF($temp)) . '°F(' . round(kToC($temp)) . '°C)';
+function displayTemp($temp, $si = false) {
+    if($si)
+        return round(kToC($temp)) . '°C';
+    return round(kToF($temp)) . '°F';
 }
 
 function windDir($deg) {
     $dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
     return $dirs[round((($deg % 360) / 45))];
 }
-
-function weather($a, $bot, $chan)
+$router->add('(weather|wz) [(--fc | --forecast)] [(--si | --metric)] <query>...', 'weather');
+function weather($args, $nick, $chan, \Irc\Client $bot)
 {
     global $config;
-    if (!isset($a[1])) {
-        $bot->pm($chan, "give me something to lookup");
+    if(!isset($config['bingMapsKey'])) {
+        echo "bingMapsKey not set in config\n";
         return;
     }
-
+    if(!isset($config['bingLang'])) {
+        echo "bingLang not set in config\n";
+        return;
+    }
+    if(!isset($config['openweatherKey'])) {
+        echo "openweatherKey not set in config\n";
+        return;
+    }
+    if (!isset($args['query'])) {
+        //TODO users will have default for them in db
+        return;
+    }
+    var_dump($args);
+    $si = false;
+    if (isset($args['si']) || isset($args['metric']))
+        $si = true;
     $fc = false;
-    if ($a[0] == '.fc')
+    if (isset($args['fc']) || isset($args['forecast']))
         $fc = true;
-    unset($a[0]);
-    $query = urlencode(htmlentities(implode(' ', $a)));
+
+    $query = urlencode(htmlentities(implode(' ', $args['query'])));
     //First we need lat lon
     $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
 
@@ -85,7 +102,7 @@ function weather($a, $bot, $chan)
         $sunset = new DateTime('@' . $cur['sunset']);
         $sunset->setTimezone($tz);
         $sunset = $sunset->format($fmt);
-        $temp = displayTemp($cur['temp']);
+        $temp = displayTemp($cur['temp'], $si);
         if (!$fc) {
             $bot->pm($chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s Sun: $sunrise - $sunset");
         } else {
@@ -99,8 +116,8 @@ function weather($a, $bot, $chan)
                 if ($cnt == 1) {
                     $day = "Today";
                 }
-                $tempMin = displayTemp($d['temp']['min']);
-                $tempMax = displayTemp($d['temp']['max']);
+                $tempMin = displayTemp($d['temp']['min'], $si);
+                $tempMax = displayTemp($d['temp']['max'], $si);
                 $w = $d['weather'][0]['main'];
                 $out .= "\2$day:\2 $w $tempMin/$tempMax $d[humidity]% humidity ";
             }
