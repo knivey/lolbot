@@ -29,7 +29,7 @@ function notifier($bot) {
     $logger->pushHandler($logHandler);
 
     $server = new HttpServer($servers, new CallableRequestHandler(static function (Request $request) use (&$bot) {
-        $notifier_keys = Yaml::parseFile('notifier_keys.yaml');
+        $notifier_keys = Yaml::parseFile(__DIR__. '/notifier_keys.yaml');
         $key = $request->getHeader('key');
         if (isset($notifier_keys[$key])) {
             echo "Request from $notifier_keys[$key] ($key)\n";

@@ -4,3 +4,4 @@ ircart
 vendor
 config.yaml
 composer.lock
+scripts/notifier/notifier_keys.yaml
