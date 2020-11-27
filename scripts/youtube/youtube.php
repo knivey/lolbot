@@ -109,11 +109,12 @@ function youtube(\Irc\Client $bot, $chan, $text)
                         echo "Error (" . $response->getStatus() . ")\n";
                         var_dump($body);
                     } else {
-                        $filename = "thumb.$ext";
+                        $filename = "$id.$ext";
                         echo "saving to $filename";
                         file_put_contents($filename, $body);
                         $width = $config['youtube_thumbwidth'] ?? 40;
                         $thumbnail = `~/p2u/p2u -f m -p x -w $width $filename`;
+                        unlink($filename);
                     }
                 } catch (HttpException $error) {
                     // If something goes wrong Amp will throw the exception where the promise was yielded.
