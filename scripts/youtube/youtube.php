@@ -95,7 +95,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $hates = number_format($v->statistics->dislikeCount);
 
             if($config['youtube_thumb'] ?? false) {
-                $thumbnail = $v->snippet->thumbnails->default->url;
+                $thumbnail = $v->snippet->thumbnails->high->url;
                 $ext = explode('.', $thumbnail);
                 $ext = array_pop($ext);
                 try {
