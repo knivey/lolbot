@@ -112,7 +112,8 @@ function youtube(\Irc\Client $bot, $chan, $text)
                         $filename = "thumb.$ext";
                         echo "saving to $filename";
                         file_put_contents($filename, $body);
-                        $thumbnail = `~/p2u/p2u -f m -p x -w 40 $filename`;
+                        $width = $config['youtube_thumbwidth'] ?? 40;
+                        $thumbnail = `~/p2u/p2u -f m -p x -w $width $filename`;
                     }
                 } catch (HttpException $error) {
                     // If something goes wrong Amp will throw the exception where the promise was yielded.
@@ -121,7 +122,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
                     $thumbnail = '';
                 }
                 if ($thumbnail != '') {
-                    foreach (explode("\n", $thumbnail) as $line) {
+                    foreach (explode("\n", trim($thumbnail)) as $line) {
                         $bot->pm($chan, $line);
                     }
                 }
