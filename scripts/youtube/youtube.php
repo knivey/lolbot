@@ -113,7 +113,8 @@ function youtube(\Irc\Client $bot, $chan, $text)
                         echo "saving to $filename";
                         file_put_contents($filename, $body);
                         $width = $config['youtube_thumbwidth'] ?? 40;
-                        $thumbnail = `~/p2u/p2u -f m -p x -w $width $filename`;
+                        $filename_safe = escapeshellarg($filename);
+                        $thumbnail = `~/p2u/p2u -f m -p x -w $width $filename_safe`;
                         unlink($filename);
                     }
                 } catch (HttpException $error) {
