@@ -370,6 +370,9 @@ class Client extends EventEmitter {
                 unset($this->sendQ[$key]);
             }
             $this->sendWatcherID = null;
+            if(!empty($this->sendQ)) {
+                $this->sendWatcherID = Loop::defer([$this, 'processSendq']);
+            }
             return;
         }
 
