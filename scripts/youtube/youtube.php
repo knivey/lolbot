@@ -64,6 +64,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $title = $v->snippet->title;
 
             $di = new DateInterval($v->contentDetails->duration);
+            $dur = '';
             if($di->s > 0) {
                 $dur = "{$di->s}s";
             }
@@ -110,10 +111,10 @@ function youtube(\Irc\Client $bot, $chan, $text)
                         var_dump($body);
                     } else {
                         $filename = "$id.$ext";
-                        echo "saving to $filename";
+                        echo "saving to $filename\n";
                         file_put_contents($filename, $body);
                         $width = $config['youtube_thumbwidth'] ?? 40;
-                        $filename_safe = escapeshellarg($filename);
+                        $filename_safe = escapeshellarg('thumb_' . $filename);
                         $thumbnail = `~/p2u/p2u -f m -p x -w $width $filename_safe`;
                         unlink($filename);
                     }
