@@ -123,7 +123,13 @@ function youtube(\Irc\Client $bot, $chan, $text)
                     $thumbnail = '';
                 }
                 if ($thumbnail != '') {
-                    foreach (explode("\n", trim($thumbnail)) as $line) {
+                    $thumbnail = explode("\n", trim($thumbnail));
+                    foreach([count($thumbnail)-1,count($thumbnail)-2,1,0] as $i) {
+                        if (trim($thumbnail[$i]) == "\x031,1") {
+                            unset($thumbnail[$i]);
+                        }
+                    }
+                    foreach ($thumbnail as $line) {
                         $bot->pm($chan, $line);
                     }
                 }
