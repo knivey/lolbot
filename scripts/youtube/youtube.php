@@ -110,11 +110,11 @@ function youtube(\Irc\Client $bot, $chan, $text)
                         echo "Error (" . $response->getStatus() . ")\n";
                         var_dump($body);
                     } else {
-                        $filename = "$id.$ext";
+                        $filename = "thumb_$id.$ext";
                         echo "saving to $filename\n";
                         file_put_contents($filename, $body);
                         $width = $config['youtube_thumbwidth'] ?? 40;
-                        $filename_safe = escapeshellarg('thumb_' . $filename);
+                        $filename_safe = escapeshellarg($filename);
                         $thumbnail = `~/p2u/p2u -f m -p x -w $width $filename_safe`;
                         unlink($filename);
                     }
