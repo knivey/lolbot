@@ -358,7 +358,6 @@ class Client extends EventEmitter {
     //Should only be called by watcher
     public function processSendq() {
         echo "processing sendQ\n";
-        $this->sendWatcherID = null;
         if(empty($this->sendQ)) {
             echo "sendQ empty\n";
             return;
@@ -370,6 +369,7 @@ class Client extends EventEmitter {
                 yield $this->socket->write($msg);
                 unset($this->sendQ[$key]);
             }
+            $this->sendWatcherID = null;
             return;
         }
 
@@ -388,6 +388,7 @@ class Client extends EventEmitter {
             $this->msg_since += 2 + ((strlen($msg)+2) / 120);
             unset($this->sendQ[$key]);
         }
+        $this->sendWatcherID = null;
 
         if(!empty($this->sendQ)) {
             $next = $this->msg_since - 10 - microtime(true) + 0.1;
