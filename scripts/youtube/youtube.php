@@ -94,6 +94,39 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $likes = number_format($v->statistics->likeCount);
             $hates = number_format($v->statistics->dislikeCount);
 
+            if($config['youtube_thumb'] ?? false) {
+                $thumbnail = $v->snippet->thumbnails->default->url;
+                $ext = explode('.', $thumbnail);
+                $ext = array_pop($ext);
+                try {
+                    echo "fetching thumbnail at $thumbnail\n";
+                    $client = HttpClientBuilder::buildDefault();
+                    /** @var Response $response */
+                    $response = yield $client->request(new Request($thumbnail));
+                    $body = yield $response->getBody()->buffer();
+                    if ($response->getStatus() != 200) {
+                        $bot->pm($chan, "Error (" . $response->getStatus() . ")");
+                        echo "Error (" . $response->getStatus() . ")\n";
+                        var_dump($body);
+                    } else {
+                        $filename = "thumb.$ext";
+                        echo "saving to $filename";
+                        file_put_contents($filename, $body);
+                        $thumbnail = `~/p2u/p2u -f m -p x -w 40 $filename`;
+                    }
+                } catch (HttpException $error) {
+                    // If something goes wrong Amp will throw the exception where the promise was yielded.
+                    // The HttpClient::request() method itself will never throw directly, but returns a promise.
+                    echo "$error\n";
+                    $thumbnail = '';
+                }
+                if ($thumbnail != '') {
+                    foreach (explode("\n", $thumbnail) as $line) {
+                        $bot->pm($chan, $line);
+                    }
+                }
+            }
+
             $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 $title | $chanTitle | $dur");
         } catch (Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");

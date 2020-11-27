@@ -57,6 +57,9 @@ Loop::run( function() {
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config;
+        if ($config['youtube']) {
+            \Amp\asyncCall('youtube', $bot, $args->channel, $args->text);
+        }
 
         if(substr($args->text, 0, 1) != $config['trigger']) {
             return;
@@ -65,10 +68,6 @@ Loop::run( function() {
         }
 
         handleCommand($text, $args->from, $args->channel, $bot);
-
-        if ($config['youtube']) {
-            \Amp\asyncCall('youtube', $bot, $args->channel, $args->text);
-        }
     });
     $server = yield from notifier($bot);
 
