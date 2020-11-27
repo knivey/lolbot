@@ -1,5 +1,6 @@
 name: pee
 server: localhost
+#pass: uncomment_for_password
 port: 6667
 bindIp: 0
 ssl: false
