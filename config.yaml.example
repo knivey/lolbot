@@ -19,4 +19,6 @@ youtube: true
 #youtube_thumb: true
 #youtube_thumbwidth: 60
 #p2u: "~/p2u/p2u"
-listen: "0.0.0.0:1337"
+
+#uncomment to start the notification listen server
+#listen: "0.0.0.0:1337"

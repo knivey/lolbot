@@ -14,6 +14,9 @@ use Monolog\Logger;
 
 function notifier($bot) {
     global $config;
+    if(!isset($config['listen'])) {
+        return null;
+    }
     //$cert = new Socket\Certificate(__DIR__ . '/../test/server.pem');
 
     //$context = (new Socket\BindContext)
