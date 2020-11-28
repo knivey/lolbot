@@ -95,7 +95,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
             $likes = number_format($v->statistics->likeCount);
             $hates = number_format($v->statistics->dislikeCount);
 
-            if($config['youtube_thumb'] ?? false) {
+            if($config['youtube_thumb'] ?? false && isset($config['p2u'])) {
                 $thumbnail = $v->snippet->thumbnails->high->url;
                 $ext = explode('.', $thumbnail);
                 $ext = array_pop($ext);
@@ -115,7 +115,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
                         file_put_contents($filename, $body);
                         $width = $config['youtube_thumbwidth'] ?? 40;
                         $filename_safe = escapeshellarg($filename);
-                        $thumbnail = `~/p2u/p2u -f m -p x -w $width $filename_safe`;
+                        $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
                         unlink($filename);
                     }
                 } catch (HttpException $error) {
