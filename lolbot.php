@@ -43,7 +43,6 @@ $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
 Loop::run( function() {
     global $config;
-    $exit = false;
 
     $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
     $bot->setThrottle($config['throttle'] ?? true);
@@ -72,20 +71,23 @@ Loop::run( function() {
     });
     $server = yield from notifier($bot);
 
-    Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server, $exit) {
+    Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server) {
         echo "Caught SIGINT! exiting ...\n";
         yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
         $bot->exit();
-        $exit = true;
-        $server->stop();
+        if($server != null) {
+            $server->stop();
+        }
         Amp\Loop::cancel($watcherId);
     });
 
-    while(!$exit) {
+    while(!$bot->exit) {
         yield from $bot->go();
     }
-    if($exit) {
+    if($bot->exit) {
+        echo "Stopping Amp\\Loop\n";
         Amp\Loop::stop();
-        exit();
+        //exit();
+        return;
     }
 });
