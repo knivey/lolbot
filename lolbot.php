@@ -38,6 +38,7 @@ require_once 'scripts/lastfm/lastfm.php';
 require_once 'scripts/info/info.php';
 require_once 'scripts/cumfacts/cumfacts.php';
 require_once 'scripts/artfart/artfart.php';
+require_once 'scripts/codesand/common.php';
 
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 
@@ -65,6 +66,11 @@ Loop::run( function() {
             return;
         } else {
             $text = substr($args->text, 1);
+        }
+        //Temp fix because the command router ignores -- and - when not part of route
+        $ar = explode(' ', $text);
+        if(array_shift($ar) == 'php') {
+            \codesand\runPHP(['code' => $ar], $args->from, $args->channel, $bot);
         }
 
         handleCommand($text, $args->from, $args->channel, $bot);
