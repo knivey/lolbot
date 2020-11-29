@@ -4,7 +4,7 @@ namespace codesand;
 use Amp\Loop;
 use Amp\Process\Process;
 use Amp\Process\ProcessException;
-
+include __DIR__ .'/SafeLineReader.php';
 
 $running = null;
 
@@ -30,26 +30,26 @@ class run {
 
     function getStdout() {
         $stream = $this->proc->getStdout();
-        while ($this->timeout != null && null !== $chunk = yield $stream->read()) {
-            foreach(explode("\n", $chunk) as $l)
-                $this->out[] = "STDOUT: $l";
+        $lr = new SafeLineReader($stream);
+        $line = '';
+        while ($this->timeout != null && null !== $line = yield $lr->readLine()) {
+            $this->out[] = "STDOUT: $line";
             if (strlen(implode(' ', $this->out)) > 4000) {
                 break;
             }
         }
-        //$this->finish();
     }
 
     function getStderr() {
         $stream = $this->proc->getStderr();
-        while ($this->timeout != null && null !== $chunk = yield $stream->read()) {
-            foreach(explode("\n", $chunk) as $l)
-                $this->out[] = "STDERR: $l";
+        $lr = new SafeLineReader($stream);
+        $line = '';
+        while ($this->timeout != null && null !== $line = yield $lr->readLine()) {
+            $this->out[] = "STDERR: $line";
             if (strlen(implode(' ', $this->out)) > 4000) {
                 break;
             }
         }
-        //$this->finish();
     }
 
     function doPHP()
