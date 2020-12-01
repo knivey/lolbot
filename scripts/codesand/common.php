@@ -64,7 +64,7 @@ class run {
         //echo userExec("cat code.php");
         $this->timeout = \Amp\Loop::delay(3000, [$this, 'timedOut']);
 
-        $cmd = "lxc exec codesand -- su -l codesand -c \"php /home/codesand/code.php\"";
+        $cmd = "lxc exec codesand -- su -l codesand -c \"php /home/codesand/code.php ; echo\"";
         echo "launching Process with: $cmd\n";
         $this->proc = new Process($cmd);
         yield $this->proc->start();
@@ -176,10 +176,8 @@ function restart() {
 }
 
 function doReset() {
-    rootExec("killall -9 -u codesand");
-    rootExec("rm -rf /home/codesand");
-    rootExec("cp -rT /etc/skel /home/codesand");
-    rootExec("chown -R codesand:codesand /home/codesand");
+    //TODO check for failure and do restart if so
+    rootExec("\"killall -9 -u codesand && rm -rf /home/codesand && cp -rT /etc/skel /home/codesand && chown -R codesand:codesand /home/codesand\"");
 }
 
 //$router->add('php <code>...', __NAMESPACE__ . '\runPHP');
