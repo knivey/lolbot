@@ -15,6 +15,15 @@ lxc launch images:debian/10 codesand
 lxc exec codesand -- /bin/bash
 ```
 Inside the container:
+
+Create a script in /root/reset.sh chmod +x to contain the following:
+```
+#!/bin/bash
+killall -9 -u codesand
+rm -rf /home/codesand
+cp -rT /etc/skel /home/codesand
+chown -R codesand:codesand /home/codesand
+```
 ```
 apt install php-cli build-essential python
 adduser codesand
