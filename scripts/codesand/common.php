@@ -109,7 +109,7 @@ class run {
     }
 
     function pushout($buf) {
-        $count = 0;
+        $count = 1;
         foreach ($buf as $line) {
             $line = str_replace("\r", '', $line);
             $line = trim($line);
@@ -120,10 +120,13 @@ class run {
                 $line = substr($line, 0, 400) . '...';
             }
             $this->bot->pm($this->chan, $line);
-            if($count++ > 4) {
-                $this->bot->pm($this->chan, "...");
+            if(++$count > 10) {
+                $this->bot->pm($this->chan, 'Finished. ' . (count($buf) - $count) . " lines omitted...");
                 break;
             }
+        }
+        if($count <= 10) {
+            $this->bot->pm($this->chan, 'Finished.');
         }
     }
 
@@ -176,10 +179,8 @@ function restart() {
 }
 
 function doReset() {
-    rootExec("killall -9 -u codesand");
-    rootExec("rm -rf /home/codesand");
-    rootExec("cp -rT /etc/skel /home/codesand");
-    rootExec("chown -R codesand:codesand /home/codesand");
+    //TODO check for failure and do restart if so
+    rootExec("/root/reset.sh");
 }
 
 //$router->add('php <code>...', __NAMESPACE__ . '\runPHP');
