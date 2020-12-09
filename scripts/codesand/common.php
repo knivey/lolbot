@@ -64,7 +64,7 @@ class run {
         //echo userExec("cat code.php");
         $this->timeout = \Amp\Loop::delay(3000, [$this, 'timedOut']);
 
-        $cmd = "lxc exec codesand -- su -l codesand -c \"php /home/codesand/code.php\"";
+        $cmd = "lxc exec codesand -- su -l codesand -c \"php /home/codesand/code.php ; echo\"";
         echo "launching Process with: $cmd\n";
         $this->proc = new Process($cmd);
         yield $this->proc->start();
