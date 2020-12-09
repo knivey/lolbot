@@ -5,9 +5,10 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
+$youtube_history = [];
 function youtube(\Irc\Client $bot, $chan, $text)
 {
-    global $config;
+    global $config, $youtube_history;
     $key = $config['gkey'];
     $URL = '/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/';
     foreach (explode(' ', $text) as $word) {
@@ -31,6 +32,11 @@ function youtube(\Irc\Client $bot, $chan, $text)
             }
         }
 
+        if($youtube_history[$chan] ?? false == $id) {
+            echo "Ignoring repeated link of $id\n";
+            return;
+        }
+        $youtube_history[$chan] = $id;
         echo "Looking up youtube video $id\n";
 
         $data = null;
