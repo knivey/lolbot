@@ -22,3 +22,6 @@ youtube: true
 
 #uncomment to start the notification listen server
 #listen: "0.0.0.0:1337"
+
+#set to true to enable codesand
+codesand: false
