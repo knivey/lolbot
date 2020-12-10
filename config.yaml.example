@@ -5,7 +5,10 @@ port: 6667
 bindIp: 0
 ssl: false
 throttle: true
+#Use one or the other here
 trigger: "-"
+#trigger_re: "\\.|pee "
+
 channels: ['#h4x', '#art']
 waKey: 'key'
 iexKey: 'key'

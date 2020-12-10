@@ -64,10 +64,20 @@ Loop::run( function() {
             \Amp\asyncCall('youtube', $bot, $args->channel, $args->text);
         }
 
-        if(substr($args->text, 0, 1) != $config['trigger']) {
-            return;
-        } else {
+        if(isset($config['trigger'])) {
+            if(substr($args->text, 0, 1) != $config['trigger']) {
+                return;
+            }
             $text = substr($args->text, 1);
+        } elseif(isset($config['trigger_re'])) {
+            $trig = "/(^${config['trigger_re']}).+$/";
+            if (!preg_match($trig, $args->text, $m)) {
+                return;
+            }
+            $text = substr($args->text, strlen($m[1]));
+        } else {
+            echo "No trigger defined\n";
+            return;
         }
 
         if($config['codesand'] ?? false) {
