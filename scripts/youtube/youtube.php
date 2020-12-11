@@ -32,7 +32,7 @@ function youtube(\Irc\Client $bot, $chan, $text)
             }
         }
 
-        if($youtube_history[$chan] ?? false == $id) {
+        if(($youtube_history[$chan] ?? "") == $id) {
             echo "Ignoring repeated link of $id\n";
             return;
         }
