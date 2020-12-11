@@ -14,7 +14,7 @@ function stock($args, $nick, $chan, \Irc\Client $bot)
         return;
     }
 
-    $query = urlencode(htmlentities(implode(' ', $args['query'])));
+    $query = urlencode(htmlentities($args['query']));
     $url = "https://cloud.iexapis.com/stable/stock/$query/quote?token=" . $config['iexKey'] . '&displayPercent=true';
     try {
         $client = HttpClientBuilder::buildDefault();
