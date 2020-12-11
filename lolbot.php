@@ -58,6 +58,10 @@ Loop::run( function() {
         $bot->join(implode(',', $config['channels']));
     });
 
+    $bot->on('kick', function($args, \Irc\Client $bot) {
+        $bot->join($args->channel);
+    });
+
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config;
         if ($config['youtube']) {
