@@ -13,10 +13,6 @@ function stock($args, $nick, $chan, \Irc\Client $bot)
         echo "iexKey not set in config\n";
         return;
     }
-    if (!isset($a[1])) {
-        $bot->pm($chan, "give me something to lookup");
-        return;
-    }
 
     $query = urlencode(htmlentities(implode(' ', $args['query'])));
     $url = "https://cloud.iexapis.com/stable/stock/$query/quote?token=" . $config['iexKey'] . '&displayPercent=true';
