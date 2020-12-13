@@ -29,7 +29,7 @@ function artfart($args, $nick, $chan, \Irc\Client $bot)
         $len = strpos($body, "</pre>", $start) - $start;
         $fart = trim(htmlspecialchars_decode(substr($body, $start, $len), ENT_QUOTES|ENT_HTML5));
         foreach (explode("\n", $fart) as $line) {
-            $bot->pm($chan, $line);
+            $bot->pm($chan, rtrim($line));
         }
     } catch (HttpException $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
