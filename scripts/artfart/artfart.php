@@ -27,7 +27,7 @@ function artfart($args, $nick, $chan, \Irc\Client $bot)
         }
         $start += strlen("<table cellpadding=10><tr><td bgcolor=\"#000000\"><font color=\"#ffffff\"><pre>");
         $len = strpos($body, "</pre>", $start) - $start;
-        $fart = trim(htmlspecialchars_decode(substr($body, $start, $len), ENT_QUOTES|ENT_HTML5));
+        $fart = trim(htmlspecialchars_decode(substr($body, $start, $len), ENT_QUOTES|ENT_HTML5), "\n\r");
         foreach (explode("\n", $fart) as $line) {
             $bot->pm($chan, rtrim($line));
         }
