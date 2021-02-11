@@ -415,7 +415,8 @@ class Client extends EventEmitter {
             //Should we really throw an error or let the user handle it via events?
             return $this;
         }
-        $this->sendQ[] = (string)$message . "\r\n";
+        //TODO if its a privmsg or notice perhaps line wrap it?
+        $this->sendQ[] = substr((string)$message, 0, 510) . "\r\n";
         if($this->sendWatcherID == null) {
             $this->sendWatcherID = Loop::defer([$this, 'processSendq']);
         }
