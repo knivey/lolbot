@@ -7,7 +7,7 @@ use Amp\Http\Client\Response;
 
 const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 
-$router->add('calc <query>...', 'calc');
+//$router->add('calc <query>...', 'calc');
 function calc($args, $nick, $chan, \Irc\Client $bot)
 {
     global $config;

@@ -91,6 +91,10 @@ Loop::run( function() {
                 \codesand\runPHP(['code' => $ar], $args->from, $args->channel, $bot);
             }
         }
+        $ar = explode(' ', $text);
+        if (array_shift($ar) == 'calc') {
+            calc(['query' => $ar], $args->from, $args->channel, $bot);
+        }
 
         handleCommand($text, $args->from, $args->channel, $bot);
     });
