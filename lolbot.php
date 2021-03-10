@@ -93,7 +93,7 @@ Loop::run( function() {
         }
         $ar = explode(' ', $text);
         if (array_shift($ar) == 'calc') {
-            calc(['query' => $ar], $args->from, $args->channel, $bot);
+            \Amp\asyncCall('calc', ['query' => $ar], $args->from, $args->channel, $bot);
         }
 
         handleCommand($text, $args->from, $args->channel, $bot);

@@ -25,7 +25,7 @@ class run {
         $this->nick = $nick;
         $this->bot = $bot;
         $this->code = $code;
-        $this->startDisk = getDiskUsed();
+        //$this->startDisk = getDiskUsed();
     }
 
     function getStdout() {
@@ -97,13 +97,14 @@ class run {
         }
         */
 
-        $used = getDiskUsed();
-        if($used != $this->startDisk) {
-            echo "Disk used ($used) doesnt match what we started with ($this->startDisk)\nRestarting container from snapshot\n";
+        //$used = getDiskUsed();
+        //if($used != $this->startDisk) {
+        //    echo "Disk used ($used) doesnt match what we started with ($this->startDisk)\nRestarting container from snapshot\n";
             restart();
-        } else {
-            doReset();
-        }
+        //} else {
+        //    echo "Disk used ($used) matchs what we started with ($this->startDisk)\n";
+        //    doReset();
+        //}
         $this->pushout($this->out);
         $running = null;
     }
