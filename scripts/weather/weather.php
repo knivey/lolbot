@@ -112,14 +112,31 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
                 $si = false;
             }
         } else {
-            $loc = yield \Amp\call('getLocation', $query);
-            if (!is_array($loc)) {
-                $bot->pm($chan, $loc);
-                return;
+            if($query[0] == '@') {
+                //lookup for another person's setlocation
+                $query = substr(strtolower(explode(" ", $query)[0]), 1);
+                $locs = unserialize(file_get_contents("weather.db"));
+                if(!array_key_exists($query, $locs)) {
+                    $bot->msg($chan, "$query does't have a location set");
+                    return;
+                }
+                $location = $locs[$nick]['location'];
+                $lat = $locs[$nick]['lat'];
+                $lon = $locs[$nick]['lon'];
+                $si = ($locs[$nick]['si'] or $si);
+                if($imp) {
+                    $si = false;
+                }
+            } else {
+                $loc = yield \Amp\call('getLocation', $query);
+                if (!is_array($loc)) {
+                    $bot->pm($chan, $loc);
+                    return;
+                }
+                $location = $loc['location'];
+                $lat = $loc['lat'];
+                $lon = $loc['lon'];
             }
-            $location = $loc['location'];
-            $lat = $loc['lat'];
-            $lon = $loc['lon'];
         }
         //Now use lat lon to get weather
 
