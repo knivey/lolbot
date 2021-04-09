@@ -44,8 +44,9 @@ if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
 }
 
+$bot = null;
 Loop::run( function() {
-    global $config;
+    global $bot, $config;
 
     $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
     $bot->setThrottle($config['throttle'] ?? true);

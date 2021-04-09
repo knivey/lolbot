@@ -71,6 +71,7 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         return;
     }
     $si = false;
+    $imp = false;
     $fc = false;
     $query = '';
     if(isset($req->args['query'])) {
@@ -78,14 +79,21 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         if(str_contains($query, '--si') || str_contains($query, '--metric')) {
             $si = true;
         }
+        if(str_contains($query, '--us') || str_contains($query, '--imperial')) {
+            $imp = true;
+        }
         if(str_contains($query, '--fc') || str_contains($query, '--forecast')) {
             $fc = true;
         }
 
-        foreach(['--si', '--metric', '--fc', '--forecast'] as $rep) {
+        foreach(['--si', '--metric', '--fc', '--forecast', '--us', '--imperial'] as $rep) {
             $query = trim(str_replace($rep, '', $query));
             $query = str_replace('  ', ' ', $query);
         }
+    }
+    if($imp && $si) {
+        $bot->msg($chan, "Choose either si or imperial not both");
+        return;
     }
 
     try {
@@ -99,7 +107,10 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
             $location = $locs[$nick]['location'];
             $lat = $locs[$nick]['lat'];
             $lon = $locs[$nick]['lon'];
-            $si = $locs[$nick]['si'];
+            $si = ($locs[$nick]['si'] or $si);
+            if($imp) {
+                $si = false;
+            }
         } else {
             $loc = yield \Amp\call('getLocation', $query);
             if (!is_array($loc)) {
@@ -179,7 +190,7 @@ function setlocation($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         $si = true;
     }
 
-    foreach(['--si', '--metric', '--fc', '--forecast'] as $rep) {
+    foreach(['--si', '--metric', '--fc', '--forecast', '--us', '--imperial'] as $rep) {
         $query = trim(str_replace($rep, '', $query));
         $query = str_replace('  ', ' ', $query);
     }
