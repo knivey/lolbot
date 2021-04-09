@@ -120,10 +120,10 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
                     $bot->msg($chan, "$query does't have a location set");
                     return;
                 }
-                $location = $locs[$nick]['location'];
-                $lat = $locs[$nick]['lat'];
-                $lon = $locs[$nick]['lon'];
-                $si = ($locs[$nick]['si'] or $si);
+                $location = $locs[$query]['location'];
+                $lat = $locs[$query]['lat'];
+                $lon = $locs[$query]['lon'];
+                $si = ($locs[$query]['si'] or $si);
                 if($imp) {
                     $si = false;
                 }
