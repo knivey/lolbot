@@ -13,8 +13,9 @@ spl_autoload_register( function($class)
 });
 
 use Amp\Loop;
+use knivey\cmdr\Cmdr;
 
-$router = new Clue\Commander\Router();
+$router = new Cmdr();
 
 function handleCommand($text, $nick, $chan, $bot) {
     global $router;
@@ -35,14 +36,13 @@ require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/notifier/notifier.php';
 require_once 'scripts/lastfm/lastfm.php';
-require_once 'scripts/info/info.php';
+require_once 'scripts/help/help.php';
 require_once 'scripts/cumfacts/cumfacts.php';
 require_once 'scripts/artfart/artfart.php';
+$config = Yaml::parseFile(__DIR__.'/config.yaml');
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
 }
-
-$config = Yaml::parseFile(__DIR__.'/config.yaml');
 
 Loop::run( function() {
     global $config;
@@ -63,7 +63,7 @@ Loop::run( function() {
     });
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $config;
+        global $config, $router;
         if ($config['youtube']) {
             \Amp\asyncCall('youtube', $bot, $args->channel, $args->text);
         }
@@ -84,19 +84,21 @@ Loop::run( function() {
             return;
         }
 
-        if($config['codesand'] ?? false) {
-            //Temp fix because the command router ignores -- and - when not part of route
-            $ar = explode(' ', $text);
-            if (array_shift($ar) == 'php') {
-                \codesand\runPHP(['code' => $ar], $args->from, $args->channel, $bot);
-            }
-        }
+
         $ar = explode(' ', $text);
-        if (array_shift($ar) == 'calc') {
-            \Amp\asyncCall('calc', ['query' => $ar], $args->from, $args->channel, $bot);
+        if (array_shift($ar) == 'ping') {
+            $bot->msg($args->channel, "Pong");
         }
 
-        handleCommand($text, $args->from, $args->channel, $bot);
+
+        $text = explode(' ', $text);
+        $cmd = array_shift($text);
+        $text = implode(' ', $text);
+        try {
+            $router->call($cmd, $text, [$args->from, $args->channel, $bot]);
+        } catch (Exception $e) {
+            $bot->notice($args->from, $e->getMessage());
+        }
     });
     $server = yield from notifier($bot);
 

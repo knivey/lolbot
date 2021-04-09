@@ -184,13 +184,18 @@ function doReset() {
     rootExec("/root/reset.sh");
 }
 
-//$router->add('php <code>...', __NAMESPACE__ . '\runPHP');
-function runPHP($args, $nick, $chan, \Irc\Client $bot) {
-    global $user_exec, $root_exec, $running;
+
+global $router;
+$router->add('php', '\codesand\runPHP', [], '<code>');
+function runPHP($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config, $running;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
     if($running != null) {
         $bot->pm($chan, "Please wait until last task has completed.");
         return;
     }
-    $running = new run($chan, $nick, $bot, implode(' ', $args['code']));
+    $running = new run($chan, $nick, $bot, $req->args['code']);
     \Amp\asyncCall([$running, 'doPHP']);
 }

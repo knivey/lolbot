@@ -5,8 +5,9 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
-$router->add('lastfm [<user>]', 'lastfm');
-function lastfm($args, $nick, $chan, \Irc\Client $bot)
+global $router;
+$router->add('lastfm', '\Amp\asyncCall', ['lastfm'], '[user]');
+function lastfm($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
 {
     global $config;
     $key = $config['lastfm'] ?? false;
@@ -15,8 +16,8 @@ function lastfm($args, $nick, $chan, \Irc\Client $bot)
         return;
     }
 
-    if (isset($args['user'])) {
-        $user = $args['user'];
+    if (isset($req->args['user'])) {
+        $user = $req->args['user'];
     } else {
         $user = $nick;
     }

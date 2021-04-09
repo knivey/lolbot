@@ -4,9 +4,11 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\MultiReasonException;
 
-$router->add('bing <query>...', 'bing');
-function bing($args, $nick, $chan, \Irc\Client $bot)
+global $router; //lol makes ide not complain
+$router->add('bing', '\Amp\asyncCall', ['bing'],'<query>...');
+function bing($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['bingKey'])) {
@@ -21,7 +23,7 @@ function bing($args, $nick, $chan, \Irc\Client $bot)
         echo "bingLang not set in config\n";
         return;
     }
-    $query = urlencode(htmlentities(implode(' ', $args['query'])));
+    $query = urlencode(htmlentities($req->args['query']));
     $url = $config['bingEP'] . "search?q=$query&mkt=$config[bingLang]&setLang=$config[bingLang]";
     try {
         $client = HttpClientBuilder::buildDefault();
@@ -47,10 +49,15 @@ function bing($args, $nick, $chan, \Irc\Client $bot)
         $res = $j['webPages']['value'][0];
 
         $bot->pm($chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
-    } catch (HttpException $error) {
+    } catch (Amp\MultiReasonException $errors) {
+        foreach ($errors->getReasons() as $error) {
+            echo $error;
+            $bot->pm($chan, "\2Bing Error:\2 " . $error->getMessage());
+        }
+    } catch (Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2Bing:\2" . $error);
+        $bot->pm($chan, "\2Bing Error:\2 " . $error);
     }
 }

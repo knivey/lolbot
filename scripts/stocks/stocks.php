@@ -5,8 +5,9 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
-$router->add('stock <query>', 'stock');
-function stock($args, $nick, $chan, \Irc\Client $bot)
+global $router;
+$router->add('stock', '\Amp\asyncCall', ['stock'],'<query>');
+function stock($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['iexKey'])) {
@@ -14,7 +15,7 @@ function stock($args, $nick, $chan, \Irc\Client $bot)
         return;
     }
 
-    $query = urlencode(htmlentities($args['query']));
+    $query = urlencode(htmlentities($req->args['query']));
     $url = "https://cloud.iexapis.com/stable/stock/$query/quote?token=" . $config['iexKey'] . '&displayPercent=true';
     try {
         $client = HttpClientBuilder::buildDefault();

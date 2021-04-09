@@ -8,15 +8,18 @@ use Amp\Http\Client\Response;
 const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 
 //$router->add('calc <query>...', 'calc');
-function calc($args, $nick, $chan, \Irc\Client $bot)
+global $router;
+$router->add('calc', '\Amp\asyncCall', ['calc'],'<query>...');
+$router->add('wa', '\Amp\asyncCall', ['calc'],'<query>...');
+function calc($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['waKey'])) {
         echo "waKey not set in config\n";
         return;
     }
-    var_dump($args);
-    $query = waURL . urlencode(htmlentities(implode(' ', $args['query']))) . '&appid=' . $config['waKey'] . '&format=plaintext';
+
+    $query = waURL . urlencode(htmlentities($req->args['query'])) . '&appid=' . $config['waKey'] . '&format=plaintext';
     try {
         $client = HttpClientBuilder::buildDefault();
         // Make an asynchronous HTTP request

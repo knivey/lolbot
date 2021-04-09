@@ -5,8 +5,10 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
-$router->add('artfart', 'artfart');
-function artfart($args, $nick, $chan, \Irc\Client $bot)
+global $router; //lol makes ide not complain
+$router->add('artfart', '\Amp\asyncCall', ['artfart']);
+
+function artfart($nick, $chan, \Irc\Client $bot, $req)
 {
     $url = "http://www.asciiartfarts.com/random.cgi";
     try {

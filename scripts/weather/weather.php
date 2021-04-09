@@ -23,8 +23,14 @@ function windDir($deg) {
     $dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
     return $dirs[round((($deg % 360) / 45))];
 }
-$router->add('(weather|wz) [(--fc | --forecast)] [(--si | --metric)] <query>...', 'weather');
-function weather($args, $nick, $chan, \Irc\Client $bot)
+
+global $router;
+$router->add('weather', '\Amp\asyncCall', ['weather'],'<query>...');
+$router->add('wz', '\Amp\asyncCall', ['weather'],'<query>...');
+$router->add('wea', '\Amp\asyncCall', ['weather'],'<query>...');
+//Further work needed for --options for now parsing manually
+//$router->add('(weather|wz) [(--fc | --forecast)] [(--si | --metric)] <query>...', 'weather');
+function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['bingMapsKey'])) {
@@ -39,19 +45,27 @@ function weather($args, $nick, $chan, \Irc\Client $bot)
         echo "openweatherKey not set in config\n";
         return;
     }
-    if (!isset($args['query'])) {
+    //if (!isset($args['query'])) {
         //TODO users will have default for them in db
-        return;
+    //    return;
+    //}
+
+    $query = $req->args['query'];
+    $si = false;
+    $fc = false;
+    if(str_contains($query, '--si') || str_contains($query, '--metric')) {
+        $si = true;
+    }
+    if(str_contains($query, '--fc') || str_contains($query, '--forecast')) {
+        $fc = true;
     }
 
-    $si = false;
-    if (isset($args['si']) || isset($args['metric']))
-        $si = true;
-    $fc = false;
-    if (isset($args['fc']) || isset($args['forecast']))
-        $fc = true;
+    foreach(['--si', '--metric', '--fc', '--forecast'] as $rep) {
+        $query = trim(str_replace($rep, '', $query));
+        $query = str_replace('  ', ' ', $query);
+    }
 
-    $query = urlencode(htmlentities(implode(' ', $args['query'])));
+    $query = urlencode(htmlentities($query));
     //First we need lat lon
     $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
 
