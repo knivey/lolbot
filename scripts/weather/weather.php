@@ -24,10 +24,35 @@ function windDir($deg) {
     return $dirs[round((($deg % 360) / 45))];
 }
 
+function getLocation($query) {
+    global $config;
+    $query = urlencode(htmlentities($query));
+    $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
+    $client = HttpClientBuilder::buildDefault();
+    /** @var Response $response */
+    $response = yield $client->request(new Request($url));
+    $body = yield $response->getBody()->buffer();
+    if ($response->getStatus() != 200) {
+        var_dump($body);
+        // Just in case its huge or some garbage
+        $body = substr($body, 0, 200);
+        return "Error (" . $response->getStatus() . ") $body";
+    }
+    $j = json_decode($body, true);
+    $res = $j['resourceSets'][0]['resources'];
+    if (empty($res)) {
+        return "\2wz:\2 Location not found";
+    }
+    $location = $res[0]['address']['formattedAddress'];
+    $lat = $res[0]['point']['coordinates'][0];
+    $lon = $res[0]['point']['coordinates'][1];
+    return ['location' => $location, 'lat' => $lat, 'lon' => $lon];
+}
+
 global $router;
-$router->add('weather', '\Amp\asyncCall', ['weather'],'<query>...');
-$router->add('wz', '\Amp\asyncCall', ['weather'],'<query>...');
-$router->add('wea', '\Amp\asyncCall', ['weather'],'<query>...');
+$router->add('weather', '\Amp\asyncCall', ['weather'],'[query]...');
+$router->add('wz', '\Amp\asyncCall', ['weather'],'[query]...');
+$router->add('wea', '\Amp\asyncCall', ['weather'],'[query]...');
 //Further work needed for --options for now parsing manually
 //$router->add('(weather|wz) [(--fc | --forecast)] [(--si | --metric)] <query>...', 'weather');
 function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
@@ -45,52 +70,46 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         echo "openweatherKey not set in config\n";
         return;
     }
-    //if (!isset($args['query'])) {
-        //TODO users will have default for them in db
-    //    return;
-    //}
-
-    $query = $req->args['query'];
     $si = false;
     $fc = false;
-    if(str_contains($query, '--si') || str_contains($query, '--metric')) {
-        $si = true;
-    }
-    if(str_contains($query, '--fc') || str_contains($query, '--forecast')) {
-        $fc = true;
-    }
+    $query = '';
+    if(isset($req->args['query'])) {
+        $query = $req->args['query'];
+        if(str_contains($query, '--si') || str_contains($query, '--metric')) {
+            $si = true;
+        }
+        if(str_contains($query, '--fc') || str_contains($query, '--forecast')) {
+            $fc = true;
+        }
 
-    foreach(['--si', '--metric', '--fc', '--forecast'] as $rep) {
-        $query = trim(str_replace($rep, '', $query));
-        $query = str_replace('  ', ' ', $query);
+        foreach(['--si', '--metric', '--fc', '--forecast'] as $rep) {
+            $query = trim(str_replace($rep, '', $query));
+            $query = str_replace('  ', ' ', $query);
+        }
     }
-
-    $query = urlencode(htmlentities($query));
-    //First we need lat lon
-    $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
 
     try {
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $response = yield $client->request(new Request($url));
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = substr($body, 0, 200);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
-            return;
+        if ($query == '') {
+            $nick = strtolower($nick);
+            $locs = unserialize(file_get_contents("weather.db"));
+            if(!array_key_exists($nick, $locs)) {
+                $bot->msg($chan, "You don't have a location set use .setlocation");
+                return;
+            }
+            $location = $locs[$nick]['location'];
+            $lat = $locs[$nick]['lat'];
+            $lon = $locs[$nick]['lon'];
+            $si = $locs[$nick]['si'];
+        } else {
+            $loc = yield \Amp\call('getLocation', $query);
+            if (!is_array($loc)) {
+                $bot->pm($chan, $loc);
+                return;
+            }
+            $location = $loc['location'];
+            $lat = $loc['lat'];
+            $lon = $loc['lon'];
         }
-        $j = json_decode($body, true);
-        $res = $j['resourceSets'][0]['resources'];
-        if (empty($res)) {
-            $bot->pm($chan, "\2wz:\2 Location not found");
-            return;
-        }
-        $location = $res[0]['address']['formattedAddress'];
-        $lat = $res[0]['point']['coordinates'][0];
-        $lon = $res[0]['point']['coordinates'][1];
-
         //Now use lat lon to get weather
 
         $url = "https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&appid=$config[openweatherKey]&exclude=minutely,hourly";
@@ -143,4 +162,44 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         echo $error;
         $bot->pm($chan, "\2wz:\2" . $error);
     }
+}
+
+if(!file_exists("weather.db")) {
+    file_put_contents("weather.db", serialize([]));
+}
+
+$router->add('setlocation', '\Amp\asyncCall', ['setlocation'],'<query>...');
+
+function setlocation($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+{
+    $query = $req->args['query'];
+
+    $si = false;
+    if(str_contains($query, '--si') || str_contains($query, '--metric')) {
+        $si = true;
+    }
+
+    foreach(['--si', '--metric', '--fc', '--forecast'] as $rep) {
+        $query = trim(str_replace($rep, '', $query));
+        $query = str_replace('  ', ' ', $query);
+    }
+
+    if($query == '') {
+        $bot->msg($chan, "you need a location too...");
+        return;
+    }
+
+    $loc = yield \Amp\call('getLocation', $query);
+    if (!is_array($loc)) {
+        $bot->pm($chan, $loc);
+        return;
+    }
+
+    $nick = strtolower($nick);
+    $locs = unserialize(file_get_contents("weather.db"));
+    $locs[$nick] = $loc;
+    $locs[$nick]['si'] = $si;
+    file_put_contents("weather.db", serialize($locs));
+
+    $bot->msg($chan, "$nick your location is now set to $loc[location]");
 }
