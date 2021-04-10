@@ -39,7 +39,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             }
             $start = stripos($body, "<title>");
             if($start === false) {
-                $bot->pm($chan, "No page title.");
+                //$bot->pm($chan, "No page title.");
                 return;
             }
             $end = stripos($body, "</title>", $start);
@@ -51,6 +51,10 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $title = strip_tags($title);
             $title = html_entity_decode($title,  ENT_QUOTES | ENT_XML1, 'UTF-8');
             $title = htmlspecialchars_decode($title);
+            $title = str_replace("\n", " ", $title);
+            $title = str_replace("\r", " ", $title);
+            $title = str_replace("\x01", "[CTCP]", $title);
+            $title = substr(trim($title), 0, 300);
             $bot->pm($chan, "[ $title ]");
         } catch (Exception $error) {
             // If something goes wrong Amp will throw the exception where the promise was yielded.
