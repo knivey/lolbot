@@ -39,6 +39,7 @@ require_once 'scripts/lastfm/lastfm.php';
 require_once 'scripts/help/help.php';
 require_once 'scripts/cumfacts/cumfacts.php';
 require_once 'scripts/artfart/artfart.php';
+require_once 'scripts/linktitles/linktitles.php';
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
@@ -65,8 +66,11 @@ Loop::run( function() {
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config, $router;
-        if ($config['youtube']) {
+        if ($config['youtube'] ?? false) {
             \Amp\asyncCall('youtube', $bot, $args->channel, $args->text);
+        }
+        if ($config['linktitles'] ?? false) {
+            \Amp\asyncCall('linktitles', $bot, $args->channel, $args->text);
         }
 
         if(isset($config['trigger'])) {
