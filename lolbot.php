@@ -17,17 +17,6 @@ use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 
-function handleCommand($text, $nick, $chan, $bot) {
-    global $router;
-    foreach ($router->getRoutes() as $route) {
-        $input = explode(' ', $text);
-        $output = array();
-        if ($route->matches($input, $output)) {
-            \Amp\asyncCall($route->handler, $output, $nick, $chan, $bot);
-            return;
-        }
-    }
-}
 
 require_once 'scripts/youtube/youtube.php';
 require_once 'scripts/weather/weather.php';
