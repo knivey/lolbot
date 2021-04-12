@@ -68,6 +68,10 @@ Loop::run(function () {
             randart($bot, $args->channel, $text);
             return;
         }
+        if(strtolower($cmd) == 'stop') {
+            stop($bot, $args->channel);
+            return;
+        }
         reqart($bot, $args->channel, $cmd);
     });
 
@@ -155,7 +159,9 @@ function randart($bot, $chan, $file) {
     if($file != '') {
         $matches = [];
         foreach ($tree as $ent) {
-            if (fnmatch("*$file*", basename($ent, '.txt'))) {
+            $check = str_replace($config['artdir'], '', $ent);
+            $check = str_replace('.txt', '', $check);
+            if (fnmatch("*$file*", $check)) {
                 $matches[] = $ent;
             }
         }
@@ -168,8 +174,12 @@ function randart($bot, $chan, $file) {
 
 function stop($bot, $chan) {
     global $playing;
-    $playing[$chan] = [];
-    $bot->pm($chan, 'stopped');
+    if(isset($playing[$chan])) {
+        $playing[$chan] = [];
+        $bot->pm($chan, 'stopped');
+    } else {
+        $bot->pm($chan, 'not playing');
+    }
 }
 
 function playart($watcherId, $data) {
