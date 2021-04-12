@@ -1,0 +1,9 @@
+name: van
+trigger: "@"
+server: snek.irc.ltd
+port: 6667
+ssl: false
+throttle: false
+bindIp: 0
+channels: ['#knivey','#h4x']
+artdir: "/home/knivey/ircart/"
