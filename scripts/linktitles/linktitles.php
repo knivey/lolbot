@@ -60,7 +60,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             // If something goes wrong Amp will throw the exception where the promise was yielded.
             // The HttpClient::request() method itself will never throw directly, but returns a promise.
             echo "$error\n";
-            $bot->pm($chan, "LinkTitles Exception: " . $error);
+            //$bot->pm($chan, "LinkTitles Exception: " . $error);
         }
     }
 }
