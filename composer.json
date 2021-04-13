@@ -10,6 +10,7 @@
         "amphp/http-server": "^2.1",
         "monolog/monolog": "^2.1",
         "amphp/log": "^1.1",
-        "knivey/cmdr": "dev-master"
+        "knivey/cmdr": "dev-master",
+      "ext-mbstring": "*"
     }
 }

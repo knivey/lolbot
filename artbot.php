@@ -182,12 +182,29 @@ function stop($bot, $chan) {
     }
 }
 
+/**
+ * needed because some stupid art files are UTF-16LE
+ */
+function loadfile($file) {
+    $cont = file_get_contents($file);
+    if(!mb_check_encoding($cont, "UTF-8")) {
+        //UTF-16LE is best bet then fallback to the auto
+        if(mb_check_encoding($cont, "UTF-16LE")) {
+            $cont = mb_convert_encoding($cont, "UTF-8", "UTF-16LE");
+        } else {
+            $cont = mb_convert_encoding($cont, "UTF-8");
+        }
+    }
+    $cont = str_replace("\r", "\n", $cont);
+    return array_filter(explode("\n", $cont));
+}
+
 function playart($watcherId, $data) {
     list($bot, $chan, $file) = $data;
     global $playing, $config;
 
     if(!isset($playing[$chan])) {
-        $playing[$chan] = file($file);
+        $playing[$chan] = loadfile($file);
         array_unshift($playing[$chan], "Playing " . str_replace($config['artdir'], '', $file));
     }
     if(empty($playing[$chan])) {
