@@ -6,9 +6,10 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
 $link_history = [];
+$link_ratelimit = 0;
 function linktitles(\Irc\Client $bot, $chan, $text)
 {
-    global $link_history;
+    global $link_history, $link_ratelimit;
     foreach(explode(' ', $text) as $word) {
         if (filter_var($word, FILTER_VALIDATE_URL) === false) {
             continue;
@@ -23,6 +24,11 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             continue;
         }
         $link_history[$chan] = $word;
+
+        if(time() < $link_ratelimit) {
+            return;
+        }
+        $link_ratelimit = time() + 2;
 
         try {
             $client = HttpClientBuilder::buildDefault();
