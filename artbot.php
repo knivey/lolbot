@@ -187,7 +187,8 @@ function stop($bot, $chan) {
  */
 function loadfile($file) {
     $cont = file_get_contents($file);
-    if(!mb_check_encoding($cont, "UTF-8")) {
+    //php apparently sucked at its detection so just checking this manually
+    if($cont[0] == "\xFF" && $cont[1] == "\xFE") {
         //UTF-16LE is best bet then fallback to the auto
         if(mb_check_encoding($cont, "UTF-16LE")) {
             $cont = mb_convert_encoding($cont, "UTF-8", "UTF-16LE");
