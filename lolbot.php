@@ -56,7 +56,7 @@ Loop::run( function() {
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config, $router;
         if ($config['youtube'] ?? false) {
-            \Amp\asyncCall('youtube', $bot, $args->channel, $args->text);
+            \Amp\asyncCall('youtube', $bot, $args->from, $args->channel, $args->text);
         }
         if ($config['linktitles'] ?? false) {
             \Amp\asyncCall('linktitles', $bot, $args->channel, $args->text);

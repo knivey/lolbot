@@ -6,9 +6,16 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
 $youtube_history = [];
-function youtube(\Irc\Client $bot, $chan, $text)
+function youtube(\Irc\Client $bot, $nick, $chan, $text)
 {
     global $config, $youtube_history;
+
+    //Avoiding clobber of jewbirds radio adverts
+    if(str_contains($text, "                                https://twitch.tv/hughbord")) {
+        return;
+    }
+
+
     $key = $config['gkey'];
     $URL = '/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/';
     foreach (explode(' ', $text) as $word) {
