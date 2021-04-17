@@ -166,6 +166,11 @@ function endart($bot, $nick, $chan, $text) {
     Amp\Loop::cancel($recordings[$nick]['timeOut']);
     //last line will be the command for end, so delete it
     array_pop($recordings[$nick]['art']);
+    if(empty($recordings[$nick]['art'])) {
+        $bot->pm($recordings[$nick]['chan'], "Nothing recorded, cancelling");
+        unset($recordings[$nick]);
+        return;
+    }
     //TODO make h4x channel name?
     $dir = "${config['artdir']}h4x/$nick";
     if(file_exists($dir) && !is_dir($dir)) {
