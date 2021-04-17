@@ -113,7 +113,7 @@ Loop::run(function () {
 $recordings = [];
 
 function record($bot, $nick, $chan, $text) {
-    global $recordings;
+    global $recordings, $config;
     if(isset($recordings[$nick])) {
         return;
     }
@@ -126,12 +126,29 @@ function record($bot, $nick, $chan, $text) {
         $bot->pm($chan, 'That name has been reserved');
         return;
     }
+
+    $exists = false;
+    $base = $config['artdir'];
+    if(!is_dir($base)) {
+        echo "Incorrect artdir in config\n";
+        return;
+    }
+    $tree = dirtree($base);
+    foreach($tree as $ent) {
+        if($text == strtolower(basename($ent, '.txt'))) {
+            $exists = str_replace($config['artdir'], '', $ent);
+            break;
+        }
+    }
+    if($exists)
+        $bot->pm($chan, "Warning: That file name has been used by $exists, to playback may require a full path or you can @cancel and use a new name");
+
     $recordings[$nick] = [
         'name' => $text,
         'nick' => $nick,
         'chan' => $chan,
         'art' => [],
-        'timeOut' => Amp\Loop::delay(10000, 'timeOut', [$nick, $bot]),
+        'timeOut' => Amp\Loop::delay(15000, 'timeOut', [$nick, $bot]),
     ];
     $bot->pm($chan, 'Recording started');
 }
@@ -141,7 +158,7 @@ function tryRec($bot, $nick, $chan, $text) {
     if(!isset($recordings[$nick]))
         return;
     Amp\Loop::cancel($recordings[$nick]['timeOut']);
-    $recordings[$nick]['timeOut'] = Amp\Loop::delay(10000, 'timeOut', [$nick, $bot]);
+    $recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, 'timeOut', [$nick, $bot]);
     $recordings[$nick]['art'][] = $text;
 }
 
@@ -152,7 +169,7 @@ function timeOut($watcher, $data) {
         echo "Timeout called but not recording?\n";
         return;
     }
-    $bot->pm($recordings[$nick]['chan'], "Canceling art for $nick due to no messages for 10 seconds");
+    $bot->pm($recordings[$nick]['chan'], "Canceling art for $nick due to no messages for 15 seconds");
     Amp\Loop::cancel($recordings[$nick]['timeOut']);
     unset($recordings[$nick]);
 }
