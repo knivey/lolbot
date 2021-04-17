@@ -61,14 +61,18 @@ Loop::run(function () {
 
 
         $text = explode(' ', $text);
-        $cmd = array_shift($text);
+        $cmd = strtolower(array_shift($text));
         $text = implode(' ', $text);
 
-        if(strtolower($cmd) == 'random') {
+        if($cmd == 'search') {
+            searchart($bot, $args->channel, $text);
+            return;
+        }
+        if($cmd == 'random') {
             randart($bot, $args->channel, $text);
             return;
         }
-        if(strtolower($cmd) == 'stop') {
+        if($cmd == 'stop') {
             stop($bot, $args->channel);
             return;
         }
@@ -108,12 +112,12 @@ function dirtree($dir) {
             if($file == '.' || $file == '..') {
                 continue;
             }
-            if($type == 'dir') {
+            if($type == 'dir' && $name[0] != '.') {
                 foreach(dirtree($name . '/') as $ent) {
                     $tree[] = $ent;
                 }
             }
-            if($type == 'file') {
+            if($type == 'file' && $name[0] != '.') {
                 $tree[] = $name;
             }
         }
@@ -142,6 +146,10 @@ function reqart($bot, $chan, $file) {
         }
     }
     $bot->pm($chan, "that art not found");
+}
+
+function searchart($bot, $chan, $file) {
+    return;
 }
 
 function randart($bot, $chan, $file) {
