@@ -43,6 +43,7 @@ Loop::run(function () {
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config, $router;
 
+        tryRec($bot, $args->from, $args->channel, $args->text);
         if (isset($config['trigger'])) {
             if (substr($args->text, 0, 1) != $config['trigger']) {
                 return;
@@ -59,7 +60,7 @@ Loop::run(function () {
             return;
         }
 
-
+        //TODO SOME ART NAMES HAVE SPACES
         $text = explode(' ', $text);
         $cmd = strtolower(array_shift($text));
         $text = implode(' ', $text);
@@ -74,6 +75,18 @@ Loop::run(function () {
         }
         if($cmd == 'stop') {
             stop($bot, $args->channel);
+            return;
+        }
+        if($cmd == 'record') {
+            record($bot, $args->from, $args->channel, $text);
+            return;
+        }
+        if($cmd == 'end') {
+            endart($bot, $args->from, $args->channel, $text);
+            return;
+        }
+        if($cmd == 'cancel') {
+            cancel($bot, $args->from, $args->channel, $text);
             return;
         }
         reqart($bot, $args->channel, $cmd);
@@ -96,6 +109,86 @@ Loop::run(function () {
         return;
     }
 });
+
+$recordings = [];
+
+function record($bot, $nick, $chan, $text) {
+    global $recordings;
+    if(!preg_match('/[a-zA-Z0-9\-\_]+/', $text)) {
+        $bot->pm($chan, 'Pick a filename matching [a-zA-Z0-9\-\_]+');
+        return;
+    }
+    $reserved = ['artfart', 'random', 'search', 'find', 'stop', 'record', 'end', 'cancel'];
+    if(in_array(strtolower($text), $reserved)) {
+        $bot->pm($chan, 'That name has been reserved');
+        return;
+    }
+    $recordings[$nick] = [
+        'name' => $text,
+        'nick' => $nick,
+        'chan' => $chan,
+        'art' => [],
+        'timeOut' => Amp\Loop::delay(10000, 'timeOut', [$nick, $bot]),
+    ];
+    $bot->pm($chan, 'Recording started');
+}
+
+function tryRec($bot, $nick, $chan, $text) {
+    global $recordings;
+    if(!isset($recordings[$nick]))
+        return;
+    Amp\Loop::cancel($recordings[$nick]['timeOut']);
+    $recordings[$nick]['timeOut'] = Amp\Loop::delay(10000, 'timeOut', [$nick, $bot]);
+    $recordings[$nick]['art'][] = $text;
+}
+
+function timeOut($watcher, $data) {
+    global $recordings;
+    list ($nick, $bot) = $data;
+    if(!isset($recordings[$nick])) {
+        echo "Timeout called but not recording?\n";
+        return;
+    }
+    $bot->pm($recordings[$nick]['chan'], "Canceling art for $nick due to no messages for 10 seconds");
+    Amp\Loop::cancel($recordings[$nick]['timeOut']);
+    unset($recordings[$nick]);
+}
+
+function endart($bot, $nick, $chan, $text) {
+    global $recordings, $config;
+    if(!isset($recordings[$nick])) {
+        $bot->pm($chan, "You aren't doing a recording");
+        return;
+    }
+    Amp\Loop::cancel($recordings[$nick]['timeOut']);
+    //last line will be the command for end, so delete it
+    array_pop($recordings[$nick]['art']);
+    //TODO make h4x channel name?
+    $dir = "${config['artdir']}h4x/$nick";
+    if(file_exists($dir) && !is_dir($dir)) {
+        $bot->pm($recordings[$nick]['chan'], "crazy error occurred panicing atm");
+        unset($recordings[$nick]);
+        return;
+    }
+    if(!file_exists($dir)) {
+        mkdir($dir, 0777, true);
+    }
+    $file = "$dir/". $recordings[$nick]['name'] . '.txt';
+    file_put_contents($file, implode("\n", $recordings[$nick]['art']));
+    $bot->pm($recordings[$nick]['chan'], "Recording finished ;) saved to " . str_replace($config['artdir'], '', $file));
+    unset($recordings[$nick]);
+}
+
+function cancel($bot, $nick, $chan, $text) {
+    global $recordings;
+    if(!isset($recordings[$nick])) {
+        $bot->pm($chan, "You aren't doing a recording");
+        return;
+    }
+    $bot->pm($chan, "Recording canceled");
+    Amp\Loop::cancel($recordings[$nick]['timeOut']);
+    unset($recordings[$nick]);
+}
 
 function dirtree($dir, $ext = "txt") {
     if(!is_dir($dir)) {
@@ -139,6 +232,12 @@ function reqart($bot, $chan, $file) {
         return;
     }
     $tree = dirtree($base);
+    //try fullpath first
+    foreach($tree as $ent) {
+        if ($file . '.txt' == strtolower(str_replace($config['artdir'], '', $ent))) {
+            playart(null, [$bot, $chan, $ent]);
+        }
+    }
     foreach($tree as $ent) {
         if($file == strtolower(basename($ent, '.txt'))) {
             playart(null, [$bot, $chan, $ent]);
