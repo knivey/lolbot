@@ -169,7 +169,7 @@ function randart($bot, $chan, $file) {
         foreach ($tree as $ent) {
             $check = str_replace($config['artdir'], '', $ent);
             $check = str_replace('.txt', '', $check);
-            if (fnmatch("*$file*", $check)) {
+            if (fnmatch("*$file*", strtolower($check))) {
                 $matches[] = $ent;
             }
         }
