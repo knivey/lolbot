@@ -64,7 +64,7 @@ Loop::run(function () {
         $cmd = strtolower(array_shift($text));
         $text = implode(' ', $text);
 
-        if($cmd == 'search') {
+        if($cmd == 'search' || $cmd == 'find') {
             searchart($bot, $args->channel, $text);
             return;
         }
@@ -149,7 +149,39 @@ function reqart($bot, $chan, $file) {
 }
 
 function searchart($bot, $chan, $file) {
-    return;
+    global $config, $playing;
+    if(isset($playing[$chan])) {
+        return;
+    }
+    $base = $config['artdir'];
+    if(!is_dir($base)) {
+        echo "Incorrect artdir in config\n";
+        return;
+    }
+    $tree = dirtree($base);
+    $matches = $tree;
+    if($file != '') {
+        $matches = [];
+        foreach ($tree as $ent) {
+            $check = str_replace($config['artdir'], '', $ent);
+            $check = str_replace('.txt', '', $check);
+            if (fnmatch("*$file*", strtolower($check))) {
+                $matches[] = $ent;
+            }
+        }
+    }
+    if(!empty($matches)) {
+        $cnt = 0;
+        foreach ($matches as $match) {
+            $bot->pm($chan, str_replace($config['artdir'], '', $match));
+            if ($cnt++ > 100) {
+                $bot->pm($chan, count($matches) . " total matches only showing 100");
+                break;
+            }
+        }
+    }
+    else
+        $bot->pm($chan, "no matching art found");
 }
 
 function randart($bot, $chan, $file) {
