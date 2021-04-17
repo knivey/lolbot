@@ -114,8 +114,11 @@ $recordings = [];
 
 function record($bot, $nick, $chan, $text) {
     global $recordings;
-    if(!preg_match('/[a-zA-Z0-9\-\_]+/', $text)) {
-        $bot->pm($chan, 'Pick a filename matching [a-zA-Z0-9\-\_]+');
+    if(isset($recordings[$nick])) {
+        return;
+    }
+    if(!preg_match('/^[a-z0-9\-\_]+$/', $text)) {
+        $bot->pm($chan, 'Pick a filename matching [a-z0-9\-\_]+');
         return;
     }
     $reserved = ['artfart', 'random', 'search', 'find', 'stop', 'record', 'end', 'cancel'];
