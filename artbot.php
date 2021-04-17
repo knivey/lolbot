@@ -89,6 +89,8 @@ Loop::run(function () {
             cancel($bot, $args->from, $args->channel, $text);
             return;
         }
+        if(trim($cmd) == '')
+            return;
         reqart($bot, $args->channel, $cmd);
     });
 
