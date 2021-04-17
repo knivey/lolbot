@@ -244,6 +244,7 @@ function reqart($bot, $chan, $file) {
     foreach($tree as $ent) {
         if ($file . '.txt' == strtolower(str_replace($config['artdir'], '', $ent))) {
             playart(null, [$bot, $chan, $ent]);
+            return;
         }
     }
     foreach($tree as $ent) {
