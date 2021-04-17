@@ -140,7 +140,7 @@ function reqart($bot, $chan, $file) {
     }
     $tree = dirtree($base);
     foreach($tree as $ent) {
-        if($file == basename($ent, '.txt')) {
+        if($file == strtolower(basename($ent, '.txt'))) {
             playart(null, [$bot, $chan, $ent]);
             return;
         }
