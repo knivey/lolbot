@@ -97,7 +97,7 @@ Loop::run(function () {
     }
 });
 
-function dirtree($dir) {
+function dirtree($dir, $ext = "txt") {
     if(!is_dir($dir)) {
         return false;
     }
@@ -117,7 +117,7 @@ function dirtree($dir) {
                     $tree[] = $ent;
                 }
             }
-            if($type == 'file' && $name[0] != '.') {
+            if($type == 'file' && $name[0] != '.' && 'txt' == strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
                 $tree[] = $name;
             }
         }
