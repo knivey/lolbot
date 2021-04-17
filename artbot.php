@@ -74,7 +74,7 @@ Loop::run(function () {
             return;
         }
         if($cmd == 'stop') {
-            stop($bot, $args->channel);
+            stop($bot, $args->from, $args->channel, $text);
             return;
         }
         if($cmd == 'record') {
@@ -319,12 +319,16 @@ function randart($bot, $chan, $file) {
         $bot->pm($chan, "no matching art found");
 }
 
-function stop($bot, $chan) {
-    global $playing;
+function stop($bot, $nick, $chan, $text) {
+    global $recordings, $playing;
     if(isset($playing[$chan])) {
         $playing[$chan] = [];
         $bot->pm($chan, 'stopped');
     } else {
+        if(isset($recordings[$nick])) {
+            endart($bot, $nick, $chan, $text);
+            return;
+        }
         $bot->pm($chan, 'not playing');
     }
 }
