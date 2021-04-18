@@ -45,7 +45,7 @@ function bing($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
             $bot->pm($chan, "\2Bing:\2 No Results");
             return;
         }
-        $results = $j['webPages']['totalEstimatedMatches'];
+        $results = number_format($j['webPages']['totalEstimatedMatches']);
         $res = $j['webPages']['value'][0];
 
         $bot->pm($chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
