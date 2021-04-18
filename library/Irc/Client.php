@@ -171,7 +171,7 @@ class Client extends EventEmitter {
         $line = substr($this->inQ, 0, $end);
         //echo "r: $r n: $n end: $end line: $line\ninQ: $this->inQ";
         $this->inQ = (string)substr($this->inQ, $end);
-        return trim($line);
+        return trim($line, "\r\n");
     }
 
     protected function sendLogin() {
