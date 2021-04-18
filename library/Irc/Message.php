@@ -75,32 +75,25 @@ class Message {
             (?<args>.*)                 #The argument string
         $/x', $message, $matches ) ) {
 
-            $matches = array_map( 'trim', $matches );
+                $prefix = $matches['prefix'] ?? '';
+                $command = $matches['command'] ?? '';
 
-            if( !empty( $matches[ 'prefix' ] ) )
-                $prefix = $matches[ 'prefix' ];
+                $spacedArg = false;
+                if (!empty($matches['args'])) {
+                    if (strpos($matches['args'], ' :') !== false) {
+                        $parts = explode(' :', $matches['args'], 2);
+                        $args = explode(' ', $parts[0]);
+                        $spacedArg = $parts[1];
+                    } else if (strpos($matches['args'], ':') === 0)
+                        $spacedArg = substr($matches['args'], 1);
+                    else
+                        $args = explode(' ', $matches['args']);
+                }
 
-            if( !empty( $matches[ 'command' ] ) )
-                $command = $matches[ 'command' ];
-
-            if( !empty( $matches[ 'args' ] ) ) {
-                if( strpos( $matches[ 'args' ], ' :' ) !== false ) {
-                    $parts = explode( ' :', $matches[ 'args' ], 2 );
-                    $args = explode( ' ', $parts[ 0 ] );
-                    $args[] = $parts[ 1 ];
-                } else if( strpos( $matches[ 'args' ], ':' ) === 0 )
-                    $args[] = substr( $matches[ 'args' ], 1 );
-                else
-                    $args = explode( ' ', $matches[ 'args' ] );
-            }
-
-            $args = array_values( array_filter( $args, function( $val ) {
-
-                $val = $val;
-                return !empty( $val );
-            } ) );
+                $args = array_values(array_filter($args));
+                $args[] = $spacedArg;
         } else
-            return new Message( 'UNKNOWN', array( $message ) );
+            return new Message('UNKNOWN', array($message));
 
         return new Message( $command, $args, $prefix );
     }
