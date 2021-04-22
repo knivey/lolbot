@@ -232,16 +232,19 @@ function dirtree($dir, $ext = "txt") {
             if($file == '.' || $file == '..') {
                 continue;
             }
-            if($type == 'dir' && $name[0] != '.') {
+            if($type == 'dir' && $file[0] != '.') {
                 foreach(dirtree($name . '/') as $ent) {
                     $tree[] = $ent;
                 }
             }
-            if($type == 'file' && $name[0] != '.' && 'txt' == strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
+            if($type == 'file' && $name[0] != '.' && strtolower($ext) == strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
                 $tree[] = $name;
             }
         }
         closedir($dh);
+    } else {
+        echo "Couldn't opendir $dir\n";
+        return false;
     }
     return $tree;
 }
