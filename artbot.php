@@ -386,6 +386,6 @@ function playart($watcherId, $data) {
         unset($playing[$chan]);
         return;
     }
-    $bot->pm($chan, fixColors(array_shift($playing[$chan])));
+    $bot->pm($chan, fixColors2(array_shift($playing[$chan])));
     \Amp\Loop::delay(30, 'playart', [$bot, $chan, $file]);
 }
