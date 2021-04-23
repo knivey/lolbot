@@ -11,7 +11,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
     global $config, $youtube_history;
 
     //Avoiding clobber of jewbirds radio adverts
-    if(str_contains($text, "                                https://twitch.tv/hughbord")) {
+    if(str_contains($text, "                     https://twitch.tv/hughbord")) {
         return;
     }
 
