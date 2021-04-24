@@ -31,7 +31,7 @@ class Client extends EventEmitter {
     protected ?EncryptableSocket $socket;
     protected $server;
     protected $port;
-    protected $isConnected;
+    public $isConnected;
     protected $inQ;
 
     protected $lastRecvTime;
@@ -82,7 +82,7 @@ class Client extends EventEmitter {
                 $this->socket = yield connect($this->server . ':' . $this->port, $this->connectContext);
             } catch (\Exception $e) {
                 echo "connect failed " . $e->getMessage() . "\n";
-                sleep(5); //TODO this is a temoprary fix
+                sleep(120); //TODO this is a temoprary fix
                 continue;
             }
             echo "connected?\n";
