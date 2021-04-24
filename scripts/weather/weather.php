@@ -155,14 +155,18 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         }
         $j = json_decode($body, true);
         $cur = $j['current'];
-        $tz = new DateTimeZone($j['timezone']);
-        $fmt = "g:ia";
-        $sunrise = new DateTime('@' . $cur['sunrise']);
-        $sunrise->setTimezone($tz);
-        $sunrise = $sunrise->format($fmt);
-        $sunset = new DateTime('@' . $cur['sunset']);
-        $sunset->setTimezone($tz);
-        $sunset = $sunset->format($fmt);
+        try {
+            $tz = new DateTimeZone($j['timezone']);
+            $fmt = "g:ia";
+            $sunrise = new DateTime('@' . $cur['sunrise']);
+            $sunrise->setTimezone($tz);
+            $sunrise = $sunrise->format($fmt);
+            $sunset = new DateTime('@' . $cur['sunset']);
+            $sunset->setTimezone($tz);
+            $sunset = $sunset->format($fmt);
+        } catch (Exception $e) {
+            $sunrise = ''; $sunset = '';
+        }
         $temp = displayTemp($cur['temp'], $si);
         if (!$fc) {
             $bot->pm($chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s Sun: $sunrise - $sunset");
