@@ -297,7 +297,7 @@ function reqart($bot, $chan, $file) {
     }
     https://irc.watch/ascii/txt/thxgiving.txt
 
-    $bot->pm($chan, "that art not found");
+    //$bot->pm($chan, "that art not found");
 }
 
 function searchart($bot, $chan, $file) {
