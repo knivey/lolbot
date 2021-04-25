@@ -16,7 +16,9 @@ spl_autoload_register(function ($class) {
 });
 
 use Amp\Loop;
-
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\Response;
 
 $config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
 
@@ -91,7 +93,7 @@ Loop::run(function () {
         }
         if(trim($cmd) == '')
             return;
-        reqart($bot, $args->channel, $cmd);
+        Amp\asyncCall('reqart', $bot, $args->channel, $cmd);
     });
 
     Loop::onSignal(SIGINT, function ($watcherId) use ($bot) {
@@ -275,6 +277,26 @@ function reqart($bot, $chan, $file) {
             return;
         }
     }
+    try {
+        $client = HttpClientBuilder::buildDefault();
+        $url = "https://irc.watch/ascii/$file/";
+        $req = new Request("https://irc.watch/ascii/txt/$file.txt");
+        /** @var Response $response */
+        $response = yield $client->request($req);
+        $body = yield $response->getBody()->buffer();
+        if ($response->getStatus() == 200) {
+            file_put_contents("ircwatch.txt", "$url\n$body");
+            playart(null, [$bot, $chan, "ircwatch.txt"]);
+            return;
+        }
+    } catch (Exception $error) {
+        // If something goes wrong Amp will throw the exception where the promise was yielded.
+        // The HttpClient::request() method itself will never throw directly, but returns a promise.
+        echo "$error\n";
+        //$bot->pm($chan, "LinkTitles Exception: " . $error);
+    }
+    https://irc.watch/ascii/txt/thxgiving.txt
+
     $bot->pm($chan, "that art not found");
 }
 
