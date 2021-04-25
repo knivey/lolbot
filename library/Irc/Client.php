@@ -416,7 +416,7 @@ class Client extends EventEmitter {
             return $this;
         }
         //TODO if its a privmsg or notice perhaps line wrap it?
-        $this->sendQ[] = substr((string)$message, 0, 510) . "\r\n";
+        $this->sendQ[] = mb_strcut((string)$message, 0, 510) . "\r\n";
         if($this->sendWatcherID == null) {
             $this->sendWatcherID = Loop::defer([$this, 'processSendq']);
         }
