@@ -285,7 +285,7 @@ function reqart($bot, $chan, $file) {
         $response = yield $client->request($req);
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() == 200) {
-            file_put_contents("ircwatch.txt", "$url\n$body");
+            file_put_contents("ircwatch.txt", "$body\n$url");
             playart(null, [$bot, $chan, "ircwatch.txt"]);
             return;
         }
