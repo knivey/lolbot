@@ -73,6 +73,10 @@ Loop::run(function () {
             randart($bot, $args->channel, $text);
             return;
         }
+        if($cmd == 'antartica') {
+            $bot->send("QUIT :BOT CRASHED WTF");
+            return;
+        }
         if($cmd == 'stop') {
             stop($bot, $args->from, $args->channel, $text);
             return;

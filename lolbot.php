@@ -29,6 +29,7 @@ require_once 'scripts/help/help.php';
 require_once 'scripts/cumfacts/cumfacts.php';
 require_once 'scripts/artfart/artfart.php';
 require_once 'scripts/linktitles/linktitles.php';
+require_once 'scripts/tools/tools.php';
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
