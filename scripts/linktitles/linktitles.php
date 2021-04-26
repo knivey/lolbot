@@ -43,16 +43,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
                 var_dump($body);
                 return;
             }
-            $start = stripos($body, "<title>");
-            if($start === false) {
-                //$bot->pm($chan, "No page title.");
-                return;
-            }
-            $end = stripos($body, "</title>", $start);
-            if($start > $end) {
-                $bot->pm($chan, "LinkTitles Error: Shit html.");
-                return;
-            }
+
             if(!preg_match("/<title[^>]*>([^<]+)<\/title>/im", $body, $m)) {
                 continue;
             }
