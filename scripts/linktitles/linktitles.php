@@ -55,7 +55,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             }
             $title = substr($body, $start, $end - $start);
             $title = strip_tags($title);
-            $title = html_entity_decode($title,  ENT_QUOTES | ENT_XML1, 'UTF-8');
+            $title = html_entity_decode($title,  ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $title = htmlspecialchars_decode($title);
             $title = str_replace("\n", " ", $title);
             $title = str_replace("\r", " ", $title);
