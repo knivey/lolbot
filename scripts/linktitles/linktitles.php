@@ -34,7 +34,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $client = HttpClientBuilder::buildDefault();
             $req = new Request($word);
             $req->setTransferTimeout(4000);
-            $req->setBodySizeLimit(1024 * 1024);
+            $req->setBodySizeLimit(1024 * 1024 * 8);
             /** @var Response $response */
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
