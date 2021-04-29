@@ -80,15 +80,16 @@ class Client extends EventEmitter {
             echo "connecting...\n";
             try {
                 $this->socket = yield connect($this->server . ':' . $this->port, $this->connectContext);
+                echo "connected. . .\n";
+                if ($this->ssl) {
+                    echo "starting tls\n";
+                    yield $this->socket->setupTLS();
+                    echo "tls setup\n";
+                }
             } catch (\Exception $e) {
                 echo "connect failed " . $e->getMessage() . "\n";
                 sleep(120); //TODO this is a temoprary fix
                 continue;
-            }
-            echo "connected?\n";
-            if ($this->ssl) {
-                yield $this->socket->setupTLS();
-                echo "tls setup\n";
             }
             $this->isConnected = true;
             //Yay connected, now login..
