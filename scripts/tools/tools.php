@@ -1,12 +1,13 @@
 <?php
+namespace knivey\lolbot\tools;
 
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\HttpException;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
+use knivey\irctools;
 
 function getDnsType($type) {
-    $rc = new ReflectionClass(Amp\Dns\Record::class);
+    $rc = new \ReflectionClass(\Amp\Dns\Record::class);
     $ret = false;
     foreach(array_keys($rc->getConstants()) as $t) {
         if(strtolower($t) == strtolower($type))
@@ -18,9 +19,10 @@ function getDnsType($type) {
     return $rc->getConstant($ret);
 }
 
-global $router;
-$router->add('dns', '\Amp\asyncCall', ['dns'],'<query> [type]');
-function dns($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+#[Cmd("dns", "resolve")]
+#[Syntax('<query> [type]')]
+#[CallWrap("Amp\asyncCall")]
+function dns($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     try {
@@ -31,11 +33,11 @@ function dns($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
                 return;
             }
 
-            /** @var Amp\Dns\Record[] $records */
-            $records = yield Amp\Dns\query($req->args['query'], $type);
+            /** @var \Amp\Dns\Record[] $records */
+            $records = yield \Amp\Dns\query($req->args['query'], $type);
         } else {
-            /** @var Amp\Dns\Record[] $records */
-            $records = yield Amp\Dns\resolve($req->args['query']);
+            /** @var \Amp\Dns\Record[] $records */
+            $records = yield \Amp\Dns\resolve($req->args['query']);
         }
         $recs = [];
         foreach ($records as $r) {
@@ -46,7 +48,18 @@ function dns($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         else
             $recs = implode(' | ', $recs);
         $bot->pm($chan, "DNS for {$req->args['query']} ".($req->args['type'] ?? 'A, AAAA')." - $recs");
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         $bot->pm($chan, "DNS Exception {$e->getMessage()}");
+    }
+}
+
+#[Cmd("nes")]
+#[Syntax('<input>')]
+function nes($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $text = str_replace('\n', "\n", $req->args[0]);
+    $text = irctools\diagRainbow($text);
+    foreach(explode("\n", $text) as $line) {
+        $bot->pm($chan, $line);
     }
 }

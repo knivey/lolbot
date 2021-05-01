@@ -1,14 +1,19 @@
 <?php
+namespace knivey\lolbot\bing;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\MultiReasonException;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
 
-global $router; //lol makes ide not complain
-$router->add('bing', '\Amp\asyncCall', ['bing'],'<query>...');
-function bing($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+#[Cmd("bing")]
+#[Syntax('<query>...')]
+#[CallWrap("Amp\asyncCall")]
+function bing($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['bingKey'])) {
@@ -49,12 +54,12 @@ function bing($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         $res = $j['webPages']['value'][0];
 
         $bot->pm($chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
-    } catch (Amp\MultiReasonException $errors) {
+    } catch (\Amp\MultiReasonException $errors) {
         foreach ($errors->getReasons() as $error) {
             echo $error;
             $bot->pm($chan, "\2Bing Error:\2 " . $error->getMessage());
         }
-    } catch (Exception $error) {
+    } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;

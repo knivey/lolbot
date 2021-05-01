@@ -1,6 +1,15 @@
 {
+    "comment": "COMPOSER=composer-dev.json ~/composer.phar install",
+    "repositories": [{
+            "type": "path",
+            "url": "../irctools"
+        },
+        {
+            "type": "path",
+            "url": "../tools"
+        }
+    ],
     "require": {
-        "php": ">=8.0",
         "symfony/yaml": "^5.0",
         "amphp/amp": "^2.4",
         "amphp/socket": "^1.1",
@@ -12,16 +21,10 @@
         "monolog/monolog": "^2.1",
         "amphp/log": "^1.1",
         "knivey/cmdr": "^2.0.0",
-        "knivey/irctools": "dev-master",
-        "knivey/tools":  "dev-master",
+        "knivey/irctools": "*",
+        "knivey/tools":  "*",
         "ext-mbstring": "*"
     },
     "name": "knivey/lolbot",
-    "description": "IRC bot made for fun for friends",
-    "authors": [
-        {
-            "name": "knivey",
-            "email": "knivey@botops.net"
-        }
-    ]
+    "description": "IRC bot made for fun for friends"
 }

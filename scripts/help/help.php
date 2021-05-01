@@ -1,7 +1,9 @@
 <?php
+namespace knivey\lolbot\help;
 
-global $router;
-$router->add('help', 'help');
+use knivey\cmdr\attributes\Cmd;
+
+#[Cmd("help")]
 function help($nick, $chan, \Irc\Client $bot, $req)
 {
     global $router;

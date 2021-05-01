@@ -1,13 +1,19 @@
 <?php
+namespace knivey\lolbot\lastfm;
+
 require_once 'library/Duration.inc';
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
 
-global $router;
-$router->add('lastfm', '\Amp\asyncCall', ['lastfm'], '[user]');
-function lastfm($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+#[Cmd("lastfm")]
+#[Syntax('[user]')]
+#[CallWrap("Amp\asyncCall")]
+function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     $key = $config['lastfm'] ?? false;

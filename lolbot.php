@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__.'/library/helpers.php';
 use Symfony\Component\Yaml\Yaml;
 
 set_include_path(implode(PATH_SEPARATOR, array(__DIR__.'/library', __DIR__.'/plugins', get_include_path())));
@@ -18,22 +17,27 @@ use knivey\cmdr\Cmdr;
 $router = new Cmdr();
 
 
-require_once 'scripts/youtube/youtube.php';
-require_once 'scripts/weather/weather.php';
-require_once 'scripts/bing/bing.php';
-require_once 'scripts/stocks/stocks.php';
-require_once 'scripts/wolfram/wolfram.php';
-require_once 'scripts/notifier/notifier.php';
-require_once 'scripts/lastfm/lastfm.php';
-require_once 'scripts/help/help.php';
-require_once 'scripts/cumfacts/cumfacts.php';
-require_once 'scripts/artfart/artfart.php';
-require_once 'scripts/linktitles/linktitles.php';
-require_once 'scripts/tools/tools.php';
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
 }
+
+require_once 'scripts/notifier/notifier.php';
+
+require_once 'scripts/weather/weather.php';
+require_once 'scripts/bing/bing.php';
+require_once 'scripts/stocks/stocks.php';
+require_once 'scripts/wolfram/wolfram.php';
+require_once 'scripts/lastfm/lastfm.php';
+require_once 'scripts/help/help.php';
+require_once 'scripts/cumfacts/cumfacts.php';
+require_once 'scripts/artfart/artfart.php';
+require_once 'scripts/tools/tools.php';
+
+require_once 'scripts/linktitles/linktitles.php';
+require_once 'scripts/youtube/youtube.php';
+
+$router->loadFuncs();
 
 $bot = null;
 Loop::run( function() {
@@ -90,7 +94,7 @@ Loop::run( function() {
         $cmd = array_shift($text);
         $text = implode(' ', $text);
         try {
-            $router->call($cmd, $text, [$args->from, $args->channel, $bot]);
+            $router->call($cmd, $text, $args->from, $args->channel, $bot);
         } catch (Exception $e) {
             $bot->notice($args->from, $e->getMessage());
         }

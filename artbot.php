@@ -3,7 +3,6 @@
 
 
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . '/library/helpers.php';
 
 use Symfony\Component\Yaml\Yaml;
 
@@ -19,6 +18,7 @@ use Amp\Loop;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\irctools;
 
 $config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
 
@@ -133,11 +133,12 @@ function record($bot, $nick, $chan, $text) {
 
     $exists = false;
     $base = $config['artdir'];
-    if(!is_dir($base)) {
-        echo "Incorrect artdir in config\n";
+    try {
+        $tree = knivey\tools\dirtree($base);
+    } catch (Exception $e) {
+        echo "{$e}\n";
         return;
     }
-    $tree = dirtree($base);
     foreach($tree as $ent) {
         if($text == strtolower(basename($ent, '.txt'))) {
             $exists = str_replace($config['artdir'], '', $ent);
@@ -219,37 +220,6 @@ function cancel($bot, $nick, $chan, $text) {
     unset($recordings[$nick]);
 }
 
-function dirtree($dir, $ext = "txt") {
-    if(!is_dir($dir)) {
-        return false;
-    }
-    if($dir[strlen($dir)-1] != '/') {
-        $dir = "$dir/";
-    }
-    $tree = [];
-    if ($dh = opendir($dir)) {
-        while (($file = readdir($dh)) !== false) {
-            $name = $dir . $file;
-            $type = filetype($name);
-            if($file == '.' || $file == '..') {
-                continue;
-            }
-            if($type == 'dir' && $file[0] != '.') {
-                foreach(dirtree($name . '/') as $ent) {
-                    $tree[] = $ent;
-                }
-            }
-            if($type == 'file' && $name[0] != '.' && strtolower($ext) == strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
-                $tree[] = $name;
-            }
-        }
-        closedir($dh);
-    } else {
-        echo "Couldn't opendir $dir\n";
-        return false;
-    }
-    return $tree;
-}
 
 $playing = [];
 
@@ -259,11 +229,12 @@ function reqart($bot, $chan, $file) {
         return;
     }
     $base = $config['artdir'];
-    if(!is_dir($base)) {
-        echo "Incorrect artdir in config\n";
+    try {
+        $tree = knivey\tools\dirtree($base);
+    } catch (Exception $e) {
+        echo "{$e}\n";
         return;
     }
-    $tree = dirtree($base);
     //try fullpath first
     foreach($tree as $ent) {
         if ($file . '.txt' == strtolower(str_replace($config['artdir'], '', $ent))) {
@@ -295,8 +266,6 @@ function reqart($bot, $chan, $file) {
         echo "$error\n";
         //$bot->pm($chan, "LinkTitles Exception: " . $error);
     }
-    https://irc.watch/ascii/txt/thxgiving.txt
-
     //$bot->pm($chan, "that art not found");
 }
 
@@ -306,11 +275,12 @@ function searchart($bot, $chan, $file) {
         return;
     }
     $base = $config['artdir'];
-    if(!is_dir($base)) {
-        echo "Incorrect artdir in config\n";
+    try {
+        $tree = knivey\tools\dirtree($base);
+    } catch (Exception $e) {
+        echo "{$e}\n";
         return;
     }
-    $tree = dirtree($base);
     $matches = $tree;
     if($file != '') {
         $matches = [];
@@ -342,11 +312,12 @@ function randart($bot, $chan, $file) {
         return;
     }
     $base = $config['artdir'];
-    if(!is_dir($base)) {
-        echo "Incorrect artdir in config\n";
+    try {
+        $tree = knivey\tools\dirtree($base);
+    } catch (Exception $e) {
+        echo "{$e}\n";
         return;
     }
-    $tree = dirtree($base);
     $matches = $tree;
     if($file != '') {
         $matches = [];
@@ -378,36 +349,20 @@ function stop($bot, $nick, $chan, $text) {
     }
 }
 
-/**
- * needed because some stupid art files are UTF-16LE
- */
-function loadfile($file) {
-    $cont = file_get_contents($file);
-    //php apparently sucked at its detection so just checking this manually
-    if($cont[0] == "\xFF" && $cont[1] == "\xFE") {
-        //UTF-16LE is best bet then fallback to the auto
-        if(mb_check_encoding($cont, "UTF-16LE")) {
-            $cont = mb_convert_encoding($cont, "UTF-8", "UTF-16LE");
-        } else {
-            $cont = mb_convert_encoding($cont, "UTF-8");
-        }
-    }
-    $cont = str_replace("\r", "\n", $cont);
-    return array_filter(explode("\n", $cont));
-}
+
 
 function playart($watcherId, $data) {
     list($bot, $chan, $file) = $data;
     global $playing, $config;
 
     if(!isset($playing[$chan])) {
-        $playing[$chan] = loadfile($file);
+        $playing[$chan] = irctools\loadfile($file);
         array_unshift($playing[$chan], "Playing " . str_replace($config['artdir'], '', $file));
     }
     if(empty($playing[$chan])) {
         unset($playing[$chan]);
         return;
     }
-    $bot->pm($chan, fixColors2(array_shift($playing[$chan])));
+    $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
     \Amp\Loop::delay(30, 'playart', [$bot, $chan, $file]);
 }

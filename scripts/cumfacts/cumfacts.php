@@ -1,8 +1,9 @@
 <?php
+namespace knivey\lolbot\cumfacts;
 
-global $router; //lol makes ide not complain
-$router->add('info', 'info');
+use knivey\cmdr\attributes\Cmd;
 
+#[Cmd("info")]
 function info($nick, $chan, \Irc\Client $bot, $req)
 {
     $facts = file(__DIR__ . '/cumfacts.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

@@ -1,17 +1,20 @@
 <?php
+namespace knivey\lolbot\wolfram;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
 
 const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 
-//$router->add('calc <query>...', 'calc');
-global $router;
-$router->add('calc', '\Amp\asyncCall', ['calc'],'<query>...');
-$router->add('wa', '\Amp\asyncCall', ['calc'],'<query>...');
-function calc($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+#[Cmd("calc", "wa")]
+#[Syntax('<query>...')]
+#[CallWrap("Amp\asyncCall")]
+function calc($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['waKey'])) {

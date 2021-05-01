@@ -1,14 +1,16 @@
 <?php
+namespace knivey\lolbot\artfart;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
 
-global $router; //lol makes ide not complain
-$router->add('artfart', '\Amp\asyncCall', ['artfart']);
-
-function artfart($nick, $chan, \Irc\Client $bot, $req)
+#[Cmd("artfart")]
+#[CallWrap("Amp\asyncCall")]
+function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
 {
     $url = "http://www.asciiartfarts.com/random.cgi";
     try {

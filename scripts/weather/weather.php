@@ -1,9 +1,14 @@
 <?php
+namespace knivey\lolbot\weather;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
+use knivey\cmdr\attributes\CallWrap;
 
 function kToF($temp) {
     return (1.8 * ($temp - 273)) + 32;
@@ -49,13 +54,13 @@ function getLocation($query) {
     return ['location' => $location, 'lat' => $lat, 'lon' => $lon];
 }
 
-global $router;
-$router->add('weather', '\Amp\asyncCall', ['weather'],'[query]...');
-$router->add('wz', '\Amp\asyncCall', ['weather'],'[query]...');
-$router->add('wea', '\Amp\asyncCall', ['weather'],'[query]...');
+
 //Further work needed for --options for now parsing manually
 //$router->add('(weather|wz) [(--fc | --forecast)] [(--si | --metric)] <query>...', 'weather');
-function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+#[Cmd("weather", "wz", "wea")]
+#[Syntax('[query]...')]
+#[CallWrap("Amp\asyncCall")]
+function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
 {
     global $config;
     if(!isset($config['bingMapsKey'])) {
@@ -128,7 +133,7 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
                     $si = false;
                 }
             } else {
-                $loc = yield \Amp\call('getLocation', $query);
+                $loc = yield \Amp\call(__namespace__ . '\getLocation', $query);
                 if (!is_array($loc)) {
                     $bot->pm($chan, $loc);
                     return;
@@ -156,15 +161,15 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         $j = json_decode($body, true);
         $cur = $j['current'];
         try {
-            $tz = new DateTimeZone($j['timezone']);
+            $tz = new \DateTimeZone($j['timezone']);
             $fmt = "g:ia";
-            $sunrise = new DateTime('@' . $cur['sunrise']);
+            $sunrise = new \DateTime('@' . $cur['sunrise']);
             $sunrise->setTimezone($tz);
             $sunrise = $sunrise->format($fmt);
-            $sunset = new DateTime('@' . $cur['sunset']);
+            $sunset = new \DateTime('@' . $cur['sunset']);
             $sunset->setTimezone($tz);
             $sunset = $sunset->format($fmt);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $sunrise = ''; $sunset = '';
         }
         $temp = displayTemp($cur['temp'], $si);
@@ -175,7 +180,7 @@ function weather($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
             $cnt = 0;
             foreach ($j['daily'] as $d) {
                 if ($cnt++ >= 4) break;
-                $day = new DateTime('@' . $d['dt']);
+                $day = new \DateTime('@' . $d['dt']);
                 $day->setTimezone($tz);
                 $day = $day->format('D');
                 if ($cnt == 1) {
@@ -200,9 +205,10 @@ if(!file_exists("weather.db")) {
     file_put_contents("weather.db", serialize([]));
 }
 
-$router->add('setlocation', '\Amp\asyncCall', ['setlocation'],'<query>...');
-
-function setlocation($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+#[Cmd("setlocation")]
+#[Syntax("<query>...")]
+#[CallWrap("Amp\asyncCall")]
+function setlocation($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
 {
     $query = $req->args['query'];
 
@@ -221,7 +227,7 @@ function setlocation($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
         return;
     }
 
-    $loc = yield \Amp\call('getLocation', $query);
+    $loc = yield \Amp\call(__namespace__ . '\getLocation', $query);
     if (!is_array($loc)) {
         $bot->pm($chan, $loc);
         return;

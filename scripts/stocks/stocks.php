@@ -1,13 +1,19 @@
 <?php
+namespace knivey\lolbot\stocks;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
 
-global $router;
-$router->add('stock', '\Amp\asyncCall', ['stock'],'<query>');
-function stock($nick, $chan, \Irc\Client $bot, knivey\cmdr\Request $req)
+
+#[Cmd("stock")]
+#[Syntax('<query>')]
+#[CallWrap("Amp\asyncCall")]
+function stock($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['iexKey'])) {
