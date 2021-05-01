@@ -26,23 +26,21 @@ function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
             $bot->pm($chan, "Error (" . $response->getStatus() . ")");
             return;
         }
-        $start = strpos($body, "<table cellpadding=10><tr><td bgcolor=\"#000000\"><font color=\"#ffffff\"><pre>");
-        if($start === false) {
+        if(preg_match('/<table cellpadding=10><tr><td bgcolor="[^"]+"><font color="[^"]+"><pre>([^<]+)<\/pre>/i', $body, $m) === false) {
             $bot->pm($chan, "bad response");
             return;
         }
-        $start += strlen("<table cellpadding=10><tr><td bgcolor=\"#000000\"><font color=\"#ffffff\"><pre>");
-        $len = strpos($body, "</pre>", $start) - $start;
-        $fart = trim(htmlspecialchars_decode(substr($body, $start, $len), ENT_QUOTES|ENT_HTML5), "\n\r");
+
+        $fart = trim(htmlspecialchars_decode($m[1], ENT_QUOTES|ENT_HTML5), "\n\r");
         if($req->args->getOpt('--rnb') || $req->args->getOpt('--rainbow'))
             $fart = \knivey\ircTools\diagRainbow($fart);
         foreach (explode("\n", $fart) as $line) {
             $bot->pm($chan, rtrim($line));
         }
-    } catch (HttpException $error) {
+    } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2artfart:\2" . $error);
+        $bot->pm($chan, "\2artfart:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }
