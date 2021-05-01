@@ -155,7 +155,7 @@ function record($bot, $nick, $chan, $text) {
         'art' => [],
         'timeOut' => Amp\Loop::delay(15000, 'timeOut', [$nick, $bot]),
     ];
-    $bot->pm($chan, 'Recording started');
+    $bot->pm($chan, 'Recording started type @end when done or discard with @cancel');
 }
 
 function tryRec($bot, $nick, $chan, $text) {
