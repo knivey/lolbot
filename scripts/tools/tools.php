@@ -124,7 +124,7 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 if($line == '')
                     continue;
                 $bot->pm($chan, $line);
-                if($cnt++ > 100) {
+                if($cnt++ > $config['url_max'] ?? 100) {
                     $bot->pm($chan, "wow thats a pretty big image, omitting ~" . count($thumbnail)-$cnt . "lines ;-(");
                     return;
                 }
@@ -143,7 +143,7 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 if($line == '')
                     continue;
                 $bot->pm($chan, $line);
-                if($cnt++ > 100) {
+                if($cnt++ > $config['url_max'] ?? 100) {
                     $bot->pm($chan, "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(");
                     return;
                 }
