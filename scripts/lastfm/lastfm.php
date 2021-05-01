@@ -41,9 +41,9 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
-    } catch (HttpException $error) {
+    } catch (\Exception $error) {
         echo $error;
-        $bot->pm($chan, "\2lastfm:\2" . $error);
+        $bot->pm($chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
     }
     $res = json_decode($body, true);
     if(!isset($res['recenttracks']['track'][0])) {

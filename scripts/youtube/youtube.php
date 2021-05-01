@@ -60,11 +60,11 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                 return;
             }
             $data = json_decode($body, false);
-        } catch (HttpException $error) {
+        } catch (\Exception $error) {
             // If something goes wrong Amp will throw the exception where the promise was yielded.
             // The HttpClient::request() method itself will never throw directly, but returns a promise.
             echo "$error\n";
-            $bot->pm($chan, "\2YouTube Error:\2 " . $error);
+            $bot->pm($chan, "\2YouTube Error:\2 " . substr($error, 0, strpos($error, "\n")));
         }
 
         if (!is_object($data)) {
@@ -151,7 +151,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             }
 
             $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 $title | $chanTitle | $dur");
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
             echo "\2YouTube Error:\2 Unknown data received.\n";
             var_dump($body);

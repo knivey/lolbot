@@ -57,12 +57,12 @@ function bing($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
     } catch (\Amp\MultiReasonException $errors) {
         foreach ($errors->getReasons() as $error) {
             echo $error;
-            $bot->pm($chan, "\2Bing Error:\2 " . $error->getMessage());
+            $bot->pm($chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
         }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2Bing Error:\2 " . $error);
+        $bot->pm($chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }

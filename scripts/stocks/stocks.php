@@ -44,10 +44,10 @@ function stock($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
 
         $bot->pm($chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $change ($j[changePercent]%)");
-    } catch (HttpException $error) {
+    } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2Stocks:\2" . $error);
+        $bot->pm($chan, "\2Stocks:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }

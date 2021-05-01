@@ -187,11 +187,11 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
             }
             $bot->pm($chan, "\2$location:\2 Forecast: $out");
         }
-    } catch (HttpException $error) {
+    } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2wz:\2" . $error);
+        $bot->pm($chan, "\2wz:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }
 

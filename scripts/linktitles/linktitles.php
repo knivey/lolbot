@@ -56,7 +56,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $title = str_replace("\x01", "[CTCP]", $title);
             $title = substr(trim($title), 0, 300);
             $bot->pm($chan, "[ $title ]");
-        } catch (Exception $error) {
+        } catch (\Exception $error) {
             // If something goes wrong Amp will throw the exception where the promise was yielded.
             // The HttpClient::request() method itself will never throw directly, but returns a promise.
             echo "$error\n";

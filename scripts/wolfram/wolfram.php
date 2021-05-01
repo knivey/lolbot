@@ -83,6 +83,6 @@ function calc($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2WA:\2 " . $error->getMessage());
+        $bot->pm($chan, "\2WA:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }
