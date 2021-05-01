@@ -9,6 +9,7 @@ use knivey\cmdr;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Options;
 
 function kToF($temp) {
     return (1.8 * ($temp - 273)) + 32;
@@ -55,11 +56,10 @@ function getLocation($query) {
 }
 
 
-//Further work needed for --options for now parsing manually
-//$router->add('(weather|wz) [(--fc | --forecast)] [(--si | --metric)] <query>...', 'weather');
 #[Cmd("weather", "wz", "wea")]
 #[Syntax('[query]...')]
 #[CallWrap("Amp\asyncCall")]
+#[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
 function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
 {
     global $config;
@@ -78,24 +78,18 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
     $si = false;
     $imp = false;
     $fc = false;
-    $query = '';
-    if(isset($req->args['query'])) {
-        $query = $req->args['query'];
-        if(str_contains($query, '--si') || str_contains($query, '--metric')) {
-            $si = true;
-        }
-        if(str_contains($query, '--us') || str_contains($query, '--imperial')) {
-            $imp = true;
-        }
-        if(str_contains($query, '--fc') || str_contains($query, '--forecast')) {
-            $fc = true;
-        }
 
-        foreach(['--si', '--metric', '--fc', '--forecast', '--us', '--imperial'] as $rep) {
-            $query = trim(str_replace($rep, '', $query));
-            $query = str_replace('  ', ' ', $query);
-        }
+    $query = $req->args['query'] ?? '';
+    if($req->args->getOpt("--si") || $req->args->getOpt("--metric")) {
+        $si = true;
     }
+    if($req->args->getOpt("--us") || $req->args->getOpt("--imperial")) {
+        $imp = true;
+    }
+    if($req->args->getOpt("--fc") || $req->args->getOpt("--forecast")) {
+        $fc = true;
+    }
+
     if($imp && $si) {
         $bot->msg($chan, "Choose either si or imperial not both");
         return;
@@ -208,26 +202,15 @@ if(!file_exists("weather.db")) {
 #[Cmd("setlocation")]
 #[Syntax("<query>...")]
 #[CallWrap("Amp\asyncCall")]
+#[Options("--si", "--metric")]
 function setlocation($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
 {
-    $query = $req->args['query'];
-
     $si = false;
-    if(str_contains($query, '--si') || str_contains($query, '--metric')) {
+    if($req->args->getOpt("--si") || $req->args->getOpt("--metric")) {
         $si = true;
     }
 
-    foreach(['--si', '--metric', '--fc', '--forecast', '--us', '--imperial'] as $rep) {
-        $query = trim(str_replace($rep, '', $query));
-        $query = str_replace('  ', ' ', $query);
-    }
-
-    if($query == '') {
-        $bot->msg($chan, "you need a location too...");
-        return;
-    }
-
-    $loc = yield \Amp\call(__namespace__ . '\getLocation', $query);
+    $loc = yield \Amp\call(__namespace__ . '\getLocation', $req->args['query']);
     if (!is_array($loc)) {
         $bot->pm($chan, $loc);
         return;
