@@ -54,7 +54,7 @@ function dns($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 }
 
 #[Cmd("nes")]
-#[Syntax('<input>')]
+#[Syntax('<input>...')]
 function nes($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     $text = str_replace('\n', "\n", $req->args[0]);
