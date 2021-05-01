@@ -356,7 +356,7 @@ function playart($watcherId, $data) {
     global $playing, $config;
 
     if(!isset($playing[$chan])) {
-        $playing[$chan] = irctools\loadfile($file);
+        $playing[$chan] = irctools\loadartfile($file);
         array_unshift($playing[$chan], "Playing " . str_replace($config['artdir'], '', $file));
     }
     if(empty($playing[$chan])) {
