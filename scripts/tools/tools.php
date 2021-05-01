@@ -53,7 +53,7 @@ function dns($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
-#[Cmd("nes")]
+#[Cmd("rainbow", "rnb", "nes")]
 #[Syntax('<input>...')]
 function nes($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
