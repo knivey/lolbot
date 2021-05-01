@@ -7,9 +7,11 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Options;
 
 #[Cmd("artfart")]
 #[CallWrap("Amp\asyncCall")]
+#[Options("--rainbow", "--rnb")]
 function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
 {
     $url = "http://www.asciiartfarts.com/random.cgi";
@@ -32,6 +34,8 @@ function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
         $start += strlen("<table cellpadding=10><tr><td bgcolor=\"#000000\"><font color=\"#ffffff\"><pre>");
         $len = strpos($body, "</pre>", $start) - $start;
         $fart = trim(htmlspecialchars_decode(substr($body, $start, $len), ENT_QUOTES|ENT_HTML5), "\n\r");
+        if($req->args->getOpt('--rnb') || $req->args->getOpt('--rainbow'))
+            $fart = \knivey\ircTools\diagRainbow($fart);
         foreach (explode("\n", $fart) as $line) {
             $bot->pm($chan, rtrim($line));
         }
