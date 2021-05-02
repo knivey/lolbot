@@ -131,7 +131,8 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             }
         }
         if($type[0] == 'text') {
-            if(isset($type[1]) && preg_match("/^plain;?/", $type[1]) === false) {
+            var_dump($type);
+            if(isset($type[1]) && !preg_match("/^plain;?/", $type[1])) {
                 $bot->pm($chan, "content-type was ".implode('/', $type)." should be text/plain or image/* (pastebin.com maybe works too)");
                 return;
             }

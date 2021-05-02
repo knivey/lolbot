@@ -26,7 +26,7 @@ function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
             $bot->pm($chan, "Error (" . $response->getStatus() . ")");
             return;
         }
-        if(preg_match('/<table cellpadding=10><tr><td bgcolor="[^"]+"><font color="[^"]+"><pre>([^<]+)<\/pre>/i', $body, $m) === false) {
+        if(!preg_match('/<table cellpadding=10><tr><td bgcolor="[^"]+"><font color="[^"]+"><pre>([^<]+)<\/pre>/i', $body, $m)) {
             $bot->pm($chan, "bad response");
             return;
         }
