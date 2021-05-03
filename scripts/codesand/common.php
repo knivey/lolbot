@@ -4,6 +4,9 @@ namespace codesand;
 use Amp\Loop;
 use Amp\Process\Process;
 use Amp\Process\ProcessException;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
+
 include __DIR__ .'/SafeLineReader.php';
 
 $running = null;
@@ -185,8 +188,8 @@ function doReset() {
 }
 
 
-global $router;
-$router->add('php', '\codesand\runPHP', [], '<code>');
+#[Cmd("php")]
+#[Syntax("<code>...")]
 function runPHP($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config, $running;
     if(!($config['codesand'] ?? false)) {
