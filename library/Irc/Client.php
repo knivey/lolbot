@@ -42,6 +42,8 @@ class Client extends EventEmitter {
      */
     protected bool $ircEstablished = false;
 
+    private ?string $nickHost;
+
     public function __construct( $nick, $server, $port = self::DEFAULT_PORT, $bindIP = '0', bool $ssl = false) {
         $this->nick = $nick;
         $this->name = $nick;
@@ -417,7 +419,12 @@ class Client extends EventEmitter {
             return $this;
         }
         //TODO if its a privmsg or notice perhaps line wrap it?
-        $this->sendQ[] = mb_strcut((string)$message, 0, 510) . "\r\n";
+        if($message->command == 'PRIVMSG' && isset($this->nickHost)) {
+            $this->sendQ[] = mb_strcut((string)$message, 0, (508 - strlen(":{$this->nickHost} "))) . "\r\n";
+        } else {
+            $this->sendQ[] = mb_strcut((string)$message, 0, 510) . "\r\n";
+        }
+
         if($this->sendWatcherID == null) {
             $this->sendWatcherID = Loop::defer([$this, 'processSendq']);
         }
@@ -637,7 +644,29 @@ class Client extends EventEmitter {
                 $this->nick = $message->getArg(0, $this->nick );
                 $this->ircEstablished = true;
                 $this->emit( 'welcome' );
+                //$this->send("USERHOST {$this->nick}");
+                $this->send(CMD_WHOIS, $this->nick);
                 break;
+            case RPL_WHOISUSER:
+                var_dump($message);
+                if($message->getArg(1) == $this->nick) {
+                    $ident = $message->getArg(2);
+                    $host = $message->getArg(3);
+                    $this->nickHost = "{$this->nick}!{$ident}@$host";
+                }
+                break;
+            /* this didnt give what i wanted due to servers hiding hostmasks
+            case RPL_USERHOST:
+                //only worried about ourself ATM
+                $rpl = $message->getArg(1);
+                if(!preg_match("/([^ =*]+)*?=[+-]([^ ]+)/", $rpl, $m)) {
+                    break;
+                }
+                if(strtolower($m[1]) == strtolower($this->nick)) {
+                    $this->nickHost = "{$this->nick}!{$m[2]}";
+                }
+                break;
+            */
             case RPL_ISUPPORT:
                 $args = $message->args;
                 unset( $args[0], $args[ count( $args ) - 1 ] );

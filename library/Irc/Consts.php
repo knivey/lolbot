@@ -14,6 +14,7 @@ const CMD_PRIVMSG = 'PRIVMSG';
 const CMD_NOTICE = 'NOTICE';
 const CMD_KICK = 'KICK';
 const CMD_MODE = 'MODE';
+const CMD_WHOIS = 'WHOIS';
 const RPL_WELCOME = '001';
 const RPL_MYINFO = '004';
 const RPL_ISUPPORT = '005';
