@@ -39,9 +39,9 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             }
         }
 
+        $repost = '';
         if(($youtube_history[$chan] ?? "") == $id) {
-            echo "Ignoring repeated link of $id\n";
-            return;
+            $repost = "\x0307,01[\x0304,01REPOST\x0307,01]\x03 ";
         }
         $youtube_history[$chan] = $id;
         echo "Looking up youtube video $id\n";
@@ -108,7 +108,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             $likes = number_format($v->statistics->likeCount);
             $hates = number_format($v->statistics->dislikeCount);
 
-            if($config['youtube_thumb'] ?? false && isset($config['p2u'])) {
+            if(($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                 $thumbnail = $v->snippet->thumbnails->high->url;
                 $ext = explode('.', $thumbnail);
                 $ext = array_pop($ext);
@@ -150,7 +150,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                 }
             }
 
-            $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 $title | $chanTitle | $dur");
+            $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $dur");
         } catch (\Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
             echo "\2YouTube Error:\2 Unknown data received.\n";
