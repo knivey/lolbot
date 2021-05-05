@@ -648,7 +648,7 @@ class Client extends EventEmitter {
                 $this->send(CMD_WHOIS, $this->nick);
                 break;
             case RPL_WHOISUSER:
-                var_dump($message);
+                //var_dump($message);
                 if($message->getArg(1) == $this->nick) {
                     $ident = $message->getArg(2);
                     $host = $message->getArg(3);
