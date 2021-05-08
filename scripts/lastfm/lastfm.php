@@ -8,11 +8,13 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("lastfm")]
 #[Syntax('[user]')]
 #[CallWrap("Amp\asyncCall")]
+#[Options("--info")]
 function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
@@ -64,4 +66,32 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $time = "last scrobbled $ago ago";
     }
     $bot->pm($chan, "\2last.fm:\2 $user $time: $title - $album - $artist");
+
+    if(!$req->args->getOpt("--info")) {
+        return;
+    }
+
+    $url = "http://ws.audioscrobbler.com/2.0/?method=user.getinfo&user=$user&api_key=$key&format=json&limit=1";
+    try {
+        $client = HttpClientBuilder::buildDefault();
+        /** @var Response $response */
+        $response = yield $client->request(new Request($url));
+        $body = yield $response->getBody()->buffer();
+        if ($response->getStatus() != 200) {
+            var_dump($body);
+            // Just in case its huge or some garbage
+            $body = substr($body, 0, 200);
+            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+            return;
+        }
+    } catch (\Exception $error) {
+        echo $error;
+        $bot->pm($chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
+    }
+    $res = json_decode($body, true);
+
+    $res = $res['user'];
+    $regged = strftime("%c", $res['registered']['unixtime']);
+    $bot->pm($chan, "\2`-userinfo:\2 {$res['url']} ({$res['realname']}) PlayCount: {$res['playcount']} Regged: $regged Country: ".
+        "{$res['country']} Age: {$res['age']} GENDER: {$res['gender']}");
 }

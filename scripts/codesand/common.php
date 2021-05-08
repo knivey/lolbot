@@ -4,10 +4,34 @@ namespace codesand;
 use Amp\Loop;
 use Amp\Process\Process;
 use Amp\Process\ProcessException;
+use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
 include __DIR__ .'/SafeLineReader.php';
+
+$contList = file_get_contents("container.list", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+if(empty($contList)) {
+    die("No containers listed");
+}
+
+/* @var $containers Container[] */
+$containers = [];
+foreach($contList as $name) {
+    $containers[] = new Container($name);
+}
+
+/**
+ * Gets next non-busy container or returns false if none
+ */
+function getContainer() {
+    global $containers;
+    foreach ($containers as $c) {
+        if(!$c->busy)
+            return $c;
+    }
+    return false;
+}
 
 $running = null;
 
@@ -17,7 +41,6 @@ class run {
     public $nick;
     public $bot;
     public $code;
-    public $startDisk;
 
     public $out = [];
     public ?Process $proc = null;
@@ -90,24 +113,9 @@ class run {
             $this->timeout = null;
         }
         $this->finished = true;
-        /*
-        if ($this->proc->isRunning()) {
-            try {
-                $this->proc->kill();
-            } catch (\Amp\Process\ProcessException $e) {
-                echo "Exception while killing code runner proc ". $e->getMessage() . "\n";
-            }
-        }
-        */
 
-        //$used = getDiskUsed();
-        //if($used != $this->startDisk) {
-        //    echo "Disk used ($used) doesnt match what we started with ($this->startDisk)\nRestarting container from snapshot\n";
             restart();
-        //} else {
-        //    echo "Disk used ($used) matchs what we started with ($this->startDisk)\n";
-        //    doReset();
-        //}
+
         $this->pushout($this->out);
         $running = null;
     }
@@ -141,64 +149,24 @@ class run {
     }
 }
 
-function verboseExec($exec) {
-    echo " host$ $exec\n";
-    $r = null;
-    exec($exec, $r);
-    return implode("\n", $r);
-}
-
-function rootExec($exec) {
-    echo " root$ $exec\n";
-    $r = null;
-    exec("lxc exec codesand -- $exec", $r);
-    return implode("\n", $r);
-}
-
-/**
- * dont send anything that exits quotes
- */
-function userExec($exec) {
-    echo " user$ $exec\n";
-    //$exec = escapeshellarg($exec);
-    $r = null;
-    exec("lxc exec codesand -- su -l codesand -c \"$exec\"", $r);
-    return implode("\n", $r);
-}
-
-
-function getDiskUsed() {
-    $used = explode("\n", rootExec("df / --output=used"));
-    //var_dump($used);
-    return trim($used[1]);
-}
-
-function restart() {
-    //stop any commands if running
-
-    rootExec("killall -9 -u codesand");
-    verboseExec("lxc stop codesand");
-    verboseExec("lxc restore codesand default");
-    verboseExec("lxc start codesand");
-}
-
-function doReset() {
-    //TODO check for failure and do restart if so
-    rootExec("/root/reset.sh");
-}
 
 
 #[Cmd("php")]
 #[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
 function runPHP($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config, $running;
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    if($running != null) {
-        $bot->pm($chan, "Please wait until last task has completed.");
+
+    $cont = getContainer();
+
+    if($cont == false) {
+        $bot->pm($chan, "$nick, all containers are busy :( try against later.");
         return;
     }
-    $running = new run($chan, $nick, $bot, $req->args['code']);
-    \Amp\asyncCall([$running, 'doPHP']);
+
+    $output = yield $cont->runPHP($req->args['code']);
+    $bot->pm($chan, $output);
 }

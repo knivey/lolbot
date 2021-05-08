@@ -68,6 +68,8 @@ function nes($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
+
+//TODO code syntax highlighting
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
 #[CallWrap("Amp\asyncCall")]
