@@ -50,6 +50,9 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $res = json_decode($body, true);
     if(!isset($res['recenttracks']['track'][0])) {
         $bot->pm($chan, "Failed to find any recent tracks.");
+        if($req->args->getOpt("--info")) {
+            goto findinfo;
+        }
         return;
     }
     //Fix case :)
@@ -71,6 +74,7 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
 
+    findinfo:
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getinfo&user=$user&api_key=$key&format=json&limit=1";
     try {
         $client = HttpClientBuilder::buildDefault();
