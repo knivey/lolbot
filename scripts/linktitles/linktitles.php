@@ -73,12 +73,15 @@ function linktitles(\Irc\Client $bot, $chan, $text)
 }
 
 function github($user, $repo) {
+    global $config;
     if($repo != null)
         return yield from github_repo($user, $repo);
     $url = "https://api.github.com/users/$user"; 
     try {
         $client = HttpClientBuilder::buildDefault();
         $req = new Request($url);
+        if(isset($config['github_auth']))
+            $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
         /** @var Response $response */
         $response = yield $client->request($req);
         $body = yield $response->getBody()->buffer();
@@ -101,23 +104,31 @@ function github($user, $repo) {
 }
 
 function github_stars($user) {
-    $url = "https://api.github.com/users/$user/repos";
+    global $config;
+    $page = 1;
+    $stars = 0;
+    $url = "https://api.github.com/users/$user/repos?per_page=100&page={${'page'}}";
     try {
-        $client = HttpClientBuilder::buildDefault();
-        $req = new Request($url);
-        /** @var Response $response */
-        $response = yield $client->request($req);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            echo "Github $url lookup error: {$response->getStatus()}\n";
-            var_dump($body);
-            return false;
-        }
-        $body = json_decode($body, true);
-        $stars = 0;
-        foreach ($body as $repo) {
-            $stars += $repo["stargazers_count"];
-        }
+        do {
+            $client = HttpClientBuilder::buildDefault();
+            $req = new Request($url);
+            if(isset($config['github_auth']))
+                $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
+            /** @var Response $response */
+            $response = yield $client->request($req);
+            $body = yield $response->getBody()->buffer();
+            if ($response->getStatus() != 200) {
+                echo "Github $url lookup error: {$response->getStatus()}\n";
+                var_dump($body);
+                return false;
+            }
+            $body = json_decode($body, true);
+            foreach ($body as $repo) {
+                $stars += $repo["stargazers_count"];
+            }
+            $page++;
+        } while (count($body) == 100 && $page < 10);
+        //Dont want to blow out our limits ^
         return $stars;
     } catch (\Exception $error) {
         echo "Github $url exception: $error\n";
@@ -126,10 +137,13 @@ function github_stars($user) {
 }
 
 function github_repo($user, $repo) {
+    global $config;
     $url = "https://api.github.com/repos/$user/$repo";
     try {
         $client = HttpClientBuilder::buildDefault();
         $req = new Request($url);
+        if(isset($config['github_auth']))
+            $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
         /** @var Response $response */
         $response = yield $client->request($req);
         $body = yield $response->getBody()->buffer();
@@ -162,10 +176,13 @@ function reftime($time) {
 }
 
 function github_langs($user, $repo) {
+    global $config;
     $url = "https://api.github.com/repos/$user/$repo/languages";
     try {
         $client = HttpClientBuilder::buildDefault();
         $req = new Request($url);
+        if(isset($config['github_auth']))
+            $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
         /** @var Response $response */
         $response = yield $client->request($req);
         $body = yield $response->getBody()->buffer();
