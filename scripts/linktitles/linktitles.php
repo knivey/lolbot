@@ -183,7 +183,7 @@ function github_langs($user, $repo) {
         foreach ($body as $lang => $lines) {
             if(!isset($colors[$cnt]))
                 break;
-            $percentCnt += $percent = round($lines / $total) * 100;
+            $percentCnt += $percent = round(($lines / $total) * 100);
             if($cnt == 3)
                 $langs[] = "\x03". $colors[$cnt] . (100 - $percentCnt) . "% Other";
             else
