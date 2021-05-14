@@ -50,7 +50,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() != 200) {
                 $bot->pm($chan, "LinkTitles Error (" . $response->getStatus() . ") " . substr($body, 0, 200));
-                var_dump($body);
+                //var_dump($body);
                 return;
             }
 
@@ -67,10 +67,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $title = substr(trim($title), 0, 300);
             $bot->pm($chan, "[ $title ]");
         } catch (\Exception $error) {
-            // If something goes wrong Amp will throw the exception where the promise was yielded.
-            // The HttpClient::request() method itself will never throw directly, but returns a promise.
-            echo "$error\n";
-            //$bot->pm($chan, "LinkTitles Exception: " . $error);
+            echo "Link titles exception: $error\n";
         }
     }
 }
@@ -78,14 +75,15 @@ function linktitles(\Irc\Client $bot, $chan, $text)
 function github($user, $repo) {
     if($repo != null)
         return yield from github_repo($user, $repo);
+    $url = "https://api.github.com/users/$user"; 
     try {
         $client = HttpClientBuilder::buildDefault();
-        $req = new Request("https://api.github.com/users/$user");
+        $req = new Request($url);
         /** @var Response $response */
         $response = yield $client->request($req);
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
-            echo "Github repos/$user/$repo lookup error: {$response->getStatus()}\n";
+            echo "Github $url lookup error: {$response->getStatus()}\n";
             var_dump($body);
             return false;
         }
@@ -94,22 +92,49 @@ function github($user, $repo) {
         if($body['hireable'])
             $hireable = "true";
         $created = reftime($body["created_at"]);
-        return "\x02[GitHub]\x02 $body[login] \x02Name:\x02 $body[name] \x02Created:\x02 $created \x02Location:\x02 $body[location] \x02Hireable:\x02 $hireable \x02Public Repos:\x02 $body[public_repos] \x02Followers:\x02 $body[followers] \x02Bio:\x02 $body[bio]";
+        $stars = yield from github_stars($user);
+        return "\x02[GitHub]\x02 $body[login] \x02Name:\x02 $body[name] \x02Stars:\x02 $stars \x02Created:\x02 $created \x02Location:\x02 $body[location] \x02Hireable:\x02 $hireable \x02Public Repos:\x02 $body[public_repos] \x02Followers:\x02 $body[followers] \x02Bio:\x02 $body[bio]";
     } catch (\Exception $error) {
-        echo "Github repos/$user/$repo exception: $error\n";
+        echo "Github $url exception: $error\n";
+        return false;
+    }
+}
+
+function github_stars($user) {
+    $url = "https://api.github.com/users/$user/repos";
+    try {
+        $client = HttpClientBuilder::buildDefault();
+        $req = new Request($url);
+        /** @var Response $response */
+        $response = yield $client->request($req);
+        $body = yield $response->getBody()->buffer();
+        if ($response->getStatus() != 200) {
+            echo "Github $url lookup error: {$response->getStatus()}\n";
+            var_dump($body);
+            return false;
+        }
+        $body = json_decode($body, true);
+        $stars = 0;
+        foreach ($body as $repo) {
+            $stars += $repo["stargazers_count"];
+        }
+        return $stars;
+    } catch (\Exception $error) {
+        echo "Github $url exception: $error\n";
         return false;
     }
 }
 
 function github_repo($user, $repo) {
+    $url = "https://api.github.com/repos/$user/$repo";
     try {
         $client = HttpClientBuilder::buildDefault();
-        $req = new Request("https://api.github.com/repos/$user/$repo");
+        $req = new Request($url);
         /** @var Response $response */
         $response = yield $client->request($req);
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
-            echo "Github repos/$user/$repo lookup error: {$response->getStatus()}\n";
+            echo "Github $url lookup error: {$response->getStatus()}\n";
             var_dump($body);
             return false;
         }
@@ -122,7 +147,7 @@ function github_repo($user, $repo) {
         }
         return "{$out}- $body[description] | $langs | \x02Stargazers:\x02 $body[stargazers_count] \x02Watchers:\x02 $body[watchers_count] \x02Forks:\x02 $body[forks] \x02Open Issues:\x02 $body[open_issues] \x02Last Push:\x02 $pushed_at";
     } catch (\Exception $error) {
-        echo "Github repos/$user/$repo exception: $error\n";
+        echo "Github $url exception: $error\n";
         return false;
     }
 }
@@ -137,14 +162,15 @@ function reftime($time) {
 }
 
 function github_langs($user, $repo) {
+    $url = "https://api.github.com/repos/$user/$repo/languages";
     try {
         $client = HttpClientBuilder::buildDefault();
-        $req = new Request("https://api.github.com/repos/$user/$repo/languages");
+        $req = new Request($url);
         /** @var Response $response */
         $response = yield $client->request($req);
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
-            echo "Github repos/$user/$repo/languages lookup error: {$response->getStatus()}\n";
+            echo "Github $url lookup error: {$response->getStatus()}\n";
             var_dump($body);
             return false;
         }
@@ -167,7 +193,7 @@ function github_langs($user, $repo) {
 
         return implode(" ", $langs) . "\x0F";
     } catch (\Exception $error) {
-        echo "Github repos/$user/$repo/languages exception: $error\n";
+        echo "Github $url exception: $error\n";
         return false;
     }
 }
