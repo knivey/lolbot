@@ -97,10 +97,10 @@ Loop::run(function () {
     });
 
     Loop::onSignal(SIGINT, function ($watcherId) use ($bot) {
+        Amp\Loop::cancel($watcherId);
         echo "Caught SIGINT! exiting ...\n";
         yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
         $bot->exit();
-        Amp\Loop::cancel($watcherId);
     });
 
     while (!$bot->exit) {

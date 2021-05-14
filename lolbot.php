@@ -102,6 +102,7 @@ Loop::run( function() {
     $server = yield from notifier($bot);
 
     Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server) {
+        Amp\Loop::cancel($watcherId);
         if(!$bot->isConnected)
             die("Terminating, not connected\n");
         echo "Caught SIGINT! exiting ...\n";
@@ -110,7 +111,6 @@ Loop::run( function() {
         if($server != null) {
             $server->stop();
         }
-        Amp\Loop::cancel($watcherId);
     });
 
     while(!$bot->exit) {
