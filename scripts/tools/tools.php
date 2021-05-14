@@ -116,7 +116,7 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $filename = "url_thumb.$ext";
             echo "saving to $filename\n";
             file_put_contents($filename, $body);
-            $width = 55;
+            $width = ($config['url_default_width'] ?? 55);
             $filename_safe = escapeshellarg($filename);
             $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
             unlink($filename);
