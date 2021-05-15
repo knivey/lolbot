@@ -643,7 +643,6 @@ class Client extends EventEmitter
                 $text = $message->getArg(1, '');
 
                 if ($this->isChannel($to)) {
-
                     $this->emit("chat, chat:$to, chat:$to:$from", array(
                         'from' => $message->nick,
                         'nick' => $message->nick,
