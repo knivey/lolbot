@@ -583,7 +583,8 @@ class Client extends EventEmitter {
                     'ident'=> $message->name,
                     'host' => $message->host,
                     'fullhost' => $message->getHostString(),
-                    'to' => $to, 
+                    'to' => $to,
+                    'target' => $to,
                     'text' => $text 
                 ) );
                 break;
@@ -602,6 +603,8 @@ class Client extends EventEmitter {
                         'host' => $message->host,
                         'fullhost' => $message->getHostString(),
                         'channel' => $to,
+                        'target' => $to,
+                        'chan' => $to,
                         'text' => $text
                     ) );
                     break;
@@ -613,7 +616,8 @@ class Client extends EventEmitter {
                     'ident'=> $message->name,
                     'host' => $message->host,
                     'fullhost' => $message->getHostString(),
-                    'to' => $to, 
+                    'to' => $to,
+                    'target' => $to,
                     'text' => $text 
                 ) );
                 break;
