@@ -177,8 +177,14 @@ function getUserChanAccess($nick, $chan, $bot): \Amp\Promise {
                 $success = true;
                 $def->resolve($m[1]);
             }
+            /*
+             * Won't recognize suspended users due to response being the following:
+             * [ChanServ] knivey (kyte) has access 1 in #california.
+             * [ChanServ] knivey's access to #california has been suspended.
+             */
             if (preg_match("/User with nick \x02{$rnick}\x02 does not exist\./", $args->text) ||
                 preg_match("/{$rnick} must first authenticate with \x02AuthServ\x02\./", $args->text) ||
+                preg_match("/{$rnick} [^ ]+ lacks access to {$rchan}\./", $args->text) ||
                 preg_match("/{$rchan} has not been registered with ChanServ./", $args->text)
             ) {
                 $bot->off('notice', null, $idx);
