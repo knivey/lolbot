@@ -14,7 +14,8 @@
         "knivey/cmdr": "^2.0.0",
         "knivey/irctools": "dev-master",
         "knivey/tools":  "dev-master",
-        "ext-mbstring": "*"
+        "ext-mbstring": "*",
+        "ext-pdo": "*"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",

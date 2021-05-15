@@ -1,9 +1,42 @@
 <?php
 
 use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Options;
+use knivey\cmdr\attributes\Syntax;
+
+require_once 'github.php';
+
+// db is used for ignoring urls from userhosts or per channel URL regex ignores
+$dbfile = "linktitles.db";
+/*
+ * Just keeping things relatively simple, no migration tool
+ */
+if(!file_exists($dbfile)) {
+    $url_pdo = new \PDO("sqlite:$dbfile", null, null,
+        [\PDO::ATTR_PERSISTENT => true, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $url_pdo->query("CREATE table chan_re(
+        id integer primary key autoincrement,
+        regex text unique not null,
+        chan text not null collate nocase,
+        nick text not null collate nocase,
+        host text not null,
+        auth text collate nocase
+        );");
+    $url_pdo->query("CREATE table userhosts(
+        id integer primary key autoincrement,
+        ignore_re text not null,
+        nick text not null collate nocase,
+        host text not null,
+        auth text collate nocase
+        );");
+} else {
+    $url_pdo = new \PDO("sqlite:$dbfile", null, null, [\PDO::ATTR_PERSISTENT => true]);
+}
+/** @var $url_pdo \PDO */
 
 $link_history = [];
 $link_ratelimit = 0;
@@ -19,6 +52,9 @@ function linktitles(\Irc\Client $bot, $chan, $text)
         if (preg_match($URL, $word)) {
             continue;
         }
+
+        if(urlIsIgnored($chan, $word))
+            continue;
 
         if(($link_history[$chan] ?? "") == $word) {
             continue;
@@ -72,145 +108,112 @@ function linktitles(\Irc\Client $bot, $chan, $text)
     }
 }
 
-function github($user, $repo) {
-    global $config;
-    if($repo != null)
-        return yield from github_repo($user, $repo);
-    $url = "https://api.github.com/users/$user"; 
-    try {
-        $client = HttpClientBuilder::buildDefault();
-        $req = new Request($url);
-        if(isset($config['github_auth']))
-            $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
-        /** @var Response $response */
-        $response = yield $client->request($req);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            echo "Github $url lookup error: {$response->getStatus()}\n";
-            var_dump($body);
-            return false;
-        }
-        $body = json_decode($body, true);
-        $hireable = "false";
-        if($body['hireable'])
-            $hireable = "true";
-        $created = reftime($body["created_at"]);
-        $stars = yield from github_stars($user);
-        return "\x02[GitHub]\x02 $body[login] \x02Name:\x02 $body[name] \x02Stars:\x02 $stars \x02Created:\x02 $created \x02Location:\x02 $body[location] \x02Hireable:\x02 $hireable \x02Public Repos:\x02 $body[public_repos] \x02Followers:\x02 $body[followers] \x02Bio:\x02 $body[bio]";
-    } catch (\Exception $error) {
-        echo "Github $url exception: $error\n";
+function urlIsIgnored($chan, $url): bool {
+    global $url_pdo;
+    $stmt = $url_pdo->prepare("select regex from chan_re where chan = :chan;");
+    $stmt->execute([":chan" => $chan]);
+    if(!$stmt->execute([":chan" => $chan])) {
+        echo "URL ignore list fetch FAILED\n";
         return false;
     }
-}
-
-function github_stars($user) {
-    global $config;
-    $page = 1;
-    $stars = 0;
-    $url = "https://api.github.com/users/$user/repos?per_page=100&page={${'page'}}";
-    try {
-        do {
-            $client = HttpClientBuilder::buildDefault();
-            $req = new Request($url);
-            if(isset($config['github_auth']))
-                $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
-            /** @var Response $response */
-            $response = yield $client->request($req);
-            $body = yield $response->getBody()->buffer();
-            if ($response->getStatus() != 200) {
-                echo "Github $url lookup error: {$response->getStatus()}\n";
-                var_dump($body);
-                return false;
-            }
-            $body = json_decode($body, true);
-            foreach ($body as $repo) {
-                $stars += $repo["stargazers_count"];
-            }
-            $page++;
-        } while (count($body) == 100 && $page < 10);
-        //Dont want to blow out our limits ^
-        return $stars;
-    } catch (\Exception $error) {
-        echo "Github $url exception: $error\n";
-        return false;
-    }
-}
-
-function github_repo($user, $repo) {
-    global $config;
-    $url = "https://api.github.com/repos/$user/$repo";
-    try {
-        $client = HttpClientBuilder::buildDefault();
-        $req = new Request($url);
-        if(isset($config['github_auth']))
-            $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
-        /** @var Response $response */
-        $response = yield $client->request($req);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            echo "Github $url lookup error: {$response->getStatus()}\n";
-            var_dump($body);
-            return false;
+    $iggys = $stmt->fetchAll();
+    foreach ($iggys as $iggy) {
+        if(preg_match($iggy['regex'], $url)) {
+            return true;
         }
-        $body = json_decode($body, true);
-        $langs = yield from github_langs($user, $repo);
-        $pushed_at = reftime($body["pushed_at"]);
-        $out =  "\x02[GitHub]\x02 $body[full_name] ";
-        if($body['fork']) {
-            $out .= "(Fork of {$body["parent"]["full_name"]}) ";
-        }
-        return "{$out}- $body[description] | $langs | \x02Stargazers:\x02 $body[stargazers_count] \x02Watchers:\x02 $body[watchers_count] \x02Forks:\x02 $body[forks] \x02Open Issues:\x02 $body[open_issues] \x02Last Push:\x02 $pushed_at";
-    } catch (\Exception $error) {
-        echo "Github $url exception: $error\n";
-        return false;
     }
+    return false;
 }
 
-function reftime($time) {
+function fmtRow($row) {
+    $out = '';
+    foreach ($row as $k => $v) {
+        if(is_integer($k))
+            continue;
+        $out .= "\x02$k:\x02 $v ";
+    }
+    return substr($out, 0, -1);
+}
+
+#[Cmd("urlignore")]
+#[Syntax('[regex_or_id]')]
+#[CallWrap("Amp\asyncCall")]
+#[Options("--list", "--del")]
+function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $url_pdo;
+
     try {
-        $out = strtotime($time);
-        return strftime("%r %F %Z", $out);
+        $access = yield getUserChanAccess($args->nick, $args->chan, $bot);
+        if ($access < 200) {
+            $bot->notice($args->nick, "you need at least 200 chanserv access");
+            return;
+        }
     } catch (\Exception $e) {
-        return $time;
+        $bot->notice($args->nick, "couldn't get your chanserv access, try later");
     }
-}
 
-function github_langs($user, $repo) {
-    global $config;
-    $url = "https://api.github.com/repos/$user/$repo/languages";
+    /** @var $url_pdo \PDO */
+    if($req->args->getOpt("--list") || ! isset($req->args[0])) {
+        try {
+            $stmt = $url_pdo->prepare("select * from chan_re where chan = :chan;");
+            $stmt->execute([":chan" => $args->chan]);
+            if(!$stmt->execute([":chan" => $args->chan])) {
+                $bot->notice($args->nick, "Failed getting ignore list");
+                return;
+            }
+            $iggys = $stmt->fetchAll();
+            $bot->notice($args->nick, "Showing " . count($iggys) . " ignores for {$args->chan}");
+            foreach ($iggys as $row) {
+                $bot->notice($args->nick, fmtRow($row));
+            }
+        } catch (\Exception $e) {
+            $bot->notice($args->nick, "Encountered an exception: {$e->getMessage()}");
+        }
+        return;
+    }
+    if($req->args->getOpt("--del")) {
+        try {
+            $stmt = $url_pdo->prepare("select id from chan_re where id = :id and chan = :chan;");
+            $stmt->execute([":id" => $req->args[0], ":chan" => $args->chan]);
+            if(count($stmt->fetchAll()) == 0) {
+                $bot->notice($args->nick, "No ignores removed, check the provided ID is correct and is from this chan.");
+                return;
+            }
+            $stmt = $url_pdo->prepare("delete from chan_re where id = :id and chan = :chan;");
+            if($stmt->execute([":id" => $req->args[0], ":chan" => $args->chan])) {
+                $bot->notice($args->nick, "Ignore ID {$req->args[0]} removed");
+            } else {
+                $bot->notice($args->nick, "No ignores removed, check the provided ID is correct and is from this chan.");
+            }
+        } catch (\Exception $e) {
+            $bot->notice($args->nick, "Encountered an exception: {$e->getMessage()}");
+        }
+        return;
+    }
+    $re = "@{$req->args[0]}@i";
+    if(preg_match($re, "") === false) {
+        $bot->notice($args->nick, "You haven't provided a valid regex, note delimiters are added for you and its @");
+        return;
+    }
     try {
-        $client = HttpClientBuilder::buildDefault();
-        $req = new Request($url);
-        if(isset($config['github_auth']))
-            $req->addHeader('Authorization', 'Basic ' . base64_encode($config['github_auth']));
-        /** @var Response $response */
-        $response = yield $client->request($req);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            echo "Github $url lookup error: {$response->getStatus()}\n";
-            var_dump($body);
-            return false;
+        $auth = null;
+        try {
+            $auth = yield getUserAuthServ($args->nick, $bot);
+        } catch (\Exception $e) {
+            ;
         }
-        $body = json_decode($body, true);
-        $total = array_sum($body);
-        $colors = ["12", "08", "09", "13"];
-        $cnt = 0;
-        $langs = [];
-        $percentCnt = 0;
-        foreach ($body as $lang => $lines) {
-            if(!isset($colors[$cnt]))
-                break;
-            $percentCnt += $percent = round(($lines / $total) * 100, 1);
-            if($cnt == 3)
-                $langs[] = "\x03". $colors[$cnt] . (100 - $percentCnt) . "% Other";
-            else
-                $langs[] = "\x03". $colors[$cnt] . "{$percent}% $lang";
-            $cnt++;
+        $stmt = $url_pdo->prepare("insert into chan_re (regex,chan,nick,host,auth) values(:regex,:chan,:nick,:host,:auth);");
+        if($stmt->execute([
+            ":regex" => $re,
+            ":chan" => $args->chan,
+            ":nick" => $args->nick,
+            ":host" => $args->fullhost,
+            ":auth" => $auth,
+            ])) {
+            $bot->notice($args->nick, "Ignore added.");
         }
-
-        return implode(" ", $langs) . "\x0F";
-    } catch (\Exception $error) {
-        echo "Github $url exception: $error\n";
-        return false;
+    } catch (\Exception $e) {
+        $bot->notice($args->nick, "Encountered an exception: {$e->getMessage()}");
     }
 }
+
