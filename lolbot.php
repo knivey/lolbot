@@ -123,3 +123,44 @@ Loop::run( function() {
         return;
     }
 });
+
+/*
+ * will probably move this later to some kinda user auth thing
+ */
+
+
+function getUserAuthServ($nick, $bot): \Amp\Promise {
+    return \Amp\call(function () use ($nick, $bot) {
+        $idx = null;
+        $auth = null;
+        $success = false;
+        $def = new \Amp\Deferred();
+        $cb = function ($args, \Irc\Client $bot) use (&$idx, $nick, &$success, &$def) {
+            if ($args->nick != 'AuthServ')
+                return;
+            if (preg_match("/Account information for \x02([^\x02]+)\x02:/", $args->text, $m)) {
+                $bot->off('notice', null, $idx);
+                $success = true;
+                $def->resolve($m[1]);
+            }
+            $rnick = preg_quote($nick, '/');
+            if (preg_match("/User with nick \x02{$rnick}\x02 does not exist\./", $args->text)) {
+                $bot->off('notice', null, $idx);
+                $success = true;
+                $def->resolve(null);
+            }
+            if (preg_match("/{$rnick} must first authenticate with \x02AuthServ\x02\./", $args->text)) {
+                $bot->off('notice', null, $idx);
+                $success = true;
+                $def->resolve(null);
+            }
+        };
+        $bot->on('notice', $cb, $idx);
+        $bot->send("as info $nick");
+        $auth = yield \Amp\Promise\timeout($def->promise(), 2000);
+        if (!$success)
+            $bot->off('notice', null, $idx);
+        return $auth;
+    });
+}
+

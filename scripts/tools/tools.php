@@ -68,6 +68,23 @@ function nes($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
+#[Cmd("authname")]
+#[Syntax('<nick>')]
+#[CallWrap("Amp\asyncCall")]
+function authname($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $who = $req->args['nick'];
+    try {
+        $auth = yield getUserAuthServ($who, $bot);
+    } catch(\Exception $e) {
+        $bot->pm($args->chan, "Exception getting authserv account: $e");
+    }
+    if($auth == null) {
+        $bot->pm($args->chan, "$who doesn't appear to be authed");
+        return;
+    }
+    $bot->pm($args->chan, "$who authed to: $auth");
+}
 
 //TODO code syntax highlighting
 #[Cmd("url", "img")]
