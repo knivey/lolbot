@@ -78,12 +78,28 @@ function authname($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $auth = yield getUserAuthServ($who, $bot);
     } catch(\Exception $e) {
         $bot->pm($args->chan, "Exception getting authserv account: $e");
+        return;
     }
     if($auth == null) {
         $bot->pm($args->chan, "$who doesn't appear to be authed");
         return;
     }
     $bot->pm($args->chan, "$who authed to: $auth");
+}
+
+#[Cmd("chanaccess")]
+#[Syntax('<nick>')]
+#[CallWrap("Amp\asyncCall")]
+function chanaccess($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $who = $req->args['nick'];
+    try {
+        $access = yield getUserChanAccess($who, $args->chan, $bot);
+    } catch(\Exception $e) {
+        $bot->pm($args->chan, "Exception getting authserv account: $e");
+        return;
+    }
+    $bot->pm($args->chan, "$who has access $access in {$args->chan}");
 }
 
 //TODO code syntax highlighting

@@ -144,12 +144,9 @@ function getUserAuthServ($nick, $bot): \Amp\Promise {
                 $def->resolve($m[1]);
             }
             $rnick = preg_quote($nick, '/');
-            if (preg_match("/User with nick \x02{$rnick}\x02 does not exist\./", $args->text)) {
-                $bot->off('notice', null, $idx);
-                $success = true;
-                $def->resolve(null);
-            }
-            if (preg_match("/{$rnick} must first authenticate with \x02AuthServ\x02\./", $args->text)) {
+            if (preg_match("/User with nick \x02{$rnick}\x02 does not exist\./", $args->text) ||
+                preg_match("/{$rnick} must first authenticate with \x02AuthServ\x02\./", $args->text)
+            ) {
                 $bot->off('notice', null, $idx);
                 $success = true;
                 $def->resolve(null);
@@ -157,6 +154,40 @@ function getUserAuthServ($nick, $bot): \Amp\Promise {
         };
         $bot->on('notice', $cb, $idx);
         $bot->send("as info $nick");
+        $auth = yield \Amp\Promise\timeout($def->promise(), 2000);
+        if (!$success)
+            $bot->off('notice', null, $idx);
+        return $auth;
+    });
+}
+
+function getUserChanAccess($nick, $chan, $bot): \Amp\Promise {
+    return \Amp\call(function () use ($nick, $chan, $bot) {
+        $idx = null;
+        $auth = null;
+        $success = false;
+        $def = new \Amp\Deferred();
+        $cb = function ($args, \Irc\Client $bot) use (&$idx, $nick, $chan, &$success, &$def) {
+            if ($args->nick != 'ChanServ')
+                return;
+            $rnick = preg_quote($nick, '/');
+            $rchan = preg_quote($chan, '/');
+            if (preg_match("/{$rnick} [^ ]+ has access \x02([^\x02]+)\x02 in {$rchan}/", $args->text, $m)) {
+                $bot->off('notice', null, $idx);
+                $success = true;
+                $def->resolve($m[1]);
+            }
+            if (preg_match("/User with nick \x02{$rnick}\x02 does not exist\./", $args->text) ||
+                preg_match("/{$rnick} must first authenticate with \x02AuthServ\x02\./", $args->text) ||
+                preg_match("/{$rchan} has not been registered with ChanServ./", $args->text)
+            ) {
+                $bot->off('notice', null, $idx);
+                $success = true;
+                $def->resolve(0);
+            }
+        };
+        $bot->on('notice', $cb, $idx);
+        $bot->send("cs $chan access $nick");
         $auth = yield \Amp\Promise\timeout($def->promise(), 2000);
         if (!$success)
             $bot->off('notice', null, $idx);
