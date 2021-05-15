@@ -578,7 +578,11 @@ class Client extends EventEmitter {
                 $text = $message->getArg( 1, '' );
 
                 $this->emit( "notice, notice:$to, notice:$to:$from", array( 
-                    'from' => $from, 
+                    'from' => $from,
+                    'nick' => $message->nick,
+                    'ident'=> $message->name,
+                    'host' => $message->host,
+                    'fullhost' => $message->getHostString(),
                     'to' => $to, 
                     'text' => $text 
                 ) );
@@ -592,15 +596,23 @@ class Client extends EventEmitter {
                 if( $this->isChannel( $to ) ) {
 
                     $this->emit( "chat, chat:$to, chat:$to:$from", array( 
-                        'from' => $from, 
+                        'from' => $message->nick,
+                        'nick' => $message->nick,
+                        'ident'=> $message->name,
+                        'host' => $message->host,
+                        'fullhost' => $message->getHostString(),
                         'channel' => $to,
                         'text' => $text
                     ) );
                     break;
                 }
 
-                $this->emit( "pm, pm:$to, pm:$to:$from", array( 
-                    'from' => $from, 
+                $this->emit( "pm, pm:$to, pm:$to:$from", array(
+                    'from' => $message->nick,
+                    'nick' => $message->nick,
+                    'ident'=> $message->name,
+                    'host' => $message->host,
+                    'fullhost' => $message->getHostString(),
                     'to' => $to, 
                     'text' => $text 
                 ) );

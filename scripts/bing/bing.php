@@ -13,7 +13,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Cmd("bing")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
-function bing($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['bingKey'])) {
@@ -41,28 +41,28 @@ function bing($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
             var_dump($body);
             // Just in case its huge or some garbage
             $body = substr($body, 0, 200);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
         $j = json_decode($body, true);
 
         if (!array_key_exists('webPages', $j)) {
-            $bot->pm($chan, "\2Bing:\2 No Results");
+            $bot->pm($args->chan, "\2Bing:\2 No Results");
             return;
         }
         $results = number_format($j['webPages']['totalEstimatedMatches']);
         $res = $j['webPages']['value'][0];
 
-        $bot->pm($chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
+        $bot->pm($args->chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
     } catch (\Amp\MultiReasonException $errors) {
         foreach ($errors->getReasons() as $error) {
             echo $error;
-            $bot->pm($chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
+            $bot->pm($args->chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
         }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }

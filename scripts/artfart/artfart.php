@@ -12,7 +12,7 @@ use knivey\cmdr\attributes\Options;
 #[Cmd("artfart")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb")]
-function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
+function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Request $req)
 {
     $url = "http://www.asciiartfarts.com/random.cgi";
     try {
@@ -23,11 +23,11 @@ function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
             var_dump($body);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ")");
+            $bot->pm($args->chan, "Error (" . $response->getStatus() . ")");
             return;
         }
         if(!preg_match('/<table cellpadding=10><tr><td bgcolor="[^"]+"><font color="[^"]+"><pre>([^<]+)<\/pre>/i', $body, $m)) {
-            $bot->pm($chan, "bad response");
+            $bot->pm($args->chan, "bad response");
             return;
         }
 
@@ -35,12 +35,12 @@ function artfart($nick, $chan, \Irc\Client $bot, \knivey\Cmdr\Request $req)
         if($req->args->getOpt('--rnb') || $req->args->getOpt('--rainbow'))
             $fart = \knivey\ircTools\diagRainbow($fart);
         foreach (explode("\n", $fart) as $line) {
-            $bot->pm($chan, rtrim($line));
+            $bot->pm($args->chan, rtrim($line));
         }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2artfart:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2artfart:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }

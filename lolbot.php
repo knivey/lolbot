@@ -94,7 +94,7 @@ Loop::run( function() {
         $cmd = array_shift($text);
         $text = implode(' ', $text);
         try {
-            $router->call($cmd, $text, $args->from, $args->channel, $bot);
+            $router->call($cmd, $text, $args, $bot);
         } catch (Exception $e) {
             $bot->notice($args->from, $e->getMessage());
         }

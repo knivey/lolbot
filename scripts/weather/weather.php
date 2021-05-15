@@ -60,7 +60,7 @@ function getLocation($query) {
 #[Syntax('[query]...')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
-function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
+function weather($args, \Irc\Client $bot, cmdr\Request $req)
 {
     global $config;
     if(!isset($config['bingMapsKey'])) {
@@ -91,16 +91,16 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
     }
 
     if($imp && $si) {
-        $bot->msg($chan, "Choose either si or imperial not both");
+        $bot->msg($args->chan, "Choose either si or imperial not both");
         return;
     }
 
     try {
         if ($query == '') {
-            $nick = strtolower($nick);
+            $nick = strtolower($args->nick);
             $locs = unserialize(file_get_contents("weather.db"));
             if(!array_key_exists($nick, $locs)) {
-                $bot->msg($chan, "You don't have a location set use .setlocation");
+                $bot->msg($args->chan, "You don't have a location set use .setlocation");
                 return;
             }
             $location = $locs[$nick]['location'];
@@ -116,7 +116,7 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
                 $query = substr(strtolower(explode(" ", $query)[0]), 1);
                 $locs = unserialize(file_get_contents("weather.db"));
                 if(!array_key_exists($query, $locs)) {
-                    $bot->msg($chan, "$query does't have a location set");
+                    $bot->msg($args->chan, "$query does't have a location set");
                     return;
                 }
                 $location = $locs[$query]['location'];
@@ -129,7 +129,7 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
             } else {
                 $loc = yield \Amp\call(__namespace__ . '\getLocation', $query);
                 if (!is_array($loc)) {
-                    $bot->pm($chan, $loc);
+                    $bot->pm($args->chan, $loc);
                     return;
                 }
                 $location = $loc['location'];
@@ -149,7 +149,7 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
             var_dump($body);
             // Just in case its huge or some garbage
             $body = substr($body, 0, 200);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
         $j = json_decode($body, true);
@@ -168,7 +168,7 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
         }
         $temp = displayTemp($cur['temp'], $si);
         if (!$fc) {
-            $bot->pm($chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s Sun: $sunrise - $sunset");
+            $bot->pm($args->chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s Sun: $sunrise - $sunset");
         } else {
             $out = '';
             $cnt = 0;
@@ -185,13 +185,13 @@ function weather($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
                 $w = $d['weather'][0]['main'];
                 $out .= "\2$day:\2 $w $tempMin/$tempMax $d[humidity]% humidity ";
             }
-            $bot->pm($chan, "\2$location:\2 Forecast: $out");
+            $bot->pm($args->chan, "\2$location:\2 Forecast: $out");
         }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2wz:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2wz:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }
 
@@ -203,7 +203,7 @@ if(!file_exists("weather.db")) {
 #[Syntax("<query>...")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--si", "--metric")]
-function setlocation($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
+function setlocation($args, \Irc\Client $bot, cmdr\Request $req)
 {
     $si = false;
     if($req->args->getOpt("--si") || $req->args->getOpt("--metric")) {
@@ -212,15 +212,15 @@ function setlocation($nick, $chan, \Irc\Client $bot, cmdr\Request $req)
 
     $loc = yield \Amp\call(__namespace__ . '\getLocation', $req->args['query']);
     if (!is_array($loc)) {
-        $bot->pm($chan, $loc);
+        $bot->pm($args->chan, $loc);
         return;
     }
 
-    $nick = strtolower($nick);
+    $nick = strtolower($args->nick);
     $locs = unserialize(file_get_contents("weather.db"));
     $locs[$nick] = $loc;
     $locs[$nick]['si'] = $si;
     file_put_contents("weather.db", serialize($locs));
 
-    $bot->msg($chan, "$nick your location is now set to $loc[location]");
+    $bot->msg($args->chan, "$nick your location is now set to $loc[location]");
 }

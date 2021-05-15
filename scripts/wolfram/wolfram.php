@@ -14,7 +14,7 @@ const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 #[Cmd("calc", "wa")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
-function calc($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['waKey'])) {
@@ -78,11 +78,11 @@ function calc($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
         if ($outtatime != 'false') {
             $res = "Error, query took too long to parse.";
         }
-        $bot->pm($chan, "\2WA:\2 " . $res);
+        $bot->pm($args->chan, "\2WA:\2 " . $res);
     } catch (HttpException $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2WA:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2WA:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }

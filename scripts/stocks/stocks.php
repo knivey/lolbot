@@ -13,7 +13,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Cmd("stock")]
 #[Syntax('<query>')]
 #[CallWrap("Amp\asyncCall")]
-function stock($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     if(!isset($config['iexKey'])) {
@@ -31,7 +31,7 @@ function stock($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
         if ($response->getStatus() != 200) {
             // Just in case its huge or some garbage
             $body = substr($body, 0, 200);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
         $j = json_decode($body, true);
@@ -43,11 +43,11 @@ function stock($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $change = "\x0304$change\x0F";
         }
 
-        $bot->pm($chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $change ($j[changePercent]%)");
+        $bot->pm($args->chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $change ($j[changePercent]%)");
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2Stocks:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2Stocks:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }

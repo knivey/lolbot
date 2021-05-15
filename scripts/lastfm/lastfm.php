@@ -15,7 +15,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Syntax('[user]')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--info")]
-function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     $key = $config['lastfm'] ?? false;
@@ -27,7 +27,7 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
     if (isset($req->args['user'])) {
         $user = $req->args['user'];
     } else {
-        $user = $nick;
+        $user = $args->nick;
     }
     $user = urlencode(htmlentities($user));
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
@@ -40,16 +40,16 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
             var_dump($body);
             // Just in case its huge or some garbage
             $body = substr($body, 0, 200);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
     } catch (\Exception $error) {
         echo $error;
-        $bot->pm($chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
     }
     $res = json_decode($body, true);
     if(!isset($res['recenttracks']['track'][0])) {
-        $bot->pm($chan, "Failed to find any recent tracks.");
+        $bot->pm($args->chan, "Failed to find any recent tracks.");
         if($req->args->getOpt("--info")) {
             goto findinfo;
         }
@@ -68,7 +68,7 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $ago = Duration_array2string(array_slice($dur, 0, 3), 1);
         $time = "last scrobbled $ago ago";
     }
-    $bot->pm($chan, "\2last.fm:\2 $user $time: $title - $album - $artist");
+    $bot->pm($args->chan, "\2last.fm:\2 $user $time: $title - $album - $artist");
 
     if(!$req->args->getOpt("--info")) {
         return;
@@ -85,17 +85,17 @@ function lastfm($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
             var_dump($body);
             // Just in case its huge or some garbage
             $body = substr($body, 0, 200);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
     } catch (\Exception $error) {
         echo $error;
-        $bot->pm($chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
     }
     $res = json_decode($body, true);
 
     $res = $res['user'];
     $regged = strftime("%c", $res['registered']['unixtime']);
-    $bot->pm($chan, "\2`-userinfo:\2 {$res['url']} ({$res['realname']}) PlayCount: {$res['playcount']} Regged: $regged Country: ".
+    $bot->pm($args->chan, "\2`-userinfo:\2 {$res['url']} ({$res['realname']}) PlayCount: {$res['playcount']} Regged: $regged Country: ".
         "{$res['country']} Age: {$res['age']} GENDER: {$res['gender']}");
 }

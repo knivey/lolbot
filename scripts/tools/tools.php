@@ -26,14 +26,14 @@ function getDnsType($type) {
 #[Cmd("dns", "resolve")]
 #[Syntax('<query> [type]')]
 #[CallWrap("Amp\asyncCall")]
-function dns($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
     try {
         if(isset($req->args['type'])) {
             $type = getDnsType($req->args['type']);
             if($type === false) {
-                $bot->pm($chan, "Unsupported record type");
+                $bot->pm($args->chan, "Unsupported record type");
                 return;
             }
 
@@ -51,20 +51,20 @@ function dns($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $recs = 'No records';
         else
             $recs = implode(' | ', $recs);
-        $bot->pm($chan, "DNS for {$req->args['query']} ".($req->args['type'] ?? 'A, AAAA')." - $recs");
+        $bot->pm($args->chan, "DNS for {$req->args['query']} ".($req->args['type'] ?? 'A, AAAA')." - $recs");
     } catch (\Exception $e) {
-        $bot->pm($chan, "DNS Exception {$e->getMessage()}");
+        $bot->pm($args->chan, "DNS Exception {$e->getMessage()}");
     }
 }
 
 #[Cmd("rainbow", "rnb", "nes")]
 #[Syntax('<input>...')]
-function nes($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function nes($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     $text = str_replace('\n', "\n", $req->args[0]);
     $text = irctools\diagRainbow($text);
     foreach(explode("\n", $text) as $line) {
-        $bot->pm($chan, $line);
+        $bot->pm($args->chan, $line);
     }
 }
 
@@ -74,11 +74,11 @@ function nes($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[Syntax('<input>')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb")]
-function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0] ?? '';
     if(!filter_var($url, FILTER_VALIDATE_URL)) {
-        $bot->pm($chan, "invalid url");
+        $bot->pm($args->chan, "invalid url");
         return;
     }
 
@@ -98,18 +98,18 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
             $body = substr($body, 0, 200);
-            $bot->pm($chan, "Error (" . $response->getStatus() . ") $body");
+            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
 
         $type = explode("/", $response->getHeader('content-type'));
         if(!isset($type[0])) {
-            $bot->pm($chan, "content-type not provided");
+            $bot->pm($args->chan, "content-type not provided");
             return;
         }
         if($type[0] == 'image') {
             if(!isset($config['p2u'])) {
-                $bot->pm($chan, "p2u hasn't been configued");
+                $bot->pm($args->chan, "p2u hasn't been configued");
                 return;
             }
             $ext = $type[1] ?? 'jpg'; // /shrug
@@ -125,9 +125,9 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             foreach ($thumbnail as $line) {
                 if($line == '')
                     continue;
-                $bot->pm($chan, $line);
+                $bot->pm($args->chan, $line);
                 if($cnt++ > ($config['url_max'] ?? 100)) {
-                    $bot->pm($chan, "wow thats a pretty big image, omitting ~" . count($thumbnail)-$cnt . "lines ;-(");
+                    $bot->pm($args->chan, "wow thats a pretty big image, omitting ~" . count($thumbnail)-$cnt . "lines ;-(");
                     return;
                 }
             }
@@ -135,7 +135,7 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         if($type[0] == 'text') {
             var_dump($type);
             if(isset($type[1]) && !preg_match("/^plain;?/", $type[1])) {
-                $bot->pm($chan, "content-type was ".implode('/', $type)." should be text/plain or image/* (pastebin.com maybe works too)");
+                $bot->pm($args->chan, "content-type was ".implode('/', $type)." should be text/plain or image/* (pastebin.com maybe works too)");
                 return;
             }
             if($req->args->getOpt('--rainbow') || $req->args->getOpt('--rnb'))
@@ -145,9 +145,9 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             foreach ($body as $line) {
                 if($line == '')
                     continue;
-                $bot->pm($chan, $line);
+                $bot->pm($args->chan, $line);
                 if($cnt++ > ($config['url_max'] ?? 100)) {
-                    $bot->pm($chan, "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(");
+                    $bot->pm($args->chan, "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(");
                     return;
                 }
             }
@@ -156,12 +156,12 @@ function url($nick, $chan, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     } catch (\Amp\MultiReasonException $errors) {
         foreach ($errors->getReasons() as $error) {
             echo $error;
-            $bot->pm($chan, "\2URL Error:\2 " . substr($error, 0, strpos($error, "\n")));
+            $bot->pm($args->chan, "\2URL Error:\2 " . substr($error, 0, strpos($error, "\n")));
         }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($chan, "\2URL Error:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2URL Error:\2 " . substr($error, 0, strpos($error, "\n")));
     }
 }
