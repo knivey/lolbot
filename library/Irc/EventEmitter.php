@@ -10,10 +10,8 @@ class EventEmitter
     public function on($event, $callback)
     {
         if (strpos($event, ',') !== false) {
-
             $events = explode(',', $event);
             foreach ($events as $event) {
-
                 $this->on($event, $callback);
             }
             return $this;
@@ -23,7 +21,6 @@ class EventEmitter
             $this->eventCallbacks[$event] = array();
 
         $this->eventCallbacks[$event][] = $callback;
-
         return $this;
     }
 
@@ -40,7 +37,6 @@ class EventEmitter
             }
 
         array_splice($this->eventCallbacks, $idx, 1);
-
         return $this;
     }
 
@@ -50,7 +46,6 @@ class EventEmitter
             $this->onceEventCallbacks[$event] = array();
 
         $this->onceEventCallbacks[$event][] = $callback;
-
         return $this;
     }
 
