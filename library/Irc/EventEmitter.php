@@ -7,7 +7,7 @@ class EventEmitter
     protected $eventCallbacks = array();
     protected $onceEventCallbacks = array();
 
-    public function on($event, $callback)
+    public function on($event, $callback, &$idx = 0)
     {
         if (strpos($event, ',') !== false) {
             $events = explode(',', $event);
@@ -21,22 +21,24 @@ class EventEmitter
             $this->eventCallbacks[$event] = array();
 
         $this->eventCallbacks[$event][] = $callback;
+        $idx = array_key_last($this->eventCallbacks[$event]);
         return $this;
     }
 
-    public function off($event, $callback)
+    public function off($event, $callback, $idx = null)
     {
         if (empty($this->eventCallbacks[$event]))
             return $this;
 
-        $idx = null;
-        foreach ($this->eventCallbacks[$event] as $key => $cb)
-            if ($callback === $cb) {
-                $idx = $key;
-                break;
-            }
+        if($idx == null) {
+            foreach ($this->eventCallbacks[$event] as $key => $cb)
+                if ($callback === $cb) {
+                    $idx = $key;
+                    break;
+                }
+        }
 
-        array_splice($this->eventCallbacks, $idx, 1);
+        unset($this->eventCallbacks[$event][$idx]);
         return $this;
     }
 
