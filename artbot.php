@@ -238,13 +238,13 @@ function reqart($bot, $chan, $file) {
     //try fullpath first
     foreach($tree as $ent) {
         if ($file . '.txt' == strtolower(str_replace($config['artdir'], '', $ent))) {
-            playart(null, [$bot, $chan, $ent]);
+            playart($bot, $chan, $ent);
             return;
         }
     }
     foreach($tree as $ent) {
         if($file == strtolower(basename($ent, '.txt'))) {
-            playart(null, [$bot, $chan, $ent]);
+            playart($bot, $chan, $ent);
             return;
         }
     }
@@ -257,7 +257,7 @@ function reqart($bot, $chan, $file) {
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() == 200) {
             file_put_contents("ircwatch.txt", "$body\n$url");
-            playart(null, [$bot, $chan, "ircwatch.txt"]);
+            playart($bot, $chan, "ircwatch.txt");
             return;
         }
     } catch (Exception $error) {
@@ -330,7 +330,7 @@ function randart($bot, $chan, $file) {
         }
     }
     if(!empty($matches))
-        playart(null, [$bot, $chan, $matches[array_rand($matches)]]);
+        playart($bot, $chan, $matches[array_rand($matches)]);
     else
         $bot->pm($chan, "no matching art found");
 }
@@ -351,18 +351,17 @@ function stop($bot, $nick, $chan, $text) {
 
 
 
-function playart($watcherId, $data) {
-    list($bot, $chan, $file) = $data;
+function playart($bot, $chan, $file) {
     global $playing, $config;
-
-    if(!isset($playing[$chan])) {
-        $playing[$chan] = irctools\loadartfile($file);
-        array_unshift($playing[$chan], "Playing " . str_replace($config['artdir'], '', $file));
-    }
-    if(empty($playing[$chan])) {
+    \Amp\asyncCall(function() use($bot, $chan, $file, &$playing, $config) {
+        if (!isset($playing[$chan])) {
+            $playing[$chan] = irctools\loadartfile($file);
+            array_unshift($playing[$chan], "Playing " . str_replace($config['artdir'], '', $file));
+        }
+        while (!empty($playing[$chan])) {
+            $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
+            yield \Amp\delay(35);
+        }
         unset($playing[$chan]);
-        return;
-    }
-    $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
-    \Amp\Loop::delay(30, 'playart', [$bot, $chan, $file]);
+    });
 }
