@@ -93,8 +93,8 @@ class Client extends EventEmitter
                     echo "tls setup\n";
                 }
             } catch (\Exception $e) {
-                echo "connect failed " . $e->getMessage() . "\n";
-                sleep(120); //TODO this is a temoprary fix
+                echo "connect failed " . $e->getMessage() . "\nreconnecting in 120 seconds.\n";
+                yield \Amp\delay(120 * 1000);
                 continue;
             }
             $this->isConnected = true;
