@@ -22,7 +22,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
 
-    $query = waURL . urlencode(htmlentities($req->args['query'])) . '&appid=' . $config['waKey'] . '&format=plaintext';
+    $query = waURL . urlencode(htmlentities($req->args['query'])) . '&appid=' . $config['waKey'] . '&format=plaintext&location=california';
     try {
         $client = HttpClientBuilder::buildDefault();
         // Make an asynchronous HTTP request
