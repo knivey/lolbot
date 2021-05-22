@@ -16,7 +16,13 @@ use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 
-
+/*
+ * TODO:
+ * Find places where using delayed makes more sense
+ * move all bots to one instance, surround everything with try catch (links youtube cmds etc)
+ * each bot own config section, apis global?
+ * loading scripts maybe have recurvise dir include and dirs like all, extra
+ */
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
@@ -59,44 +65,48 @@ Loop::run( function() {
     });
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $config, $router;
-        if ($config['youtube'] ?? false) {
-            \Amp\asyncCall('youtube', $bot, $args->from, $args->channel, $args->text);
-        }
-        if ($config['linktitles'] ?? false) {
-            \Amp\asyncCall('linktitles', $bot, $args->channel, $args->text);
-        }
-
-        if(isset($config['trigger'])) {
-            if(substr($args->text, 0, 1) != $config['trigger']) {
-                return;
-            }
-            $text = substr($args->text, 1);
-        } elseif(isset($config['trigger_re'])) {
-            $trig = "/(^${config['trigger_re']}).+$/";
-            if (!preg_match($trig, $args->text, $m)) {
-                return;
-            }
-            $text = substr($args->text, strlen($m[1]));
-        } else {
-            echo "No trigger defined\n";
-            return;
-        }
-
-
-        $ar = explode(' ', $text);
-        if (array_shift($ar) == 'ping') {
-            $bot->msg($args->channel, "Pong");
-        }
-
-
-        $text = explode(' ', $text);
-        $cmd = array_shift($text);
-        $text = implode(' ', $text);
         try {
-            $router->call($cmd, $text, $args, $bot);
+            global $config, $router;
+            if ($config['youtube'] ?? false) {
+                \Amp\asyncCall('youtube', $bot, $args->from, $args->channel, $args->text);
+            }
+            if ($config['linktitles'] ?? false) {
+                \Amp\asyncCall('linktitles', $bot, $args->channel, $args->text);
+            }
+
+            if (isset($config['trigger'])) {
+                if (substr($args->text, 0, 1) != $config['trigger']) {
+                    return;
+                }
+                $text = substr($args->text, 1);
+            } elseif (isset($config['trigger_re'])) {
+                $trig = "/(^${config['trigger_re']}).+$/";
+                if (!preg_match($trig, $args->text, $m)) {
+                    return;
+                }
+                $text = substr($args->text, strlen($m[1]));
+            } else {
+                echo "No trigger defined\n";
+                return;
+            }
+
+
+            $ar = explode(' ', $text);
+            if (array_shift($ar) == 'ping') {
+                $bot->msg($args->channel, "Pong");
+            }
+
+
+            $text = explode(' ', $text);
+            $cmd = array_shift($text);
+            $text = implode(' ', $text);
+            try {
+                $router->call($cmd, $text, $args, $bot);
+            } catch (Exception $e) {
+                $bot->notice($args->from, $e->getMessage());
+            }
         } catch (Exception $e) {
-            $bot->notice($args->from, $e->getMessage());
+            echo "UNCAUGHT EXCEPTION $e\n";
         }
     });
     $server = yield from notifier($bot);

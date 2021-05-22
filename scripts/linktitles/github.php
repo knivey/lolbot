@@ -55,7 +55,16 @@ function github_stars($user) {
                 return false;
             }
             $body = json_decode($body, true);
+            if(!is_array($body)) {
+                var_dump($body);
+                return 0;
+            }
             foreach ($body as $repo) {
+                if(!isset($repo["stargazers_count"])) {
+                    echo "github stars stargazers_count missing??\n";
+                    var_dump($repo);
+                    continue;
+                }
                 $stars += $repo["stargazers_count"];
             }
             $page++;
