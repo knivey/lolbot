@@ -42,6 +42,29 @@ Loop::run(function () {
         $bot->join($args->channel);
     });
 
+    //Stop abuse from an IRCOP called sylar
+    $bot->on('mode', function($args, \Irc\Client $bot) {
+        echo "====== mode ======\n";
+        var_dump($args->args);
+        if($args->on == $bot->getNick()) {
+            $adding = true;
+            foreach (str_split($args->args[0]) as $mode) {
+                switch($mode) {
+                    case '+':
+                        $adding = true;
+                        break;
+                    case '-':
+                        $adding = false;
+                        break;
+                    case 'd':
+                    case 'D':
+                        if($adding)
+                            $bot->send("MODE {$bot->getNick()} -{$mode}");
+                }
+            }
+        }
+    });
+
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config, $router;
 
@@ -98,8 +121,18 @@ Loop::run(function () {
 
     Loop::onSignal(SIGINT, function ($watcherId) use ($bot) {
         Amp\Loop::cancel($watcherId);
+        if (!$bot->isConnected)
+            die("Terminating, not connected\n");
         echo "Caught SIGINT! exiting ...\n";
         yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
+        $bot->exit();
+    });
+    Loop::onSignal(SIGTERM, function ($watcherId) use ($bot) {
+        Amp\Loop::cancel($watcherId);
+        if (!$bot->isConnected)
+            die("Terminating, not connected\n");
+        echo "Caught SIGTERM! exiting ...\n";
+        yield from $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
         $bot->exit();
     });
 

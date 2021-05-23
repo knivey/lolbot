@@ -636,6 +636,17 @@ class Client extends EventEmitter
                     'text' => $text
                 ));
                 break;
+            case CMD_MODE:
+                $this->emit("mode", [
+                    'from' => $message->nick,
+                    'nick' => $message->nick,
+                    'ident' => $message->name,
+                    'host' => $message->host,
+                    'fullhost' => $message->getHostString(),
+                    'on' => $message->getArg(0),
+                    'args' => array_splice($message->args, 1)
+                ]);
+                break;
             case CMD_PRIVMSG:
                 //Handle private messages (Normal chat messages)
                 $from = $message->nick;

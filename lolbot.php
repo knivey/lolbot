@@ -65,6 +65,29 @@ try {
             $bot->join($args->channel);
         });
 
+        //Stop abuse from an IRCOP called sylar
+        $bot->on('mode', function($args, \Irc\Client $bot) {
+            echo "====== mode ======\n";
+            var_dump($args->args);
+            if($args->on == $bot->getNick()) {
+                $adding = true;
+                foreach (str_split($args->args[0]) as $mode) {
+                    switch($mode) {
+                        case '+':
+                            $adding = true;
+                            break;
+                        case '-':
+                            $adding = false;
+                            break;
+                        case 'd':
+                        case 'D':
+                            if($adding)
+                                $bot->send("MODE {$bot->getNick()} -{$mode}");
+                    }
+                }
+            }
+        });
+
         $bot->on('chat', function ($args, \Irc\Client $bot) {
             try {
                 global $config, $router;

@@ -97,7 +97,8 @@ class Message
             }
 
             $args = array_values(array_filter($args));
-            $args[] = $spacedArg;
+            if($spacedArg !== false)
+                $args[] = $spacedArg;
         } else
             return new Message('UNKNOWN', array($message));
 
