@@ -46,93 +46,114 @@ require_once 'scripts/youtube/youtube.php';
 $router->loadFuncs();
 
 $bot = null;
-Loop::run( function() {
-    global $bot, $config;
+try {
+    Loop::run(function () {
+        global $bot, $config;
 
-    $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
-    $bot->setThrottle($config['throttle'] ?? true);
-    $bot->setServerPassword($config['pass'] ?? '');
+        $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
+        $bot->setThrottle($config['throttle'] ?? true);
+        $bot->setServerPassword($config['pass'] ?? '');
 
-    $bot->on('welcome', function ($e, \Irc\Client $bot) {
-        global $config;
-        $nick = $bot->getNick();
-        $bot->send("MODE $nick +x");
-        $bot->join(implode(',', $config['channels']));
-    });
+        $bot->on('welcome', function ($e, \Irc\Client $bot) {
+            global $config;
+            $nick = $bot->getNick();
+            $bot->send("MODE $nick +x");
+            $bot->join(implode(',', $config['channels']));
+        });
 
-    $bot->on('kick', function($args, \Irc\Client $bot) {
-        $bot->join($args->channel);
-    });
+        $bot->on('kick', function ($args, \Irc\Client $bot) {
+            $bot->join($args->channel);
+        });
 
-    $bot->on('chat', function ($args, \Irc\Client $bot) {
-        try {
-            global $config, $router;
-            if ($config['youtube'] ?? false) {
-                \Amp\asyncCall('youtube', $bot, $args->from, $args->channel, $args->text);
-            }
-            if ($config['linktitles'] ?? false) {
-                \Amp\asyncCall('linktitles', $bot, $args->channel, $args->text);
-            }
-
-            if (isset($config['trigger'])) {
-                if (substr($args->text, 0, 1) != $config['trigger']) {
-                    return;
-                }
-                $text = substr($args->text, 1);
-            } elseif (isset($config['trigger_re'])) {
-                $trig = "/(^${config['trigger_re']}).+$/";
-                if (!preg_match($trig, $args->text, $m)) {
-                    return;
-                }
-                $text = substr($args->text, strlen($m[1]));
-            } else {
-                echo "No trigger defined\n";
-                return;
-            }
-
-
-            $ar = explode(' ', $text);
-            if (array_shift($ar) == 'ping') {
-                $bot->msg($args->channel, "Pong");
-            }
-
-
-            $text = explode(' ', $text);
-            $cmd = array_shift($text);
-            $text = implode(' ', $text);
+        $bot->on('chat', function ($args, \Irc\Client $bot) {
             try {
-                $router->call($cmd, $text, $args, $bot);
+                global $config, $router;
+                if ($config['youtube'] ?? false) {
+                    \Amp\asyncCall('youtube', $bot, $args->from, $args->channel, $args->text);
+                }
+                if ($config['linktitles'] ?? false) {
+                    \Amp\asyncCall('linktitles', $bot, $args->channel, $args->text);
+                }
+
+                if (isset($config['trigger'])) {
+                    if (substr($args->text, 0, 1) != $config['trigger']) {
+                        return;
+                    }
+                    $text = substr($args->text, 1);
+                } elseif (isset($config['trigger_re'])) {
+                    $trig = "/(^${config['trigger_re']}).+$/";
+                    if (!preg_match($trig, $args->text, $m)) {
+                        return;
+                    }
+                    $text = substr($args->text, strlen($m[1]));
+                } else {
+                    echo "No trigger defined\n";
+                    return;
+                }
+
+
+                $ar = explode(' ', $text);
+                if (array_shift($ar) == 'ping') {
+                    $bot->msg($args->channel, "Pong");
+                }
+
+
+                $text = explode(' ', $text);
+                $cmd = array_shift($text);
+                $text = implode(' ', $text);
+                try {
+                    $router->call($cmd, $text, $args, $bot);
+                } catch (Exception $e) {
+                    $bot->notice($args->from, $e->getMessage());
+                }
             } catch (Exception $e) {
-                $bot->notice($args->from, $e->getMessage());
+                echo "UNCAUGHT EXCEPTION $e\n";
             }
-        } catch (Exception $e) {
-            echo "UNCAUGHT EXCEPTION $e\n";
+        });
+        $server = yield from notifier($bot);
+
+        Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server) {
+            Amp\Loop::cancel($watcherId);
+            if (!$bot->isConnected)
+                die("Terminating, not connected\n");
+            echo "Caught SIGINT! exiting ...\n";
+            yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
+            $bot->exit();
+            if ($server != null) {
+                $server->stop();
+            }
+        });
+
+        Loop::onSignal(SIGTERM, function ($watcherId) use ($bot, $server) {
+            Amp\Loop::cancel($watcherId);
+            if (!$bot->isConnected)
+                die("Terminating, not connected\n");
+            echo "Caught SIGTERM! exiting ...\n";
+            yield from $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
+            $bot->exit();
+            if ($server != null) {
+                $server->stop();
+            }
+        });
+
+        while (!$bot->exit) {
+            yield from $bot->go();
+        }
+        if ($bot->exit) {
+            echo "Stopping Amp\\Loop\n";
+            Amp\Loop::stop();
+            //exit();
+            return;
         }
     });
-    $server = yield from notifier($bot);
-
-    Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server) {
-        Amp\Loop::cancel($watcherId);
-        if(!$bot->isConnected)
-            die("Terminating, not connected\n");
-        echo "Caught SIGINT! exiting ...\n";
-        yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
-        $bot->exit();
-        if($server != null) {
-            $server->stop();
-        }
-    });
-
-    while(!$bot->exit) {
-        yield from $bot->go();
-    }
-    if($bot->exit) {
-        echo "Stopping Amp\\Loop\n";
-        Amp\Loop::stop();
-        //exit();
-        return;
-    }
-});
+} catch (Exception $e) {
+    echo "=================================================\n";
+    echo "Exception throw from Loop::run exiting (I HOPE)..\n";
+    echo "=================================================\n";
+    echo $e . "\n";
+    echo "=================================================\n";
+    exit(1);
+}
 
 /*
  * will probably move this later to some kinda user auth thing

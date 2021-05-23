@@ -40,6 +40,7 @@ function github_stars($user) {
     $page = 1;
     $stars = 0;
     $url = "https://api.github.com/users/$user/repos?per_page=100&page={${'page'}}";
+    var_dump($url);
     try {
         do {
             $client = HttpClientBuilder::buildDefault();
@@ -56,19 +57,16 @@ function github_stars($user) {
             }
             $body = json_decode($body, true);
             if(!is_array($body)) {
-                var_dump($body);
                 return 0;
             }
             foreach ($body as $repo) {
                 if(!isset($repo["stargazers_count"])) {
-                    echo "github stars stargazers_count missing??\n";
-                    var_dump($repo);
                     continue;
                 }
                 $stars += $repo["stargazers_count"];
             }
             $page++;
-        } while (count($body) == 100 && $page < 10);
+        } while (count($body) == 100 && $page < 10); //TODO just say lots if over the limit?
         //Dont want to blow out our limits ^
         return $stars;
     } catch (\Exception $error) {
