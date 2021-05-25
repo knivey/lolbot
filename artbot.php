@@ -396,7 +396,7 @@ function playart($bot, $chan, $file) {
         }
         while (!empty($playing[$chan])) {
             $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
-            yield \Amp\delay(35);
+            yield \Amp\delay(25);
         }
         unset($playing[$chan]);
     });
