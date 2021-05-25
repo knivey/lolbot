@@ -69,7 +69,7 @@ class Client extends EventEmitter
         if ($ssl) {
             $this->connectContext = $this->connectContext->withTlsContext((new ClientTlsContext($server))->withoutPeerVerification());
         }
-        echo "Bot made";
+        echo "Bot made ($nick)\n";
     }
 
     public function exit()
@@ -79,33 +79,35 @@ class Client extends EventEmitter
 
     public function go()
     {
-        if ($this->exit)
-            return;
+        \Amp\asyncCall(function() {
+            if ($this->exit)
+                return;
 
-        echo "run called\n";
-        //return;
-        while ($this->reconnect && !$this->exit) {
-            echo "connecting...\n";
-            try {
-                $this->socket = yield connect($this->server . ':' . $this->port, $this->connectContext);
-                echo "connected. . .\n";
-                if ($this->ssl) {
-                    echo "starting tls\n";
-                    yield $this->socket->setupTLS();
-                    echo "tls setup\n";
+            echo "Bot go called {$this->getNick()}\n";
+            //return;
+            while ($this->reconnect && !$this->exit) {
+                echo "connecting...\n";
+                try {
+                    $this->socket = yield connect($this->server . ':' . $this->port, $this->connectContext);
+                    echo "connected. . .\n";
+                    if ($this->ssl) {
+                        echo "starting tls\n";
+                        yield $this->socket->setupTLS();
+                        echo "tls setup\n";
+                    }
+                } catch (\Exception $e) {
+                    echo "connect failed " . $e->getMessage() . "\nreconnecting in 120 seconds.\n";
+                    yield \Amp\delay(120 * 1000);
+                    continue;
                 }
-            } catch (\Exception $e) {
-                echo "connect failed " . $e->getMessage() . "\nreconnecting in 120 seconds.\n";
-                yield \Amp\delay(120 * 1000);
-                continue;
+                $this->isConnected = true;
+                //Yay connected, now login..
+                $this->sendLogin();
+                while ($this->isConnected) {
+                    yield from $this->doRead();
+                }
             }
-            $this->isConnected = true;
-            //Yay connected, now login..
-            $this->sendLogin();
-            while ($this->isConnected) {
-                yield from $this->doRead();
-            }
-        }
+        });
     }
 
     function doRead()
@@ -598,6 +600,9 @@ class Client extends EventEmitter
                 if ($this->awaitingPong != null) {
                     $this->awaitingPong = null;
                 }
+                $this->emit("pong", array(
+                    'arg' => $message->getArg(1)
+                ));
                 break;
             case CMD_JOIN:
                 //Emit channel join events

@@ -1,0 +1,18 @@
+channels: ['#knivey']
+trigger: "@"
+artdir: "/home/knivey/ircart/"
+bots:
+    -
+        name: van
+        server: snek.irc.ltd
+        port: 6667
+        ssl: false
+        throttle: false
+        bindIp: 0
+    -
+        name: pee
+        server: snek.irc.ltd
+        port: 6667
+        ssl: false
+        throttle: false
+        bindIp: 0

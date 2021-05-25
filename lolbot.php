@@ -153,6 +153,8 @@ try {
             if ($server != null) {
                 $server->stop();
             }
+            echo "Stopping Amp\\Loop\n";
+            Amp\Loop::stop();
         });
 
         Loop::onSignal(SIGTERM, function ($watcherId) use ($bot, $server) {
@@ -169,17 +171,11 @@ try {
             if ($server != null) {
                 $server->stop();
             }
-        });
-
-        while (!$bot->exit) {
-            yield from $bot->go();
-        }
-        if ($bot->exit) {
             echo "Stopping Amp\\Loop\n";
             Amp\Loop::stop();
-            //exit();
-            return;
-        }
+        });
+
+        $bot->go();
     });
 } catch (Exception $e) {
     echo "=================================================\n";
