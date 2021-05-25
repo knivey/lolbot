@@ -23,15 +23,23 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\irctools;
 use const Irc\ERR_CANNOTSENDTOCHAN;
+use \Ayesh\CaseInsensitiveArray\Strict as CIArray;
+$playing = new CIArray();
 
 $config = Yaml::parseFile(__DIR__ . '/multiartconfig.yaml');
 
+// Workaround with CIArray to have php pass reference
+class Playing {
+    public array $data = [];
+}
+
+require_once 'multiartsnotifier.php';
 
 function onchat($args, \Irc\Client $bot)
 {
     global $config, $router;
 
-    //tryRec($bot, $args->from, $args->channel, $args->text);
+    tryRec($bot, $args->from, $args->channel, $args->text);
     if (isset($config['trigger'])) {
         if (substr($args->text, 0, 1) != $config['trigger']) {
             return;
@@ -54,10 +62,10 @@ function onchat($args, \Irc\Client $bot)
     $text = implode(' ', $text);
 
 
-    //if($cmd == 'search' || $cmd == 'find') {
-    //    searchart($bot, $args->channel, $text);
-    //    return;
-    //}
+    if($cmd == 'search' || $cmd == 'find') {
+        searchart($bot, $args->channel, $text);
+        return;
+    }
     if($cmd == 'random') {
         randart($bot, $args->channel, $text);
         return;
@@ -123,8 +131,9 @@ Loop::run(function () {
             $bot->on('chat', 'onchat');
         $cnt++;
     }
+    $server = yield from multinotifier();
 
-    $botExit = function ($watcherId) {
+    $botExit = function ($watcherId) use ($server) {
         global $bots;
         Amp\Loop::cancel($watcherId);
         echo "Caught SIGINT! exiting ...\n";
@@ -139,6 +148,9 @@ Loop::run(function () {
         }
         foreach ($bots as $bot) {
             $bot->exit();
+        }
+        if ($server != null) {
+            $server->stop();
         }
         echo "Stopping Amp\\Loop\n";
         Amp\Loop::stop();
@@ -259,9 +271,6 @@ function cancel($bot, $nick, $chan, $text) {
     unset($recordings[$nick]);
 }
 
-
-$playing = [];
-
 function reqart($bot, $chan, $file) {
     global $config, $playing;
     if(isset($playing[$chan])) {
@@ -331,15 +340,17 @@ function searchart($bot, $chan, $file) {
             }
         }
     }
+    $out = [];
     if(!empty($matches)) {
         $cnt = 0;
         foreach ($matches as $match) {
-            $bot->pm($chan, str_replace($config['artdir'], '', $match));
-            if ($cnt++ > 100) {
-                $bot->pm($chan, count($matches) . " total matches only showing 100");
+            $out[] = str_replace($config['artdir'], '', $match);
+            if ($cnt++ > 50) {
+                $out[] = count($matches) . " total matches only showing 50";
                 break;
             }
         }
+        pumpToChan($chan, $out);
     }
     else
         $bot->pm($chan, "no matching art found");
@@ -406,29 +417,55 @@ function selectBot($chan) : \Irc\Client | false {
     return false;
 }
 
-function botsOnChan($chan) {
+function botsOnChan($chan)
+{
     global $bots;
     $cnt = 0;
     foreach ($bots as $bot) {
-        if($bot->onChannel($chan))
+        if ($bot->onChannel($chan))
             $cnt++;
     }
     return $cnt;
 }
 
-function playart($bot, $chan, $file) {
+function playart($bot, $chan, $file)
+{
     global $playing, $config;
-    \Amp\asyncCall(function() use($bot, $chan, $file, &$playing, $config) {
-        if (!isset($playing[$chan])) {
-            $playing[$chan] = irctools\loadartfile($file);
-            array_unshift($playing[$chan], "Playing " . str_replace($config['artdir'], '', $file));
+    if (!isset($playing[$chan])) {
+        $playing[$chan] = new Playing();
+        $playing[$chan]->data = irctools\loadartfile($file);
+        array_unshift($playing[$chan]->data, "Playing " . str_replace($config['artdir'], '', $file));
+    }
+    startPump($chan);
+}
+
+function pumpToChan(string $chan, array $data) {
+    global $playing;
+    if(isset($playing[$chan])) {
+        array_push($playing[$chan]->data, ...$data);
+    } else {
+        $playing[$chan] = new Playing();
+        $playing[$chan]->data = $data;
+        var_dump($playing);
+        startPump($chan);
+    }
+}
+
+function startPump($chan) {
+    \Amp\asyncCall(function() use($chan) {
+        global $playing;
+        if(!isset($playing[$chan])) {
+            echo "startPump but chan not in array?\n";
+            return;
         }
-        if (count($playing[$chan]) > 100) {
-            $playing[$chan] = [$playing[$chan][0], "that arts too big for this network"];
+        //we cant send empty lines
+        $playing[$chan]->data = array_filter($playing[$chan]->data);
+        if (count($playing[$chan]->data) > 100) {
+            $playing[$chan]->data = [$playing[$chan]->data[0], "that arts too big for this network"];
         }
         $bot = null;
         $nextbot = null;
-        while (!empty($playing[$chan])) {
+        while (!empty($playing[$chan]->data)) {
             $botson = botsOnChan($chan);
             if($botson < 2) {
                 unset($playing[$chan]);
@@ -460,9 +497,9 @@ function playart($bot, $chan, $file) {
             $eventIdx = null;
             $def = new \Amp\Deferred();
             $botNick = $bot->getNick();
-            $sendAmount = 3;
-            if(count($playing[$chan]) < $sendAmount)
-                $sendAmount = count($playing[$chan]);
+            $sendAmount = 4;
+            if(count($playing[$chan]->data) < $sendAmount)
+                $sendAmount = count($playing[$chan]->data);
             $cnt = 0;
             $nextbot->on('chat', function($args, $bot) use ($chan, &$eventIdx, &$def, &$cnt, $botNick, $sendAmount) {
                 if ($args->from != $botNick)
@@ -477,8 +514,9 @@ function playart($bot, $chan, $file) {
             }, $eventIdx);
 
             foreach (range(0,$sendAmount - 1) as $x) {
-                if(isset($playing[$chan]) && !empty($playing[$chan])) {
-                    $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
+                if(isset($playing[$chan]) && !empty($playing[$chan]->data)) {
+                    $line = array_shift($playing[$chan]->data);
+                    $bot->pm($chan, irctools\fixColors($line));
                     yield \Amp\delay(100 / $botson);
                 }
             }
