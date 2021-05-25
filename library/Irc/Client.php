@@ -163,9 +163,9 @@ class Client extends EventEmitter
     public function sendNow($line)
     {
         if (!$this->isConnected)
-            return;
+            return new \Amp\Failure(new Exception("Not connected"));
         echo ">>>> $line";
-        yield $this->socket->write($line);
+        return $this->socket->write($line);
     }
 
     public function hasLine()

@@ -127,7 +127,11 @@ Loop::run(function () {
         if (!$bot->isConnected)
             die("Terminating, not connected\n");
         echo "Caught SIGINT! exiting ...\n";
-        yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
+        try {
+            yield $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
+        } catch (Exception $e) {
+            echo "Exception when sending quit\n $e\n";
+        }
         $bot->exit();
     });
     Loop::onSignal(SIGTERM, function ($watcherId) use ($bot) {
@@ -135,7 +139,11 @@ Loop::run(function () {
         if (!$bot->isConnected)
             die("Terminating, not connected\n");
         echo "Caught SIGTERM! exiting ...\n";
-        yield from $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
+        try {
+            yield $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
+        } catch (Exception $e) {
+            echo "Exception when sending quit\n $e\n";
+        }
         $bot->exit();
     });
 
