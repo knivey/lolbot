@@ -42,8 +42,34 @@ Loop::run(function () {
         $bot->join($args->channel);
     });
 
+    //Stop abuse from an IRCOP called sylar
+    $bot->on('mode', function($args, \Irc\Client $bot) {
+        echo "====== mode ======\n";
+        var_dump($args->args);
+        if($args->on == $bot->getNick()) {
+            $adding = true;
+            foreach (str_split($args->args[0]) as $mode) {
+                switch($mode) {
+                    case '+':
+                        $adding = true;
+                        break;
+                    case '-':
+                        $adding = false;
+                        break;
+                    case 'd':
+                    case 'D':
+                        if($adding)
+                            $bot->send("MODE {$bot->getNick()} -{$mode}");
+                }
+            }
+        }
+    });
+
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config, $router;
+
+        if(isIgnored($args->fullhost))
+            return;
 
         tryRec($bot, $args->from, $args->channel, $args->text);
         if (isset($config['trigger'])) {
@@ -98,8 +124,18 @@ Loop::run(function () {
 
     Loop::onSignal(SIGINT, function ($watcherId) use ($bot) {
         Amp\Loop::cancel($watcherId);
+        if (!$bot->isConnected)
+            die("Terminating, not connected\n");
         echo "Caught SIGINT! exiting ...\n";
         yield from $bot->sendNow("quit :Caught SIGINT GOODBYE!!!!\r\n");
+        $bot->exit();
+    });
+    Loop::onSignal(SIGTERM, function ($watcherId) use ($bot) {
+        Amp\Loop::cancel($watcherId);
+        if (!$bot->isConnected)
+            die("Terminating, not connected\n");
+        echo "Caught SIGTERM! exiting ...\n";
+        yield from $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
         $bot->exit();
     });
 
@@ -360,8 +396,51 @@ function playart($bot, $chan, $file) {
         }
         while (!empty($playing[$chan])) {
             $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
-            yield \Amp\delay(35);
+            yield \Amp\delay(25);
         }
         unset($playing[$chan]);
     });
+}
+
+
+//TODO move this to irctools package
+function hostmaskToRegex($mask) {
+    $out = '';
+    $i = 0;
+    while($i < strlen($mask)) {
+        $nextc = strcspn($mask, '*?', $i);
+        $out .= preg_quote(substr($mask, $i, $nextc), '@');
+        if($nextc + $i == strlen($mask))
+            break;
+        if($mask[$nextc + $i] == '?')
+            $out .= '.';
+        if($mask[$nextc + $i] == '*')
+            $out .= '.*';
+        $i += $nextc + 1;
+    }
+    return "@{$out}@i";
+}
+
+function getIgnores($file = "ignores.txt") {
+    static $ignores;
+    static $mtime;
+    if(!file_exists($file))
+        return [];
+    // Retarded that i had to figure out to do this otherwise php caches mtime..
+    clearstatcache();
+    $newmtime = filemtime($file);
+    if($newmtime <= ($mtime ?? 0))
+        return ($ignores ?? []);
+    $mtime = $newmtime;
+    return $ignores = file($file, FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
+}
+
+function isIgnored($fullhost) {
+    $ignores = getIgnores();
+    foreach ($ignores as $i) {
+        if (preg_match(hostmaskToRegex($i), $fullhost)) {
+            return true;
+        }
+    }
+    return false;
 }

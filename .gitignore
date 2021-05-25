@@ -6,3 +6,4 @@ config.yaml
 artconfig.yaml
 composer.lock
 scripts/notifier/notifier_keys.yaml
+ignores.txt
