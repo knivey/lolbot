@@ -27,6 +27,8 @@ class Client extends EventEmitter
     protected $reconnectInterval = 3000;
     protected $rawMode = false;
 
+    protected $onChannels = [];
+
     protected bool $ssl = false;
     protected ?ConnectContext $connectContext;
     protected ?EncryptableSocket $socket;
@@ -142,6 +144,7 @@ class Client extends EventEmitter
         $this->ircEstablished = false;
         $this->isConnected = false;
         $this->awaitingPong = null;
+        $this->onChannels = [];
     }
 
     public function pingCheck()
@@ -525,6 +528,14 @@ class Client extends EventEmitter
         return $this;
     }
 
+    public function onChannel($channel) {
+        return in_array(strtolower($channel), array_map('strtolower', array_keys($this->onChannels)), true);
+    }
+
+    public function getJoinedChannels() {
+        return $this->onChannels;
+    }
+
     public function listChannels($channel = null, $server = null)
     {
         $channel = is_array($channel) ? implode(',', $channel) : $channel;
@@ -592,6 +603,9 @@ class Client extends EventEmitter
                 //Emit channel join events
                 $nick = $message->nick ? $message->nick : $this->nick;
                 $channel = $message->getArg(0);
+                if($nick == $this->getNick()) {
+                    $this->onChannels[$channel] = $channel;
+                }
 
                 $this->emit("join, join:$channel, join:$nick, join:$channel:$nick", array(
                     'nick' => $nick,
@@ -603,6 +617,9 @@ class Client extends EventEmitter
                 $nick = $message->nick ? $message->nick : $this->nick;
                 //$channel = $this->addAllChannel( $message->getArg( 0 ) );
                 $channel = $message->getArg(0);
+                if($nick == $this->getNick()) {
+                    unset($this->onChannels[$channel]);
+                }
 
                 $this->emit("part, part:$channel, part:$nick, part:$channel:$nick", array(
                     'nick' => $nick,
@@ -613,6 +630,9 @@ class Client extends EventEmitter
                 //Emit kick events
                 $channel = $message->getArg(0);
                 $nick = $message->getArg(1);
+                if($nick == $this->getNick()) {
+                    unset($this->onChannels[$channel]);
+                }
 
                 $this->emit("kick, kick:$channel, kick:$nick, kick:$channel:$nick", array(
                     'nick' => $nick,
