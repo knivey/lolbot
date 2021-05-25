@@ -22,6 +22,7 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\irctools;
+use const Irc\ERR_CANNOTSENDTOCHAN;
 
 $config = Yaml::parseFile(__DIR__ . '/multiartconfig.yaml');
 
@@ -105,6 +106,16 @@ Loop::run(function () {
 
         $bot->on('kick', function ($args, \Irc\Client $bot) {
             $bot->join($args->channel);
+        });
+
+        $bot->on(ERR_CANNOTSENDTOCHAN, function ($args, \Irc\Client $bot) {
+            global $playing;
+            $chan = $args->message->getArg(1);
+            //if recording i guess forget about it for now
+            if(isset($playing[$chan])) {
+                unset($playing[$chan]);
+                echo "Stopping pump to $chan due to send error\n";
+            }
         });
 
         //Only first bot handles seeing commands, recording arts, etc
@@ -415,37 +426,69 @@ function playart($bot, $chan, $file) {
         if (count($playing[$chan]) > 100) {
             $playing[$chan] = [$playing[$chan][0], "that arts too big for this network"];
         }
+        $bot = null;
+        $nextbot = null;
         while (!empty($playing[$chan])) {
-            if(($bot = selectBot($chan)) === false) {
+            $botson = botsOnChan($chan);
+            if($botson < 2) {
                 unset($playing[$chan]);
-                echo "Stopping pump to $chan, no bots left on it\n";
+                echo "Stopping pump to $chan, not enough bots left on it\n";
                 return;
+            }
+            //this could probably be cleaned up lol
+            if($bot == null) {
+                if (($bot = selectBot($chan)) === false) {
+                    unset($playing[$chan]);
+                    echo "Stopping pump to $chan, no bots left on it\n";
+                    return;
+                }
+                if (($nextbot = selectBot($chan)) === false) {
+                    unset($playing[$chan]);
+                    echo "Stopping pump to $chan, not enough bots left on it\n";
+                    return;
+                }
+            } else {
+                if ($nextbot != null) {
+                    $bot = $nextbot;
+                    if (($nextbot = selectBot($chan)) === false) {
+                        unset($playing[$chan]);
+                        echo "Stopping pump to $chan, not enough bots left on it\n";
+                        return;
+                    }
+                }
             }
             $eventIdx = null;
-            $pongID = uniqid();
             $def = new \Amp\Deferred();
-            $bot->on('pm', function($args, $bot) use (&$eventIdx, $pongID, &$def) {
-                if($args->text != $pongID)
+            $botNick = $bot->getNick();
+            $sendAmount = 3;
+            if(count($playing[$chan]) < $sendAmount)
+                $sendAmount = count($playing[$chan]);
+            $cnt = 0;
+            $nextbot->on('chat', function($args, $bot) use ($chan, &$eventIdx, &$def, &$cnt, $botNick, $sendAmount) {
+                if ($args->from != $botNick)
                     return;
-                $bot->off('pm', null, $eventIdx);
-                $def->resolve();
+                if($args->chan != $chan)
+                    return;
+                $cnt++;
+                if($cnt == $sendAmount) {
+                    $bot->off('chat', null, $eventIdx);
+                    $def->resolve();
+                }
             }, $eventIdx);
-            $botson = botsOnChan($chan);
-            if($botson == 0) {
-                unset($playing[$chan]);
-                echo "Stopping pump to $chan, no bots left on it\n";
-                return;
-            }
 
-            foreach (range(0,2) as $x) {
-                if(isset($playing[$chan]) && !empty($playing[$chan]))
-                $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
-                yield \Amp\delay(300 / $botson);
+            foreach (range(0,$sendAmount - 1) as $x) {
+                if(isset($playing[$chan]) && !empty($playing[$chan])) {
+                    $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
+                    yield \Amp\delay(100 / $botson);
+                }
             }
-            //in future would like to listen to whats in channel
-            //but need to account for bans, and having only one bot (cant listen to self)
-            $bot->pm($bot->getNick(), $pongID);
-            yield $def->promise();
+            try {
+                yield \Amp\Promise\timeout($def->promise(), 2000);
+            } catch (\Amp\TimeoutException $e) {
+                echo "Something horrible has happened, timeout on looking for pump lines\n";
+                unset($playing[$chan]);
+                $nextbot->off('chat', null, $eventIdx);
+            }
         }
         unset($playing[$chan]);
     });

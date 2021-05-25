@@ -807,6 +807,8 @@ class Client extends EventEmitter
             case ERR_NICKNAMEINUSE:
                 $this->setNick(str_shuffle($this->nick));
                 break;
+            default:
+                $this->emit($message->command, ['message' => $message]);
         }
     }
 
