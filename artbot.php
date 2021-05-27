@@ -181,7 +181,7 @@ function record($bot, $nick, $chan, $text) {
     }
     foreach($tree as $ent) {
         if($text == strtolower(basename($ent, '.txt'))) {
-            $exists = str_replace($config['artdir'], '', $ent);
+            $exists = substr($ent, strlen($config['artdir']));
             break;
         }
     }
@@ -245,7 +245,7 @@ function endart($bot, $nick, $chan, $text) {
     }
     $file = "$dir/". $recordings[$nick]['name'] . '.txt';
     file_put_contents($file, implode("\n", $recordings[$nick]['art']));
-    $bot->pm($recordings[$nick]['chan'], "Recording finished ;) saved to " . str_replace($config['artdir'], '', $file));
+    $bot->pm($recordings[$nick]['chan'], "Recording finished ;) saved to " . substr($file, strlen($config['artdir'])));
     unset($recordings[$nick]);
 }
 
@@ -277,7 +277,7 @@ function reqart($bot, $chan, $file) {
     }
     //try fullpath first
     foreach($tree as $ent) {
-        if ($file . '.txt' == strtolower(str_replace($config['artdir'], '', $ent))) {
+        if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
             playart($bot, $chan, $ent);
             return;
         }
@@ -314,6 +314,7 @@ function searchart($bot, $chan, $file) {
     if(isset($playing[$chan])) {
         return;
     }
+    $file = strtolower($file);
     $base = $config['artdir'];
     try {
         $tree = knivey\tools\dirtree($base);
@@ -325,7 +326,7 @@ function searchart($bot, $chan, $file) {
     if($file != '') {
         $matches = [];
         foreach ($tree as $ent) {
-            $check = str_replace($config['artdir'], '', $ent);
+            $check = substr($ent, strlen($config['artdir']));
             $check = str_replace('.txt', '', $check);
             if (fnmatch("*$file*", strtolower($check))) {
                 $matches[] = $ent;
@@ -336,7 +337,7 @@ function searchart($bot, $chan, $file) {
         $cnt = 0;
         foreach ($matches as $match) {
             $match = str_ireplace($file, "\x0306$file\x0F", $match);
-            $bot->pm($chan, str_replace($config['artdir'], '', $match));
+            $bot->pm($chan, substr($match, strlen($config['artdir'])));
             if ($cnt++ > 100) {
                 $bot->pm($chan, count($matches) . " total matches only showing 100");
                 break;
@@ -352,6 +353,7 @@ function randart($bot, $chan, $file) {
     if(isset($playing[$chan])) {
         return;
     }
+    $file = strtolower($file);
     $base = $config['artdir'];
     try {
         $tree = knivey\tools\dirtree($base);
@@ -363,7 +365,7 @@ function randart($bot, $chan, $file) {
     if($file != '') {
         $matches = [];
         foreach ($tree as $ent) {
-            $check = str_replace($config['artdir'], '', $ent);
+            $check = substr($ent, strlen($config['artdir']));
             $check = str_replace('.txt', '', $check);
             if (fnmatch("*$file*", strtolower($check))) {
                 $matches[] = $ent;
@@ -371,7 +373,7 @@ function randart($bot, $chan, $file) {
         }
     }
     if(!empty($matches))
-        playart($bot, $chan, $matches[array_rand($matches)]);
+        playart($bot, $chan, $matches[array_rand($matches)], $file);
     else
         $bot->pm($chan, "no matching art found");
 }
@@ -392,12 +394,16 @@ function stop($bot, $nick, $chan, $text) {
 
 
 
-function playart($bot, $chan, $file) {
+function playart($bot, $chan, $file, $searched = false) {
     global $playing, $config;
-    \Amp\asyncCall(function() use($bot, $chan, $file, &$playing, $config) {
+    \Amp\asyncCall(function() use($searched, $bot, $chan, $file, &$playing, $config) {
         if (!isset($playing[$chan])) {
             $playing[$chan] = irctools\loadartfile($file);
-            array_unshift($playing[$chan], "Playing " . str_replace($config['artdir'], '', $file));
+            $pmsg = "Playing " . substr($file, strlen($config['artdir']));;
+            if($searched) {
+                $pmsg = str_ireplace($searched, "\x0306$searched\x0F", $pmsg);
+            }
+            array_unshift($playing[$chan], $pmsg);
         }
         while (!empty($playing[$chan])) {
             $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
