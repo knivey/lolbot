@@ -807,6 +807,13 @@ class Client extends EventEmitter
             case ERR_NICKNAMEINUSE:
                 $this->setNick(str_shuffle($this->nick));
                 break;
+                //sometimes connecting to znc or a server will change our nick like so
+                //:knivey!~knivy@2001:bc8:182c:a4e::1 NICK :sludg
+            case CMD_NICK:
+                if($this->getNick() == $message->nick) {
+                    $this->nick = $message->getArg(0);
+                }
+                break;
             default:
                 $this->emit($message->command, ['message' => $message]);
         }
