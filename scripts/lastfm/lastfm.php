@@ -46,6 +46,7 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     } catch (\Exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
+        return;
     }
     $res = json_decode($body, true);
     if(!isset($res['recenttracks']['track'][0])) {
