@@ -344,6 +344,7 @@ function searchart($bot, $chan, $file) {
     if(!empty($matches)) {
         $cnt = 0;
         foreach ($matches as $match) {
+            $match = str_ireplace($file, "\x0306$file\x03", $match);
             $out[] = str_replace($config['artdir'], '', $match);
             if ($cnt++ > 50) {
                 $out[] = count($matches) . " total matches only showing 50";
