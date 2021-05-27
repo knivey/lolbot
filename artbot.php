@@ -335,7 +335,7 @@ function searchart($bot, $chan, $file) {
     if(!empty($matches)) {
         $cnt = 0;
         foreach ($matches as $match) {
-            $match = str_ireplace($file, "\x0306$file\x03", $match);
+            $match = str_ireplace($file, "\x0306$file\x0F", $match);
             $bot->pm($chan, str_replace($config['artdir'], '', $match));
             if ($cnt++ > 100) {
                 $bot->pm($chan, count($matches) . " total matches only showing 100");
