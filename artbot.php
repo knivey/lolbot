@@ -21,6 +21,7 @@ use Amp\Http\Client\Response;
 use knivey\irctools;
 
 $config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
+require_once 'art-common.php';
 
 
 $bot = null;
@@ -153,9 +154,6 @@ Loop::run(function () {
 
     $bot->go();
 });
-
-require_once 'art-common.php';
-
 
 $playing = [];
 
