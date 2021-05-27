@@ -163,6 +163,7 @@ function pumpToChan(string $chan, array $data) {
         if (isset($playing[$chan])) {
             array_push($playing[$chan], ...$data);
         } else {
+            $playing[$chan] = $data;
             while (!empty($playing[$chan])) {
                 $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
                 yield \Amp\delay(25);

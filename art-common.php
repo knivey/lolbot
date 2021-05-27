@@ -282,7 +282,6 @@ function stop($bot, $nick, $chan, $text) {
 function playart($bot, $chan, $file, $searched = false)
 {
     global $playing, $config;
-    $pump = [];
 
     if (!isset($playing[$chan])) {
         $pump = irctools\loadartfile($file);
@@ -294,7 +293,7 @@ function playart($bot, $chan, $file, $searched = false)
             $pmsg = str_ireplace($searched, "\x0306$searched\x0F", $pmsg);
         }
         array_unshift($pump, $pmsg);
+        pumpToChan($chan, $pump);
     }
-    pumpToChan($chan, $pump);
 }
 
