@@ -4,6 +4,44 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Options;
+use knivey\cmdr\attributes\Syntax;
+
+
+function ytDuration($input) {
+    try {
+        $di = new DateInterval($input);
+        $dur = '';
+        if ($di->s > 0) {
+            $dur = "{$di->s}s";
+        }
+        if ($di->i > 0) {
+            $dur = "{$di->i}m $dur";
+        }
+        if ($di->h > 0) {
+            $dur = "{$di->h}h $dur";
+        }
+        if ($di->d > 0) {
+            $dur = "{$di->d}d $dur";
+        }
+        //Seems unlikely, months and years
+        if ($di->m > 0) {
+            $dur = "{$di->m}M $dur";
+        }
+        if ($di->y > 0) {
+            $dur = "{$di->y}y $dur";
+        }
+        $dur = trim($dur);
+        if ($dur == '') {
+            $dur = 'LIVE';
+        }
+    } catch (Exception $e) {
+        return '???';
+    }
+    return $dur;
+}
 
 $youtube_history = [];
 function youtube(\Irc\Client $bot, $nick, $chan, $text)
@@ -76,31 +114,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             $v = $data->items[0];
             $title = $v->snippet->title;
 
-            $di = new DateInterval($v->contentDetails->duration);
-            $dur = '';
-            if($di->s > 0) {
-                $dur = "{$di->s}s";
-            }
-            if ($di->i > 0) {
-                $dur = "{$di->i}m $dur";
-            }
-            if ($di->h > 0) {
-                $dur = "{$di->h}h $dur";
-            }
-            if ($di->d > 0) {
-                $dur = "{$di->d}d $dur";
-            }
-            //Seems unlikely, months and years
-            if ($di->m > 0) {
-                $dur = "{$di->m}M $dur";
-            }
-            if ($di->y > 0) {
-                $dur = "{$di->y}y $dur";
-            }
-            $dur = trim($dur);
-            if($dur == '') {
-                $dur = 'LIVE';
-            }
+            $dur = ytDuration($v->contentDetails->duration);
             $chanTitle = $v->snippet->channelTitle;
             $datef = 'M j, Y';
             $date = date($datef, strtotime($v->snippet->publishedAt));
@@ -158,3 +172,81 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
         }
     }
 }
+
+
+#[Cmd("yt", "ytsearch", "youtube")]
+#[Syntax('[query]...')]
+#[CallWrap("Amp\asyncCall")]
+function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config;
+    $reply = function($msg) use($bot, $args) {$bot->pm($args->chan, "\2ytsearch:\2 $msg");};
+    $key = $config['gkey'] ?? false;
+    if(!$key) {
+        $reply("youtube key not set on config");
+        return;
+    }
+
+
+    $q = urlencode(htmlentities($req->args['query']));
+    // search only supports snippet part :(
+    $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";
+    try {
+        $client = HttpClientBuilder::buildDefault();
+        /** @var Response $response */
+        $response = yield $client->request(new Request($url));
+        $body = yield $response->getBody()->buffer();
+        if ($response->getStatus() != 200) {
+            var_dump($body);
+            // Just in case its huge or some garbage
+            $body = str_replace(["\n","\r"], '', $body);
+            $body = substr($body, 0, 200);
+            $reply("Error (" . $response->getStatus() . ") $body");
+            return;
+        }
+    } catch (\Exception $error) {
+        echo $error;
+        $reply(substr($error, 0, strpos($error, "\n")));
+        return;
+    }
+    $res = json_decode($body, true);
+    if(!isset($res['items']) || count($res['items']) == 0) {
+        $reply("no results");
+        return;
+    }
+    $cnt = 0;
+    foreach ($res['items'] as $i) {
+        if($cnt++ >=3)
+            break;
+        $s = $i['snippet'];
+        $url = "https://youtu.be/{$i['id']['videoId']}";
+        $reply("$url - $s[title] | $s[channelTitle]");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
