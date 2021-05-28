@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 // Another bot just used for playing ascii arts
 /*
