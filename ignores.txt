@@ -1,5 +1,1 @@
-*sylar@*
-*@sewage.pump.network
-sylar!*
-*sylar@nsa.gov
-*@sylar.*
+*@services.*
