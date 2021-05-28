@@ -36,5 +36,6 @@ while true; do
 	# some reason thunderbird wont show these message bodies
 	echo "$* has crashed with exit ${RC} attached are logs" | mail -A "$OUTFILE" -r $FROMEMAIL -s "Script crash report $*" $TOEMAIL
 	rm "$OUTFILE"
-        echo "Error Code $RC Restarting..."
+        echo "Error Code $RC Restarting in 5s..."
+  sleep 5
 done
