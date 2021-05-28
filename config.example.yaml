@@ -1,0 +1,73 @@
+# key for wolfram alpha
+# https://products.wolframalpha.com/api/
+#waKey: 'key'
+
+
+# key for iex
+# https://www.iexcloud.io/pricing/ (Under the two plans there's a just getting start 50,000 credits free plan)
+#iexKey: 'key'
+
+
+# key for bing and its options
+# https://azure.microsoft.com/en-us/pricing/details/cognitive-services/search-api/
+#bingKey: 'key'
+#bingEP: "https://api.cognitive.microsoft.com/bing/v7.0/"
+#bingLang: "en-US"
+
+
+# openweather key
+# https://openweathermap.org/price
+#openweatherKey: "key"
+# Weather uses bing maps to make the location search into lat,long for the lookups
+#bingMapsKey: "key"
+
+
+# Youtube api key
+# https://support.google.com/googleapi/answer/6158862?hl=en
+#gkey: "key"
+# Enable or disable youtube URL responses
+#youtube: true
+# If the bot should use p2u to send a thumbnail to channel
+#youtube_thumb: true
+#youtube_thumbwidth: 60
+# Location of p2u binary
+# https://git.trollforge.org/p2u/
+#p2u: "~/p2u/p2u"
+
+
+# Last.fm API key
+# https://www.last.fm/api/account/create
+#lastfm: key
+
+
+# Set to true to enable codesand
+codesand: false
+
+
+# Should the bot fetch urls and display the title of the page
+linktitles: true
+
+
+# username:password on a github account, not strictly required but will greatly increase api limits
+# Can just register a throwaway github for this
+#github_auth: ""
+
+
+name: pee
+server: localhost
+# server password
+#pass: password
+port: 6667
+bindIp: 0
+ssl: false
+throttle: true
+
+# Use one or the other here
+# This is what preceeds bot commands like -bing
+trigger: "-"
+#trigger_re: "\\.|pee "
+
+# Uncomment to start the notification listen server
+# Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
+# echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
+#listen: "0.0.0.0:1337"
