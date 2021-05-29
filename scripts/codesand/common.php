@@ -49,7 +49,7 @@ function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $output = getRun('/run/php', $req->args['code']);
+    $output = yield from getRun('/run/php', $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -63,7 +63,7 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
 
-    $output = getRun('/run/bash', $req->args['code']);
+    $output = yield from getRun('/run/bash', $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -76,7 +76,7 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $output = getRun('/run/python3', $req->args['code']);
+    $output = yield from getRun('/run/python3', $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -89,7 +89,7 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $output = getRun('/run/python2', $req->args['code']);
+    $output = yield from getRun('/run/python2', $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
