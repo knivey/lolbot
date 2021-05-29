@@ -220,7 +220,11 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             break;
         $s = $i['snippet'];
         $url = "https://youtu.be/{$i['id']['videoId']}";
-        $reply("$url - $s[title] | $s[channelTitle]");
+        $title = html_entity_decode($s['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');;
+        $title = htmlspecialchars_decode($title);
+        $channel = html_entity_decode($s['channelTitle'], ENT_QUOTES | ENT_HTML5, 'UTF-8');;
+        $channel = htmlspecialchars_decode($channel);
+        $reply("$url - $title | $channel");
     }
 }
 
