@@ -9,6 +9,37 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use Symfony\Component\Yaml\Yaml;
 
+function getRun($ep, $code) {
+    $csConfig = Yaml::parseFile(__DIR__.'/config.yaml');
+
+    try {
+        $client = HttpClientBuilder::buildDefault();
+        /** @var Response $response */
+        $request = new Request("{$csConfig['server']}$ep", 'POST');
+        $request->setInactivityTimeout(15000);
+        $request->setHeader("key", $csConfig["key"]);
+        $request->setBody($code); // html chars and such seem to not be a problem
+        $response = yield $client->request($request);
+        $body = yield $response->getBody()->buffer();
+        if ($response->getStatus() != 200) {
+            var_dump($body);
+            // Just in case its huge or some garbage
+            $body = str_replace(["\n", "\r"], '', substr($body, 0, 200));
+            return ["Error (" . $response->getStatus() . ") $body"];
+        }
+    } catch (\Exception $error) {
+        echo $error;
+        return ["\2python3:\2 " . substr($error, 0, strpos($error, "\n"))];
+    }
+
+    $output = json_decode($body, true);
+    if(!is_array($output)) {
+        echo "codesand $ep returnen non array:\n";
+        var_dump($output);
+        return ["something went badly"];
+    }
+    return $output;
+}
 
 #[Cmd("php")]
 #[Syntax("<code>...")]
@@ -18,37 +49,7 @@ function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $csConfig = Yaml::parseFile(__DIR__.'/config.yaml');
-
-    try {
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $request = new Request("{$csConfig['server']}/run/php", 'POST');
-        $request->setInactivityTimeout(15000);
-        $request->setHeader("key", $csConfig["key"]);
-        $request->setBody($req->args['code']);
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = str_replace(["\n", "\r"], '', substr($body, 0, 200));
-            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
-            return;
-        }
-    } catch (\Exception $error) {
-        echo $error;
-        $bot->pm($args->chan, "\2php:\2 " . substr($error, 0, strpos($error, "\n")));
-        return;
-    }
-
-    $output = json_decode($body, true);
-
-    if(!is_array($output)) {
-        var_dump($output);
-        $bot->pm($args->chan, "something went badly");
-        return;
-    }
+    $output = getRun('/run/php', $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -61,37 +62,8 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $csConfig = Yaml::parseFile(__DIR__.'/config.yaml');
 
-    try {
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $request = new Request("{$csConfig['server']}/run/bash", 'POST');
-        $request->setInactivityTimeout(15000);
-        $request->setHeader("key", $csConfig["key"]);
-        $request->setBody($req->args['code']);
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = str_replace(["\n", "\r"], '', substr($body, 0, 200));
-            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
-            return;
-        }
-    } catch (\Exception $error) {
-        echo $error;
-        $bot->pm($args->chan, "\2bash:\2 " . substr($error, 0, strpos($error, "\n")));
-        return;
-    }
-
-    $output = json_decode($body, true);
-
-    if(!is_array($output)) {
-        var_dump($output);
-        $bot->pm($args->chan, "something went badly");
-        return;
-    }
+    $output = getRun('/run/bash', $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -104,37 +76,7 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $csConfig = Yaml::parseFile(__DIR__.'/config.yaml');
-
-    try {
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $request = new Request("{$csConfig['server']}/run/python3", 'POST');
-        $request->setInactivityTimeout(15000);
-        $request->setHeader("key", $csConfig["key"]);
-        $request->setBody($req->args['code']);
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = str_replace(["\n", "\r"], '', substr($body, 0, 200));
-            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
-            return;
-        }
-    } catch (\Exception $error) {
-        echo $error;
-        $bot->pm($args->chan, "\2python3:\2 " . substr($error, 0, strpos($error, "\n")));
-        return;
-    }
-
-    $output = json_decode($body, true);
-
-    if(!is_array($output)) {
-        var_dump($output);
-        $bot->pm($args->chan, "something went badly");
-        return;
-    }
+    $output = getRun('/run/python3', $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
