@@ -80,3 +80,16 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
+
+#[Cmd("py2", "python2")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $output = getRun('/run/python2', $req->args['code']);
+    foreach ($output as $line)
+        $bot->pm($args->chan, $line);
+}
