@@ -68,7 +68,7 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($args->chan, $line);
 }
 
-#[Cmd("py3", "python", "python3")]
+#[Cmd("py3", "py", "python", "python3")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
