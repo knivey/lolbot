@@ -290,6 +290,7 @@ function playart($bot, $chan, $file, $searched = false)
         else
             $pmsg = "Playing from ircwatch";
         if($searched) {
+            //TODO: use regex to know what to replace, for keeping case and for ?* in middle of word
             $pmsg = str_ireplace($searched, "\x0306$searched\x0F", $pmsg);
         }
         array_unshift($pump, $pmsg);

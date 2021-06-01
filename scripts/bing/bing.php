@@ -54,6 +54,11 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $res = $j['webPages']['value'][0];
 
         $bot->pm($args->chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
+
+        if (isset($j['webPages']['value'][1])) {
+            $res = $j['webPages']['value'][1];
+            $bot->pm($args->chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
+        }
     } catch (\Amp\MultiReasonException $errors) {
         foreach ($errors->getReasons() as $error) {
             echo $error;
