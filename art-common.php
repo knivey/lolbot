@@ -124,6 +124,7 @@ function reqart($bot, $chan, $file) {
         return;
     }
     //try fullpath first
+    //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
     foreach($tree as $ent) {
         if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
             playart($bot, $chan, $ent);

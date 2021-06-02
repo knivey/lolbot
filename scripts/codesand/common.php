@@ -93,3 +93,16 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
+
+#[Cmd("fish")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $output = yield from getRun('/run/fish', $req->args['code']);
+    foreach ($output as $line)
+        $bot->pm($args->chan, $line);
+}
