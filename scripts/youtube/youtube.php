@@ -55,7 +55,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
 
 
     $key = $config['gkey'];
-    $URL = '/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/';
+    $URL = '@^((?:https?:)?//)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(/(?:[\w\-]+\?v=|shorts/|embed/|v/)?)([\w\-]+)(\S+)?$@i';
     foreach (explode(' ', $text) as $word) {
         if (!preg_match($URL, $word, $m)) {
             continue;
@@ -103,6 +103,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             // The HttpClient::request() method itself will never throw directly, but returns a promise.
             echo "$error\n";
             $bot->pm($chan, "\2YouTube Error:\2 " . substr($error, 0, strpos($error, "\n")));
+            continue;
         }
 
         if (!is_object($data)) {
@@ -111,19 +112,21 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             continue;
         }
         try {
+            if(!is_array($data->items) || count($data->items) < 1)
+                continue;
             $v = $data->items[0];
             $title = $v->snippet->title;
 
             $dur = ytDuration($v->contentDetails->duration);
             $chanTitle = $v->snippet->channelTitle;
-            $datef = 'M j, Y';
-            $date = date($datef, strtotime($v->snippet->publishedAt));
-            $views = number_format($v->statistics->viewCount);
-            $likes = number_format($v->statistics->likeCount);
-            $hates = number_format($v->statistics->dislikeCount);
+            //$datef = 'M j, Y';
+            //$date = date($datef, strtotime($v->snippet->publishedAt));
+            //$views = number_format($v->statistics->viewCount);
+            //$likes = number_format($v->statistics->likeCount);
+            //$hates = number_format($v->statistics->dislikeCount);
 
-            if(($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
-                $thumbnail = $v->snippet->thumbnails->high->url;
+            $thumbnail = $v?->snippet?->thumbnails?->high?->url;
+            if($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                 $ext = explode('.', $thumbnail);
                 $ext = array_pop($ext);
                 try {
