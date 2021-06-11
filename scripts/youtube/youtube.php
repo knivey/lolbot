@@ -180,6 +180,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
 #[Cmd("yt", "ytsearch", "youtube")]
 #[Syntax('[query]...')]
 #[CallWrap("Amp\asyncCall")]
+#[Options("--amt")]
 function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
@@ -189,7 +190,14 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $reply("youtube key not set on config");
         return;
     }
-
+    $amt = 3;
+    if($req->args->getOpt("--amt")) {
+        $amt = $req->args->getOptVal("--amt");
+        if($amt < 1 || $amt > 5) { //If greater than 5 should increase maxResults in api call
+            $reply("Result --amt should be from 1 to 5");
+            return;
+        }
+    }
 
     $q = urlencode(htmlentities($req->args['query']));
     // search only supports snippet part :(
@@ -219,7 +227,7 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
     $cnt = 0;
     foreach ($res['items'] as $i) {
-        if($cnt++ >=3)
+        if($cnt++ >=$amt)
             break;
         $s = $i['snippet'];
         $url = "https://youtu.be/{$i['id']['videoId']}";
@@ -228,6 +236,9 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $channel = html_entity_decode($s['channelTitle'], ENT_QUOTES | ENT_HTML5, 'UTF-8');;
         $channel = htmlspecialchars_decode($channel);
         $reply("$url - $title | $channel");
+    }
+    if($cnt < $amt) {
+        $reply("No more results :(");
     }
 }
 
