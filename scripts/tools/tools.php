@@ -95,7 +95,7 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     try {
         $body = yield simpleUrlAsync($url);
         $xml = simplexml_load_string($body);
-        var_dump($xml);
+        //var_dump($xml);
         if($xml === false)
             throw new \Exception("Couldn't parse response as XML");
         if(isset($xml->Errors->Error)) {
