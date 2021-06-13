@@ -40,6 +40,11 @@
 #lastfm: key
 
 
+# namecheap API key
+#namecheap_key: key
+# namecheap user
+#namecheap_user: user
+
 # Set to true to enable codesand
 codesand: false
 

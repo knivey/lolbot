@@ -4,6 +4,7 @@ namespace knivey\lolbot\tools;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Irc\Exception;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
@@ -54,6 +55,62 @@ function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $bot->pm($args->chan, "DNS for {$req->args['query']} ".($req->args['type'] ?? 'A, AAAA')." - $recs");
     } catch (\Exception $e) {
         $bot->pm($args->chan, "DNS Exception {$e->getMessage()}");
+    }
+}
+
+function simpleUrlAsync($url) {
+    return \Amp\call(function () use ($url) {
+        $client = HttpClientBuilder::buildDefault();
+        $request = new Request($url);
+        /** @var Response $response */
+        $response = yield $client->request($request);
+        $body = yield $response->getBody()->buffer();
+        if ($response->getStatus() != 200) {
+            var_dump($body);
+            // Just in case its huge or some garbage
+            $body = substr($body, 0, 200);
+            $body = str_replace(["\n", "\r"], "", $body);
+            throw new \Exception("Error (" . $response->getStatus() . ") $body");
+        }
+        return $body;
+    });
+}
+
+#[Cmd("domaincheck")]
+#[Syntax('<domain>')]
+#[CallWrap("Amp\asyncCall")]
+function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config;
+    $key = $config['namecheap_key'] ?? false;
+    $user = $config['namecheap_user'] ?? false;
+    if(!$key || !$user) {
+        $bot->pm($args->chan, "namecheap key or user not set on config");
+        return;
+    }
+    $domain = $req->args['domain'];
+    $domain = urlencode($domain);
+    //ClientIP 127.0.0.1 seems to work weird for API to want this..
+    $url = "https://api.namecheap.com/xml.response?ApiUser=$user&ApiKey=$key&UserName=$user&Command=namecheap.domains.check&ClientIp=127.0.0.1&DomainList=$domain";
+    try {
+        $body = yield simpleUrlAsync($url);
+        $xml = simplexml_load_string($body);
+        var_dump($xml);
+        if($xml === false)
+            throw new \Exception("Couldn't parse response as XML");
+        if(isset($xml->Errors->Error)) {
+            var_dump($xml);
+            throw new \Exception($xml->Errors->Error);
+        }
+        if(!isset($xml->CommandResponse))
+            throw new \Exception("API didnt include response");
+        if($xml->CommandResponse->DomainCheckResult["Available"] == "true") {
+            $bot->pm($args->chan, "\2DomainCheck:\2 That domain is available for register!");
+        } else {
+            $bot->pm($args->chan, "\2DomainCheck:\2 That domain is already taken :(");
+        }
+    } catch (\Exception $error) {
+        $bot->pm($args->chan, "\2DomainCheck Error:\2 " . substr($error->getMessage(), 0, 200));
     }
 }
 
