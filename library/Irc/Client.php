@@ -12,6 +12,12 @@ use Amp\Socket\ClientTlsContext;
 use function Amp\Socket\connect;
 use function Amp\asyncCall;
 
+function stripForTerminal($str) {
+    $str = preg_replace("/(\x1b\[|\x9b)[^@-_]*[@-_]|\x1b[@-_]/", "", $str);
+    $str = preg_replace("/[\x1-\x1f]/", "", $str);
+    return $str;
+}
+
 class Client extends EventEmitter
 {
 
@@ -166,7 +172,7 @@ class Client extends EventEmitter
     {
         if (!$this->isConnected)
             return new \Amp\Failure(new Exception("Not connected"));
-        echo ">>>> $line";
+        echo stripForTerminal(">>>> $line") . "\n";
         return $this->socket->write($line);
     }
 
@@ -372,7 +378,7 @@ class Client extends EventEmitter
     {
         while ($this->hasLine()) {
             $message = $this->getLine();
-            echo "<< $message\n";
+            echo stripForTerminal("<< $message") . "\n";
 
             if (empty($message))
                 return $this;
@@ -410,7 +416,7 @@ class Client extends EventEmitter
 
         if ($this->doThrottle == false) {
             foreach ($this->sendQ as $key => $msg) {
-                echo ">> $msg";
+                echo stripForTerminal(">> $msg") . "\n";
                 yield $this->socket->write($msg);
                 unset($this->sendQ[$key]);
             }
@@ -430,7 +436,7 @@ class Client extends EventEmitter
             if ($this->msg_since - microtime(true) >= 10) {
                 break;
             }
-            echo "> $msg";
+            echo stripForTerminal("> $msg") . "\n";
             //TODO catch exception?
             yield $this->socket->write($msg);
             $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
