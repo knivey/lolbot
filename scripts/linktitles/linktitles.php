@@ -67,7 +67,8 @@ function linktitles(\Irc\Client $bot, $chan, $text)
         $link_ratelimit = time() + 2;
 
         //Handle github user or project
-        if(preg_match("@^https?://(?:www\.)?github\.com/([^/?]+)(?:/([^/?]+))?/?$@i", $word, $m)) {
+        if(preg_match("@^https?://(?:www\.)?github\.com/([^/?&#]+)(?:/([^/?#&]+))?[/?#]?.*$@i", $word, $m)) {
+            var_dump($m);
             $user = $m[1];
             $repo = $m[2] ?? null;
             if($out = yield from github($user, $repo)) {
