@@ -49,7 +49,8 @@ function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $output = yield from getRun('/run/php', $req->args['code']);
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/php?maxlines=$maxlines", $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -62,8 +63,8 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-
-    $output = yield from getRun('/run/bash', $req->args['code']);
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/bash?maxlines=$maxlines", $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -76,7 +77,8 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $output = yield from getRun('/run/python3', $req->args['code']);
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/python3?maxlines=$maxlines", $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -89,7 +91,8 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $output = yield from getRun('/run/python2', $req->args['code']);
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/python2?maxlines=$maxlines", $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
@@ -102,7 +105,8 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
-    $output = yield from getRun('/run/fish', $req->args['code']);
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/fish?maxlines=$maxlines", $req->args['code']);
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
