@@ -235,6 +235,8 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $title = htmlspecialchars_decode($title);
         $channel = html_entity_decode($s['channelTitle'], ENT_QUOTES | ENT_HTML5, 'UTF-8');;
         $channel = htmlspecialchars_decode($channel);
+        //$desc = html_entity_decode($s['description'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        //$desc = htmlspecialchars_decode($desc);
         $reply("$url - $title | $channel");
     }
     if($cnt < $amt) {

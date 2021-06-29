@@ -91,6 +91,7 @@ Loop::run(function () {
         }
 
         //TODO SOME ART NAMES HAVE SPACES
+        //Bescause we want to handle arguments to the arts later we might convert the spaces to _
         $text = explode(' ', $text);
         $cmd = strtolower(array_shift($text));
         $text = implode(' ', $text);

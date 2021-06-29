@@ -163,7 +163,7 @@ function chanaccess($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--rainbow", "--rnb")]
+#[Options("--rainbow", "--rnb", "--bsize")]
 function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0] ?? '';
@@ -228,8 +228,18 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $bot->pm($args->chan, "content-type was ".implode('/', $type)." should be text/plain or image/* (pastebin.com maybe works too)");
                 return;
             }
-            if($req->args->getOpt('--rainbow') || $req->args->getOpt('--rnb'))
-                $body = irctools\diagRainbow($body);
+            if($req->args->getOpt('--rainbow') || $req->args->getOpt('--rnb')) {
+                $dir = $req->args->getOptVal('--rainbow');
+                if($dir === false)
+                    $dir = $req->args->getOptVal('--rnb');
+                $dir = intval($dir);
+                $bsize = $req->args->getOptVal('--bsize');
+                if(!$bsize)
+                    $bsize = null;
+                else
+                    $bsize = intval($bsize);
+                $body = irctools\diagRainbow($body, $bsize, $dir);
+            }
             $cnt = 0;
             $body = explode("\n", $body);
             foreach ($body as $line) {
