@@ -20,10 +20,35 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\irctools;
+use knivey\cmdr\Cmdr;
+
+$router = new Cmdr();
 
 $config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
 require_once 'art-common.php';
+$router->loadFuncs();
 
+
+//copied from Cmdr should give it its own function in there later
+function parseOpts(string &$msg, array $validOpts = []): array {
+    $opts = [];
+    $msg = explode(' ', $msg);
+    $msgb = [];
+    foreach ($msg as $w) {
+        if(str_contains($w, "=")) {
+            list($lhs, $rhs) = explode("=", $w, 2);
+        } else {
+            $lhs = $w;
+            $rhs = null;
+        }
+        if(in_array($lhs, $validOpts))
+            $opts[$lhs] = $rhs;
+        else
+            $msgb[] = $w;
+    }
+    $msg = implode(' ', $msgb);
+    return $opts;
+}
 
 $bot = null;
 Loop::run(function () {
@@ -96,33 +121,21 @@ Loop::run(function () {
         $cmd = strtolower(array_shift($text));
         $text = implode(' ', $text);
 
-        if($cmd == 'search' || $cmd == 'find') {
-            searchart($bot, $args->channel, $text);
-            return;
-        }
-        if($cmd == 'random') {
-            randart($bot, $args->channel, $text);
-            return;
-        }
-        if($cmd == 'stop') {
-            stop($bot, $args->from, $args->channel, $text);
-            return;
-        }
-        if($cmd == 'record') {
-            record($bot, $args->from, $args->channel, $text);
-            return;
-        }
-        if($cmd == 'end') {
-            endart($bot, $args->from, $args->channel, $text);
-            return;
-        }
-        if($cmd == 'cancel') {
-            cancel($bot, $args->from, $args->channel, $text);
-            return;
-        }
+
         if(trim($cmd) == '')
             return;
-        Amp\asyncCall('reqart', $bot, $args->channel, $cmd);
+        if(isset($router->cmds[$cmd])) {
+            try {
+                $router->call($cmd, $text, $args, $bot);
+            } catch (Exception $e) {
+                $bot->notice($args->from, $e->getMessage());
+            }
+        } else {
+            var_dump($text);
+            $opts = parseOpts($text, ['--flip']);
+            var_dump($opts);
+            reqart($bot, $args->channel, $cmd, $opts);
+        }
     });
 
     Loop::onSignal(SIGINT, function ($watcherId) use ($bot) {

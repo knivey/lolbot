@@ -3,21 +3,30 @@ use Amp\Loop;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Options;
+use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
 
 $recordings = [];
 
-function record($bot, $nick, $chan, $text) {
+#[Cmd("record")]
+#[Syntax('<filename>')]
+function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
+    $file = $req->args['filename'];
     global $recordings, $config;
     if(isset($recordings[$nick])) {
         return;
     }
-    if(!preg_match('/^[a-z0-9\-\_]+$/', $text)) {
+    if(!preg_match('/^[a-z0-9\-\_]+$/', $file)) {
         $bot->pm($chan, 'Pick a filename matching [a-z0-9\-\_]+');
         return;
     }
     $reserved = ['artfart', 'random', 'search', 'find', 'stop', 'record', 'end', 'cancel'];
-    if(in_array(strtolower($text), $reserved)) {
+    if(in_array(strtolower($file), $reserved)) {
         $bot->pm($chan, 'That name has been reserved');
         return;
     }
@@ -31,7 +40,7 @@ function record($bot, $nick, $chan, $text) {
         return;
     }
     foreach($tree as $ent) {
-        if($text == strtolower(basename($ent, '.txt'))) {
+        if($file == strtolower(basename($ent, '.txt'))) {
             $exists = substr($ent, strlen($config['artdir']));
             break;
         }
@@ -40,7 +49,7 @@ function record($bot, $nick, $chan, $text) {
         $bot->pm($chan, "Warning: That file name has been used by $exists, to playback may require a full path or you can @cancel and use a new name");
 
     $recordings[$nick] = [
-        'name' => $text,
+        'name' => $file,
         'nick' => $nick,
         'chan' => $chan,
         'art' => [],
@@ -70,7 +79,11 @@ function timeOut($watcher, $data) {
     unset($recordings[$nick]);
 }
 
-function endart($bot, $nick, $chan, $text) {
+#[Cmd("end")]
+function endart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
+//function endart($bot, $nick, $chan, $text) {
     global $recordings, $config;
     if(!isset($recordings[$nick])) {
         $bot->pm($chan, "You aren't doing a recording");
@@ -100,7 +113,10 @@ function endart($bot, $nick, $chan, $text) {
     unset($recordings[$nick]);
 }
 
-function cancel($bot, $nick, $chan, $text) {
+#[Cmd("cancel")]
+function cancel($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
     global $recordings;
     if(!isset($recordings[$nick])) {
         $bot->pm($chan, "You aren't doing a recording");
@@ -111,51 +127,53 @@ function cancel($bot, $nick, $chan, $text) {
     unset($recordings[$nick]);
 }
 
-function reqart($bot, $chan, $file) {
-    global $config, $playing;
-    if(isset($playing[$chan])) {
-        return;
-    }
-    $base = $config['artdir'];
-    try {
-        $tree = knivey\tools\dirtree($base);
-    } catch (Exception $e) {
-        echo "{$e}\n";
-        return;
-    }
-    //try fullpath first
-    //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
-    foreach($tree as $ent) {
-        if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
-            playart($bot, $chan, $ent);
+function reqart($bot, $chan, $file, $opts = []) {
+    \Amp\asyncCall(function() use ($bot, $chan, $file, $opts) {
+        global $config, $playing;
+        if(isset($playing[$chan])) {
             return;
         }
-    }
-    foreach($tree as $ent) {
-        if($file == strtolower(basename($ent, '.txt'))) {
-            playart($bot, $chan, $ent);
+        $base = $config['artdir'];
+        try {
+            $tree = knivey\tools\dirtree($base);
+        } catch (Exception $e) {
+            echo "{$e}\n";
             return;
         }
-    }
-    try {
-        $client = HttpClientBuilder::buildDefault();
-        $url = "https://irc.watch/ascii/$file/";
-        $req = new Request("https://irc.watch/ascii/txt/$file.txt");
-        /** @var Response $response */
-        $response = yield $client->request($req);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() == 200) {
-            file_put_contents("ircwatch.txt", "$body\n$url");
-            playart($bot, $chan, "ircwatch.txt");
-            return;
+        //try fullpath first
+        //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
+        foreach($tree as $ent) {
+            if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
+                playart($bot, $chan, $ent, opts: $opts);
+                return;
+            }
         }
-    } catch (Exception $error) {
-        // If something goes wrong Amp will throw the exception where the promise was yielded.
-        // The HttpClient::request() method itself will never throw directly, but returns a promise.
-        echo "$error\n";
-        //$bot->pm($chan, "LinkTitles Exception: " . $error);
-    }
-    //$bot->pm($chan, "that art not found");
+        foreach($tree as $ent) {
+            if($file == strtolower(basename($ent, '.txt'))) {
+                playart($bot, $chan, $ent, opts: $opts);
+                return;
+            }
+        }
+        try {
+            $client = HttpClientBuilder::buildDefault();
+            $url = "https://irc.watch/ascii/$file/";
+            $req = new Request("https://irc.watch/ascii/txt/$file.txt");
+            /** @var Response $response */
+            $response = yield $client->request($req);
+            $body = yield $response->getBody()->buffer();
+            if ($response->getStatus() == 200) {
+                file_put_contents("ircwatch.txt", "$body\n$url");
+                playart($bot, $chan, "ircwatch.txt", opts: $opts);
+                return;
+            }
+        } catch (Exception $error) {
+            // If something goes wrong Amp will throw the exception where the promise was yielded.
+            // The HttpClient::request() method itself will never throw directly, but returns a promise.
+            echo "$error\n";
+            //$bot->pm($chan, "LinkTitles Exception: " . $error);
+        }
+        //$bot->pm($chan, "that art not found");
+    });
 }
 
 function searchIrcwatch($file) {
@@ -190,7 +208,13 @@ function searchIrcwatch($file) {
     });
 }
 
-function searchart($bot, $chan, $file) {
+//todo paginate search
+#[Cmd("search", "find")]
+#[Syntax('<query>')]
+function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
+    $file = $req->args['query'];
     \Amp\asyncCall(function () use ($bot, $chan, $file) {
         global $config, $playing;
         if (isset($playing[$chan])) {
@@ -236,12 +260,17 @@ function searchart($bot, $chan, $file) {
     });
 }
 
-function randart($bot, $chan, $file) {
+#[Cmd("random")]
+#[Syntax('[search]')]
+function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
+
     global $config, $playing;
     if(isset($playing[$chan])) {
         return;
     }
-    $file = strtolower($file);
+
     $base = $config['artdir'];
     try {
         $tree = knivey\tools\dirtree($base);
@@ -250,7 +279,9 @@ function randart($bot, $chan, $file) {
         return;
     }
     $matches = $tree;
-    if($file != '') {
+    $file = '';
+    if(isset($req->args['search'])) {
+        $file = strtolower($req->args['search']);
         $matches = [];
         foreach ($tree as $ent) {
             $check = substr($ent, strlen($config['artdir']));
@@ -266,26 +297,31 @@ function randart($bot, $chan, $file) {
         $bot->pm($chan, "no matching art found");
 }
 
-function stop($bot, $nick, $chan, $text) {
+#[Cmd("stop")]
+function stop($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
     global $recordings, $playing;
     if(isset($playing[$chan])) {
         $playing[$chan] = [];
         $bot->pm($chan, 'stopped');
     } else {
         if(isset($recordings[$nick])) {
-            endart($bot, $nick, $chan, $text);
+            endart($args, $bot, $req);
             return;
         }
         $bot->pm($chan, 'not playing');
     }
 }
 
-function playart($bot, $chan, $file, $searched = false)
+function playart($bot, $chan, $file, $searched = false, $opts = [])
 {
     global $playing, $config;
-
     if (!isset($playing[$chan])) {
         $pump = irctools\loadartfile($file);
+        var_dump($opts);
+        if(array_key_exists('--flip', $opts))
+            $pump = array_reverse($pump);
         if($file != "ircwatch.txt")
             $pmsg = "Playing " . substr($file, strlen($config['artdir']));
         else

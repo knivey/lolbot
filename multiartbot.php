@@ -33,9 +33,33 @@ $config = Yaml::parseFile(__DIR__ . '/multiartconfig.yaml');
 class Playing {
     public array $data = [];
 }
+use knivey\cmdr\Cmdr;
 
+$router = new Cmdr();
 require_once 'multiartsnotifier.php';
 require_once 'art-common.php';
+$router->loadFuncs();
+
+//copied from Cmdr should give it its own function in there later
+function parseOpts(string &$msg, array $validOpts = []): array {
+    $opts = [];
+    $msg = explode(' ', $msg);
+    $msgb = [];
+    foreach ($msg as $w) {
+        if(str_contains($w, "=")) {
+            list($lhs, $rhs) = explode("=", $w, 2);
+        } else {
+            $lhs = $w;
+            $rhs = null;
+        }
+        if(in_array($lhs, $validOpts))
+            $opts[$lhs] = $rhs;
+        else
+            $msgb[] = $w;
+    }
+    $msg = implode(' ', $msgb);
+    return $opts;
+}
 
 function onchat($args, \Irc\Client $bot)
 {
@@ -64,34 +88,20 @@ function onchat($args, \Irc\Client $bot)
     $text = implode(' ', $text);
 
 
-    if($cmd == 'search' || $cmd == 'find') {
-        searchart($bot, $args->channel, $text);
-        return;
-    }
-    if($cmd == 'random') {
-        randart($bot, $args->channel, $text);
-        return;
-    }
-    if($cmd == 'stop') {
-        stop($bot, $args->from, $args->channel, $text);
-        return;
-    }
-    if($cmd == 'record') {
-        record($bot, $args->from, $args->channel, $text);
-        return;
-    }
-    if($cmd == 'end') {
-        endart($bot, $args->from, $args->channel, $text);
-        return;
-    }
-    if($cmd == 'cancel') {
-        cancel($bot, $args->from, $args->channel, $text);
-        return;
-    }
-
     if(trim($cmd) == '')
         return;
-    Amp\asyncCall('reqart', $bot, $args->channel, $cmd);
+    if(isset($router->cmds[$cmd])) {
+        try {
+            $router->call($cmd, $text, $args, $bot);
+        } catch (Exception $e) {
+            $bot->notice($args->from, $e->getMessage());
+        }
+    } else {
+        var_dump($text);
+        $opts = parseOpts($text, ['--flip']);
+        var_dump($opts);
+        reqart($bot, $args->channel, $cmd, $opts);
+    }
 }
 
 /** @var \Irc\Client[] $bots */
