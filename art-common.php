@@ -320,8 +320,28 @@ function playart($bot, $chan, $file, $searched = false, $opts = [])
     if (!isset($playing[$chan])) {
         $pump = irctools\loadartfile($file);
         var_dump($opts);
-        if(array_key_exists('--flip', $opts))
+        if(array_key_exists('--flip', $opts)) {
             $pump = array_reverse($pump);
+            $find    = ["╯", "╮", "╭", "╰", "┬", "┴"];
+            $replace = ["╮", "╯", "╰", "╭", "┴", "┬"];
+            //we must do it this way or str_replace rereplaces
+            foreach ($pump as &$line) {
+                $newline = '';
+                foreach (mb_str_split($line) as $c) {
+                    $fnd = false;
+                    foreach ($find as $k => $f) {
+                        if($c == $f) {
+                            $newline .= $replace[$k];
+                            $fnd = true;
+                            break;
+                        }
+                    }
+                    if(!$fnd)
+                        $newline .= $c;
+                }
+                $line = $newline;
+            }
+        }
         if($file != "ircwatch.txt")
             $pmsg = "Playing " . substr($file, strlen($config['artdir']));
         else
