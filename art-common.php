@@ -322,8 +322,25 @@ function playart($bot, $chan, $file, $searched = false, $opts = [])
         var_dump($opts);
         if(array_key_exists('--flip', $opts)) {
             $pump = array_reverse($pump);
-            $find    = ["╯", "╮", "╭", "╰", "┬", "┴"];
-            $replace = ["╮", "╯", "╰", "╭", "┴", "┬"];
+            //could be some dupes
+            $find    = ["/", "\\",
+                        "╮", "╯", "╰", "╭", "┴", "┬",
+                        "┬", "╨",
+                        "┴", "╥",
+                        "┌", "┍", "┎", "┏",
+                        "└", "┕", "┖", "┗",
+                        "┘", "┙", "┚", "┛",
+                        "┐", "┑", "┒", "┓",
+            ];
+            $replace = ["\\", "/",
+                        "╯", "╮", "╭", "╰", "┬", "┴",
+                        "┴", "╥",
+                        "┬", "╨",
+                        "└", "┕", "┖", "┗",
+                        "┌", "┍", "┎", "┏",
+                        "┐", "┑", "┒", "┓",
+                        "┘", "┙", "┚", "┛"
+                ];
             //we must do it this way or str_replace rereplaces
             foreach ($pump as &$line) {
                 $newline = '';
