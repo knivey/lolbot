@@ -7,3 +7,5 @@ throttle: false
 bindIp: 0
 channels: ['#knivey','#h4x']
 artdir: "/home/knivey/ircart/"
+pumplag: 25
+a2m: ~/a2m/a2m

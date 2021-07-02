@@ -1,4 +1,6 @@
 <?php
+require_once 'library/async_get_contents.php';
+
 use Amp\Loop;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
@@ -376,5 +378,67 @@ function playart($bot, $chan, $file, $searched = false, $opts = [])
         array_unshift($pump, $pmsg);
         pumpToChan($chan, $pump);
     }
+}
+
+//little helper because exec() echod
+function quietExec($cmd)
+{
+    $descSpec = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+    $p = proc_open($cmd, $descSpec, $pipes);
+    if (!is_resource($p)) {
+        throw new Exception("Unable to execute $cmd\n");
+    }
+    $out = stream_get_contents($pipes[1]);
+    $err = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $rc = proc_close($p);
+    return [$rc, $out, $err];
+}
+
+#[Cmd("a2m")]
+#[Syntax('<url>')]
+function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config;
+    $chan = $args->chan;
+    if(!isset($config['a2m'])) {
+        $bot->pm($chan, "a2m not setup in config");
+        return;
+    }
+    \Amp\asyncCall(function () use ($bot, $chan, $req) {
+        global $playing, $config;
+        try {
+            $a2m = $config['a2m'];
+            $url = $req->args['url'];
+            /*
+             * restricting the allowed URL for this to try to only do ansi arts otherwise anything would run through
+             *
+             * also content-type: application/octet-stream is what https://16colo.rs/ gives
+             * curl -i https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans
+             */
+            if(!preg_match("@https?://16colo\.rs/.+\.ans@i", $url)) {
+                $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ raw urls (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
+                return;
+            }
+
+            $body = yield async_get_contents($url);
+            if(!is_dir('ans'))
+                mkdir('ans');
+            // perhaps in future we try to find proper names and keep files around.
+            $file = "ans/" . uniqid() . ".ans";
+            file_put_contents($file, $body);
+            list($rc, $out, $err) = quietExec("$a2m $file");
+            if($rc != 0) {
+                $bot->pm($chan, "\2a2m Error:\2 " . trim($err));
+                unlink($file);
+                return;
+            }
+            pumpToChan($chan, explode("\n", trim($out)));
+            unlink($file);
+        } catch (\Exception $error) {
+            $bot->pm($chan, "\2a2m Error:\2 " . substr($error->getMessage(), 0, 200));
+        }
+    });
 }
 
