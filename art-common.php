@@ -398,6 +398,7 @@ function quietExec($cmd)
 
 #[Cmd("a2m")]
 #[Syntax('<url>')]
+#[Options('--width')]
 function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
@@ -416,6 +417,8 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
              *
              * also content-type: application/octet-stream is what https://16colo.rs/ gives
              * curl -i https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans
+             *
+             * TODO since we are limiting to 16colo.rs just allow any url to the file and auto get width option etc
              */
             if(!preg_match("@https?://16colo\.rs/.+\.ans@i", $url)) {
                 $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ raw urls (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
@@ -428,7 +431,10 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             // perhaps in future we try to find proper names and keep files around.
             $file = "ans/" . uniqid() . ".ans";
             file_put_contents($file, $body);
-            list($rc, $out, $err) = quietExec("$a2m $file");
+            $width = intval($req->args->getOptVal("--width"));
+            if(!$width)
+                $width = 80;
+            list($rc, $out, $err) = quietExec("$a2m -w $width $file");
             if($rc != 0) {
                 $bot->pm($chan, "\2a2m Error:\2 " . trim($err));
                 unlink($file);
