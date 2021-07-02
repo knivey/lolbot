@@ -174,14 +174,15 @@ $playing = [];
 
 function pumpToChan(string $chan, array $data) {
     \Amp\asyncCall(function () use ($chan, $data) {
-        global $playing, $bot;
+        global $playing, $bot, $config;
         if (isset($playing[$chan])) {
             array_push($playing[$chan], ...$data);
         } else {
             $playing[$chan] = $data;
             while (!empty($playing[$chan])) {
                 $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
-                yield \Amp\delay(25);
+                $pumpLag = $config['pumplag'] ?? 25;
+                yield \Amp\delay($pumpLag);
             }
             unset($playing[$chan]);
         }
