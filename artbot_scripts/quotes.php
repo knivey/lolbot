@@ -96,7 +96,7 @@ function stripTimestamp($line) {
     }
     $test = str_replace(['[',']'], '', $m[1]);
     var_dump($test);
-    if(!strtotime($test)) {
+    if(!strtotime(trim($test))) {
         return $line;
     }
     $line = substr($line, strlen($m[1]));
