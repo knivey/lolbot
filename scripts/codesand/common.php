@@ -110,3 +110,17 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     foreach ($output as $line)
         $bot->pm($args->chan, $line);
 }
+
+#[Cmd("c", "tcc")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/tcc?maxlines=$maxlines", $req->args['code']);
+    foreach ($output as $line)
+        $bot->pm($args->chan, $line);
+}
