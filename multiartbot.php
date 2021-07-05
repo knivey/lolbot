@@ -37,7 +37,7 @@ use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 require_once 'multiartsnotifier.php';
-require_once 'art-common.php';
+require_once 'artbot_scripts/art-common.php';
 $router->loadFuncs();
 
 //copied from Cmdr should give it its own function in there later
