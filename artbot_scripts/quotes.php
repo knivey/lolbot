@@ -99,7 +99,7 @@ function stripTimestamp($line) {
     if(!strtotime($test)) {
         return $line;
     }
-    $line = substr($line, strlen($m[1]));
+    $line = substr($line, strlen($m[1]) - 1);
     var_dump($line);
     return $line;
 }
