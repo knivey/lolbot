@@ -146,7 +146,7 @@ Loop::run(function () {
              */
             if (function_exists("initQuotes"))
                 initQuotes($bot);
-            
+
             $bot->on('chat', 'onchat');
         }
         $cnt++;

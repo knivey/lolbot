@@ -82,7 +82,6 @@ function endquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $quote->creator = $creator;
     $quote->chan = $chan;
     $quote->date = R::isoDateTime();
-    r::store($quote);
 
     $id = R::store($quote);
     $bot->pm($quote_recordings[$nick]['chan'], "Quote recording finished ;) saved to id: $id");
@@ -90,17 +89,17 @@ function endquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 function stripTimestamp($line) {
-    var_dump($line);
+    //var_dump($line);
     if(!preg_match("@^( *\[? *[\d:\-\\\/ ]+ *(?:am|pm)? *[\d:\-\\\/ ]* *\]? *).+$@i", $line, $m)) {
         return $line;
     }
     $test = str_replace(['[',']'], '', $m[1]);
-    var_dump($test);
+    //var_dump($test);
     if(!strtotime(trim($test))) {
         return $line;
     }
     $line = substr($line, strlen($m[1]));
-    var_dump($line);
+    //var_dump($line);
     return $line;
 }
 
