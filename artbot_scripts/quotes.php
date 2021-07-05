@@ -147,12 +147,13 @@ function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $quote = array_pop($quote);
     }
     $creator = $quote->creator;
-    $bot->pm($args->chan, "\2Quote {$quote['id']} recorded by {$creator['nick']} ({$creator['host']}) on {$quote['date']} in {$quote['chan']}");
+    $header = "\2Quote {$quote['id']} recorded by {$creator['nick']} ({$creator['host']}) on {$quote['date']} in {$quote['chan']}";
     if(!is_string($quote['data'])) {
         $bot->pm($args->chan, "whoops something wrong with quote..");
         return;
     }
     $lines = explode("\n", $quote['data']);
+    array_unshift($lines, $header);
     pumpToChan($args->chan, $lines);
 }
 
