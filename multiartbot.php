@@ -141,12 +141,13 @@ Loop::run(function () {
 
         //Only first bot handles seeing commands, recording arts, etc
         if($cnt == 0) {
-            $bot->on('chat', 'onchat');
             /***** Init scripts with hooks ******
              * definately will do this in a better way later via registering or whatever
              */
             if (function_exists("initQuotes"))
                 initQuotes($bot);
+            
+            $bot->on('chat', 'onchat');
         }
         $cnt++;
     }
