@@ -1,0 +1,171 @@
+<?php
+use Amp\Loop;
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\Response;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Options;
+use knivey\cmdr\attributes\Syntax;
+use knivey\irctools;
+
+use \RedBeanPHP\R as R;
+global $config;
+R::setup("sqlite:{$config['quotedb']}");
+
+$quote_recordings = [];
+
+//TODO adding one liners after addquote dont enter recording mode just do them
+//TODO website where you can select what lines to addquote from log
+
+#[Cmd("addquote")]
+#[Options('--keeptimes')]
+function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
+    $file = $req->args['filename'];
+    global $quote_recordings, $config;
+    if(isset($quote_recordings[$nick])) {
+        return;
+    }
+
+    $quote_recordings[$nick] = [
+        'name' => $file,
+        'nick' => $nick,
+        'chan' => $chan,
+        'lines' => [],
+        'keeptimes' => $req->args->getOpt('--keeptimes'),
+        'timeOut' => Amp\Loop::delay(15000, 'quoteTimeOut', [$nick, $bot]),
+    ];
+    $bot->pm($chan, "Quote recording started type \x02\x034@endquote\x03\x02 when done or discard with @cancelquote or just wait 15 seconds.");
+}
+
+function quoteTimeOut($watcher, $data) {
+    global $quote_recordings;
+    list ($nick, $bot) = $data;
+    if(!isset($quote_recordings[$nick])) {
+        echo "Timeout called but not recording?\n";
+        return;
+    }
+    $bot->pm($quote_recordings[$nick]['chan'], "Canceling quote recording for $nick due to no messages for 15 seconds");
+    Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+    unset($quote_recordings[$nick]);
+}
+
+#[Cmd("endquote", "stopquote")]
+function endquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $host = $args->host;
+    $chan = $args->chan;
+    global $quote_recordings, $config;
+    if(!isset($quote_recordings[$nick])) {
+        $bot->pm($chan, "You aren't doing a recording");
+        return;
+    }
+    Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+    //last line will be the command for end, so delete it
+    array_pop($quote_recordings[$nick]['lines']);
+    if(empty($quote_recordings[$nick]['lines'])) {
+        $bot->pm($quote_recordings[$nick]['chan'], "Nothing recorded, cancelling");
+        unset($quote_recordings[$nick]);
+        return;
+    }
+    $quote = R::dispense('quote');
+    $quote->data = implode("\n", $quote_recordings[$nick]['lines']);
+    $creator = R::findOne('creator', ' nick = ? AND host = ? ', [$nick, $host]);
+    if($creator == null) {
+        $creator = R::dispense('creator');
+        $creator->nick = $nick;
+        $creator->host = $host;
+        R::store($creator);
+    }
+    $quote->creator = $creator;
+    $quote->chan = $chan;
+    $quote->date = R::isoDateTime();
+    r::store($quote);
+
+    $id = R::store($quote);
+    $bot->pm($quote_recordings[$nick]['chan'], "Quote recording finished ;) saved to id: $id");
+    unset($quote_recordings[$nick]);
+}
+
+function stripTimestamp($line) {
+    var_dump($line);
+    if(!preg_match("@( *\[? *[\d:\-\\\/ ]+ *(?:am|pm)? *[\d:\-\\\/ ]* *\]? *).+@i", $line, $m)) {
+        return $line;
+    }
+    $test = str_replace(['[',']'], '', $m[1]);
+    var_dump($test);
+    if(!strtotime($test)) {
+        return $line;
+    }
+    $line = substr($line, strlen($m[1]));
+    var_dump($line);
+    return $line;
+}
+
+#[Cmd("cancelquote")]
+function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $nick = $args->nick;
+    $chan = $args->chan;
+    global $quote_recordings;
+    if(!isset($quote_recordings[$nick])) {
+        $bot->pm($chan, "You aren't doing a quote recording");
+        return;
+    }
+    $bot->pm($chan, "Quote recording canceled");
+    Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+    unset($quote_recordings[$nick]);
+}
+
+function initQuotes($bot) {
+    $bot->on('chat', function ($args, \Irc\Client $bot) {
+        global $quote_recordings;
+        $nick = $args->from;
+        $text = $args->text;
+        if(!isset($quote_recordings[$nick]))
+            return;
+        Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+        $quote_recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, 'timeOut', [$nick, $bot]);
+        if(!$quote_recordings[$nick]['keeptimes'])
+            $text = stripTimestamp($text);
+        $quote_recordings[$nick]['lines'][] = $text;
+    });
+}
+
+#[Cmd("quote")]
+#[Syntax("[id]")]
+function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    if(isset($req->args['id'])) {
+        $quote = R::findOne('quote', ' id = ? ', [$req->args['id']]);
+        if($quote == null) {
+            $bot->pm($args->chan, "Quote by that ID not found.");
+            return;
+        }
+    } else {
+        $quote = R::findFromSQL("quote", "SELECT * FROM quote ORDER BY RANDOM() LIMIT 1");
+        $quote = array_pop($quote);
+    }
+    $creator = $quote->creator;
+    $bot->pm($args->chan, "\2Quote {$quote['id']} recorded by {$creator['nick']} ({$creator['host']}) on {$quote['date']} in {$quote['chan']}");
+    if(!is_string($quote['data'])) {
+        $bot->pm($args->chan, "whoops something wrong with quote..");
+        return;
+    }
+    $lines = explode("\n", $quote['data']);
+    pumpToChan($args->chan, $lines);
+}
+
+/*
+// need auth system so only TRUSTED users can delete
+#[Cmd("delquote")]
+function delquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+
+}
+
+//website not ready
+#[Cmd("quoteweb")]
+function quoteweb($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+
+}
+*/

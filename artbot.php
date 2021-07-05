@@ -26,6 +26,7 @@ $router = new Cmdr();
 
 $config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
 require_once 'artbot_scripts/art-common.php';
+require_once 'artbot_scripts/quotes.php';
 $router->loadFuncs();
 
 
@@ -57,6 +58,12 @@ Loop::run(function () {
     $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
     $bot->setThrottle($config['throttle'] ?? true);
     $bot->setServerPassword($config['pass'] ?? '');
+
+    /***** Init scripts with hooks ******
+     * definately will do this in a better way later via registering or whatever
+     */
+    if (function_exists("initQuotes"))
+        initQuotes($bot);
 
     $bot->on('welcome', function ($e, \Irc\Client $bot) {
         global $config;

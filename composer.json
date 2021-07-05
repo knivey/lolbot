@@ -15,7 +15,8 @@
         "knivey/irctools": "dev-master",
         "knivey/tools":  "dev-master",
         "ext-mbstring": "*",
-        "ext-pdo": "*"
+        "ext-pdo": "*",
+        "gabordemooij/redbean": "^5.7"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",

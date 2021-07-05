@@ -38,6 +38,7 @@ use knivey\cmdr\Cmdr;
 $router = new Cmdr();
 require_once 'multiartsnotifier.php';
 require_once 'artbot_scripts/art-common.php';
+require_once 'artbot_scripts/quotes.php';
 $router->loadFuncs();
 
 //copied from Cmdr should give it its own function in there later
@@ -139,8 +140,14 @@ Loop::run(function () {
         });
 
         //Only first bot handles seeing commands, recording arts, etc
-        if($cnt == 0)
+        if($cnt == 0) {
             $bot->on('chat', 'onchat');
+            /***** Init scripts with hooks ******
+             * definately will do this in a better way later via registering or whatever
+             */
+            if (function_exists("initQuotes"))
+                initQuotes($bot);
+        }
         $cnt++;
     }
     $server = yield from multinotifier();
