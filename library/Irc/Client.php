@@ -415,10 +415,10 @@ class Client extends EventEmitter
         }
 
         if ($this->doThrottle == false) {
-            foreach ($this->sendQ as $key => $msg) {
+            while(!empty($this->sendQ)) {
+                $msg = array_shift($this->sendQ);
                 echo stripForTerminal(">> $msg") . "\n";
                 yield $this->socket->write($msg);
-                unset($this->sendQ[$key]);
             }
             $this->sendWatcherID = null;
             if (!empty($this->sendQ)) {
