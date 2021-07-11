@@ -143,15 +143,12 @@ function reqart($bot, $chan, $file, $opts = []) {
             return;
         }
         if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
-            // no idea WHY but always got empty array
-            //$matches = yield searchIrcwatch($file, true);
-            //var_dump($file);
-            //var_dump($matches);
-            //if(count($matches) == 0) {
-            //    $bot->pm($chan, "that art isnt available on irc.watch and cant be loaded to asciibird :(");
-            //    return;
-            //}
-            $bot->pm($chan, "https://asciibird.jewbird.live/?ircwatch=$file.txt if it doesnt load then its not on irc.watch :(");
+            $matches = yield searchIrcwatch($file, true);
+            if(count($matches) == 0) {
+                $bot->pm($chan, "that art isnt available on irc.watch and cant be loaded to asciibird :(");
+                return;
+            }
+            $bot->pm($chan, "https://asciibird.jewbird.live/?ircwatch=$file.txt");
             return;
         }
         //try fullpath first
@@ -218,17 +215,18 @@ function searchIrcwatch($file, $noglob = false) {
             return [];
         }
         $out = [];
-        //var_dump($file);
         foreach($index as $check) {
-            if(!$noglob)
+            if(!$noglob) {
                 if (fnmatch("*$file*", strtolower($check))) {
                     $out[$check] = $check;
                 }
-            else
+            } else {
                 if ($file == strtolower($check)) {
                     $out[$check] = $check;
                 }
+            }
         }
+
         return $out;
     });
 }
