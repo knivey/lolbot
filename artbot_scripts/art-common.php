@@ -142,6 +142,18 @@ function reqart($bot, $chan, $file, $opts = []) {
             echo "{$e}\n";
             return;
         }
+        if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
+            // no idea WHY but always got empty array
+            //$matches = yield searchIrcwatch($file, true);
+            //var_dump($file);
+            //var_dump($matches);
+            //if(count($matches) == 0) {
+            //    $bot->pm($chan, "that art isnt available on irc.watch and cant be loaded to asciibird :(");
+            //    return;
+            //}
+            $bot->pm($chan, "https://asciibird.jewbird.live/?ircwatch=$file.txt if it doesnt load then its not on irc.watch :(");
+            return;
+        }
         //try fullpath first
         //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
         foreach($tree as $ent) {
@@ -178,9 +190,9 @@ function reqart($bot, $chan, $file, $opts = []) {
     });
 }
 
-function searchIrcwatch($file) {
+function searchIrcwatch($file, $noglob = false) {
     $file = strtolower($file);
-    return \Amp\call(function () use ($file){
+    return \Amp\call(function () use ($file, $noglob) {
         try {
             $client = HttpClientBuilder::buildDefault();
             $req = new Request("https://irc.watch/js/ascii-index.js");
@@ -191,20 +203,31 @@ function searchIrcwatch($file) {
                 $body = substr(substr($body, strlen("var ascii_list=")), 0, -1);
                 $index = json_decode($body,1);
                 file_put_contents("ascii-index.js", $body);
+                echo "irc.watch ascii-index.js recieved with " . count($index) . " files\n";
             } else {
-                if (file_exists("ascii-index.js"))
+                if (file_exists("ascii-index.js")) {
+                    echo "No irc.watch response, loading saved ascii-index.js\n";
                     $index = json_decode(file_get_contents("ascii-index.js"), 1);
-                else
+                } else {
+                    echo "No irc.watch response and no ascii-index.js file exists\n";
                     return [];
+                }
             }
         } catch (Exception $error) {
             echo "$error\n";
+            return [];
         }
         $out = [];
+        //var_dump($file);
         foreach($index as $check) {
-            if (fnmatch("*$file*", strtolower($check))) {
-                $out[$check] = $check;
-            }
+            if(!$noglob)
+                if (fnmatch("*$file*", strtolower($check))) {
+                    $out[$check] = $check;
+                }
+            else
+                if ($file == strtolower($check)) {
+                    $out[$check] = $check;
+                }
         }
         return $out;
     });

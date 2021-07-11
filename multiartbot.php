@@ -99,7 +99,7 @@ function onchat($args, \Irc\Client $bot)
         }
     } else {
         var_dump($text);
-        $opts = parseOpts($text, ['--flip']);
+        $opts = parseOpts($text, ['--flip', '--edit', '--asciibird']);
         var_dump($opts);
         reqart($bot, $args->channel, $cmd, $opts);
     }
