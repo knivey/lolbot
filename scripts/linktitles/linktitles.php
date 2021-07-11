@@ -86,7 +86,14 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() != 200) {
-                $bot->pm($chan, "LinkTitles Error (" . $response->getStatus() . ") " . substr($body, 0, 200));
+                $title = substr($body, 0, 200);
+                $title = strip_tags($m[1]);
+                $title = html_entity_decode($title,  ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $title = htmlspecialchars_decode($title);
+                $title = str_replace("\n", " ", $title);
+                $title = str_replace("\r", " ", $title);
+                $title = str_replace("\x01", "[CTCP]", $title);
+                $bot->pm($chan, "LinkTitles Error (" . $response->getStatus() . ") $title");
                 //var_dump($body);
                 return;
             }
