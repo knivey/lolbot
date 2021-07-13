@@ -51,8 +51,7 @@ function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/php?maxlines=$maxlines", $req->args['code']);
-    foreach ($output as $line)
-        $bot->pm($args->chan, $line);
+    sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("bash")]
@@ -65,8 +64,7 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/bash?maxlines=$maxlines", $req->args['code']);
-    foreach ($output as $line)
-        $bot->pm($args->chan, $line);
+    sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("py3", "py", "python", "python3")]
@@ -79,8 +77,7 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/python3?maxlines=$maxlines", $req->args['code']);
-    foreach ($output as $line)
-        $bot->pm($args->chan, $line);
+    sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("py2", "python2")]
@@ -93,8 +90,7 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/python2?maxlines=$maxlines", $req->args['code']);
-    foreach ($output as $line)
-        $bot->pm($args->chan, $line);
+    sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("fish")]
@@ -107,8 +103,7 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/fish?maxlines=$maxlines", $req->args['code']);
-    foreach ($output as $line)
-        $bot->pm($args->chan, $line);
+    sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("c", "tcc")]
@@ -121,6 +116,15 @@ function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/tcc?maxlines=$maxlines", $req->args['code']);
-    foreach ($output as $line)
-        $bot->pm($args->chan, $line);
+    sendOut($bot, $args->chan, $output);
+}
+
+function sendOut($bot, $chan, $data) {
+    foreach ($data as $line) {
+        if(substr($line, 0, strlen("OUT: ")) == "OUT: ")
+            $line = substr($line, strlen("OUT: "));
+        if(substr($line, 0, strlen("ERR: ")) == "ERR: ")
+            $line = "\x0304". substr($line, strlen("OUT: "));
+        $bot->pm($chan, $line);
+    }
 }
