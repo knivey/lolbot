@@ -197,14 +197,25 @@ function searchIrcwatch($file, $noglob = false) {
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() == 200) {
-                $body = substr(substr($body, strlen("var ascii_list=")), 0, -1);
-                $index = json_decode($body,1);
-                file_put_contents("ascii-index.js", $body);
-                echo "irc.watch ascii-index.js recieved with " . count($index) . " files\n";
+                if (preg_match("@^(var\s?ascii_list\s?=\s?)@i", $body, $m)) {
+                    $body = substr(substr($body, strlen($m[1])), 0, -1);
+                    $index = json_decode($body, 1);
+                    if (!is_array($index)) {
+                        echo "irc.watch ascii-index.js bad contents (not array)\n";
+                    } else {
+                        file_put_contents("ascii-index.js", $body);
+                        echo "irc.watch ascii-index.js recieved with " . count($index) . " files\n";
+                    }
+                } else {
+                    echo "irc.watch ascii-index.js failed to match regex\n";
+                }
             } else {
                 if (file_exists("ascii-index.js")) {
                     echo "No irc.watch response, loading saved ascii-index.js\n";
                     $index = json_decode(file_get_contents("ascii-index.js"), 1);
+                    if (!is_array($index)) {
+                        return [];
+                    }
                 } else {
                     echo "No irc.watch response and no ascii-index.js file exists\n";
                     return [];
