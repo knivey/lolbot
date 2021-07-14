@@ -2,10 +2,7 @@
 namespace knivey\lolbot\lastfm;
 
 require_once 'library/Duration.inc';
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\HttpException;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
+
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
@@ -32,20 +29,10 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $user = urlencode(htmlentities($user));
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
     try {
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $response = yield $client->request(new Request($url));
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = substr($body, 0, 200);
-            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
-            return;
-        }
-    } catch (\Exception $error) {
+        $body = yield async_get_contents($url);
+    } catch (\async_get_exception $error) {
         echo $error;
-        $bot->pm($args->chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
         return;
     }
     $res = json_decode($body, true);
@@ -78,20 +65,11 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     findinfo:
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getinfo&user=$user&api_key=$key&format=json&limit=1";
     try {
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $response = yield $client->request(new Request($url));
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = substr($body, 0, 200);
-            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
-            return;
-        }
-    } catch (\Exception $error) {
+        $body = yield async_get_contents($url);
+    } catch (\async_get_exception $error) {
         echo $error;
-        $bot->pm($args->chan, "\2lastfm:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
+        return;
     }
     $res = json_decode($body, true);
 

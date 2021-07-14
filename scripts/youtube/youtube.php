@@ -87,22 +87,11 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
         $data = null;
         $body = null;
         try {
-            $client = HttpClientBuilder::buildDefault();
-            /** @var Response $response */
-            $response = yield $client->request(new Request("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key=$key"));
-            $body = yield $response->getBody()->buffer();
-            if ($response->getStatus() != 200) {
-                $bot->pm($chan, "Error (" . $response->getStatus() . ")");
-                echo "Error (" . $response->getStatus() . ")\n";
-                var_dump($body);
-                return;
-            }
+            $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key=$key");
             $data = json_decode($body, false);
-        } catch (\Exception $error) {
-            // If something goes wrong Amp will throw the exception where the promise was yielded.
-            // The HttpClient::request() method itself will never throw directly, but returns a promise.
+        } catch (\async_get_exception $error) {
             echo "$error\n";
-            $bot->pm($chan, "\2YouTube Error:\2 " . substr($error, 0, strpos($error, "\n")));
+            $bot->pm($chan, "\2YouTube:\2 {$error->getIRCMsg()}");
             continue;
         }
 
@@ -131,27 +120,18 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                 $ext = array_pop($ext);
                 try {
                     echo "fetching thumbnail at $thumbnail\n";
-                    $client = HttpClientBuilder::buildDefault();
-                    /** @var Response $response */
-                    $response = yield $client->request(new Request($thumbnail));
-                    $body = yield $response->getBody()->buffer();
-                    if ($response->getStatus() != 200) {
-                        $bot->pm($chan, "Error (" . $response->getStatus() . ")");
-                        echo "Error (" . $response->getStatus() . ")\n";
-                        var_dump($body);
-                    } else {
-                        $filename = "thumb_$id.$ext";
-                        echo "saving to $filename\n";
-                        file_put_contents($filename, $body);
-                        $width = $config['youtube_thumbwidth'] ?? 40;
-                        $filename_safe = escapeshellarg($filename);
-                        $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
-                        unlink($filename);
-                    }
-                } catch (HttpException $error) {
+                    $body = yield async_get_contents($thumbnail);
+                    $filename = "thumb_$id.$ext";
+                    echo "saving to $filename\n";
+                    file_put_contents($filename, $body);
+                    $width = $config['youtube_thumbwidth'] ?? 40;
+                    $filename_safe = escapeshellarg($filename);
+                    $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
+                    unlink($filename);
+                } catch (\async_get_exception $error) {
                     // If something goes wrong Amp will throw the exception where the promise was yielded.
                     // The HttpClient::request() method itself will never throw directly, but returns a promise.
-                    echo "$error\n";
+                    echo "yt thumb $error\n";
                     $thumbnail = '';
                 }
                 if ($thumbnail != '') {
@@ -203,21 +183,10 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     // search only supports snippet part :(
     $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";
     try {
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $response = yield $client->request(new Request($url));
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = str_replace(["\n","\r"], '', $body);
-            $body = substr($body, 0, 200);
-            $reply("Error (" . $response->getStatus() . ") $body");
-            return;
-        }
-    } catch (\Exception $error) {
+        $body = yield async_get_contents($url);
+    }  catch (\async_get_exception $error) {
         echo $error;
-        $reply(substr($error, 0, strpos($error, "\n")));
+        $reply($error->getIRCMsg());
         return;
     }
     $res = json_decode($body, true);

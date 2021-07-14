@@ -24,17 +24,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
     $query = waURL . urlencode(htmlentities($req->args['query'])) . '&appid=' . $config['waKey'] . '&format=plaintext&location=california';
     try {
-        $client = HttpClientBuilder::buildDefault();
-        // Make an asynchronous HTTP request
-        $promise = $client->request(new Request($query));
-        // Client::request() is asynchronous! It doesn't return a response. Instead, it returns a promise to resolve the
-        // response at some point in the future when we've received the headers of the response. Here we use yield which
-        // pauses the execution of the current coroutine until the promise resolves. Amp will automatically continue the
-        // coroutine then.
-        /** @var Response $response */
-        $response = yield $promise;
-
-        $body = yield $response->getBody()->buffer();
+        $body = yield async_get_contents($query);
 
         $xml = simplexml_load_string($body);
         $res = '';
@@ -79,9 +69,11 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $res = "Error, query took too long to parse.";
         }
         $bot->pm($args->chan, "\2WA:\2 " . $res);
-    } catch (HttpException $error) {
-        // If something goes wrong Amp will throw the exception where the promise was yielded.
-        // The HttpClient::request() method itself will never throw directly, but returns a promise.
+    } catch (\async_get_exception $error) {
+        echo $error;
+        $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
+        return;
+    } catch (\Exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2WA:\2 " . substr($error, 0, strpos($error, "\n")));
     }

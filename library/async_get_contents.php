@@ -19,10 +19,17 @@ class async_get_exception extends Exception {
     }
 }
 
-function async_get_contents($url) {
-    return \Amp\call(function () use ($url) {
+/**
+ * @param $url
+ * @param array $headers
+ * @throws \async_get_exception
+ * @return \Amp\Promise
+ */
+function async_get_contents($url, $headers = []) {
+    return \Amp\call(function () use ($url, $headers) {
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url);
+        $request->setHeaders($headers);
         /** @var Response $response */
         $response = yield $client->request($request);
         $body = yield $response->getBody()->buffer();

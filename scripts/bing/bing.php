@@ -1,11 +1,6 @@
 <?php
 namespace knivey\lolbot\bing;
 
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\HttpException;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
-use Amp\MultiReasonException;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
@@ -50,19 +45,8 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $query = urlencode(htmlentities($req->args['query']));
     $url = $config['bingEP'] . "search?q=$query&mkt=$config[bingLang]&setLang=$config[bingLang]";
     try {
-        $client = HttpClientBuilder::buildDefault();
-        $request = new Request($url);
-        $request->setHeader('Ocp-Apim-Subscription-Key', $config['bingKey']);
-        /** @var Response $response */
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = substr($body, 0, 200);
-            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
-            return;
-        }
+        $headers = ['Ocp-Apim-Subscription-Key' => $config['bingKey']];
+        $body = yield async_get_contents($url, $headers);
         $j = json_decode($body, true);
 
         if (!array_key_exists('webPages', $j)) {
@@ -79,15 +63,8 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $res = $j['webPages']['value'][$i];
             $bot->pm($args->chan, "\2Bing (\2$results Results\2):\2 $res[url] ($res[name]) -- $res[snippet]");
         }
-    } catch (\Amp\MultiReasonException $errors) {
-        foreach ($errors->getReasons() as $error) {
-            echo $error;
-            $bot->pm($args->chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
-        }
-    } catch (\Exception $error) {
-        // If something goes wrong Amp will throw the exception where the promise was yielded.
-        // The HttpClient::request() method itself will never throw directly, but returns a promise.
+    } catch (\async_get_exception $error) {
         echo $error;
-        $bot->pm($args->chan, "\2Bing Error:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2Bing:\2 {$error->getIRCMsg()}");
     }
 }

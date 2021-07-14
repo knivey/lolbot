@@ -34,16 +34,8 @@ function getLocation($query) {
     global $config;
     $query = urlencode(htmlentities($query));
     $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
-    $client = HttpClientBuilder::buildDefault();
-    /** @var Response $response */
-    $response = yield $client->request(new Request($url));
-    $body = yield $response->getBody()->buffer();
-    if ($response->getStatus() != 200) {
-        var_dump($body);
-        // Just in case its huge or some garbage
-        $body = substr($body, 0, 200);
-        return "Error (" . $response->getStatus() . ") $body";
-    }
+    $body = yield async_get_contents($url);
+
     $j = json_decode($body, true);
     $res = $j['resourceSets'][0]['resources'];
     if (empty($res)) {
@@ -99,7 +91,7 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
         if ($query == '') {
             $nick = strtolower($args->nick);
             $locs = unserialize(file_get_contents("weather.db"));
-            if(!array_key_exists($nick, $locs)) {
+            if (!array_key_exists($nick, $locs)) {
                 $bot->msg($args->chan, "You don't have a location set use .setlocation");
                 return;
             }
@@ -107,15 +99,15 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
             $lat = $locs[$nick]['lat'];
             $lon = $locs[$nick]['lon'];
             $si = ($locs[$nick]['si'] or $si);
-            if($imp) {
+            if ($imp) {
                 $si = false;
             }
         } else {
-            if($query[0] == '@') {
+            if ($query[0] == '@') {
                 //lookup for another person's setlocation
                 $query = substr(strtolower(explode(" ", $query)[0]), 1);
                 $locs = unserialize(file_get_contents("weather.db"));
-                if(!array_key_exists($query, $locs)) {
+                if (!array_key_exists($query, $locs)) {
                     $bot->msg($args->chan, "$query does't have a location set");
                     return;
                 }
@@ -123,11 +115,17 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
                 $lat = $locs[$query]['lat'];
                 $lon = $locs[$query]['lon'];
                 $si = ($locs[$query]['si'] or $si);
-                if($imp) {
+                if ($imp) {
                     $si = false;
                 }
             } else {
-                $loc = yield \Amp\call(__namespace__ . '\getLocation', $query);
+                try {
+                    $loc = yield \Amp\call(__namespace__ . '\getLocation', $query);
+                } catch (\async_get_exception $error) {
+                    echo $error;
+                    $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
+                    return;
+                }
                 if (!is_array($loc)) {
                     $bot->pm($args->chan, $loc);
                     return;
@@ -140,18 +138,8 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
         //Now use lat lon to get weather
 
         $url = "https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&appid=$config[openweatherKey]&exclude=minutely,hourly";
+        $body = yield async_get_contents($url);
 
-        $client = HttpClientBuilder::buildDefault();
-        /** @var Response $response */
-        $response = yield $client->request(new Request($url));
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = substr($body, 0, 200);
-            $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
-            return;
-        }
         $j = json_decode($body, true);
         $cur = $j['current'];
         try {
@@ -164,7 +152,8 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
             $sunset->setTimezone($tz);
             $sunset = $sunset->format($fmt);
         } catch (\Exception $e) {
-            $sunrise = ''; $sunset = '';
+            $sunrise = '';
+            $sunset = '';
         }
         $temp = displayTemp($cur['temp'], $si);
         if (!$fc) {
@@ -187,6 +176,9 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
             }
             $bot->pm($args->chan, "\2$location:\2 Forecast: $out");
         }
+    } catch (\async_get_exception $error) {
+        echo $error;
+        $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
@@ -210,7 +202,13 @@ function setlocation($args, \Irc\Client $bot, cmdr\Request $req)
         $si = true;
     }
 
-    $loc = yield \Amp\call(__namespace__ . '\getLocation', $req->args['query']);
+    try {
+        $loc = yield \Amp\call(__namespace__ . '\getLocation', $req->args['query']);
+    } catch (\async_get_exception $error) {
+        echo $error;
+        $bot->pm($args->chan, "\2getLocation:\2 {$error->getIRCMsg()}");
+        return;
+    }
     if (!is_array($loc)) {
         $bot->pm($args->chan, $loc);
         return;
