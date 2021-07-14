@@ -10,9 +10,12 @@ class async_get_exception extends Exception {
         $out = str_replace(["\n", "\r"], " ", $out);
         $out = html_entity_decode($out,  ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $out = htmlspecialchars_decode($out);
-
         $out = str_replace("\x01", "[CTCP]", $out);
-        return $out;
+        return substr($out, 0, 200);
+    }
+
+    public function getIRCMsg() {
+        return "Error ({$this->getCode()}): {$this->getMessageStripped()}";
     }
 }
 
@@ -24,10 +27,6 @@ function async_get_contents($url) {
         $response = yield $client->request($request);
         $body = yield $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
-            var_dump($body);
-            // Just in case its huge or some garbage
-            $body = substr($body, 0, 200);
-            $body = str_replace(["\n", "\r"], "", $body);
             throw new async_get_exception($body, $response->getStatus());
         }
         return $body;

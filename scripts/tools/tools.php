@@ -91,8 +91,8 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         } else {
             $bot->pm($args->chan, "\2DomainCheck:\2 That domain is already taken :(");
         }
-    } catch (\Exception $error) {
-        $bot->pm($args->chan, "\2DomainCheck Error:\2 " . substr($error->getMessage(), 0, 200));
+    } catch (\async_get_exception $error) {
+        $bot->pm($args->chan, "\2DomainCheck:\2 {$error->getIRCMsg()}");
     }
 }
 
