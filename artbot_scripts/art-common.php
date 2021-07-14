@@ -202,6 +202,7 @@ function searchIrcwatch($file, $noglob = false) {
                     $index = json_decode($body, 1);
                     if (!is_array($index)) {
                         echo "irc.watch ascii-index.js bad contents (not array)\n";
+                        goto fileload;
                     } else {
                         file_put_contents("ascii-index.js", $body);
                         echo "irc.watch ascii-index.js recieved with " . count($index) . " files\n";
@@ -210,6 +211,7 @@ function searchIrcwatch($file, $noglob = false) {
                     echo "irc.watch ascii-index.js failed to match regex\n";
                 }
             } else {
+                fileload:
                 if (file_exists("ascii-index.js")) {
                     echo "No irc.watch response, loading saved ascii-index.js\n";
                     $index = json_decode(file_get_contents("ascii-index.js"), 1);
