@@ -11,7 +11,7 @@ use knivey\irctools;
 
 use \RedBeanPHP\R as R;
 global $config;
-R::setup("sqlite:{$config['quotedb']}");
+R::addDatabase('quotes', "sqlite:{$config['quotedb']}");
 
 $quote_recordings = [];
 
@@ -70,6 +70,7 @@ function endquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         unset($quote_recordings[$nick]);
         return;
     }
+    R::selectDatabase('quotes');
     $quote = R::dispense('quote');
     $quote->data = implode("\n", $quote_recordings[$nick]['lines']);
     $creator = R::findOne('creator', ' nick = ? AND host = ? ', [$nick, $host]);
@@ -135,6 +136,7 @@ function initQuotes($bot) {
 #[Cmd("quote")]
 #[Syntax("[id]")]
 function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    R::selectDatabase('quotes');
     if(isset($req->args['id'])) {
         $quote = R::findOne('quote', ' id = ? ', [$req->args['id']]);
         if($quote == null) {

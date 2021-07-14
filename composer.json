@@ -16,7 +16,8 @@
         "knivey/tools":  "dev-master",
         "ext-mbstring": "*",
         "ext-pdo": "*",
-        "gabordemooij/redbean": "^5.7"
+        "gabordemooij/redbean": "^5.7",
+        "khill/php-duration": "~1.0"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",

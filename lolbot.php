@@ -40,11 +40,13 @@ require_once 'scripts/help/help.php';
 require_once 'scripts/cumfacts/cumfacts.php';
 require_once 'scripts/artfart/artfart.php';
 require_once 'scripts/tools/tools.php';
+require_once 'scripts/tell/tell.php';
 
 require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
 
 $router->loadFuncs();
+
 
 $bot = null;
 try {
@@ -54,6 +56,7 @@ try {
         $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
         $bot->setThrottle($config['throttle'] ?? true);
         $bot->setServerPassword($config['pass'] ?? '');
+        \knivey\lolbot\scripts\tell\initTell($bot);
 
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;
