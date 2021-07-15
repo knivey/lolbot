@@ -775,7 +775,7 @@ class Client extends EventEmitter
             */
             case RPL_ISUPPORT:
                 $args = $message->args;
-                unset($args[0], $args[count($args) - 1]);
+                unset($args[0], $args[count($args)]);
 
                 foreach ($args as $arg) {
                     @list($key, $val) = explode('=', $arg);
