@@ -20,7 +20,7 @@ if(isset($config['telldb'])) {
     $disabled=true;
 }
 
-#[Cmd("tell")]
+#[Cmd("tell", "ask", "inform")]
 #[Syntax("<nick> <msg>...")]
 function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $disabled;
@@ -28,28 +28,15 @@ function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($args->chan, "telldb not configured");
         return;
     }
-    addMsg($req->args['nick'], $req->args['msg'], $args->nick, 'tell', $bot->getOption('NETWORK', 'UnknownNet'), $args->chan);
+    addMsg($req->args['nick'], $args->text, $args->nick, $bot->getOption('NETWORK', 'UnknownNet'), $args->chan);
     $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them.");
 }
 
-#[Cmd("ask")]
-#[Syntax("<nick> <msg>...")]
-function ask($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $disabled;
-    if($disabled) {
-        $bot->pm($args->chan, "telldb not configured");
-        return;
-    }
-    addMsg($req->args['nick'], $req->args['msg'], $args->nick, 'ask', $bot->getOption('NETWORK', 'UnknownNet'), $args->chan);
-    $bot->pm($args->chan, "Ok, I'll ask {$req->args[0]} that next time I see them.");
-}
-
-function addMsg($nick, $msg, $from, $type, $network, $chan) {
+function addMsg($nick, $msg, $from, $network, $chan) {
     R::selectDatabase('telldb');
     $msgb = R::dispense("msg");
     $msgb->date = R::isoDateTime();
     $msgb->from = $from;
-    $msgb->type = $type;
     $msgb->msg = $msg;
     $msgb->to = strtolower($nick);
     $msgb->sent = 0;
@@ -78,7 +65,7 @@ function initTell($bot) {
             } catch(\Exception $e) {
                 $duration = $msg->date;
             }
-            $bot->pm($chan, "{$duration} ago in {$msg->chan} on {$msg->network}: <{$msg->from}> {$msg->type} {$msg->to} {$msg->msg}");
+            $bot->pm($chan, "{$duration} ago in {$msg->chan} on {$msg->network}: <{$msg->from}> {$msg->msg}");
             $msg->sent = 1;
             R::store($msg);
         }
