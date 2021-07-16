@@ -23,13 +23,25 @@ if(isset($config['telldb'])) {
 #[Cmd("tell", "ask", "inform")]
 #[Syntax("<nick> <msg>...")]
 function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $disabled;
+    global $disabled, $config;
     if($disabled) {
         $bot->pm($args->chan, "telldb not configured");
         return;
     }
+    $max = $config['tell_max_inbox'] ?? 10;
+    if(countMsgs($req->args['nick']) >= $max) {
+        $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
+        return;
+    }
     addMsg($req->args['nick'], $args->text, $args->nick, $bot->getOption('NETWORK', 'UnknownNet'), $args->chan);
     $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them.");
+}
+
+function countMsgs($nick) {
+    $nick = strtolower($nick);
+    R::selectDatabase('telldb');
+    $msgs = R::findAll("msg", " `to` = ? AND `sent` = 0 ", [$nick]);
+    return count($msgs);
 }
 
 function addMsg($nick, $msg, $from, $network, $chan) {
@@ -58,7 +70,7 @@ function initTell($bot) {
         $msgs = R::findAll("msg", " `to` = ? AND `sent` = 0 ", [$nick]);
         if(!is_array($msgs) || count($msgs) == 0)
             return;
-        $max = $config['tell_max'] ?? 5;
+        $max = $config['tell_max_tochan'] ?? 5;
         $cnt = 0;
         foreach ($msgs as &$msg) {
             try {
