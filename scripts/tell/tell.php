@@ -51,12 +51,15 @@ function initTell($bot) {
     if($disabled)
         return;
     $bot->on('chat', function ($args, \Irc\Client $bot) {
+        global $config;
         $nick = strtolower($args->from);
         $chan = $args->chan;
         R::selectDatabase('telldb');
         $msgs = R::findAll("msg", " `to` = ? AND `sent` = 0 ", [$nick]);
         if(!is_array($msgs) || count($msgs) == 0)
             return;
+        $max = $config['tell_max'] ?? 5;
+        $cnt = 0;
         foreach ($msgs as &$msg) {
             try {
                 $seconds = time() - (new \DateTime($msg->date))->getTimestamp();
@@ -65,7 +68,15 @@ function initTell($bot) {
             } catch(\Exception $e) {
                 $duration = $msg->date;
             }
-            $bot->pm($chan, "{$duration} ago in {$msg->chan} on {$msg->network}: <{$msg->from}> {$msg->msg}");
+            $sendMsg = "{$duration} ago in {$msg->chan} on {$msg->network}: <{$msg->from}> {$msg->msg}";
+            if(++$cnt > $max) {
+                $bot->pm($msg->to, $sendMsg);
+            } else {
+                $bot->pm($chan, $sendMsg);
+            }
+            if($cnt == $max && count($msgs) > $max) {
+                $bot->pm($chan, (count($msgs) - $max) . " further messages will be sent privately");
+            }
             $msg->sent = 1;
             R::store($msg);
         }
