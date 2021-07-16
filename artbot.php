@@ -27,6 +27,7 @@ $router = new Cmdr();
 $config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
+require_once 'artbot_scripts/urlimg.php';
 $router->loadFuncs();
 
 
