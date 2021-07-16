@@ -28,6 +28,10 @@ function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($args->chan, "telldb not configured");
         return;
     }
+    if(strtolower($bot->getNick()) == strtolower($req->args['nick'])) {
+        $bot->pm($args->chan, "Ok I'll pass that off to /dev/null");
+        return;
+    }
     $max = $config['tell_max_inbox'] ?? 10;
     if(countMsgs($req->args['nick']) >= $max) {
         $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
