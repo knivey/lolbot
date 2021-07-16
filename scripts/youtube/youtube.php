@@ -114,6 +114,8 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             //$likes = number_format($v->statistics->likeCount);
             //$hates = number_format($v->statistics->dislikeCount);
 
+            $sent = false;
+            $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $dur";
             $thumbnail = $v?->snippet?->thumbnails?->high?->url;
             if($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                 $ext = explode('.', $thumbnail);
@@ -141,13 +143,39 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                             unset($thumbnail[$i]);
                         }
                     }
-                    foreach ($thumbnail as $line) {
-                        $bot->pm($chan, $line);
+                    if(isset($config['youtube_pump_host']) && isset($config['youtube_pump_key'])) {
+                        try {
+                            $client = HttpClientBuilder::buildDefault();
+                            $host = $config['youtube_pump_host'];
+                            if(substr($host, -1) != '/')
+                                $host = "$host/";
+                            $pumpchan = substr($chan, 1);
+                            $request = new Request("$host/privmsg/$pumpchan", "POST");
+                            $sendBody = implode("\n", $thumbnail);
+                            $sendBody .= "\n$msg";
+                            $request->setBody($sendBody);
+                            $request->setHeader('key', $config['youtube_pump_key']);
+                            /** @var Response $response */
+                            $response = yield $client->request($request);
+                            //$body = yield $response->getBody()->buffer();
+                            if ($response->getStatus() == 200) {
+                                $sent = true;
+                            }
+                        } catch (\Exception $e) {
+                            echo "Problem sending youtube to pumpers\n";
+                            echo $e;
+                        }
+                    }
+                    if(!$sent) {
+                        foreach ($thumbnail as $line) {
+                            $bot->pm($chan, $line);
+                        }
                     }
                 }
             }
-
-            $bot->pm($chan, "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $dur");
+            if(!$sent) {
+                $bot->pm($chan, $msg);
+            }
         } catch (\Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
             echo "\2YouTube Error:\2 Unknown data received.\n";
