@@ -145,7 +145,7 @@ function chanaccess($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--rainbow", "--rnb", "--bsize")]
+#[Options("--rainbow", "--rnb", "--bsize", "--width")]
 function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0] ?? '';
@@ -189,6 +189,13 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             echo "saving to $filename\n";
             file_put_contents($filename, $body);
             $width = ($config['url_default_width'] ?? 55);
+            if($req->args->getOptVal("--width") !== false) {
+                $width = intval($req->args->getOptVal("--width"));
+                if($width < 10 || $width > 200) {
+                    $bot->pm($args->chan, "--width should be between 10 and 200");
+                    return;
+                }
+            }
             $filename_safe = escapeshellarg($filename);
             $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
             unlink($filename);
