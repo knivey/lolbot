@@ -67,15 +67,16 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             unlink($filename);
             $cnt = 0;
             $thumbnail = explode("\n", $thumbnail);
+            $out = [];
             foreach ($thumbnail as $line) {
                 if($line == '')
                     continue;
-                $bot->pm($args->chan, $line);
+                $out[] = $line;
                 if($cnt++ > ($config['url_max'] ?? 100)) {
-                    $bot->pm($args->chan, "wow thats a pretty big image, omitting ~" . count($thumbnail)-$cnt . "lines ;-(");
-                    return;
+                    $out[] = "wow thats a pretty big image, omitting ~" . count($thumbnail)-$cnt . "lines ;-(";
                 }
             }
+            pumpToChan($args->chan, $out);
         }
         if($type[0] == 'text') {
             var_dump($type);
@@ -93,19 +94,21 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                     $bsize = null;
                 else
                     $bsize = intval($bsize);
-                $body = irctools\diagRainbow($body, $bsize, $dir);
+                $body = \knivey\irctools\diagRainbow($body, $bsize, $dir);
             }
             $cnt = 0;
             $body = explode("\n", $body);
+            $out = [];
             foreach ($body as $line) {
                 if($line == '')
                     continue;
                 $bot->pm($args->chan, $line);
+                $out[] = $line;
                 if($cnt++ > ($config['url_max'] ?? 100)) {
-                    $bot->pm($args->chan, "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(");
-                    return;
+                    $out[] = "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(";
                 }
             }
+            pumpToChan($args->chan, $out);
         }
 
     } catch (\Amp\MultiReasonException $errors) {
