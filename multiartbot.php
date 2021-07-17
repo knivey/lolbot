@@ -293,7 +293,10 @@ function startPump($chan) {
                 if(isset($playing[$chan]) && !empty($playing[$chan]->data)) {
                     $line = array_shift($playing[$chan]->data);
                     $bot->pm($chan, irctools\fixColors($line));
-                    yield \Amp\delay(100 / $botson);
+                    $delay = 300 / $botson;
+                    if($delay < 85)
+                        $delay = 85;
+                    yield \Amp\delay($delay);
                 }
             }
             try {
