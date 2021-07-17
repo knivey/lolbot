@@ -454,18 +454,38 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
              *
              * TODO since we are limiting to 16colo.rs just allow any url to the file and auto get width option etc
              */
-            if(!preg_match("@https?://16colo\.rs/.+\.ans@i", $url)) {
-                $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ raw urls (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
+            if(!preg_match("@https?://16colo\.rs/.+\.(?:ans|asc)@i", $url)) {
+                $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ urls (ans|asc) (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
                 return;
             }
-
+            //try to change to raw url here
+            // https://16colo.rs/pack/croyale01/raw/sp-coc.asc
+            // https://16colo.rs/pack/ane-0696/DA-MASK.ANS
+            // https://16colo.rs/pack/ane-0696/data/DA-MASK.ANS
+            if(!preg_match("@https?://16colo\.rs/pack/[^/]+/raw/.+\.(?:ans|asc)@i", $url)) {
+                if(!preg_match("@https?://16colo\.rs/pack/([^/]+)/(.+\.(?:ans|asc))@i", $url, $m)) {
+                    $bot->pm($chan, "\2a2m Error:\2 url seems wrong");
+                    return;
+                }
+                try {
+                    $data = yield async_get_contents("https://16colo.rs/pack/$m[1]/data/$m[2]");
+                    $json = json_decode($data);
+                    if (isset($json->sauce->tinfo1)) {
+                        $width = $json->sauce->tinfo1;
+                    }
+                } catch (\Exception $e) {
+                    ;
+                }
+                $url = "https://16colo.rs/pack/$m[1]/raw/$m[2]";
+            }
             $body = yield async_get_contents($url);
             if(!is_dir('ans'))
                 mkdir('ans');
             // perhaps in future we try to find proper names and keep files around.
             $file = "ans/" . uniqid() . ".ans";
             file_put_contents($file, $body);
-            $width = intval($req->args->getOptVal("--width"));
+            if(!isset($width))
+                $width = intval($req->args->getOptVal("--width"));
             if(!$width)
                 $width = 80;
             list($rc, $out, $err) = quietExec("$a2m -w $width $file");
@@ -474,7 +494,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
                 unlink($file);
                 return;
             }
-            pumpToChan($chan, explode("\n", trim($out)));
+            pumpToChan($chan, explode("\n", rtrim($out)));
             unlink($file);
         } catch (\async_get_exception $error) {
             $bot->pm($chan, $error->getIRCMsg());
