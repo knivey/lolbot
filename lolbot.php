@@ -41,6 +41,7 @@ require_once 'scripts/cumfacts/cumfacts.php';
 require_once 'scripts/artfart/artfart.php';
 require_once 'scripts/tools/tools.php';
 require_once 'scripts/tell/tell.php';
+require_once 'scripts/remindme/remindme.php';
 
 require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
@@ -57,6 +58,7 @@ try {
         $bot->setThrottle($config['throttle'] ?? true);
         $bot->setServerPassword($config['pass'] ?? '');
         \knivey\lolbot\scripts\tell\initTell($bot);
+        \knivey\lolbot\scripts\remindme\initRemindme($bot);
 
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;
