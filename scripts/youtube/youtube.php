@@ -160,6 +160,8 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                             //$body = yield $response->getBody()->buffer();
                             if ($response->getStatus() == 200) {
                                 $sent = true;
+                            } else {
+                                echo "Problem sending youtube to pumpers response {$response->getStatus()}\n";
                             }
                         } catch (\Exception $e) {
                             echo "Problem sending youtube to pumpers\n";
