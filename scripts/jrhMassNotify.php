@@ -7,7 +7,7 @@ use knivey\cmdr\attributes\Syntax;
 function masshl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $jewbirdHosts = [
         "*@vegan.fried.chicken.with.sodiumchlori.de",
-        "*@relay.jewbird.live",
+        "*@*.jewbird.live",
     ];
     foreach($jewbirdHosts as $hostmask) {
         if (preg_match(hostmaskToRegex($hostmask), $args->fullhost)) {
