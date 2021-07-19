@@ -1,8 +1,5 @@
 <?php
 namespace knivey\lolbot\scripts\remindme;
-/*
- * script for our .tell nick blah blah and .ask nick blah blah commands
- */
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
@@ -45,6 +42,7 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 /* TODO, this actually needs to parse more than one word(arg) for the timestamp so its a bit complicated to do
+Also need to consider user timezones
 #[Cmd("at")]
 #[Syntax("<time> <msg>...")]
 function at($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
