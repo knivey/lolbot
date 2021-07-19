@@ -43,6 +43,8 @@ require_once 'scripts/tools/tools.php';
 require_once 'scripts/tell/tell.php';
 require_once 'scripts/remindme/remindme.php';
 
+require_once "scripts/jrhMassNotify.php";
+
 require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
 

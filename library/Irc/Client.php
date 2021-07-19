@@ -711,12 +711,16 @@ class Client extends EventEmitter
                 ));
                 break;
             case RPL_NAMREPLY:
-                $namesReply = (object)array(
-                    'nick' => $message->getArg(0),
-                    'channelType' => $message->getArg(1),
-                    'channel' => $message->getArg(2),
-                    'names' => array_map('trim', explode(' ', $message->getArg(3)))
-                );
+                if($namesReply != null) {
+                    $namesReply->names = array_merge($namesReply->names, explode(' ', $message->getArg(3)));
+                } else {
+                    $namesReply = (object)array(
+                        'nick' => $message->getArg(0),
+                        'channelType' => $message->getArg(1),
+                        'channel' => $message->getArg(2),
+                        'names' => explode(' ', $message->getArg(3))
+                    );
+                }
                 break;
             case RPL_ENDOFNAMES:
                 if (empty($namesReply))
