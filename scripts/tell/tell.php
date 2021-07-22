@@ -84,7 +84,13 @@ function initTell($bot) {
             } catch(\Exception $e) {
                 $duration = $msg->date;
             }
-            $sendMsg = "{$duration} ago in {$msg->chan} on {$msg->network}: <{$msg->from}> {$msg->msg}";
+            $sendMsg = "{$duration} ago ";
+            $net = $bot->getOption('NETWORK', 'UnknownNet');
+            if(strtolower($args->chan) != strtolower($msg->chan))
+                $sendMsg .= "in {$msg->chan} ";
+            if(strtolower($net) != strtolower($msg->net))
+                $sendMsg .= "on {$msg->network} ";
+            $sendMsg .= " <{$msg->from}> {$msg->msg}";
             if(++$cnt > $max) {
                 $bot->pm($msg->to, $sendMsg);
             } else {
