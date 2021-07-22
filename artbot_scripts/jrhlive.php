@@ -36,7 +36,7 @@ function jrhlive()
     $server = new HttpServer($servers, new CallableRequestHandler(static function (Request $request) {
         global $config;
         $path = $request->getUri()->getPath();
-        if ($path != $config['listen_jrh_path']) {
+        if (trim($path, '/') != trim($config['listen_jrh_path'], '/')) {
             return new Response(Status::FORBIDDEN, [
                 "content-type" => "text/plain; charset=utf-8"
             ], "Invalid key");

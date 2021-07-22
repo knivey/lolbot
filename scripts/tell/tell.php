@@ -88,7 +88,7 @@ function initTell($bot) {
             $net = $bot->getOption('NETWORK', 'UnknownNet');
             if(strtolower($args->chan) != strtolower($msg->chan))
                 $sendMsg .= "in {$msg->chan} ";
-            if(strtolower($net) != strtolower($msg->net))
+            if(strtolower($net) != strtolower($msg->network))
                 $sendMsg .= "on {$msg->network} ";
             $sendMsg .= " <{$msg->from}> {$msg->msg}";
             if(++$cnt > $max) {
