@@ -37,7 +37,6 @@ use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 require_once 'multiartsnotifier.php';
-require_once 'artbot_scripts/jrhlive.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
 require_once 'artbot_scripts/urlimg.php';
@@ -154,9 +153,8 @@ Loop::run(function () {
         $cnt++;
     }
     $server = yield from multinotifier();
-    $jrh = yield from jrhlive();
 
-    $botExit = function ($watcherId) use ($server, $jrh) {
+    $botExit = function ($watcherId) use ($server) {
         global $bots;
         Amp\Loop::cancel($watcherId);
         echo "Caught SIGINT! exiting ...\n";
@@ -174,9 +172,6 @@ Loop::run(function () {
         }
         if ($server != null) {
             $server->stop();
-        }
-        if ($jrh != null) {
-            $jrh->stop();
         }
         echo "Stopping Amp\\Loop\n";
         Amp\Loop::stop();
