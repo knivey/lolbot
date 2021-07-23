@@ -75,8 +75,6 @@ try {
 
         //Stop abuse from an IRCOP called sylar
         $bot->on('mode', function($args, \Irc\Client $bot) {
-            echo "====== mode ======\n";
-            var_dump($args->args);
             if($args->on == $bot->getNick()) {
                 $adding = true;
                 foreach (str_split($args->args[0]) as $mode) {
