@@ -102,7 +102,6 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             foreach ($body as $line) {
                 if($line == '')
                     continue;
-                $bot->pm($args->chan, $line);
                 $out[] = $line;
                 if($cnt++ > ($config['url_max'] ?? 100)) {
                     $out[] = "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(";
