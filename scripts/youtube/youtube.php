@@ -200,7 +200,7 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $reply("youtube key not set on config");
         return;
     }
-    $amt = 3;
+    $amt = 1;
     if($req->args->getOpt("--amt")) {
         $amt = $req->args->getOptVal("--amt");
         if($amt < 1 || $amt > 5) { //If greater than 5 should increase maxResults in api call
