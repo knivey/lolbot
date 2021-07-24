@@ -142,25 +142,27 @@ function reqart($bot, $chan, $file, $opts = []) {
             echo "{$e}\n";
             return;
         }
-        if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
-            $matches = yield searchIrcwatch($file, true);
-            if(count($matches) == 0) {
-                $bot->pm($chan, "that art isnt available on irc.watch and cant be loaded to asciibird :(");
-                return;
-            }
-            $bot->pm($chan, "https://asciibird.jewbird.live/?ircwatch=$file.txt");
-            return;
-        }
+
         //try fullpath first
         //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
         foreach($tree as $ent) {
             if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
+                $relPath = substr($ent, strlen($config['artdir']));
+                if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
+                    $bot->pm($chan, "https://asciibird.jewbird.live/?haxAscii=$relPath");
+                    return;
+                }
                 playart($bot, $chan, $ent, opts: $opts);
                 return;
             }
         }
         foreach($tree as $ent) {
             if($file == strtolower(basename($ent, '.txt'))) {
+                $relPath = substr($ent, strlen($config['artdir']));
+                if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
+                    $bot->pm($chan, "https://asciibird.jewbird.live/?haxAscii=$relPath");
+                    return;
+                }
                 playart($bot, $chan, $ent, opts: $opts);
                 return;
             }
