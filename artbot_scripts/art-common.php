@@ -143,26 +143,34 @@ function reqart($bot, $chan, $file, $opts = []) {
             return;
         }
 
+        $tryEdit = function ($ent, $ircwatch = false) use ($bot, $chan, $opts) {
+            global $config;
+            if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
+                if($ircwatch) {
+                    $bot->pm($chan, "https://asciibird.jewbird.live/?ircwatch=$ent");
+                } else {
+                    $relPath = substr($ent, strlen($config['artdir']));
+                    $bot->pm($chan, "https://asciibird.jewbird.live/?haxAscii=$relPath");
+                }
+                return true;
+            }
+            return false;
+        };
+
         //try fullpath first
         //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
         foreach($tree as $ent) {
             if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
-                $relPath = substr($ent, strlen($config['artdir']));
-                if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
-                    $bot->pm($chan, "https://asciibird.jewbird.live/?haxAscii=$relPath");
+                if($tryEdit($ent))
                     return;
-                }
                 playart($bot, $chan, $ent, opts: $opts);
                 return;
             }
         }
         foreach($tree as $ent) {
             if($file == strtolower(basename($ent, '.txt'))) {
-                $relPath = substr($ent, strlen($config['artdir']));
-                if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
-                    $bot->pm($chan, "https://asciibird.jewbird.live/?haxAscii=$relPath");
+                if($tryEdit($ent))
                     return;
-                }
                 playart($bot, $chan, $ent, opts: $opts);
                 return;
             }
@@ -175,6 +183,8 @@ function reqart($bot, $chan, $file, $opts = []) {
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() == 200) {
+                if($tryEdit("$file.txt", true))
+                    return;
                 file_put_contents("ircwatch.txt", "$body\n$url");
                 playart($bot, $chan, "ircwatch.txt", opts: $opts);
                 return;
