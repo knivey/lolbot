@@ -259,7 +259,18 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $channel = htmlspecialchars_decode($channel);
         //$desc = html_entity_decode($s['description'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
         //$desc = htmlspecialchars_decode($desc);
-        $reply("$url - $title | $channel");
+        $dur = null;
+        try {
+            $v = yield getVideoInfo($i['id']['videoId']);
+            if($v != null) {
+                $dur = ytDuration($v->contentDetails->duration);
+                //if for some reason duration fails format it so it wont look bad missing
+                $dur = " | $dur";
+            }
+        } catch (\Exception $e) {
+            ;
+        }
+        $reply("$url - $title | $channel{$dur}");
     }
     if($cnt < $amt) {
         $reply("No more results :(");
