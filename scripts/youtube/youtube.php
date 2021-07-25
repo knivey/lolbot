@@ -43,6 +43,32 @@ function ytDuration($input) {
     return $dur;
 }
 
+/**
+ * @param $id
+ * @throws async_get_exception
+ * @return \Amp\Promise
+ */
+function getVideoInfo($id) {
+    return \Amp\call(function () use ($id) {
+        global $config;
+        if(!isset($config['gkey'])) {
+            echo "No gkey set for youtube lookup\n";
+            return null;
+        }
+        $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key={$config['gkey']}");
+        $data = json_decode($body, false);
+
+        if (!is_object($data)) {
+            echo "Youtube $id bad or no data\n";
+            var_dump($data);
+            return null;
+        }
+        if(!is_array($data->items) || count($data->items) < 1)
+            return null;
+         return $data->items[0];
+    });
+}
+
 $youtube_history = [];
 function youtube(\Irc\Client $bot, $nick, $chan, $text)
 {
@@ -53,8 +79,10 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
         return;
     }
 
-
-    $key = $config['gkey'];
+    if(!isset($config['gkey'])) {
+        echo "No gkey set for youtube lookup\n";
+        return;
+    }
     $URL = '@^((?:https?:)?//)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(/(?:[\w\-]+\?v=|shorts/|embed/|v/)?)([\w\-]+)(\S+)?$@i';
     foreach (explode(' ', $text) as $word) {
         if (!preg_match($URL, $word, $m)) {
@@ -84,28 +112,19 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
         $youtube_history[$chan] = $id;
         echo "Looking up youtube video $id\n";
 
-        $data = null;
-        $body = null;
         try {
-            $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key=$key");
-            $data = json_decode($body, false);
+            $v = yield getVideoInfo($id);
         } catch (\async_get_exception $error) {
             echo "$error\n";
             $bot->pm($chan, "\2YouTube:\2 {$error->getIRCMsg()}");
             continue;
         }
-
-        if (!is_object($data)) {
-            echo "No data\n";
-            var_dump($data);
+        //dont want to spam on lots of errors with videos
+        if($v == null)
             continue;
-        }
-        try {
-            if(!is_array($data->items) || count($data->items) < 1)
-                continue;
-            $v = $data->items[0];
-            $title = $v->snippet->title;
 
+        try {
+            $title = $v->snippet->title;
             $dur = ytDuration($v->contentDetails->duration);
             $chanTitle = $v->snippet->channelTitle;
             //$datef = 'M j, Y';
@@ -117,7 +136,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             $sent = false;
             $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $dur";
             $thumbnail = $v?->snippet?->thumbnails?->high?->url;
-            if($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
+            if ($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                 $ext = explode('.', $thumbnail);
                 $ext = array_pop($ext);
                 try {
@@ -138,16 +157,16 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                 }
                 if ($thumbnail != '') {
                     $thumbnail = explode("\n", trim($thumbnail));
-                    foreach([count($thumbnail)-1,count($thumbnail)-2,1,0] as $i) {
+                    foreach ([count($thumbnail) - 1, count($thumbnail) - 2, 1, 0] as $i) {
                         if (trim($thumbnail[$i]) == "\x031,1") {
                             unset($thumbnail[$i]);
                         }
                     }
-                    if(isset($config['youtube_pump_host']) && isset($config['youtube_pump_key'])) {
+                    if (isset($config['youtube_pump_host']) && isset($config['youtube_pump_key'])) {
                         try {
                             $client = HttpClientBuilder::buildDefault();
                             $host = $config['youtube_pump_host'];
-                            if(substr($host, -1) != '/')
+                            if (substr($host, -1) != '/')
                                 $host = "$host/";
                             $pumpchan = substr($chan, 1);
                             $request = new Request("$host/privmsg/$pumpchan", "POST");
@@ -168,20 +187,24 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                             echo $e;
                         }
                     }
-                    if(!$sent) {
+                    if (!$sent) {
                         foreach ($thumbnail as $line) {
                             $bot->pm($chan, $line);
                         }
                     }
                 }
             }
-            if(!$sent) {
+            if (!$sent) {
                 $bot->pm($chan, $msg);
             }
+        } catch (\async_get_exception $e) {
+            $bot->pm($chan, "\2YouTube Error:\2 {$e->getIRCMsg()}");
+            echo "YouTube Error: $e\n";
         } catch (\Exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
-            echo "\2YouTube Error:\2 Unknown data received.\n";
-            var_dump($body);
+            echo "YouTube Error: Unknown data received.\n";
+            var_dump($v);
+            echo "$e\n";
         }
     }
 }
