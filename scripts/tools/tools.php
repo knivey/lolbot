@@ -94,7 +94,7 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     } catch (\async_get_exception $error) {
         $bot->pm($args->chan, "\2DomainCheck:\2 {$error->getIRCMsg()}");
     } catch (\Exception $error) {
-        $bot->pm($args->chan, "\2DomainCheck:\2 {$error->getMsg()}");
+        $bot->pm($args->chan, "\2DomainCheck:\2 {$error}");
     }
 }
 
