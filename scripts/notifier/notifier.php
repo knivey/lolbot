@@ -32,6 +32,33 @@ function notifier($bot) {
     $logger->pushHandler($logHandler);
 
     $server = new HttpServer($servers, new CallableRequestHandler(static function (Request $request) use (&$bot) {
+        $path = $request->getUri()->getPath();
+        $path = explode('/', $path);
+        $path = array_filter($path);
+
+        $action = array_shift($path);
+
+        //TODO might setup an actual router here if more scripts will have webhooks etc
+        if (strtolower($action) == 'owncast') {
+            $chan = array_shift($path);
+            if(!$chan) {
+                return new Response(Status::BAD_REQUEST, [
+                    "content-type" => "text/plain; charset=utf-8"
+                ], "Must specify a chan to privmsg");
+            }
+            $body = yield $request->getBody()->buffer();
+            $json = json_decode($body, JSON_OBJECT_AS_ARRAY);
+            var_dump($json);
+            var_dump($body);
+            if($json['type'] == 'STREAM_STARTED')
+                $bot->pm("#$chan", "{$json['eventData']['name']} now streaming: {$json['eventData']['streamTitle']} | {$json['eventData']['summary']}");
+            if($json['type'] == 'STREAM_STOPPED')
+                $bot->pm("#$chan", "{$json['eventData']['name']} stream stopped");
+            return new Response(Status::OK, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "PRIVMSG sent");
+        }
+
         $notifier_keys = Yaml::parseFile(__DIR__. '/notifier_keys.yaml');
         $key = $request->getHeader('key');
         if (isset($notifier_keys[$key])) {
@@ -41,11 +68,6 @@ function notifier($bot) {
                 "content-type" => "text/plain; charset=utf-8"
             ], "Invalid key");
         }
-        $path = $request->getUri()->getPath();
-        $path = explode('/', $path);
-        $path = array_filter($path);
-
-        $action = array_shift($path);
         if (strtolower($action) == 'privmsg') {
             $chan = array_shift($path);
             if(!$chan) {
