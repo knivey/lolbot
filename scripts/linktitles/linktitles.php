@@ -86,7 +86,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() != 200) {
-                return;
+                continue;
                 /*
                 $title = substr($body, 0, 200);
                 $title = strip_tags($m[1]);
@@ -97,7 +97,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
                 $title = str_replace("\x01", "[CTCP]", $title);
                 $bot->pm($chan, "LinkTitles Error (" . $response->getStatus() . ") $title");
                 //var_dump($body);
-                return;
+                continue;
                 */
             }
 
