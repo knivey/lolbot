@@ -29,6 +29,7 @@ function owncast($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $j = json_decode($body, true);
         if(!$j['online']) {
             $bot->pm($args->chan, "$surl - Stream is offline now.");
+            return;
         }
         $line = "$surl ";
         //seems like stream proxied through nginx always shows no viewsers so just hide this part if 0
