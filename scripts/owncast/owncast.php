@@ -8,7 +8,7 @@ use Symfony\Component\Yaml\Yaml;
 //channels should be lowercase without #
 //cast url should be normal url to click (https://owncast.local/)
 
-#[Cmd("owncast", "popcorn")]
+#[Cmd("owncast", "popcorn", "🍿")]
 #[CallWrap("Amp\asyncCall")]
 function owncast($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
