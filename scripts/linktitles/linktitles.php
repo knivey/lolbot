@@ -86,6 +86,8 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() != 200) {
+                return;
+                /*
                 $title = substr($body, 0, 200);
                 $title = strip_tags($m[1]);
                 $title = html_entity_decode($title,  ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -96,6 +98,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
                 $bot->pm($chan, "LinkTitles Error (" . $response->getStatus() . ") $title");
                 //var_dump($body);
                 return;
+                */
             }
 
             if(!preg_match("/<title[^>]*>([^<]+)<\/title>/im", $body, $m)) {
