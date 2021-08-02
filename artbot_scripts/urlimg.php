@@ -74,6 +74,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = $line;
                 if($cnt++ > ($config['url_max'] ?? 100)) {
                     $out[] = "wow thats a pretty big image, omitting ~" . count($thumbnail)-$cnt . "lines ;-(";
+                    return;
                 }
             }
             pumpToChan($args->chan, $out);
@@ -105,6 +106,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = $line;
                 if($cnt++ > ($config['url_max'] ?? 100)) {
                     $out[] = "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(";
+                    return;
                 }
             }
             pumpToChan($args->chan, $out);
