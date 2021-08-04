@@ -58,7 +58,7 @@ function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
-#[Cmd("domaincheck")]
+#[Cmd("domaincheck", "dc")]
 #[Syntax('<domain>')]
 #[CallWrap("Amp\asyncCall")]
 function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
