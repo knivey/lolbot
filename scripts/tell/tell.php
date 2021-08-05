@@ -20,6 +20,28 @@ if(isset($config['telldb'])) {
     $disabled=true;
 }
 
+#[Cmd("gtell", "gask", "ginform")]
+#[Syntax("<nick> <msg>...")]
+function gtell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $disabled, $config;
+    if($disabled) {
+        $bot->pm($args->chan, "telldb not configured");
+        return;
+    }
+    if(strtolower($bot->getNick()) == strtolower($req->args['nick'])) {
+        $bot->pm($args->chan, "Ok I'll pass that off to /dev/null");
+        return;
+    }
+    $max = $config['tell_max_inbox'] ?? 10;
+    $net = $bot->getOption('NETWORK', 'UnknownNet');
+    if(countMsgs($req->args['nick'], $net, true) >= $max) {
+        $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
+        return;
+    }
+    addMsg($req->args['nick'], $args->text, $args->nick, $net, $args->chan);
+    $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on any network.");
+}
+
 #[Cmd("tell", "ask", "inform")]
 #[Syntax("<nick> <msg>...")]
 function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
@@ -32,23 +54,43 @@ function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($args->chan, "Ok I'll pass that off to /dev/null");
         return;
     }
+    $net = $bot->getOption('NETWORK', 'UnknownNet');
     $max = $config['tell_max_inbox'] ?? 10;
-    if(countMsgs($req->args['nick']) >= $max) {
+    if(countMsgs($req->args['nick'], $net) >= $max) {
         $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
         return;
     }
-    addMsg($req->args['nick'], $args->text, $args->nick, $bot->getOption('NETWORK', 'UnknownNet'), $args->chan);
-    $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them.");
+    addMsg($req->args['nick'], $args->text, $args->nick, $net, $args->chan, $net);
+    $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on $net.");
 }
 
-function countMsgs($nick) {
+function countMsgs($nick, $net, $global = false) {
     $nick = strtolower($nick);
     R::selectDatabase('telldb');
     $msgs = R::findAll("msg", " `to` = ? AND `sent` = 0 ", [$nick]);
-    return count($msgs);
+    $cnt = 0;
+    if(!$global) {
+        //doing it this way because schema may be old
+        foreach ($msgs as $msg) {
+            if(!isset($msg->to_net) || $msg->to_net == null) {
+                $cnt++;
+                continue;
+            }
+            if($msg->to_net == $net)
+                $cnt++;
+        }
+    } else {
+        foreach ($msgs as $msg) {
+            if(isset($msg->to_net) && $msg->to_net != $net) {
+                continue;
+            }
+            $cnt++;
+        }
+    }
+    return $cnt;
 }
 
-function addMsg($nick, $msg, $from, $network, $chan) {
+function addMsg($nick, $msg, $from, $network, $chan, $toNet = null) {
     R::selectDatabase('telldb');
     $msgb = R::dispense("msg");
     $msgb->date = R::isoDateTime();
@@ -58,6 +100,7 @@ function addMsg($nick, $msg, $from, $network, $chan) {
     $msgb->sent = 0;
     $msgb->network = $network;
     $msgb->chan = $chan;
+    $msgb->to_net = $toNet;
     R::store($msgb);
     echo "msg added to db\n";
 }
@@ -77,6 +120,9 @@ function initTell($bot) {
         $max = $config['tell_max_tochan'] ?? 5;
         $cnt = 0;
         foreach ($msgs as &$msg) {
+            $net = $bot->getOption('NETWORK', 'UnknownNet');
+            if(isset($msg->to_net) && $msg->to_net != $net)
+                continue;
             try {
                 $seconds = time() - (new \DateTime($msg->date))->getTimestamp();
                 $duration = (new Duration($seconds))->humanize();
@@ -85,7 +131,6 @@ function initTell($bot) {
                 $duration = $msg->date;
             }
             $sendMsg = "{$duration} ago ";
-            $net = $bot->getOption('NETWORK', 'UnknownNet');
             if(strtolower($args->chan) != strtolower($msg->chan))
                 $sendMsg .= "in {$msg->chan} ";
             if(strtolower($net) != strtolower($msg->network))
