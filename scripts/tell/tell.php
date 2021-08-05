@@ -72,7 +72,7 @@ function countMsgs($nick, $net, $global = false) {
     if(!$global) {
         //doing it this way because schema may be old
         foreach ($msgs as $msg) {
-            if(!isset($msg->to_net) || $msg->to_net == null) {
+            if(!isset($msg->to_net) || $msg->to_net == "") {
                 $cnt++;
                 continue;
             }
@@ -81,7 +81,7 @@ function countMsgs($nick, $net, $global = false) {
         }
     } else {
         foreach ($msgs as $msg) {
-            if(isset($msg->to_net) && $msg->to_net != $net) {
+            if(isset($msg->to_net) && $msg->to_net != "" && $msg->to_net != $net) {
                 continue;
             }
             $cnt++;
@@ -121,7 +121,7 @@ function initTell($bot) {
         $cnt = 0;
         foreach ($msgs as &$msg) {
             $net = $bot->getOption('NETWORK', 'UnknownNet');
-            if(isset($msg->to_net) && $msg->to_net != $net)
+            if(isset($msg->to_net) && $msg->to_net != "" && $msg->to_net != $net)
                 continue;
             try {
                 $seconds = time() - (new \DateTime($msg->date))->getTimestamp();
