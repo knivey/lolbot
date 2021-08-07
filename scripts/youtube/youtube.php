@@ -43,6 +43,27 @@ function ytDuration($input) {
     return $dur;
 }
 
+function getLiveVideos($channelId) {
+    return \Amp\call(function () use ($channelId) {
+        global $config;
+        if(!isset($config['gkey'])) {
+            echo "No gkey set for youtube lookup\n";
+            return null;
+        }
+        $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key={$config['gkey']}");
+        $data = json_decode($body, false);
+
+        if (!is_object($data)) {
+            echo "Youtube getLiveVideos for $channelId, bad or no data\n";
+            var_dump($data);
+            return null;
+        }
+        if(!is_array($data->items) || count($data->items) < 1)
+            return null;
+        return $data->items;
+    });
+}
+
 /**
  * @param $id
  * @throws async_get_exception
