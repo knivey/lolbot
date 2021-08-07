@@ -326,6 +326,11 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         echo "{$e}\n";
         return;
     }
+    $tree = array_filter($tree, function ($it) {
+        global $config;
+        $check = substr($it, strlen($config['artdir']));
+        return !preg_match("@^p2u/.*@", $check);
+    });
     $matches = $tree;
     $file = '';
     if(isset($req->args['search'])) {
