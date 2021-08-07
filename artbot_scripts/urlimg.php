@@ -11,7 +11,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--rainbow", "--rnb", "--bsize", "--width")]
+#[Options("--rainbow", "--rnb", "--bsize", "--width", '--edit')]
 function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0] ?? '';
@@ -65,6 +65,20 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $filename_safe = escapeshellarg($filename);
             $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
             unlink($filename);
+            if($req->args->getOpt('--edit')) {
+                if(!isset($config['artdir'])) {
+                    $bot->pm($args->chan, "artdir not configued");
+                    return;
+                }
+                $artSavePath = "{$config['artdir']}/p2u/";
+                if(!is_dir($artSavePath)) {
+                    mkdir($artSavePath);
+                }
+                $name = bin2hex(random_bytes(7)) . '.txt';
+                file_put_contents("$artSavePath/$name", $thumbnail);
+                $bot->pm($args->chan, "https://asciibird.jewbird.live/?haxAscii=p2u/$name");
+                return;
+            }
             $cnt = 0;
             $thumbnail = explode("\n", $thumbnail);
             $out = [];
