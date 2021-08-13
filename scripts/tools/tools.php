@@ -93,8 +93,10 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
     } catch (\async_get_exception $error) {
         $bot->pm($args->chan, "\2DomainCheck:\2 Connection error :( try again later");
+        echo $error;
     } catch (\Exception $error) {
-        $bot->pm($args->chan, "\2DomainCheck:\2 {$error->getMessage()}");
+        $bot->pm($args->chan, "\2DomainCheck:\2 i unno some kinda error happen :(");
+        echo $error;
     }
 }
 
