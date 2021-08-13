@@ -100,6 +100,26 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
+#[Cmd("affirm")]
+#[Syntax('[nick]...')]
+#[CallWrap("Amp\asyncCall")]
+function affirm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    try {
+        $body = yield async_get_contents("https://www.affirmations.dev");
+        $j = json_decode($body);
+        if(!isset($j->affirmation))
+            throw new \Exception("affirmation not set: $body\n");
+        $a = $j->affirmation;
+        if(isset($req->args['nick'])) {
+            $a = "{$req->args['nick']}, $a";
+        }
+        $bot->msg($args->chan, $a);
+    } catch (\Exception $error) {
+        echo $error;
+    }
+}
+
 #[Cmd("rainbow", "rnb", "nes")]
 #[Syntax('<input>...')]
 function nes($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
