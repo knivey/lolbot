@@ -91,7 +91,7 @@ function endquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
 function stripTimestamp($line) {
     //var_dump($line);
-    if(!preg_match("@^( *\[? *[\d:\-\\\/ ]+ *(?:am|pm)? *[\d:\-\\\/ ]* *\]? *).+$@i", $line, $m)) {
+    if(!preg_match("@^( *\[? *[\d:\-\\\/ ]+ *(?:am|pm)? *[\d:\-\\\/ ]* *]? *).+$@i", $line, $m)) {
         return $line;
     }
     $test = str_replace(['[',']'], '', $m[1]);

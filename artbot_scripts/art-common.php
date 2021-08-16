@@ -23,7 +23,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(isset($recordings[$nick])) {
         return;
     }
-    if(!preg_match('/^[a-z0-9\-\_]+$/', $file)) {
+    if(!preg_match('/^[a-z0-9\-_]+$/', $file)) {
         $bot->pm($chan, 'Pick a filename matching [a-z0-9\-\_]+');
         return;
     }
