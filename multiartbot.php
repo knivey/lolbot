@@ -10,13 +10,6 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Symfony\Component\Yaml\Yaml;
 
-set_include_path(implode(PATH_SEPARATOR, array(__DIR__ . '/library', __DIR__ . '/plugins', get_include_path())));
-
-spl_autoload_register(function ($class) {
-    $path = str_replace('\\', '/', $class) . '.php';
-    include $path;
-    return class_exists($class, false);
-});
 
 use Amp\Loop;
 use Amp\Http\Client\HttpClientBuilder;
