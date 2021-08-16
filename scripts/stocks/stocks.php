@@ -39,13 +39,51 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("doge")]
 #[CallWrap("\Amp\asyncCall")]
-function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
     try {
-        $data = yield async_get_contents("https://api.coingecko.com/api/v3/coins/dogecoin/market_chart?vs_currency=usd&days=7");
+        $chart = yield from getCoinChart("dogecoin");
     } catch (\Exception $e) {
         $bot->pm($args->chan, "Error getting data");
         return;
     }
+    foreach ($chart as $l) {
+        $bot->pm($args->chan, $l);
+    }
+}
+
+#[Cmd("bch")]
+#[CallWrap("\Amp\asyncCall")]
+function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    try {
+        $chart = yield from getCoinChart("bitcoin-cash");
+    } catch (\Exception $e) {
+        $bot->pm($args->chan, "Error getting data");
+        return;
+    }
+    foreach ($chart as $l) {
+        $bot->pm($args->chan, $l);
+    }
+}
+
+#[Cmd("eth")]
+#[CallWrap("\Amp\asyncCall")]
+function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    try {
+        $chart = yield from getCoinChart("ethereum");
+    } catch (\Exception $e) {
+        $bot->pm($args->chan, "Error getting data");
+        return;
+    }
+    foreach ($chart as $l) {
+        $bot->pm($args->chan, $l);
+    }
+}
+
+function getCoinChart($coin) {
+    $data = yield async_get_contents("https://api.coingecko.com/api/v3/coins/$coin/market_chart?vs_currency=usd&days=7");
     $json = json_decode($data);
 
     $w = 86; // api gives hourly for 7 days cut out half those data points and give room for box
@@ -55,13 +93,18 @@ function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
     //box
     foreach($chart as &$l) {
-        $l[0] = "|";
-        $l[$w-1] = "|";
+        $l[0] = "┃";
+        $l[$w-1] = "┃";
     }
-    for($i=1;$i<$w-1;$i++) {
-        $chart[0][$i] = "-";
-        $chart[$h-1][$i] = "-";
+    for($i=0;$i<$w;$i++) {
+        $chart[0][$i] = "━";
+        $chart[$h-1][$i] = "━";
     }
+    $chart[0][0] = "┏";
+    $chart[$h-1][0] = "┗";
+    $chart[$h-1][$w-1] = "┛";
+    $chart[0][$w-1] = "┓";
+
 
     $prices = [];
     $cnt=0;
@@ -75,27 +118,23 @@ function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $max = max($prices);
     $rng = $max-$min;
 
-    echo "$min $max\n";
-
     $i = 1;
     foreach($prices as $p) {
-        $y = floor( (($p - $min) / $rng) * ($h-3) );
-        $chart[$y+1][$i] = 'x';
+        $y = $h - 2 - floor( (($p - $min) / $rng) * ($h-3) );
+        $chart[$y][$i] = 'x';
         $i++;
     }
-    $chart = array_reverse($chart);
 
-    foreach($chart as $l) {
-        $bot->msg($args->chan, implode('', $l));
+    $out = [];
+    //for some reason a foreach here duplicated second to last line and showed it as the last line, php bug?
+    for($k=0; $k<count($chart); $k++) {
+        $out[] = implode('', $chart[$k]);
     }
-    try {
-        $json = json_decode(yield async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=dogecoin&vs_currencies=usd&include_24hr_change=true"));
-        $current = $json->dogecoin->usd;
-    } catch (\Exception $e) {
-        $bot->pm($args->chan, "Error getting current price data");
-        return;
-    }
-    $bot->msg($args->chan, "7 day min price: $min USD");
-    $bot->msg($args->chan, "7 day max price: $max USD");
-    $bot->msg($args->chan, "Current price: $current USD");
+    $json = json_decode(yield async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+    //hope this works out lol
+    $current = $json->$coin->usd;
+    $out[] = "7 day min price: $min USD";
+    $out[] = "7 day max price: $max USD";
+    $out[] = "Current price: $current USD";
+    return $out;
 }
