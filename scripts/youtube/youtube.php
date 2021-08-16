@@ -13,7 +13,7 @@ use knivey\cmdr\attributes\Syntax;
 
 function ytDuration($input) {
     try {
-        $di = new DateInterval($input);
+        $di = new \DateInterval($input);
         $dur = '';
         if ($di->s > 0) {
             $dur = "{$di->s}s";
@@ -38,7 +38,7 @@ function ytDuration($input) {
         if ($dur == '') {
             $dur = 'LIVE';
         }
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         return '???';
     }
     return $dur;
@@ -67,7 +67,7 @@ function getLiveVideos($channelId) {
 
 /**
  * @param $id
- * @throws async_get_exception
+ * @throws \async_get_exception
  * @return \Amp\Promise
  */
 function getVideoInfo($id) {
