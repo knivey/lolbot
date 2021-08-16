@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\tools;
+namespace scripts\tools;
 require_once 'library/async_get_contents.php';
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;

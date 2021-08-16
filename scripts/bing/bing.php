@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\bing;
+namespace scripts\bing;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;

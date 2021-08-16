@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\wolfram;
+namespace scripts\wolfram;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;

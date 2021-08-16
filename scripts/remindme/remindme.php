@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\scripts\remindme;
+namespace scripts\remindme;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;

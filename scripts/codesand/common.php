@@ -1,6 +1,6 @@
 <?php
 
-namespace codesand;
+namespace scripts\codesand;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;

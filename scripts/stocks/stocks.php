@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\stocks;
+namespace scripts\stocks;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;

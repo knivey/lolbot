@@ -1,17 +1,8 @@
 #!/usr/bin/env php
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
+
 use Symfony\Component\Yaml\Yaml;
-
-set_include_path(implode(PATH_SEPARATOR, array(__DIR__.'/library', __DIR__.'/plugins', get_include_path())));
-
-spl_autoload_register( function($class)
-{
-    $path = str_replace('\\', '/', $class).'.php';
-    include $path;
-    return class_exists($class, false);
-});
-
 use Amp\Loop;
 use knivey\cmdr\Cmdr;
 
@@ -60,8 +51,8 @@ try {
         $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
         $bot->setThrottle($config['throttle'] ?? true);
         $bot->setServerPassword($config['pass'] ?? '');
-        \knivey\lolbot\scripts\tell\initTell($bot);
-        \knivey\lolbot\scripts\remindme\initRemindme($bot);
+        \scripts\tell\initTell($bot);
+        \scripts\remindme\initRemindme($bot);
 
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;
@@ -103,10 +94,10 @@ try {
                     return;
 
                 if ($config['youtube'] ?? false) {
-                    \Amp\asyncCall('youtube', $bot, $args->from, $args->channel, $args->text);
+                    \Amp\asyncCall('scripts\youtube\youtube', $bot, $args->from, $args->channel, $args->text);
                 }
                 if ($config['linktitles'] ?? false) {
-                    \Amp\asyncCall('linktitles', $bot, $args->channel, $args->text);
+                    \Amp\asyncCall('scripts\linktitles\linktitles', $bot, $args->channel, $args->text);
                 }
 
                 if (isset($config['trigger'])) {
@@ -144,7 +135,7 @@ try {
                 echo "UNCAUGHT EXCEPTION $e\n";
             }
         });
-        $server = yield from notifier($bot);
+        $server = yield from \scripts\notifier\notifier($bot);
 
         Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server) {
             Amp\Loop::cancel($watcherId);

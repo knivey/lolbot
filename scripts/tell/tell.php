@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\scripts\tell;
+namespace scripts\tell;
 /*
  * script for our .tell nick blah blah and .ask nick blah blah commands
  */

@@ -1,4 +1,5 @@
 <?php
+namespace scripts\notifier;
 
 use Symfony\Component\Yaml\Yaml;
 use Amp\ByteStream\ResourceOutputStream;

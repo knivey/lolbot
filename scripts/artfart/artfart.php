@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\artfart;
+namespace scripts\artfart;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;

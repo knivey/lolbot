@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\help;
+namespace scripts\help;
 
 use knivey\cmdr\attributes\Cmd;
 

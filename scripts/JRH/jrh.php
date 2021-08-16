@@ -1,8 +1,10 @@
 <?php
+namespace scripts\JRH;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
+use function scripts\youtube\getLiveVideos;
 
 #[Cmd("masshl")]
 function masshl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
@@ -62,7 +64,7 @@ function getChanUsers($chan, $bot): \Amp\Promise {
 #[Cmd("jrh")]
 #[CallWrap("Amp\asyncCall")]
 function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    if(!function_exists('getLiveVideos')) {
+    if(!function_exists('\scripts\youtube\getLiveVideos')) {
         echo "JRH requires youtube script loaded";
         return;
     }

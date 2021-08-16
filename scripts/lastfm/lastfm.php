@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\lastfm;
+namespace scripts\lastfm;
 
 require_once 'library/Duration.inc';
 

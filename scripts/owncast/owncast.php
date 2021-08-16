@@ -1,4 +1,5 @@
 <?php
+namespace scripts\owncast;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;

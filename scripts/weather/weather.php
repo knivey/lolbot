@@ -1,5 +1,5 @@
 <?php
-namespace knivey\lolbot\weather;
+namespace scripts\weather;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;

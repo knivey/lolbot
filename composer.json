@@ -26,5 +26,14 @@
             "name": "knivey",
             "email": "knivey@botops.net"
         }
-    ]
+    ],
+    "autoload": {
+        "psr-4": {
+            "scripts\\": "scripts",
+            "Irc\\": "library/Irc"
+        }
+    },
+    "require-dev": {
+        "ramsey/composer-repl": "^1.2"
+    }
 }

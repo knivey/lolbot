@@ -1,4 +1,5 @@
 <?php
+namespace scripts\linktitles;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;

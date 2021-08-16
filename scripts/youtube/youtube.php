@@ -1,4 +1,5 @@
 <?php
+namespace scripts\youtube;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
