@@ -15,10 +15,10 @@ R::addDatabase('quotes', "sqlite:{$config['quotedb']}");
 
 $quote_recordings = [];
 
-//TODO adding one liners after addquote dont enter recording mode just do them
 //TODO website where you can select what lines to addquote from log
 
 #[Cmd("addquote")]
+#[Syntax("[quote]...")]
 #[Options('--keeptimes')]
 function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
@@ -37,6 +37,11 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         'keeptimes' => $req->args->getOpt('--keeptimes'),
         'timeOut' => Amp\Loop::delay(15000, 'quoteTimeOut', [$nick, $bot]),
     ];
+    if(isset($req->args['quote'])) {
+        $quote_recordings[$nick]['lines'][] = $req->args['quote'];
+        endquote($args, $bot, $req);
+        return;
+    }
     $bot->pm($chan, "Quote recording started type \x02\x034@endquote\x03\x02 when done or discard with @cancelquote or just wait 15 seconds.");
 }
 
