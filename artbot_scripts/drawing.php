@@ -152,7 +152,7 @@ class Art {
         return $out;
     }
 
-    public function drawPoint($x, $y, Color $color, $text = '') {
+    public function drawPoint(int $x, int $y, Color $color, string $text = '') {
         if(isset($this->canvas[$y][$x])) {
             $this->canvas[$y][$x]->fg = $color->fg;
             $this->canvas[$y][$x]->bg = $color->bg;
@@ -161,7 +161,7 @@ class Art {
         }
     }
 
-    public function drawLine($startX, $startY, $endX, $endY, Color $color, $text = '') {
+    public function drawLine(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = '') {
         $dx = abs($endX - $startX);
         $dy = abs($endY - $startY);
         $sx = ($startX < $endX ? 1 : -1);
@@ -179,6 +179,36 @@ class Art {
             if($e2 < $dy) { $error += $dx; $y += $sy; }
         }
     }
+
+    public function drawFilledEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '') {
+        for($y=-$height; $y<=$height; $y++) {
+            for ($x = -$width; $x <= $width; $x++) {
+                if ($x * $x * $height * $height + $y * $y * $width * $width <= $height * $height * $width * $width)
+                    $this->drawPoint($centerX + $x, $centerY + $y, $color, $text);
+            }
+        }
+    }
+
+    //with a low seg number it draws shapes so maybe just add rotation later for shape drawing
+    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100) {
+        //want radius amts
+        $width = $width / 2;
+        $height = $height / 2;
+        $dtheta = pi()*2 / $segments;
+        $theta = 0;
+        $lx = 0;
+        $ly = 0;
+        for($i = 0; $i <= $segments; $i++) {
+            $x = $centerX + $width * sin($theta);
+            $y = $centerY + $height * cos($theta);
+            $theta += $dtheta;
+            if($i != 0) { // dont want to draw from 0,0
+                $this->drawLine($lx, $ly, $x, $y, $color, $text);
+            }
+            $lx = $x;
+            $ly = $y;
+        }
+    }
 }
 
 #[Cmd("linetest")]
@@ -190,7 +220,50 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $sy = $req->args['sy'];
     $ex = $req->args['ex'];
     $ey = $req->args['ey'];
+    foreach(compact(['sx', 'sy', 'ex', 'ey']) as $k => $v) if(!is_numeric($v)) {
+        $bot->msg($args->chan, "argument $k must be numeric");
+        return;
+    }
+
     $art->drawLine($sx, $sy, $ex, $ey, new Color(04,0), "x");
+
+    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+}
+
+
+#[Cmd("filledellipsetest")]
+#[Syntax('<cx> <cy> <w> <h>')]
+function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $art = Art::createBlank(80, 24);
+    $cx = $req->args['cx'];
+    $cy = $req->args['cy'];
+    $w = $req->args['w'];
+    $h = $req->args['h'];
+    foreach(compact(['cx', 'cy', 'w', 'h']) as $k => $v) if(!is_numeric($v)) {
+        $bot->msg($args->chan, "argument $k must be numeric");
+        return;
+    }
+    $art->drawFilledEllipse($cx, $cy, $w, $h, new Color(04,0), "x");
+
+    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+}
+
+#[Cmd("ellipsetest")]
+#[Syntax('<cx> <cy> <w> <h> <segs>')]
+function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $art = Art::createBlank(80, 24);
+    $cx = $req->args['cx'];
+    $cy = $req->args['cy'];
+    $w = $req->args['w'];
+    $h = $req->args['h'];
+    $segs = $req->args['segs'];
+    foreach(compact(['cx', 'cy', 'w', 'h', 'segs']) as $k => $v) if(!is_numeric($v)) {
+        $bot->msg($args->chan, "argument $k must be numeric");
+        return;
+    }
+    $art->drawEllipse($cx, $cy, $w, $h, new Color(04,0), "x", $segs);
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
