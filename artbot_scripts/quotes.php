@@ -23,14 +23,12 @@ $quote_recordings = [];
 function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
     $chan = $args->chan;
-    $file = $req->args['filename'];
     global $quote_recordings, $config;
     if(isset($quote_recordings[$nick])) {
         return;
     }
 
     $quote_recordings[$nick] = [
-        'name' => $file,
         'nick' => $nick,
         'chan' => $chan,
         'lines' => [],
@@ -39,6 +37,7 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     ];
     if(isset($req->args['quote'])) {
         $quote_recordings[$nick]['lines'][] = $req->args['quote'];
+        $quote_recordings[$nick]['lines'][] = "removed by array_pop";
         endquote($args, $bot, $req);
         return;
     }
