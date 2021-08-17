@@ -33,6 +33,7 @@ require_once 'multiartsnotifier.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
 require_once 'artbot_scripts/urlimg.php';
+require_once 'artbot_scripts/drawing.php';
 $router->loadFuncs();
 
 //copied from Cmdr should give it its own function in there later

@@ -192,9 +192,7 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $ey = $req->args['ey'];
     $art->drawLine($sx, $sy, $ex, $ey, new Color(04,0), "x");
 
-    foreach(explode("\n", trim($art, "\n")) as $line) {
-        $bot->pm($args->chan, $line);
-    }
+    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
 
 
@@ -212,7 +210,5 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $art->drawLine($sx, $sy, $ex, $ey, $color);
     }
 
-    foreach(explode("\n", trim($art, "\n")) as $line) {
-        $bot->pm($args->chan, $line);
-    }
+    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
