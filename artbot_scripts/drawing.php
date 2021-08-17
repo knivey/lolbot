@@ -303,3 +303,21 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
+
+
+#[Cmd("circles")]
+function circles($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $art = Art::createBlank(80, 24);
+    $numlines = rand(5,20);
+    for($i=0; $i<$numlines; $i++) {
+        $color = new Color(null, rand(0,16));
+        $w = rand(6, 80);
+        $h = rand($w/2-5, $w/2+5);
+        $cx = rand(-20, 100);
+        $cy = rand(-20, 34);
+        $art->drawEllipse($w, $h, $cx, $cy, $color);
+    }
+
+    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+}
