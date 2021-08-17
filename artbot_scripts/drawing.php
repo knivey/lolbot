@@ -200,7 +200,7 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 function lines($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     $art = Art::createBlank(80, 24);
-    $numlines = rand(10,40);
+    $numlines = rand(5,20);
     for($i=0; $i<$numlines; $i++) {
         $color = new Color(null, rand(0,16));
         $sx = rand(0, 80);
