@@ -220,9 +220,15 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $sy = $req->args['sy'];
     $ex = $req->args['ex'];
     $ey = $req->args['ey'];
-    foreach(compact(['sx', 'sy', 'ex', 'ey']) as $k => $v) if(!is_numeric($v)) {
-        $bot->msg($args->chan, "argument $k must be numeric");
-        return;
+    foreach(compact(['sx', 'sy', 'ex', 'ey']) as $k => $v) {
+        if(!is_numeric($v)) {
+            $bot->msg($args->chan, "argument $k must be numeric");
+            return;
+        }
+        if($v > 1000) {
+            $bot->msg($args->chan, "argument $k too big, limit to <1000");
+            return;
+        }
     }
 
     $art->drawLine($sx, $sy, $ex, $ey, new Color(04,0), "x");
@@ -240,9 +246,15 @@ function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $cy = $req->args['cy'];
     $w = $req->args['w'];
     $h = $req->args['h'];
-    foreach(compact(['cx', 'cy', 'w', 'h']) as $k => $v) if(!is_numeric($v)) {
-        $bot->msg($args->chan, "argument $k must be numeric");
-        return;
+    foreach(compact(['cx', 'cy', 'w', 'h']) as $k => $v) {
+        if(!is_numeric($v)) {
+            $bot->msg($args->chan, "argument $k must be numeric");
+            return;
+        }
+        if($v > 1000) {
+            $bot->msg($args->chan, "argument $k too big, limit to <1000");
+            return;
+        }
     }
     $art->drawFilledEllipse($cx, $cy, $w, $h, new Color(04,0), "x");
 
@@ -259,9 +271,15 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $w = $req->args['w'];
     $h = $req->args['h'];
     $segs = $req->args['segs'];
-    foreach(compact(['cx', 'cy', 'w', 'h', 'segs']) as $k => $v) if(!is_numeric($v)) {
-        $bot->msg($args->chan, "argument $k must be numeric");
-        return;
+    foreach(compact(['cx', 'cy', 'w', 'h', 'segs']) as $k => $v) {
+        if(!is_numeric($v)) {
+            $bot->msg($args->chan, "argument $k must be numeric");
+            return;
+        }
+        if($v > 1000) {
+            $bot->msg($args->chan, "argument $k too big, limit to <1000");
+            return;
+        }
     }
     $art->drawEllipse($cx, $cy, $w, $h, new Color(04,0), "x", $segs);
 
