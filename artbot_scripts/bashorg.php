@@ -23,9 +23,9 @@ function bash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $id = array_rand($bashdb);
     $quote = $bashdb[$id];
     unset($bashdb[$id]);
-    $bot->pm($args->chan, "\2Bash.org (\2$id\2):");
+    $head = "\2Bash.org (\2$id\2):";
     $quote = array_map(fn($it) => "  $it", $quote);
-    pumpToChan($args->chan, $quote);
+    pumpToChan($args->chan, [$head, ...$quote]);
 }
 
 function populateBash() {
