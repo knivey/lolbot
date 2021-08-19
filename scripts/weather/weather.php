@@ -32,24 +32,27 @@ function windDir($deg) {
 
 /**
  * @param $query
- * @return array|\Generator|string
+ * @return \Amp\Promise
  * @throws \async_get_exception
  */
-function getLocation($query) {
-    global $config;
-    $query = urlencode(htmlentities($query));
-    $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
-    $body = yield async_get_contents($url);
+function getLocation($query): \Amp\Promise
+{
+    return \Amp\call(function () use ($query) {
+        global $config;
+        $query = urlencode(htmlentities($query));
+        $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
+        $body = yield async_get_contents($url);
 
-    $j = json_decode($body, true);
-    $res = $j['resourceSets'][0]['resources'];
-    if (empty($res)) {
-        return "\2wz:\2 Location not found";
-    }
-    $location = $res[0]['address']['formattedAddress'];
-    $lat = $res[0]['point']['coordinates'][0];
-    $lon = $res[0]['point']['coordinates'][1];
-    return ['location' => $location, 'lat' => $lat, 'lon' => $lon];
+        $j = json_decode($body, true);
+        $res = $j['resourceSets'][0]['resources'];
+        if (empty($res)) {
+            return "\2wz:\2 Location not found";
+        }
+        $location = $res[0]['address']['formattedAddress'];
+        $lat = $res[0]['point']['coordinates'][0];
+        $lon = $res[0]['point']['coordinates'][1];
+        return ['location' => $location, 'lat' => $lat, 'lon' => $lon];
+    });
 }
 
 
@@ -125,7 +128,7 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
                 }
             } else {
                 try {
-                    $loc = yield \Amp\call(__namespace__ . '\getLocation', $query);
+                    $loc = yield getLocation($query);
                 } catch (\async_get_exception $error) {
                     echo $error;
                     $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
@@ -208,7 +211,7 @@ function setlocation($args, \Irc\Client $bot, cmdr\Request $req)
     }
 
     try {
-        $loc = yield \Amp\call(__namespace__ . '\getLocation', $req->args['query']);
+        $loc = yield getLocation($req->args['query']);
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2getLocation error:\2 {$error->getIRCMsg()}");
