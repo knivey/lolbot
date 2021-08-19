@@ -70,11 +70,11 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
         $bot->pm($args->chan, "\2WA:\2 " . $res);
     } catch (\async_get_exception $error) {
-        echo $error;
+        echo $error->getMessage();
         $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
         return;
     } catch (\Exception $error) {
-        echo $error;
-        $bot->pm($args->chan, "\2WA:\2 " . substr($error, 0, strpos($error, "\n")));
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2WA:\2 {$error->getMessage()}");
     }
 }

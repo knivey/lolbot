@@ -26,6 +26,10 @@ function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         else
             $bot->msg($args->chan, "define error: {$e->getIRCMsg()}");
         return;
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "define error: {$error->getMessage()}");
+        return;
     }
     $json = json_decode($body)[0];
     $out = "Define: {$json->word}";
@@ -124,10 +128,10 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
     } catch (\async_get_exception $error) {
         $bot->pm($args->chan, "\2DomainCheck:\2 Connection error :( try again later");
-        echo $error;
+        echo $error->getMessage();
     } catch (\Exception $error) {
         $bot->pm($args->chan, "\2DomainCheck:\2 i unno some kinda error happen :(");
-        echo $error;
+        echo $error->getMessage();
     }
 }
 
@@ -147,7 +151,7 @@ function affirm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
         $bot->msg($args->chan, $a);
     } catch (\Exception $error) {
-        echo $error;
+        echo $error->getMessage();
     }
 }
 

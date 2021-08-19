@@ -25,6 +25,10 @@ function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $bot->msg($args->chan, "ud: Problem getting data from urbandictionary");
         }
         return;
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "urbandict error: {$error->getMessage()}");
+        return;
     }
     if (str_contains($body, "<div class=\"term space\">Sorry, we couldn't find:")) {
 

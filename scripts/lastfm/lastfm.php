@@ -34,6 +34,10 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         echo $error;
         $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
         return;
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2lastfm:\2 {$error->getMessage()}");
+        return;
     }
     $res = json_decode($body, true);
     if(!isset($res['recenttracks']['track'][0])) {
@@ -69,6 +73,10 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
+        return;
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2lastfm:\2 {$error->getMessage()}");
         return;
     }
     $res = json_decode($body, true);

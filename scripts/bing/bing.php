@@ -66,5 +66,8 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2Bing:\2 {$error->getIRCMsg()}");
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2Bing:\2 {$error->getMessage()}");
     }
 }

@@ -115,7 +115,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $title = substr(trim($title), 0, 300);
             $bot->pm($chan, "[ $title ]");
         } catch (\Exception $error) {
-            echo "Link titles exception: $error\n";
+            echo "Link titles exception: {$error->getMessage()}\n";
         }
     }
 }

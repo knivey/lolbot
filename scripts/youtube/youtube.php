@@ -137,9 +137,13 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
         try {
             $v = yield getVideoInfo($id);
         } catch (\async_get_exception $error) {
-            echo "$error\n";
+            echo $error->getMessage();
             $bot->pm($chan, "\2YouTube:\2 {$error->getIRCMsg()}");
             continue;
+        } catch (\Exception $error) {
+            echo $error->getMessage();
+            $bot->pm($chan, "\2YouTube:\2 {$error->getMessage()}");
+            return;
         }
         //dont want to spam on lots of errors with videos
         if($v == null)
@@ -226,7 +230,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             $bot->pm($chan, "\2YouTube Error:\2 Unknown data received.");
             echo "YouTube Error: Unknown data received.\n";
             var_dump($v);
-            echo "$e\n";
+            echo $e->getMessage();
         }
     }
 }
@@ -262,6 +266,10 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }  catch (\async_get_exception $error) {
         echo $error;
         $reply($error->getIRCMsg());
+        return;
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $reply($error->getMessage());
         return;
     }
     $res = json_decode($body, true);

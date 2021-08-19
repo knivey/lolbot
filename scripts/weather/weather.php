@@ -30,6 +30,11 @@ function windDir($deg) {
     return $dirs[round((($deg % 360) / 45))];
 }
 
+/**
+ * @param $query
+ * @return array|\Generator|string
+ * @throws \async_get_exception
+ */
 function getLocation($query) {
     global $config;
     $query = urlencode(htmlentities($query));
@@ -177,13 +182,13 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
             $bot->pm($args->chan, "\2$location:\2 Forecast: $out");
         }
     } catch (\async_get_exception $error) {
-        echo $error;
+        echo $error->getMessage();
         $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
-        echo $error;
-        $bot->pm($args->chan, "\2wz:\2 " . substr($error, 0, strpos($error, "\n")));
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2wz:\2 {$error->getMessage()}");
     }
 }
 
@@ -206,7 +211,11 @@ function setlocation($args, \Irc\Client $bot, cmdr\Request $req)
         $loc = yield \Amp\call(__namespace__ . '\getLocation', $req->args['query']);
     } catch (\async_get_exception $error) {
         echo $error;
-        $bot->pm($args->chan, "\2getLocation:\2 {$error->getIRCMsg()}");
+        $bot->pm($args->chan, "\2getLocation error:\2 {$error->getIRCMsg()}");
+        return;
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2getLocation error:\2 {$error->getMessage()}");
         return;
     }
     if (!is_array($loc)) {
