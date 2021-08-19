@@ -33,7 +33,10 @@ function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $out .= " {$json->phonetics[0]->text}";
     $out .= " - ";
     foreach($json->meanings as $m) {
-        $out .= "({$m->partOfSpeech}) {$m->definitions[0]->definition} Ex: {$m->definitions[0]->example} | ";
+        $out .= "({$m->partOfSpeech}) {$m->definitions[0]->definition}";
+        if(isset($m->definitions[0]->example))
+            $out .= "Ex: {$m->definitions[0]->example}";
+        $out .= " | ";
     }
     $out = rtrim($out, " |");
     $bot->pm($args->chan, $out);
