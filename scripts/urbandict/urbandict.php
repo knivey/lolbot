@@ -46,7 +46,7 @@ function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
     $max = 2;
     for ($i = 0; $i < $max && isset($defs[$i]); $i++) {
-        if (isset($config['throttle']) && $config['throttle'] && $i > 1)
+        if ((!isset($config['throttle']) || $config['throttle']) && $i > 1)
             break;
         $def = $defs[$i];
         $num = $def->find('div.ribbon', 0)->plaintext;
@@ -73,7 +73,7 @@ function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $example1line = implode(' | ', $example);
 
         $bot->msg($args->chan, "ud: $word #$num added $by");
-        if (isset($config['throttle']) && $config['throttle']) {
+        if (!isset($config['throttle']) || $config['throttle']) {
             $bot->msg($args->chan, " ├ Meaning: $meaning");
             $bot->msg($args->chan, " └ $example1line");
         } else {

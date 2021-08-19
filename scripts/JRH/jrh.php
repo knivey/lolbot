@@ -120,7 +120,7 @@ $title
  NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE";
     $banner = trim($banner);
     $net = strtolower($bot->getOption('NETWORK'));
-    if(isset($config['throttle']) && $config['throttle']) {
+    if(!isset($config['throttle']) || $config['throttle']) {
         $bot->msg($args->chan, "JRH now live! http://jewbird.live/ {$v->snippet->title}");
         return;
     }
