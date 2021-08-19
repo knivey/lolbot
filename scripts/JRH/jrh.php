@@ -1,6 +1,7 @@
 <?php
 namespace scripts\JRH;
 
+use Carbon\Carbon;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
@@ -64,6 +65,7 @@ function getChanUsers($chan, $bot): \Amp\Promise {
 #[Cmd("jrh")]
 #[CallWrap("Amp\asyncCall")]
 function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
     if(!function_exists('\scripts\youtube\getLiveVideos')) {
         echo "JRH requires youtube script loaded";
         return;
@@ -77,7 +79,14 @@ function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     if($vids == null || !is_array($vids) || count($vids) == 0) {
-        $bot->msg($args->chan, "Don't see any live stream for JRH ATM :(");
+        $d = new Carbon("Friday 7:30 pm EDT");
+        $thisFri = new Carbon("Friday this week 7:30 pm EDT");
+        $margin = Carbon::now()->diffInMinutes($thisFri, false);
+        if($margin > -60 && $margin < 10) {
+            $time = "any minute now!";
+        }
+        $time = $d->longAbsoluteDiffForHumans(Carbon::now(), 3);
+        $bot->msg($args->chan, "No live streams for JRH, next stream starts $time");
         return;
     }
     $v = $vids[0];
@@ -111,7 +120,7 @@ $title
  NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE";
     $banner = trim($banner);
     $net = strtolower($bot->getOption('NETWORK'));
-    if($net != 'efnet' && $net != 'ircltd') {
+    if(isset($config['throttle']) && $config['throttle']) {
         $bot->msg($args->chan, "JRH now live! http://jewbird.live/ {$v->snippet->title}");
         return;
     }
