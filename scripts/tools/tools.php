@@ -11,6 +11,34 @@ use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
 
+
+#[Cmd("define", "dictionary")]
+#[Syntax('<query>...')]
+#[CallWrap("Amp\asyncCall")]
+function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $word = urlencode($req->args['query']);
+    try {
+        $body = yield \async_get_contents("https://api.dictionaryapi.dev/api/v2/entries/en/$word");
+    } catch (\async_get_exception $e) {
+        if($e->getCode() == 404)
+            $bot->msg($args->chan, "define: no definitions found");
+        else
+            $bot->msg($args->chan, "define error: {$e->getIRCMsg()}");
+        return;
+    }
+    $json = json_decode($body)[0];
+    $out = "Define: {$json->word}";
+    if(isset($json->phonetics) && isset($json->phonetics[0]->text))
+        $out .= " {$json->phonetics[0]->text}";
+    $out .= " - ";
+    foreach($json->meanings as $m) {
+        $out .= "({$m->partOfSpeech}) {$m->definitions[0]->definition} Ex: {$m->definitions[0]->example} | ";
+    }
+    $out = rtrim($out, " |");
+    $bot->pm($args->chan, $out);
+}
+
 function getDnsType($type) {
     $rc = new \ReflectionClass(\Amp\Dns\Record::class);
     $ret = false;
