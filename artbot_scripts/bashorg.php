@@ -51,11 +51,9 @@ function populateBash() {
             }, $quote));
         }
         if(count($ids) != count($quotes))
-            return;
-        $db = array_combine($ids, $quotes);
-        if (count($db) == 0) {
+            throw new \Exception("Weird data trying to extract quotes.");
+        $bashdb = array_combine($ids, $quotes);
+        if (count($bashdb) == 0)
             throw new \Exception("Couldn't extract any quotes from site.");
-        }
-        $bashdb = $db;
     });
 }
