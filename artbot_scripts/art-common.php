@@ -514,7 +514,11 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             pumpToChan($chan, explode("\n", rtrim($out)));
             unlink($file);
         } catch (\async_get_exception $error) {
-            $bot->pm($chan, $error->getIRCMsg());
+            $bot->pm($chan, "\a2m:\2 {$error->getIRCMsg()}");
+        } catch (\Exception $error) {
+            echo $error->getMessage();
+            $bot->pm($chan, "\2a2m:\2 {$error->getMessage()}");
+            return;
         }
     });
 }
