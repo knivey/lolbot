@@ -13,6 +13,7 @@ $router = new Cmdr();
  * Find places where using delayed makes more sense
  * move all bots to one instance, surround everything with try catch (links youtube cmds etc)
  * each bot own config section, apis global?
+ *  databases will need to be uniq for each bot, will likely put scripts into objects - this could be good for autoload
  * loading scripts maybe have recurvise dir include and dirs like all, extra
  */
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
@@ -35,6 +36,7 @@ require_once 'scripts/tell/tell.php';
 require_once 'scripts/remindme/remindme.php';
 require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/urbandict/urbandict.php';
+require_once 'scripts/seen/seen.php';
 
 require_once "scripts/JRH/jrh.php";
 
@@ -53,6 +55,7 @@ try {
         $bot->setThrottle($config['throttle'] ?? true);
         $bot->setServerPassword($config['pass'] ?? '');
         \scripts\tell\initTell($bot);
+        \scripts\seen\initSeen($bot);
         \scripts\remindme\initRemindme($bot);
 
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
