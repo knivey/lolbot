@@ -27,6 +27,7 @@ function seen($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($args->chan, "I'm here bb");
         return;
     }
+    saveSeens();
     R::selectDatabase($seendb);
     $seen = R::findOne("seen", " `nick` = ? ", [$nick]);
     if($seen == null) {
@@ -53,19 +54,14 @@ function seen($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $bot->pm($args->chan, "seen {$ago}: $n {$seen->text}");
 }
 
+$updates = [];
 
 function updateSeen(string $action, string $chan, string $nick, string $text) {
-    global $seendb;
+    global $seendb, $updates;
     $orig_nick = $nick;
     $nick = strtolower($nick);
     $chan = strtolower($chan);
-    R::selectDatabase($seendb);
-    //clean out the old entries for this nick
-    $previous = R::findAll("seen", " `nick` = ? ", [$nick]);
-    if(is_array($previous)) {
-        R::trashAll($previous);
-    }
-    // add the new
+    R::selectDatabase($seendb); //not sure if needed to use dispense
     $ent = R::dispense("seen");
     $ent->nick = $nick;
     $ent->orig_nick = $orig_nick;
@@ -73,10 +69,26 @@ function updateSeen(string $action, string $chan, string $nick, string $text) {
     $ent->text = $text;
     $ent->action = $action;
     $ent->time = R::isoDateTime();
-    R::store($ent);
+    //Don't save yet, massive floods will destroy us with so many writes
+    $updates[$nick] = $ent;
+}
+
+function saveSeens() {
+    global $seendb, $updates;
+    R::selectDatabase($seendb);
+    foreach($updates as $ent) {
+        //clean out the old entries for this nick
+        $previous = R::findAll("seen", " `nick` = ? ", [$ent->nick]);
+        if (is_array($previous)) {
+            R::trashAll($previous);
+        }
+        R::store($ent);
+    }
 }
 
 function initSeen($bot) {
+    \Amp\Loop::repeat(15000, __NAMESPACE__.'\saveSeens');
+
     $bot->on('notice', function ($args, \Irc\Client $bot){
         if (!$bot->isChannel($args->to))
             return;
