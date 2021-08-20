@@ -54,15 +54,24 @@ function seen($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $bot->pm($args->chan, "seen {$ago}: $n {$seen->text}");
 }
 
+class seen {
+    public $nick;
+    public $orig_nick;
+    public $chan;
+    public $text;
+    public $action;
+    public $time;
+}
+
 $updates = [];
 
 function updateSeen(string $action, string $chan, string $nick, string $text) {
-    global $seendb, $updates;
+    global $updates;
     $orig_nick = $nick;
     $nick = strtolower($nick);
     $chan = strtolower($chan);
-    R::selectDatabase($seendb); //not sure if needed to use dispense
-    $ent = R::dispense("seen");
+
+    $ent = new seen();
     $ent->nick = $nick;
     $ent->orig_nick = $orig_nick;
     $ent->chan = $chan;
@@ -82,7 +91,14 @@ function saveSeens() {
         if (is_array($previous)) {
             R::trashAll($previous);
         }
-        R::store($ent);
+        $seen = R::dispense("seen");
+        $seen->nick = $ent->nick;
+        $seen->orig_nick = $ent->orig_nick;
+        $seen->chan = $ent->chan;
+        $seen->text = $ent->text;
+        $seen->action = $ent->action;
+        $seen->time = $ent->time;
+        R::store($seen);
     }
 }
 
