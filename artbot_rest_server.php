@@ -13,23 +13,12 @@ use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
 use Amp\Socket;
 use Monolog\Logger;
+use Cspray\Labrador\Http\Cors\ArrayConfiguration;
+use Cspray\Labrador\Http\Cors\SimpleConfigurationLoader;
+use Cspray\Labrador\Http\Cors\CorsMiddleware;
+use function Amp\Http\Server\Middleware\stack;
 
 $restRouter = new Router;
-
-/**
- * query string to key=>val array
- * @param string $v result from $request->getUri()->getQuery()
- * @return array
- */
-function parseQuery($v) {
-    $v = explode("&", $v);
-    $vars = [];
-    foreach ($v as $var) {
-        @list($key, $val) = explode("=", $var, 1);
-        @$vars[urldecode($key)] = isset($vay) ? urldecode($val) : true;
-    }
-    return $vars;
-}
 
 function startRestServer() {
     global $config, $restRouter;
@@ -43,7 +32,7 @@ function startRestServer() {
     } else {
         $context = null;
     }
-    $servers = [
+    $sockets = [
         Socket\Server::listen($config['listen'], $context)
     ];
     //Probably setup logging from main later
@@ -52,7 +41,19 @@ function startRestServer() {
     $logger = new Logger('server');
     $logger->pushHandler($logHandler);
 
-    $server = new Server($servers, $restRouter, $logger);
+    $arrayConfig = [
+        'origins' => ['*'],
+        'allowed_methods' => ['GET', 'POST', 'PUT'],
+        'max_age' => 8600,
+        'allowed_headers' => ['content-type'],
+        'exposable_headers' => ['content-type'],
+        'allow_credentials' => false
+    ];
+
+    $loader = new SimpleConfigurationLoader(new ArrayConfiguration($arrayConfig));
+    $middleware = new CorsMiddleware($loader);
+
+    $server = new Server($sockets, stack($restRouter, $middleware), $logger);
 
     $restRouter->addRoute("POST", "/privmsg/{chan}", new CallableRequestHandler(function (Request $request) {
         $notifier_keys = Yaml::parseFile(__DIR__. '/notifier_keys.yaml');

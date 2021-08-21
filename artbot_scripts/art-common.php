@@ -1,6 +1,7 @@
 <?php
 require_once 'library/async_get_contents.php';
 
+use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Router;
 use Amp\Loop;
 use Amp\Http\Client\HttpClientBuilder;
@@ -16,9 +17,11 @@ use Amp\Http\Server\Response as HttpResponse;
 use Amp\Http\Server\Request as HttpRequest;
 use Amp\Http\Status;
 
+
 $recordings = [];
 
 global $restRouter;
+
 $allowedPumps = [];
 
 $restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function (HttpRequest $request) {
@@ -46,29 +49,36 @@ $restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function
 function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config, $allowedPumps;
-    //need the http or it wont parse ipv6 correct
-    $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
+    $url = '';
     $key = bin2hex(random_bytes(5));
-    $ourIp = false;
-    foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
-        try {
-            $ourIp = yield async_get_contents("http://$ipserv");
-            if($ourIp)
-                break;
-        } catch (\Exception $e) {
-            ;
+    if(isset($config['rest_url'])) {
+        $url = $config['rest_url'];
+    } else {
+        //need the http or it wont parse ipv6 correct
+        $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
+        $ourIp = false;
+        foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
+            try {
+                $ourIp = yield async_get_contents("http://$ipserv");
+                if ($ourIp)
+                    break;
+            } catch (\Exception $e) {
+                ;
+            }
         }
-    }
-    if(!$ourIp) {
-        $bot->pm($args->chan, "Couldn't find my ip :(");
-        return;
+        if (!$ourIp) {
+            $bot->pm($args->chan, "Couldn't find my ip :(");
+            return;
+        }
+        $https = isset($config['listen_cert']) ? "https" : "http";
+        $url = "$https://$ourIp:$port";
     }
     $allowedPumps[$key] = [
         'nick' => $args->nick,
         'chan' => $args->chan,
     ];
-    $https = isset($config['listen_cert']) ? "https" : "http";
-    $bot->notice($args->nick, "  $https://$ourIp:$port/pump/$key  This is valid for 1 pump and expires in 10 min");
+
+    $bot->notice($args->nick, "  $url/pump/$key  This is valid for 1 pump and expires in 10 min");
     \Amp\Loop::delay(10*60*1000, function () use ($key) {
         global $allowedPumps;
         unset($allowedPumps[$key]);
