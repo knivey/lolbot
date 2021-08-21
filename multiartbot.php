@@ -29,7 +29,7 @@ class Playing {
 use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
-require_once 'multiartsnotifier.php';
+require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
 require_once 'artbot_scripts/urlimg.php';
@@ -147,7 +147,7 @@ Loop::run(function () {
         }
         $cnt++;
     }
-    $server = yield from multinotifier();
+    $server = yield from startRestServer();
 
     $botExit = function ($watcherId) use ($server) {
         global $bots;

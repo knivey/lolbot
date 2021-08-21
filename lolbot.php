@@ -16,6 +16,31 @@ $router = new Cmdr();
  *  databases will need to be uniq for each bot, will likely put scripts into objects - this could be good for autoload
  * loading scripts maybe have recurvise dir include and dirs like all, extra
  */
+/*
+ * TODO
+ * art:
+ * other todos in various files..
+ * allow ircwatch arts in @random search - append ircwatch/name array
+ * allow @ircwatch/file to only load from ircwatch
+ * @fortune
+ *
+ * website api for uploading, sending to chans, get keys from chat
+ *
+ * others:
+ *
+ * github: links to things like issues prs etc show more appropriate info
+ *  * later would be nice to have github webhooks?
+ * wikipedia
+ * translate
+ * reddit urls
+ *
+ * rss feeds
+ * main loop catching exceptions and ValueError dont die
+ * user system
+ *
+ * codesand: add js, c++, cleanup the timeout problem, maxlines shown twice if error after
+ */
+
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';

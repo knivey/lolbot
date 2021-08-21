@@ -1,6 +1,7 @@
 <?php
 require_once 'library/async_get_contents.php';
 
+use Amp\Http\Server\Router;
 use Amp\Loop;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
@@ -10,8 +11,68 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
+use Amp\Http\Server\RequestHandler\CallableRequestHandler;
+use Amp\Http\Server\Response as HttpResponse;
+use Amp\Http\Server\Request as HttpRequest;
+use Amp\Http\Status;
 
 $recordings = [];
+
+global $restRouter;
+$allowedPumps = [];
+
+$restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function (HttpRequest $request) {
+    global $allowedPumps;
+    $args = $request->getAttribute(Router::class);
+    if(!isset($args['key']) || !array_key_exists($args['key'], $allowedPumps)) {
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "Invalid key\n");
+    }
+
+    $pumpInfo = $allowedPumps[$args['key']];
+    $msg = yield $request->getBody()->buffer();
+    $msg = str_replace("\r", "\n", $msg);
+    $msg = explode("\n", $msg);
+    $msg = array_filter($msg);
+    array_unshift($msg, "Pump brought to you by {$pumpInfo['nick']}");
+    pumpToChan($pumpInfo['chan'], $msg);
+    unset($allowedPumps[$args['key']]);
+    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "PUMPED!\n");
+}));
+
+#[Cmd("getpumper")]
+#[CallWrap("\Amp\asyncCall")]
+function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config, $allowedPumps;
+    //need the http or it wont parse ipv6 correct
+    $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
+    $key = bin2hex(random_bytes(5));
+    $ourIp = false;
+    foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
+        try {
+            $ourIp = yield async_get_contents("http://$ipserv");
+            if($ourIp)
+                break;
+        } catch (\Exception $e) {
+            ;
+        }
+    }
+    if(!$ourIp) {
+        $bot->pm($args->chan, "Couldn't find my ip :(");
+        return;
+    }
+    $allowedPumps[$key] = [
+        'nick' => $args->nick,
+        'chan' => $args->chan,
+    ];
+    $bot->notice($args->nick, "  http://$ourIp:$port/pump/$key  This is valid for 1 pump and expires in 10 min");
+    \Amp\Loop::delay(10*60*1000, function () use ($key) {
+        global $allowedPumps;
+        unset($allowedPumps[$key]);
+    });
+}
 
 #[Cmd("record")]
 #[Syntax('<filename>')]

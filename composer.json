@@ -19,7 +19,8 @@
         "gabordemooij/redbean": "^5.7",
         "khill/php-duration": "~1.0",
         "simplehtmldom/simplehtmldom": "dev-master",
-        "nesbot/carbon": "^2.51"
+        "nesbot/carbon": "^2.51",
+        "amphp/http-server-router": "^1.0"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",

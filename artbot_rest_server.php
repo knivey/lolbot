@@ -1,5 +1,7 @@
 <?php
 
+use Amp\Http\Server\Router;
+use Amp\Http\Server\Server;
 use Symfony\Component\Yaml\Yaml;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Http\Server\HttpServer;
@@ -12,8 +14,25 @@ use Amp\Log\StreamHandler;
 use Amp\Socket;
 use Monolog\Logger;
 
-function multinotifier() {
-    global $config;
+$restRouter = new Router;
+
+/**
+ * query string to key=>val array
+ * @param string $v result from $request->getUri()->getQuery()
+ * @return array
+ */
+function parseQuery($v) {
+    $v = explode("&", $v);
+    $vars = [];
+    foreach ($v as $var) {
+        @list($key, $val) = explode("=", $var, 1);
+        @$vars[urldecode($key)] = isset($vay) ? urldecode($val) : true;
+    }
+    return $vars;
+}
+
+function startRestServer() {
+    global $config, $restRouter;
     if(!isset($config['listen'])) {
         return null;
     }
@@ -31,8 +50,9 @@ function multinotifier() {
     $logger = new Logger('server');
     $logger->pushHandler($logHandler);
 
-    $server = new HttpServer($servers, new CallableRequestHandler(static function (Request $request) {
-        global $playing;
+    $server = new Server($servers, $restRouter, $logger);
+
+    $restRouter->addRoute("POST", "/privmsg/{chan}", new CallableRequestHandler(function (Request $request) {
         $notifier_keys = Yaml::parseFile(__DIR__. '/notifier_keys.yaml');
         $key = $request->getHeader('key');
         if (isset($notifier_keys[$key])) {
@@ -42,34 +62,22 @@ function multinotifier() {
                 "content-type" => "text/plain; charset=utf-8"
             ], "Invalid key");
         }
-        $path = $request->getUri()->getPath();
-        $path = explode('/', $path);
-        $path = array_filter($path);
-
-        $action = array_shift($path);
-        if (strtolower($action) == 'privmsg') {
-            $chan = array_shift($path);
-            if(!$chan) {
-                return new Response(Status::BAD_REQUEST, [
-                    "content-type" => "text/plain; charset=utf-8"
-                ], "Must specify a chan to privmsg");
-            }
-            $msg = yield $request->getBody()->buffer();
-            $msg = str_replace("\r", "\n", $msg);
-            $msg = explode("\n", $msg);
-
-            $chan = "#$chan";
-            pumpToChan($chan, $msg);
-
-            return new Response(Status::OK, [
+        $args = $request->getAttribute(Router::class);
+        if(!isset($args['chan'])) { // todo not sure if needed
+            return new Response(Status::BAD_REQUEST, [
                 "content-type" => "text/plain; charset=utf-8"
-            ], "PRIVMSG sent");
+            ], "Must specify a chan to privmsg");
         }
+        $chan = "#{$args['chan']}";
+        $msg = yield $request->getBody()->buffer();
+        $msg = str_replace("\r", "\n", $msg);
+        $msg = explode("\n", $msg);
+        pumpToChan($chan, $msg);
 
-        return new Response(Status::BAD_REQUEST, [
+        return new Response(Status::OK, [
             "content-type" => "text/plain; charset=utf-8"
-        ], "Unknown request");
-    }), $logger);
+        ], "PRIVMSG sent\n");
+    }));
 
     yield $server->start();
 

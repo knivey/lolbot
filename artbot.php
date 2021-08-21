@@ -18,6 +18,7 @@ use knivey\cmdr\Cmdr;
 $router = new Cmdr();
 
 $config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
+require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
 require_once 'artbot_scripts/urlimg.php';
@@ -138,8 +139,9 @@ Loop::run(function () {
             reqart($bot, $args->channel, $cmd, $opts);
         }
     });
+    $server = yield from startRestServer();
 
-    Loop::onSignal(SIGINT, function ($watcherId) use ($bot) {
+    Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server) {
         Amp\Loop::cancel($watcherId);
         if (!$bot->isConnected)
             die("Terminating, not connected\n");
@@ -150,10 +152,13 @@ Loop::run(function () {
             echo "Exception when sending quit\n $e\n";
         }
         $bot->exit();
+        if ($server != null) {
+            $server->stop();
+        }
         echo "Stopping Amp\\Loop\n";
         Amp\Loop::stop();
     });
-    Loop::onSignal(SIGTERM, function ($watcherId) use ($bot) {
+    Loop::onSignal(SIGTERM, function ($watcherId) use ($bot, $server) {
         Amp\Loop::cancel($watcherId);
         if (!$bot->isConnected)
             die("Terminating, not connected\n");
@@ -164,6 +169,9 @@ Loop::run(function () {
             echo "Exception when sending quit\n $e\n";
         }
         $bot->exit();
+        if ($server != null) {
+            $server->stop();
+        }
         echo "Stopping Amp\\Loop\n";
         Amp\Loop::stop();
     });
