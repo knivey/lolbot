@@ -82,10 +82,10 @@ function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $d = new Carbon("Friday 7:30 pm EDT");
         $thisFri = new Carbon("Friday this week 7:30 pm EDT");
         $margin = Carbon::now()->diffInMinutes($thisFri, false);
-        if($margin > -60 && $margin < 10) {
+        $time = $d->longAbsoluteDiffForHumans(Carbon::now(), 3);
+        if($margin > -60 && $margin < 0) {
             $time = "any minute now!";
         }
-        $time = $d->longAbsoluteDiffForHumans(Carbon::now(), 3);
         $bot->msg($args->chan, "No live streams for JRH, next stream starts $time");
         return;
     }
