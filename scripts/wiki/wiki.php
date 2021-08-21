@@ -43,7 +43,7 @@ function wiki($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $url = html_entity_decode($json->content_urls->desktop->page, ENT_QUOTES | ENT_HTML5);
 
     if(strlen($extract) > 320) {
-        $extract = explode("\n", wordwrap($extract, 320), 0)[0] . "...";
+        $extract = explode("\n", wordwrap($extract, 320), 2)[0] . "...";
     }
 
     $type = null;
