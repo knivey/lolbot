@@ -258,7 +258,7 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
     }
 
-    $q = urlencode(htmlentities($req->args['query']));
+    $q = urlencode($req->args['query']);
     // search only supports snippet part :(
     $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";
     try {

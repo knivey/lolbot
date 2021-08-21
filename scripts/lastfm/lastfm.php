@@ -26,7 +26,7 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     } else {
         $user = $args->nick;
     }
-    $user = urlencode(htmlentities($user));
+    $user = urlencode($user);
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
     try {
         $body = yield async_get_contents($url);

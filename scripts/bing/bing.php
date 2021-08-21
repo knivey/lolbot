@@ -42,7 +42,7 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
         $end = $start;
     }
-    $query = urlencode(htmlentities($req->args['query']));
+    $query = urlencode($req->args['query']);
     $url = $config['bingEP'] . "search?q=$query&mkt=$config[bingLang]&setLang=$config[bingLang]";
     try {
         $headers = ['Ocp-Apim-Subscription-Key' => $config['bingKey']];

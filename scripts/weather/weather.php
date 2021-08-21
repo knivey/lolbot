@@ -39,7 +39,7 @@ function getLocation($query): \Amp\Promise
 {
     return \Amp\call(function () use ($query) {
         global $config;
-        $query = urlencode(htmlentities($query));
+        $query = urlencode($query);
         $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
         $body = yield async_get_contents($url);
 

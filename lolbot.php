@@ -30,7 +30,6 @@ $router = new Cmdr();
  *
  * github: links to things like issues prs etc show more appropriate info
  *  * later would be nice to have github webhooks?
- * wikipedia
  * translate
  * reddit urls
  *
@@ -44,6 +43,28 @@ $router = new Cmdr();
 $config = Yaml::parseFile(__DIR__.'/config.yaml');
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
+}
+
+/**
+ * helper to make replies in cmds easier
+ */
+function makeRepliers($args, \Irc\Client $bot, string $prefix) {
+    return [
+        function ($msg, $err = null) use ($args, $bot, $prefix) {
+            if($err == null) {
+                $bot->pm($args->chan, "\2$prefix:\2 $msg");
+            } else {
+                $bot->pm($args->chan, "\2$prefix $err:\2 $msg");
+            }
+        },
+        function ($msg, $err = null) use ($args, $bot, $prefix) {
+            if($err == null) {
+                $bot->notice($args->nick, "\2$prefix:\2 $msg");
+            } else {
+                $bot->notice($args->nick, "\2$prefix $err:\2 $msg");
+            }
+        }
+    ];
 }
 
 require_once 'scripts/notifier/notifier.php';
@@ -63,6 +84,7 @@ require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
 require_once 'scripts/zyzz/zyzz.php';
+require_once 'scripts/wiki/wiki.php';
 
 require_once "scripts/JRH/jrh.php";
 

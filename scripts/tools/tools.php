@@ -17,7 +17,7 @@ use knivey\irctools;
 #[CallWrap("Amp\asyncCall")]
 function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
-    $word = urlencode($req->args['query']);
+    $word = rawurlencode($req->args['query']);
     try {
         $body = yield \async_get_contents("https://api.dictionaryapi.dev/api/v2/entries/en/$word");
     } catch (\async_get_exception $e) {

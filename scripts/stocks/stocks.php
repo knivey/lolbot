@@ -17,7 +17,7 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
 
-    $query = urlencode(htmlentities($req->args['query']));
+    $query = rawurlencode($req->args['query']);
     $url = "https://cloud.iexapis.com/stable/stock/$query/quote?token=" . $config['iexKey'] . '&displayPercent=true';
     try {
         $body = yield \async_get_contents($url);
