@@ -37,6 +37,7 @@ require_once 'scripts/remindme/remindme.php';
 require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
+require_once 'scripts/zyzz/zyzz.php';
 
 require_once "scripts/JRH/jrh.php";
 
