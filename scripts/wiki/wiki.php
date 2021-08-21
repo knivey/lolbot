@@ -42,14 +42,13 @@ function wiki($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     if(is_string($json->content_urls?->desktop?->page))
         $url = html_entity_decode($json->content_urls->desktop->page, ENT_QUOTES | ENT_HTML5);
 
-    if(strlen($extract) > 400) {
-        $extract = explode("\n", wordwrap($extract, 400), 0)[0];
+    if(strlen($extract) > 320) {
+        $extract = explode("\n", wordwrap($extract, 320), 0)[0] . "...";
     }
 
-    if($json->type == "disambiguation") {
-        $rpl("$title - $extract - $url", "disambiguation");
-        return;
-    }
+    $type = null;
+    if($json->type != "standard")
+        $type = $json->type;
 
-    $rpl("$title - $extract - $url");
+    $rpl("$title - $extract - $url", $type);
 }
