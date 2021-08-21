@@ -80,6 +80,8 @@ function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     if($vids == null || !is_array($vids) || count($vids) == 0) {
         $d = new Carbon("Friday 7:30 pm EDT");
+        if($d->diffInMinutes(Carbon::now(), false) > 0)
+            $d = new Carbon("next Friday 7:30 pm EDT");
         $thisFri = new Carbon("Friday this week 7:30 pm EDT");
         $margin = Carbon::now()->diffInMinutes($thisFri, false);
         $time = $d->longAbsoluteDiffForHumans(Carbon::now(), 3);
