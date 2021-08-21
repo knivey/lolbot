@@ -36,13 +36,15 @@ function startRestServer() {
     if(!isset($config['listen'])) {
         return null;
     }
-    //$cert = new Socket\Certificate(__DIR__ . '/../test/server.pem');
-
-    //$context = (new Socket\BindContext)
-    //    ->withTlsContext((new Socket\ServerTlsContext)->withDefaultCertificate($cert));
-
+    if(isset($config['listen_cert'])) {
+        $cert = new Socket\Certificate($config['listen_cert']);
+        $context = (new Socket\BindContext)
+            ->withTlsContext((new Socket\ServerTlsContext)->withDefaultCertificate($cert));
+    } else {
+        $context = null;
+    }
     $servers = [
-        Socket\Server::listen($config['listen'])
+        Socket\Server::listen($config['listen'], $context)
     ];
     //Probably setup logging from main later
     $logHandler = new StreamHandler(new ResourceOutputStream(STDOUT));

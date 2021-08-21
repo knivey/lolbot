@@ -67,7 +67,8 @@ function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         'nick' => $args->nick,
         'chan' => $args->chan,
     ];
-    $bot->notice($args->nick, "  http://$ourIp:$port/pump/$key  This is valid for 1 pump and expires in 10 min");
+    $https = isset($config['listen_cert']) ? "https" : "http";
+    $bot->notice($args->nick, "  $https://$ourIp:$port/pump/$key  This is valid for 1 pump and expires in 10 min");
     \Amp\Loop::delay(10*60*1000, function () use ($key) {
         global $allowedPumps;
         unset($allowedPumps[$key]);
