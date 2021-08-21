@@ -1,13 +1,15 @@
 <?php
 namespace scripts\remindme;
 
-use knivey\cmdr\attributes\CallWrap;
+require_once "library/Duration.inc";
+
+use Carbon\Carbon;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
-use Khill\Duration\Duration;
-
 use \RedBeanPHP\R as R;
+use function knivey\tools\makeArgs;
+
 global $config;
 const REMINDERDB = "reminderdb";
 $dbfile = $config[REMINDERDB] ?? "reminder.db";
@@ -17,11 +19,7 @@ R::addDatabase(REMINDERDB, "sqlite:{$dbfile}");
 #[Syntax("<time> <msg>...")]
 function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     \Amp\asyncCall(function () use ($args, $bot, $req) {
-        $duration = new Duration($req->args['time']);
-        //Because the Duration lib is PECULIAR it resets its value to 0 after doing outputs
-        //And also lingers data in the output, really i need to find another lib
-        $in = $duration->toSeconds();
-
+        $in = string2Seconds($req->args['time']);
         if($in < 15) {
             $bot->pm($args->chan, "Give me a proper duration of at least 15 seconds with no spaces (Ex: 1h10m15s or 1:10:15)");
             return;
@@ -36,40 +34,53 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $r->msg = $req->args['msg'];
         R::store($r);
 
-        $bot->pm($args->chan, "Ok, I'll remind you in " . (new Duration($in))->humanize());
+        $bot->pm($args->chan, "Ok, I'll remind you in " . Duration_toString($in));
         yield from sendDelayed($bot, $r, $in);
     });
 }
 
-/* TODO, this actually needs to parse more than one word(arg) for the timestamp so its a bit complicated to do
-Also need to consider user timezones
-#[Cmd("at")]
-#[Syntax("<time> <msg>...")]
+/*
+ * Because cmdr doesnt yet support it, using \knivey\tools\makeArgs which makes args using "arg one" arg2 "arg\"3" etc
+ */
+// TODO let users save a timezone so they dont have always include it here
+#[Cmd("at", "on")]
+#[Syntax("<timemsg>...")]
 function at($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $r = makeArgs($req->args['timemsg']);
+    if(!is_array($r) || count($r) < 2) {
+        $bot->pm($args->chan, "Syntax: <datetime> <msg>  If datetime is more than one word put it inside quotes, you should include your timezone");
+        $bot->pm($args->chan, "Example: .on \"next Friday EDT\" watch new JRH  <- Will trigger at 00:00");
+        $bot->pm($args->chan, "Example: .at \"11pm EDT\" eat ice cream");
+        return;
+    }
+    $time = array_shift($r);
+    $msg = implode(' ', $r);
+
     try {
-        $dt = new \DateTime($req->args['time']);
+        $dt = new Carbon($time);
     } catch (\Exception $e) {
-        $bot->pm($args->chan, "That date time doesnt seem valid");
+        $bot->pm($args->chan, "That date time ($time) isn't understood");
         return;
     }
     if($dt->getTimestamp() <= time() + 15) {
-        $bot->pm($args->chan, "Give me a time at least 15 seconds from now");
+        $bot->pm($args->chan, "Give me a time at least 15 seconds in the future");
         return;
     }
     $in = $dt->getTimestamp() - time();
-    $duration = new Duration($in);
     R::selectDatabase(REMINDERDB);
     $r = R::dispense("reminder");
     $r->nick = $args->nick;
     $r->chan = $args->chan;
     $r->at = $dt->getTimestamp();
     $r->sent = 0;
-    $r->msg = $req->args['msg'];
+    $r->msg = $msg;
     R::store($r);
-    $bot->pm($args->chan, "Ok, I'll remind you in " . $duration->humanize());
+
+    $fromNow = $dt->shortRelativeToNowDiffForHumans(Carbon::now(), 10);
+    $bot->pm($args->chan, "Ok, I'll remind you on " . $dt->toCookieString() . " ($fromNow)");
     sendDelayed($bot, $r, $in);
 }
-*/
+
 function sendDelayed(\Irc\Client $bot, $r, $seconds) {
     yield \Amp\delay($seconds * 1000);
     //if bot somehow isnt connected keep retrying
@@ -100,7 +111,7 @@ function initRemindme($bot) {
                 while (!$bot->isEstablished()) {
                     yield \Amp\delay(10000);
                 }
-                $ago = (new Duration(time() - $r->at))->humanize();
+                $ago = Duration_toString(time() - $r->at);
                 $bot->pm($r->chan, "[REMINDER: {$r->nick} (late by $ago)] {$r->msg}");
                 $r->sent = 1;
                 R::store($r);
