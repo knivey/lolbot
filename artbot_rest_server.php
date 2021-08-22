@@ -61,6 +61,7 @@ function startRestServer() {
         if (isset($notifier_keys[$key])) {
             echo "Request from $notifier_keys[$key] ($key)\n";
         } else {
+            echo \Irc\stripForTerminal("Blocked request for bad key $key\n");
             return new Response(Status::FORBIDDEN, [
                 "content-type" => "text/plain; charset=utf-8"
             ], "Invalid key");

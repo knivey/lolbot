@@ -9,7 +9,7 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-
+use League\Uri\UriString;
 
 function ytDuration($input) {
     try {
@@ -175,9 +175,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                     $filename_safe = escapeshellarg($filename);
                     $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
                     unlink($filename);
-                } catch (\async_get_exception $error) {
-                    // If something goes wrong Amp will throw the exception where the promise was yielded.
-                    // The HttpClient::request() method itself will never throw directly, but returns a promise.
+                } catch (\Exception $error) {
                     echo "yt thumb $error\n";
                     $thumbnail = '';
                 }
@@ -192,10 +190,13 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                         try {
                             $client = HttpClientBuilder::buildDefault();
                             $host = $config['youtube_pump_host'];
-                            if (substr($host, -1) != '/')
-                                $host = "$host/";
                             $pumpchan = substr($chan, 1);
-                            $request = new Request("$host/privmsg/$pumpchan", "POST");
+                            $pumpUrl = UriString::parse($host);
+                            $pumpUrl['path'] .= "/privmsg/$pumpchan";
+                            $pumpUrl['path'] = preg_replace("@/+@", "/", $pumpUrl['path']);
+                            $pumpUrl = UriString::build($pumpUrl);
+
+                            $request = new Request($pumpUrl, "POST");
                             $sendBody = implode("\n", $thumbnail);
                             $sendBody .= "\n$msg";
                             $request->setBody($sendBody);
@@ -206,7 +207,7 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
                             if ($response->getStatus() == 200) {
                                 $sent = true;
                             } else {
-                                echo "Problem sending youtube to pumpers response {$response->getStatus()}\n";
+                                echo "Problem sending youtube to $pumpUrl response: {$response->getStatus()}\n";
                             }
                         } catch (\Exception $e) {
                             echo "Problem sending youtube to pumpers\n";
