@@ -201,8 +201,8 @@ function cancel($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     unset($recordings[$nick]);
 }
 
-function reqart($bot, $chan, $file, $opts = []) {
-    \Amp\asyncCall(function() use ($bot, $chan, $file, $opts) {
+function reqart($bot, $chan, $file, $opts = [], $args = []) {
+    \Amp\asyncCall(function() use ($bot, $chan, $file, $opts, $args) {
         global $config, $playing;
         if(isset($playing[$chan])) {
             return;
@@ -235,7 +235,7 @@ function reqart($bot, $chan, $file, $opts = []) {
             if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
                 if($tryEdit($ent))
                     return;
-                playart($bot, $chan, $ent, opts: $opts);
+                playart($bot, $chan, $ent, opts: $opts, args: $args);
                 return;
             }
         }
@@ -243,7 +243,7 @@ function reqart($bot, $chan, $file, $opts = []) {
             if($file == strtolower(basename($ent, '.txt'))) {
                 if($tryEdit($ent))
                     return;
-                playart($bot, $chan, $ent, opts: $opts);
+                playart($bot, $chan, $ent, opts: $opts, args: $args);
                 return;
             }
         }
@@ -258,7 +258,7 @@ function reqart($bot, $chan, $file, $opts = []) {
                 if($tryEdit("$file.txt", true))
                     return;
                 file_put_contents("ircwatch.txt", "$body\n$url");
-                playart($bot, $chan, "ircwatch.txt", opts: $opts);
+                playart($bot, $chan, "ircwatch.txt", opts: $opts, args: $args);
                 return;
             }
         } catch (Exception $error) {
@@ -439,68 +439,70 @@ function stop($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
 }
 
-function playart($bot, $chan, $file, $searched = false, $opts = [])
+// TODO use $args to do str_replace on {{args}}
+function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [])
 {
     global $playing, $config;
-    if (!isset($playing[$chan])) {
-        $pump = irctools\loadartfile($file);
-        var_dump($opts);
-        if(array_key_exists('--flip', $opts)) {
-            $pump = array_reverse($pump);
-            //could be some dupes
-            $find    = [
-                "/", "\\",
-                "╮", "╯", "╰", "╭", "┴", "┬",
-                "┬", "╨",
-                "┴", "╥",
-                "┌", "┍", "┎", "┏",
-                "└", "┕", "┖", "┗",
-                "┘", "┙", "┚", "┛",
-                "┐", "┑", "┒", "┓",
-                "╚", "╝", "╔", "╗",
-                "▀", "▄", "¯", "_"
-            ];
-            $replace = [
-                "\\", "/",
-                "╯", "╮", "╭", "╰", "┬", "┴",
-                "┴", "╥",
-                "┬", "╨",
-                "└", "┕", "┖", "┗",
-                "┌", "┍", "┎", "┏",
-                "┐", "┑", "┒", "┓",
-                "┘", "┙", "┚", "┛",
-                "╔", "╗", "╚", "╝",
-                "▄", "▀", "_", "¯"
-                ];
-            //we must do it this way or str_replace rereplaces
-            foreach ($pump as &$line) {
-                $newline = '';
-                foreach (mb_str_split($line) as $c) {
-                    $fnd = false;
-                    foreach ($find as $k => $f) {
-                        if($c == $f) {
-                            $newline .= $replace[$k];
-                            $fnd = true;
-                            break;
-                        }
-                    }
-                    if(!$fnd)
-                        $newline .= $c;
-                }
-                $line = $newline;
-            }
-        }
-        if($file != "ircwatch.txt")
-            $pmsg = "Playing " . substr($file, strlen($config['artdir']));
-        else
-            $pmsg = "Playing from ircwatch";
-        if($searched) {
-            //TODO: use regex to know what to replace, for keeping case and for ?* in middle of word
-            $pmsg = str_ireplace($searched, "\x0306$searched\x0F", $pmsg);
-        }
-        array_unshift($pump, $pmsg);
-        pumpToChan($chan, $pump);
+    if (isset($playing[$chan])) {
+        return;
     }
+    $pump = irctools\loadartfile($file);
+    var_dump($opts);
+    if(array_key_exists('--flip', $opts)) {
+        $pump = array_reverse($pump);
+        //could be some dupes
+        $find    = [
+            "/", "\\",
+            "╮", "╯", "╰", "╭", "┴", "┬",
+            "┬", "╨",
+            "┴", "╥",
+            "┌", "┍", "┎", "┏",
+            "└", "┕", "┖", "┗",
+            "┘", "┙", "┚", "┛",
+            "┐", "┑", "┒", "┓",
+            "╚", "╝", "╔", "╗",
+            "▀", "▄", "¯", "_"
+        ];
+        $replace = [
+            "\\", "/",
+            "╯", "╮", "╭", "╰", "┬", "┴",
+            "┴", "╥",
+            "┬", "╨",
+            "└", "┕", "┖", "┗",
+            "┌", "┍", "┎", "┏",
+            "┐", "┑", "┒", "┓",
+            "┘", "┙", "┚", "┛",
+            "╔", "╗", "╚", "╝",
+            "▄", "▀", "_", "¯"
+            ];
+        //we must do it this way or str_replace rereplaces
+        foreach ($pump as &$line) {
+            $newline = '';
+            foreach (mb_str_split($line) as $c) {
+                $fnd = false;
+                foreach ($find as $k => $f) {
+                    if($c == $f) {
+                        $newline .= $replace[$k];
+                        $fnd = true;
+                        break;
+                    }
+                }
+                if(!$fnd)
+                    $newline .= $c;
+            }
+            $line = $newline;
+        }
+    }
+    if($file != "ircwatch.txt")
+        $pmsg = "Playing " . substr($file, strlen($config['artdir']));
+    else
+        $pmsg = "Playing from ircwatch";
+    if($searched) {
+        //TODO: use regex to know what to replace, for keeping case and for ?* in middle of word
+        $pmsg = str_ireplace($searched, "\x0306$searched\x0F", $pmsg);
+    }
+    array_unshift($pump, $pmsg);
+    pumpToChan($chan, $pump);
 }
 
 //little helper because exec() echod

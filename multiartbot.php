@@ -97,7 +97,10 @@ function onchat($args, \Irc\Client $bot)
         var_dump($text);
         $opts = parseOpts($text, ['--flip', '--edit', '--asciibird']);
         var_dump($opts);
-        reqart($bot, $args->channel, $cmd, $opts);
+        $cmdArgs = \knivey\tools\makeArgs($text);
+        if(!is_array($cmdArgs))
+            $cmdArgs = [];
+        reqart($bot, $args->channel, $cmd, $opts, $cmdArgs);
     }
 }
 
