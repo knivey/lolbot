@@ -21,7 +21,8 @@
         "simplehtmldom/simplehtmldom": "dev-master",
         "nesbot/carbon": "^2.51",
         "amphp/http-server-router": "^1.0",
-        "cspray/labrador-http-cors": "^0.3.1"
+        "cspray/labrador-http-cors": "^0.3.1",
+        "amphp/http-client-cookies": "^1.1"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",

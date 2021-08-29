@@ -331,6 +331,7 @@ function hostmaskToRegex($mask) {
     return "@{$out}@i";
 }
 
+//TODO replace this with something that doesnt check mtime, probably use rpc to manage admin things off irc
 function getIgnores($file = "ignores.txt") {
     static $ignores;
     static $mtime;
