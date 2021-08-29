@@ -103,7 +103,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($chan, 'Pick a filename without / and not starting with .');
         return;
     }
-    if(preg_match('//u', $file)) {
+    if(!preg_match('//u', $file)) {
         $bot->pm($chan, 'Use proper UTF-8 encoding for the filename.');
         return;
     }
