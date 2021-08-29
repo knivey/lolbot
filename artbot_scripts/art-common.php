@@ -85,25 +85,48 @@ function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     });
 }
 
+$recordLimit = [];
+$limitWarns = [];
+
 #[Cmd("record")]
 #[Syntax('<filename>')]
 function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
     $chan = $args->chan;
+    $host = $args->host;
     $file = $req->args['filename'];
-    global $recordings, $config;
+    global $recordings, $config, $recordLimit, $limitWarns;
     if(isset($recordings[$nick])) {
         return;
     }
-    if(!preg_match('/^[a-z0-9\-_]+$/', $file)) {
-        $bot->pm($chan, 'Pick a filename matching [a-z0-9\-\_]+');
+    if(str_contains($file, "/") || $file[0] == '.') {
+        $bot->pm($chan, 'Pick a filename without / and not starting with .');
         return;
     }
-    $reserved = ['artfart', 'random', 'search', 'find', 'stop', 'record', 'end', 'cancel'];
+    if(preg_match('//u', $file)) {
+        $bot->pm($chan, 'Use proper UTF-8 encoding for the filename.');
+        return;
+    }
+    if(preg_match('/[\x00-\x1F\x7F]/u', $file)) {
+        $bot->pm($chan, "Don't use control chars in filename.");
+        return;
+    }
+    //todo would be nice to use cmdr to make this now that is runs artbot cmds
+    $reserved = ['artfart', 'random', 'search', 'find', 'stop', 'record', 'end', 'cancel',
+        'addquote', 'quote', 'bash', 'circles', 'lines', 'img', 'url', 'cancelquote', 'endquote', 'stopquote'];
     if(in_array(strtolower($file), $reserved)) {
         $bot->pm($chan, 'That name has been reserved');
         return;
     }
+    if(isset($recordLimit[$host]) && $recordLimit[$host] > time()) {
+        if(!isset($limitWarns[$host]) || $limitWarns[$host] < time()-2) {
+            $bot->pm($chan, "You're recording too fast, wait awhile");
+            $limitWarns[$host] = time();
+        }
+        return;
+    }
+    $recordLimit[$host] = time()+2;
+    unset($limitWarns[$host]);
 
     $exists = false;
     $base = $config['artdir'];
@@ -247,7 +270,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
                 return;
             }
         }
-        try {
+        try { // TODO one art is all caps and request is case sensitive, so get the correct name from ascii-index.js
             $client = HttpClientBuilder::buildDefault();
             $url = "https://irc.watch/ascii/$file/";
             $req = new Request("https://irc.watch/ascii/txt/$file.txt");
@@ -260,6 +283,9 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
                 file_put_contents("ircwatch.txt", "$body\n$url");
                 playart($bot, $chan, "ircwatch.txt", opts: $opts, args: $args);
                 return;
+            } else {
+                echo "irc.watch error: " . $response->getStatus() ."\n";
+                echo $body;
             }
         } catch (Exception $error) {
             // If something goes wrong Amp will throw the exception where the promise was yielded.
