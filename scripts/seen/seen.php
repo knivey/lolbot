@@ -100,6 +100,7 @@ function saveSeens() {
         $seen->time = $ent->time;
         R::store($seen);
     }
+    $updates = [];
 }
 
 function initSeen($bot) {
