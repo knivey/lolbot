@@ -86,12 +86,12 @@ function saveSeens() {
     global $seendb, $updates;
     R::selectDatabase($seendb);
     foreach($updates as $ent) {
-        //clean out the old entries for this nick
-        $previous = R::findAll("seen", " `nick` = ? ", [$ent->nick]);
-        if (is_array($previous)) {
-            R::trashAll($previous);
+        $previous = R::findOne("seen", " `nick` = ? ", [$ent->nick]);
+        if ($previous != null) {
+            $seen = $previous;
+        } else {
+            $seen = R::dispense("seen");
         }
-        $seen = R::dispense("seen");
         $seen->nick = $ent->nick;
         $seen->orig_nick = $ent->orig_nick;
         $seen->chan = $ent->chan;
