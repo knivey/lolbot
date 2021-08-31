@@ -109,7 +109,7 @@ function handleCmd($args, $bot, $cmd, $cmdArgs, $opts) {
         '$target' => count($cmdArgs) > 0 ? implode(' ', $cmdArgs) : $args->nick,
     ];
     $value = str_replace(array_keys($vars), $vars, $value);
-    var_dump($alias);
+    //var_dump($alias);
     if($alias->act) {
         $bot->msg($args->chan, "\x01ACTION $value\x01");
     } else {
