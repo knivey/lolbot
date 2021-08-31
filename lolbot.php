@@ -85,6 +85,7 @@ require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
 require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
+require_once 'scripts/alias/alias.php';
 
 require_once "scripts/JRH/jrh.php";
 
@@ -178,10 +179,22 @@ try {
                 $text = explode(' ', $text);
                 $cmd = array_shift($text);
                 $text = implode(' ', $text);
-                try {
-                    $router->call($cmd, $text, $args, $bot);
-                } catch (Exception $e) {
-                    $bot->notice($args->from, $e->getMessage());
+                if(trim($cmd) == '')
+                    return;
+
+                if(isset($router->cmds[$cmd])) {
+                    try {
+                        $router->call($cmd, $text, $args, $bot);
+                    } catch (Exception $e) {
+                        $bot->notice($args->from, $e->getMessage());
+                    }
+                } else {
+                    //call other cmd handlers
+                    $cmdArgs = \knivey\tools\makeArgs($text);
+                    if(!is_array($cmdArgs))
+                        $cmdArgs = [];
+
+                    \scripts\alias\handleCmd($args, $bot, $cmd, $cmdArgs);
                 }
             } catch (Exception $e) {
                 echo "UNCAUGHT EXCEPTION $e\n";
