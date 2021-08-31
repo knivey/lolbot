@@ -47,12 +47,28 @@ function unalias($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     R::selectDatabase($aliasdb);
     $alias = R::findOne("alias", " `name_lowered` = ? AND `chan_lowered` = ? ",
         [strtolower($req->args['name']), strtolower($args->chan)]);
-    if ($alias != null) {
+    if ($alias == null) {
         $rpl("That alias not found");
         return;
     }
     R::trash($alias);
     $rpl("Alias removed");
+}
+
+#[Cmd("aliases")]
+function aliases($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $aliasdb;
+    list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
+    R::selectDatabase($aliasdb);
+    $aliases = R::findAll("alias", " `chan_lowered` = ? ",
+        [strtolower($args->chan)]);
+    if (count($aliases) == 0) {
+        $rpl("No aliases set for {$args->chan}");
+        return;
+    }
+    $list = implode(', ', array_map(fn($it) => $it->name, $aliases));
+    $rpl("$list", 'list');
 }
 
 function handleCmd($args, $bot, $cmd, $cmdArgs, $opts) {
