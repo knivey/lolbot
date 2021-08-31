@@ -94,6 +94,26 @@ require_once 'scripts/youtube/youtube.php';
 
 $router->loadFuncs();
 
+//copied from Cmdr should give it its own function in there later
+function parseOpts(string &$msg, array $validOpts = []): array {
+    $opts = [];
+    $msg = explode(' ', $msg);
+    $msgb = [];
+    foreach ($msg as $w) {
+        if(str_contains($w, "=")) {
+            list($lhs, $rhs) = explode("=", $w, 2);
+        } else {
+            $lhs = $w;
+            $rhs = null;
+        }
+        if(in_array($lhs, $validOpts))
+            $opts[$lhs] = $rhs;
+        else
+            $msgb[] = $w;
+    }
+    $msg = implode(' ', $msgb);
+    return $opts;
+}
 
 $bot = null;
 try {
@@ -190,11 +210,14 @@ try {
                     }
                 } else {
                     //call other cmd handlers
-                    $cmdArgs = \knivey\tools\makeArgs($text);
+                    $tmpText = $text;
+                    $opts = parseOpts($tmpText, []);
+                    $cmdArgs = \knivey\tools\makeArgs($tmpText);
                     if(!is_array($cmdArgs))
                         $cmdArgs = [];
-
-                    \scripts\alias\handleCmd($args, $bot, $cmd, $cmdArgs);
+                    if(count($cmdArgs) == 1 && $cmdArgs[0] == "")
+                        $cmdArgs = [];
+                    \scripts\alias\handleCmd($args, $bot, $cmd, $cmdArgs, $opts);
                 }
             } catch (Exception $e) {
                 echo "UNCAUGHT EXCEPTION $e\n";

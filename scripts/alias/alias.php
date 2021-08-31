@@ -2,6 +2,7 @@
 namespace scripts\alias;
 
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use \RedBeanPHP\R as R;
 
@@ -13,6 +14,7 @@ R::addDatabase($aliasdb, "sqlite:{$dbfile}");
 
 #[Cmd("alias")]
 #[Syntax("<name> <value>...")]
+#[Options("--me", "--act")]
 function alias($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $aliasdb;
     list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
@@ -31,6 +33,7 @@ function alias($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $alias->chan = $args->chan;
     $alias->chan_lowered = strtolower($args->chan);
     $alias->fullhost = $args->fullhost;
+    $alias->act = ($req->args->getOpt('--act') || $req->args->getOpt('--me'));
     R::store($alias);
     $rpl("{$msg}alias saved");
 }
@@ -52,7 +55,7 @@ function unalias($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $rpl("Alias removed");
 }
 
-function handleCmd($args, $bot, $cmd, $cmdArgs) {
+function handleCmd($args, $bot, $cmd, $cmdArgs, $opts) {
     global $aliasdb;
     R::selectDatabase($aliasdb);
     $alias = R::findOne("alias", " `name_lowered` = ? AND `chan_lowered` = ? ",
@@ -90,6 +93,11 @@ function handleCmd($args, $bot, $cmd, $cmdArgs) {
         '$target' => count($cmdArgs) > 0 ? implode(' ', $cmdArgs) : $args->nick,
     ];
     $value = str_replace(array_keys($vars), $vars, $value);
-    $bot->msg($args->chan, "\2{$alias->name}:\2 $value");
+    var_dump($alias);
+    if($alias->act) {
+        $bot->msg($args->chan, "\x01ACTION $value\x01");
+    } else {
+        $bot->msg($args->chan, "\2{$alias->name}:\2 $value");
+    }
     return true;
 }
