@@ -1,14 +1,17 @@
 <?php
 require_once 'library/async_get_contents.php';
 
+use Amp\ByteStream\InputStream;
 use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Router;
 use Amp\Loop;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\Promise;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
@@ -16,11 +19,28 @@ use Amp\Http\Server\RequestHandler\CallableRequestHandler;
 use Amp\Http\Server\Response as HttpResponse;
 use Amp\Http\Server\Request as HttpRequest;
 use Amp\Http\Status;
+use function Amp\call;
 
 
 $recordings = [];
 
 global $restRouter;
+
+class BufferOverFlow extends \Exception {
+}
+
+function buffer(InputStream $stream, int $max): Promise {
+    return call(function () use($stream, $max) {
+        $buffer = '';
+        while (null !== $chunk = yield $stream->read()) {
+            $buffer .= $chunk;
+            if(strlen($buffer) > $max)
+                throw new \BufferOverFlow("Data too large");
+        }
+        return $buffer;
+    });
+}
+
 
 $allowedPumps = [];
 
@@ -34,7 +54,13 @@ $restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function
     }
 
     $pumpInfo = $allowedPumps[$args['key']];
-    $msg = yield $request->getBody()->buffer();
+    try {
+        $msg = yield buffer($request->getBody(), 1024 * 9000);
+    } catch (\BufferOverFlow $e) {
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "{$e->getMessage()}\n");
+    }
     $msg = str_replace("\r", "\n", $msg);
     $msg = explode("\n", $msg);
     $msg = array_filter($msg);
@@ -44,41 +70,135 @@ $restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function
     return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "PUMPED!\n");
 }));
 
+$restRouter->addRoute('POST', '/record/{key}', new CallableRequestHandler(function (HttpRequest $request) {
+    global $recordTokens, $config;
+    $args = $request->getAttribute(Router::class);
+    if(!isset($args['key']) || !array_key_exists($args['key'], $recordTokens)) {
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "Invalid key\n");
+    }
+    $token = $recordTokens[$args['key']];
+    try {
+        $msg = yield buffer($request->getBody(), 1024 * 9000);
+    } catch (\BufferOverFlow $e) {
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "{$e->getMessage()}\n");
+    }
+    $msg = str_replace("\r", "\n", $msg);
+    $msg = explode("\n", $msg);
+    $msg = array_filter($msg);
+
+    if(count($msg) > 9000)
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "Too many lines\n");
+
+    $dir = "${config['artdir']}h4x/{$token->nick}";
+    if(file_exists($dir) && !is_dir($dir)) {
+        return new HttpResponse(Status::INTERNAL_SERVER_ERROR, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "dir for recordings is not valid plz tell admin to fix\n");
+    }
+    if(!file_exists($dir)) {
+        mkdir($dir, 0777, true);
+    }
+    $file = "$dir/{$token->file}.txt";
+    file_put_contents($file, implode("\n", $msg));
+    pumpToChan($token->chan, ["{$token->nick} has has posted a new art @{$token->file}"]);
+    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "SAVED!\n");
+}));
+
+class RecordToken {
+    public function __construct(
+        public string $nick,
+        public string $chan,
+        public string $file,
+        public string $token
+    ){}
+}
+/** @var RecordToken[String] */
+$recordTokens = [];
+
+/**
+ * @param $nick
+ * @param $chan
+ * @param $file
+ * @param $minutes
+ * @return Promise<String>
+ */
+function requestRecordUrl($nick, $chan, $file, $minutes): Promise {
+    return \Amp\call(function () use ($nick, $chan, $file, $minutes) {
+        global $recordTokens;
+        $key = bin2hex(random_bytes(5));
+        $url = yield makeUrl("record/$key");
+        if(!$url)
+            throw new \Exception("Couldn't find my ip");
+        $exists = array_reduce($recordTokens, fn($c, $t) => $t->nick == $nick ? $t->token : $c);
+        if($exists)
+            unset($recordTokens[$exists]);
+        $token = new RecordToken($nick, $chan, $file, $key);
+        $recordTokens[$key] = $token;
+        \Amp\Loop::delay($minutes*60*1000, function () use ($key) {
+            global $recordTokens;
+            unset($recordTokens[$key]);
+        });
+        return $url;
+    });
+}
+
+/**
+ * @param string $route
+ * @return Promise<String|False>
+ */
+function makeUrl(string $route): Promise {
+    return \Amp\call(function () use ($route) {
+        global $config;
+        if (isset($config['rest_url'])) {
+            $url = $config['rest_url'];
+        } else {
+            //need the http or it wont parse ipv6 correct
+            $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
+            $ourIp = false;
+            foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
+                try {
+                    $ourIp = yield async_get_contents("http://$ipserv");
+                    if ($ourIp)
+                        break;
+                } catch (\Exception $e) {
+                    ;
+                }
+            }
+            if (!$ourIp) {
+                return false;
+            }
+            $https = isset($config['listen_cert']) ? "https" : "http";
+            $url = "$https://$ourIp:$port";
+        }
+        $route = ltrim($route, '/');
+        return "$url/$route";
+    });
+}
+
 #[Cmd("getpumper")]
 #[CallWrap("\Amp\asyncCall")]
 function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config, $allowedPumps;
-    $url = '';
     $key = bin2hex(random_bytes(5));
-    if(isset($config['rest_url'])) {
-        $url = $config['rest_url'];
-    } else {
-        //need the http or it wont parse ipv6 correct
-        $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
-        $ourIp = false;
-        foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
-            try {
-                $ourIp = yield async_get_contents("http://$ipserv");
-                if ($ourIp)
-                    break;
-            } catch (\Exception $e) {
-                ;
-            }
-        }
-        if (!$ourIp) {
-            $bot->pm($args->chan, "Couldn't find my ip :(");
-            return;
-        }
-        $https = isset($config['listen_cert']) ? "https" : "http";
-        $url = "$https://$ourIp:$port";
+    $url = yield makeUrl("pump/$key");
+    if(!$url) {
+        $bot->pm($args->chan, "Couldn't find my ip :(");
+        return;
     }
+
     $allowedPumps[$key] = [
         'nick' => $args->nick,
         'chan' => $args->chan,
     ];
 
-    $bot->notice($args->nick, "  $url/pump/$key  This is valid for 1 pump and expires in 10 min");
+    $bot->notice($args->nick, "  $url  This is valid for 1 pump and expires in 10 min");
     \Amp\Loop::delay(10*60*1000, function () use ($key) {
         global $allowedPumps;
         unset($allowedPumps[$key]);
@@ -89,7 +209,9 @@ $recordLimit = [];
 $limitWarns = [];
 
 #[Cmd("record")]
+#[Option(["--post", "--url"], "Get a URL to post the art data to")]
 #[Syntax('<filename>')]
+#[CallWrap('\Amp\asyncCall')]
 function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
     $chan = $args->chan;
@@ -142,6 +264,20 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             break;
         }
     }
+
+    if($req->args->getOpt('--post') || $req->args->getOpt('--url')) {
+        if($exists)
+            $bot->pm($chan, "Warning: That file name has been used by $exists, to playback may require a full path or you can @record --post again to use a new name");
+        try {
+            $url = yield requestRecordUrl($nick, $chan, $file, 60);
+        } catch (\Exception $e) {
+            $bot->notice($nick, "Problem encountered: {$e->getMessage()}");
+            return;
+        }
+        $bot->notice($nick, "  $url   This is valid for one recording, valid for 60 minutes unless another recording url is requested");
+        return;
+    }
+
     if($exists)
         $bot->pm($chan, "Warning: That file name has been used by $exists, to playback may require a full path or you can @cancel and use a new name");
 
