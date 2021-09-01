@@ -25,7 +25,7 @@ if(isset($argv[1])) {
         die("Usage: ".__FILE__." [config.yaml]\n  ({$argv[1]} does not exist or is not a file)\n");
     $configFile = $argv[1];
 } else {
-    $configFile = __DIR__."/artconfig.yaml";
+    $configFile = __DIR__."/multiartconfig.yaml";
 }
 
 $config = Yaml::parseFile($configFile);
