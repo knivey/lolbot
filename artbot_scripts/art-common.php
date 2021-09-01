@@ -360,6 +360,7 @@ function cancel($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     unset($recordings[$nick]);
 }
 
+$reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed'];
 function reqart($bot, $chan, $file, $opts = [], $args = []) {
     \Amp\asyncCall(function() use ($bot, $chan, $file, $opts, $args) {
         global $config, $playing;
@@ -388,13 +389,22 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
             return false;
         };
 
+        $speed = null;
+        if(array_key_exists('--speed', $opts)) {
+            $speed = $opts['--speed'];
+            if(!is_numeric($speed) || $speed < 20 || $speed > 500) {
+                $bot->pm($chan, "--speed must be between 20 and 500 (milliseconds between lines)");
+                return;
+            }
+        }
+
         //try fullpath first
         //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
         foreach($tree as $ent) {
             if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
                 if($tryEdit($ent))
                     return;
-                playart($bot, $chan, $ent, opts: $opts, args: $args);
+                playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
                 return;
             }
         }
@@ -402,7 +412,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
             if($file == strtolower(basename($ent, '.txt'))) {
                 if($tryEdit($ent))
                     return;
-                playart($bot, $chan, $ent, opts: $opts, args: $args);
+                playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
                 return;
             }
         }
@@ -417,7 +427,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
                 if($tryEdit("$file.txt", true))
                     return;
                 file_put_contents("ircwatch.txt", "$body\n$url");
-                playart($bot, $chan, "ircwatch.txt", opts: $opts, args: $args);
+                playart($bot, $chan, "ircwatch.txt", opts: $opts, args: $args, speed: $speed);
                 return;
             } else {
                 echo "irc.watch error: " . $response->getStatus() ."\n";
@@ -602,7 +612,7 @@ function stop($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 // TODO use $args to do str_replace on {{args}}
-function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [])
+function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], $speed = null)
 {
     global $playing, $config;
     if (isset($playing[$chan])) {
@@ -664,7 +674,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [])
         $pmsg = str_ireplace($searched, "\x0306$searched\x0F", $pmsg);
     }
     array_unshift($pump, $pmsg);
-    pumpToChan($chan, $pump);
+    pumpToChan($chan, $pump, speed: $speed);
 }
 
 //little helper because exec() echod

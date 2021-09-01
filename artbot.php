@@ -103,7 +103,7 @@ Loop::run(function () {
     });
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $config, $router;
+        global $config, $router, $reqArtOpts;
 
         if(isIgnored($args->fullhost))
             return;
@@ -142,7 +142,7 @@ Loop::run(function () {
             }
         } else {
             var_dump($text);
-            $opts = parseOpts($text, ['--flip', '--edit', '--asciibird']);
+            $opts = parseOpts($text, $reqArtOpts);
             var_dump($opts);
             $cmdArgs = \knivey\tools\makeArgs($text);
             if(!is_array($cmdArgs))
@@ -192,8 +192,8 @@ Loop::run(function () {
 
 $playing = [];
 
-function pumpToChan(string $chan, array $data) {
-    \Amp\asyncCall(function () use ($chan, $data) {
+function pumpToChan(string $chan, array $data, $speed = null) {
+    \Amp\asyncCall(function () use ($chan, $data, $speed) {
         global $playing, $bot, $config;
         if (isset($playing[$chan])) {
             array_push($playing[$chan], ...$data);
@@ -202,6 +202,8 @@ function pumpToChan(string $chan, array $data) {
             while (!empty($playing[$chan])) {
                 $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
                 $pumpLag = $config['pumplag'] ?? 25;
+                if($speed)
+                    $pumpLag = max($pumpLag, $speed);
                 yield \Amp\delay($pumpLag);
             }
             unset($playing[$chan]);

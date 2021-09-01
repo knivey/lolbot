@@ -68,7 +68,7 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 
 function onchat($args, \Irc\Client $bot)
 {
-    global $config, $router;
+    global $config, $router, $reqArtOpts;
 
     tryRec($bot, $args->from, $args->channel, $args->text);
     if (isset($config['trigger'])) {
@@ -103,7 +103,7 @@ function onchat($args, \Irc\Client $bot)
         }
     } else {
         var_dump($text);
-        $opts = parseOpts($text, ['--flip', '--edit', '--asciibird']);
+        $opts = parseOpts($text, $reqArtOpts);
         var_dump($opts);
         $cmdArgs = \knivey\tools\makeArgs($text);
         if(!is_array($cmdArgs))
@@ -221,7 +221,7 @@ function botsOnChan($chan)
     return $cnt;
 }
 
-function pumpToChan(string $chan, array $data) {
+function pumpToChan(string $chan, array $data, $speed = null) {
     global $playing;
     if(isset($playing[$chan])) {
         array_push($playing[$chan]->data, ...$data);
@@ -229,12 +229,12 @@ function pumpToChan(string $chan, array $data) {
         $playing[$chan] = new Playing();
         $playing[$chan]->data = $data;
         var_dump($playing);
-        startPump($chan);
+        startPump($chan, $speed);
     }
 }
 
-function startPump($chan) {
-    \Amp\asyncCall(function() use($chan) {
+function startPump($chan, $speed = null) {
+    \Amp\asyncCall(function() use($chan, $speed) {
         global $playing;
         if(!isset($playing[$chan])) {
             echo "startPump but chan not in array?\n";
@@ -302,6 +302,9 @@ function startPump($chan) {
                     $delay = 300 / $botson;
                     if($delay < 85)
                         $delay = 85;
+                    if($speed) {
+                        $delay = max($delay, $speed);
+                    }
                     yield \Amp\delay($delay);
                 }
             }
