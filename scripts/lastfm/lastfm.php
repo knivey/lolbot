@@ -7,6 +7,41 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use \RedBeanPHP\R as R;
+
+
+global $config;
+$db = 'lastfm-' . uniqid();
+$dbfile = $config['lastfmdb'] ?? "lastfm.db";
+R::addDatabase($db, "sqlite:{$dbfile}");
+
+#[Cmd("setlastfm")]
+#[Syntax('<username>')]
+#[CallWrap("Amp\asyncCall")]
+function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config, $db;
+    $key = $config['lastfm'] ?? false;
+    if(!$key) {
+        echo "lastfm key not set on config\n";
+        return;
+    }
+    $user = urlencode($req->args['username']);
+    $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
+    try {
+        $body = yield async_get_contents($url);
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2setlastfm:\2 couldn't lookup that username");
+        return;
+    }
+    R::selectDatabase($db);
+    $ent = R::findOneOrDispense("lastfm", " `host` = ? ", [$args->identhost]);
+    $ent->username = $req->args['username'];
+    $ent->host = $args->identhost;
+    R::store($ent);
+    $bot->pm($args->chan, "\2setlastfm:\2 username saved for your host");
+}
 
 #[Cmd("lastfm")]
 #[Syntax('[user]')]
@@ -14,7 +49,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Options("--info")]
 function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
-    global $config;
+    global $config, $db;
     $key = $config['lastfm'] ?? false;
     if(!$key) {
         echo "lastfm key not set on config\n";
@@ -24,8 +59,15 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     if (isset($req->args['user'])) {
         $user = $req->args['user'];
     } else {
-        $user = $args->nick;
+        R::selectDatabase($db);
+        $user = R::findOne("lastfm", " `host` = ? ", [$args->identhost]);
+        if($user) {
+            $user = $user->username;
+        } else {
+            $user = $args->nick;
+        }
     }
+
     $user = urlencode($user);
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
     try {

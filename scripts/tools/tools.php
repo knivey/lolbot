@@ -93,6 +93,12 @@ function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
+#[Cmd("whois")]
+#[Syntax('<nick>')]
+function whois($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+
+}
+
 #[Cmd("choice", "choose")]
 #[Syntax('<stuff>...')]
 function choice($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
