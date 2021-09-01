@@ -113,7 +113,7 @@ function handleCmd($args, $bot, $cmd, $cmdArgs, $opts) {
     if($alias->act) {
         $bot->msg($args->chan, "\x01ACTION $value\x01");
     } else {
-        $bot->msg($args->chan, "\2{$alias->name}:\2 $value");
+        $bot->msg($args->chan, "$value");
     }
     return true;
 }
