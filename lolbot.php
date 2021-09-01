@@ -40,8 +40,15 @@ $router = new Cmdr();
  * codesand: add js, c++, cleanup the timeout problem, maxlines shown twice if error after
  */
 
-$config = Yaml::parseFile(__DIR__.'/config.yaml');
-if($config['codesand'] ?? false) {
+if(isset($argv[1])) {
+    if(!file_exists($argv[1]) || !is_file($argv[1]))
+        die("Usage: ".__FILE__." [config.yaml]\n  ({$argv[1]} does not exist or is not a file)\n");
+    $configFile = $argv[1];
+} else {
+    $configFile = __DIR__."/artconfig.yaml";
+}
+
+$config = Yaml::parseFile($configFile);if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
 }
 

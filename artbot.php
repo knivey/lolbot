@@ -17,7 +17,15 @@ use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 
-$config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
+if(isset($argv[1])) {
+    if(!file_exists($argv[1]) || !is_file($argv[1]))
+        die("Usage: ".__FILE__." [config.yaml]\n  ({$argv[1]} does not exist or is not a file)\n");
+    $configFile = $argv[1];
+} else {
+    $configFile = __DIR__."/artconfig.yaml";
+}
+
+$config = Yaml::parseFile($configFile);
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
