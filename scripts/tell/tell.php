@@ -20,32 +20,38 @@ if(isset($config['telldb'])) {
     $disabled=true;
 }
 
-#[Cmd("gtell", "gask", "ginform")]
-#[Syntax("<nick> <msg>...")]
-function gtell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $disabled, $config;
-    if($disabled) {
-        $bot->pm($args->chan, "telldb not configured");
-        return;
+// if we are allowing multiple networks to share a telldb to send between them
+$multiNet = $config['tell_multinet'] ?? false;
+
+if ($multiNet) {
+    #[Cmd("gtell", "gask", "ginform")]
+    #[Syntax("<nick> <msg>...")]
+    function gtell($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+    {
+        global $disabled, $config;
+        if ($disabled) {
+            $bot->pm($args->chan, "telldb not configured");
+            return;
+        }
+        if (strtolower($bot->getNick()) == strtolower($req->args['nick'])) {
+            $bot->pm($args->chan, "Ok I'll pass that off to /dev/null");
+            return;
+        }
+        $max = $config['tell_max_inbox'] ?? 10;
+        $net = $bot->getOption('NETWORK', 'UnknownNet');
+        if (countMsgs($req->args['nick'], $net, true) >= $max) {
+            $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
+            return;
+        }
+        addMsg($req->args['nick'], $args->text, $args->nick, $net, $args->chan);
+        $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on any network.");
     }
-    if(strtolower($bot->getNick()) == strtolower($req->args['nick'])) {
-        $bot->pm($args->chan, "Ok I'll pass that off to /dev/null");
-        return;
-    }
-    $max = $config['tell_max_inbox'] ?? 10;
-    $net = $bot->getOption('NETWORK', 'UnknownNet');
-    if(countMsgs($req->args['nick'], $net, true) >= $max) {
-        $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
-        return;
-    }
-    addMsg($req->args['nick'], $args->text, $args->nick, $net, $args->chan);
-    $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on any network.");
 }
 
 #[Cmd("tell", "ask", "inform")]
 #[Syntax("<nick> <msg>...")]
 function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $disabled, $config;
+    global $disabled, $config, $multiNet;
     if($disabled) {
         $bot->pm($args->chan, "telldb not configured");
         return;
@@ -61,7 +67,10 @@ function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     addMsg($req->args['nick'], $args->text, $args->nick, $net, $args->chan, $net);
-    $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on $net.");
+    if($multiNet)
+        $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on $net.");
+    else
+        $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them.");
 }
 
 function countMsgs($nick, $net, $global = false) {
