@@ -10,6 +10,7 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use League\Uri\Uri;
 
 require_once 'github.php';
 
@@ -84,15 +85,29 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
         $link_ratelimit = time() + 2;
 
         //Handle github user or project
-        if(preg_match("@^https?://(?:www\.)?github\.com/([^/?&#]+)(?:/([^/?#&]+))?[/?#]?.*$@i", $word, $m)) {
-            var_dump($m);
-            $user = $m[1];
-            $repo = $m[2] ?? null;
-            if($out = yield from github($user, $repo)) {
-                $bot->pm($chan, $out);
-                logUrl($bot, $nick, $chan, $text, $out);
+        $uri = Uri::createFromString($word);
+        //array_values to make sure its indexed if anything removed with filter
+        $pathParts = array_values(array_filter(explode('/', $uri->getPath())));
+        var_dump($word, $uri, $uri->getPath(), $pathParts);
+        if(preg_match("@^(?:www\.)?github\.com$@i", $uri->getHost())) {
+            $user = $pathParts[0];
+            //ignore site paths, probably more exists than these
+            if(in_array(strtolower($user), [
+                'pulls', 'issues', 'marketplace', 'explore', 'notifications', 'new', 'organizations', 'codespaces',
+                'account', 'settings', 'security', 'pricing', 'about'
+            ]))
                 continue;
+            $repo = $pathParts[1] ?? null;
+            $repoAction = $pathParts[2] ?? null;
+            if($repoAction == null) {
+                if ($out = yield from github($user, $repo)) {
+                    $bot->pm($chan, $out);
+                    logUrl($bot, $nick, $chan, $text, $out);
+                    continue;
+                }
             }
+            // in the future we can handle issues etc here
+            // bot for now it falls through like any normal url title
         }
 
         try {
