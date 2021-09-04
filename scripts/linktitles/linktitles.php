@@ -41,9 +41,23 @@ if(!file_exists($dbfile)) {
 }
 /** @var $url_pdo \PDO */
 
+//feature requested by terps
+//sends all urls into a log channel for easier viewing url history
+function logUrl($bot, $nick, $chan, $line, $title) {
+    global $config;
+    if(!isset($config['url_log_chan']))
+        return;
+    $logChan = $config['url_log_chan'];
+    static $max = 0;
+    $max = max(strlen($chan), $max);
+    $chan = str_pad($chan, $max);
+    $bot->pm($logChan, "$chan | <$nick> $line");
+    $bot->pm($logChan, $title);
+}
+
 $link_history = [];
 $link_ratelimit = 0;
-function linktitles(\Irc\Client $bot, $chan, $text)
+function linktitles(\Irc\Client $bot, $nick, $chan, $text)
 {
     global $link_history, $link_ratelimit;
     foreach(explode(' ', $text) as $word) {
@@ -122,6 +136,7 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $title = str_replace("\x01", "[CTCP]", $title);
             $title = substr(trim($title), 0, 300);
             $bot->pm($chan, "[ $title ]");
+            logUrl($bot, $nick, $chan, $text, $title);
         } catch (\Exception $error) {
             echo "Link titles exception: {$error->getMessage()}\n";
         }

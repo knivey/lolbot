@@ -224,6 +224,9 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             if (!$sent) {
                 $bot->pm($chan, $msg);
             }
+            if(function_exists('\scripts\linktitles\logUrl')) {
+                \scripts\linktitles\logUrl($bot, $nick, $chan, $text, $msg);
+            }
         } catch (\async_get_exception $e) {
             $bot->pm($chan, "\2YouTube Error:\2 {$e->getIRCMsg()}");
             echo "YouTube Error: $e\n";

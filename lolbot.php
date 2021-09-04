@@ -177,7 +177,7 @@ try {
                     \Amp\asyncCall('scripts\youtube\youtube', $bot, $args->from, $args->channel, $args->text);
                 }
                 if ($config['linktitles'] ?? false) {
-                    \Amp\asyncCall('scripts\linktitles\linktitles', $bot, $args->channel, $args->text);
+                    \Amp\asyncCall('scripts\linktitles\linktitles', $bot, $args->nick, $args->channel, $args->text);
                 }
 
                 if (isset($config['trigger'])) {
