@@ -88,7 +88,7 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
         $uri = Uri::createFromString($word);
         //array_values to make sure its indexed if anything removed with filter
         $pathParts = array_values(array_filter(explode('/', $uri->getPath())));
-        var_dump($word, $uri, $uri->getPath(), $pathParts);
+        //var_dump($word, $uri, $uri->getPath(), $pathParts);
         if(preg_match("@^(?:www\.)?github\.com$@i", $uri->getHost())) {
             $user = $pathParts[0];
             //ignore site paths, probably more exists than these
@@ -100,7 +100,7 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
             $repo = $pathParts[1] ?? null;
             $repoAction = $pathParts[2] ?? null;
             if($repoAction == null) {
-                if ($out = yield from github($user, $repo)) {
+                if ($out = yield github($user, $repo)) {
                     $bot->pm($chan, $out);
                     logUrl($bot, $nick, $chan, $text, $out);
                     continue;
@@ -108,6 +108,14 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
             }
             // in the future we can handle issues etc here
             // bot for now it falls through like any normal url title
+            $repoParts = array_slice($pathParts, 3);
+            if(strtolower($repoAction) == 'issues' && isset($repoParts[0])) {
+                if($out = yield github_issueStr($user, $repo, $repoParts[0])) {
+                    $bot->pm($chan, $out);
+                    logUrl($bot, $nick, $chan, $text, $out);
+                    continue;
+                }
+            }
         }
 
         try {
