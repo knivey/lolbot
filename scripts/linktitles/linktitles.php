@@ -90,6 +90,7 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
             $repo = $m[2] ?? null;
             if($out = yield from github($user, $repo)) {
                 $bot->pm($chan, $out);
+                logUrl($bot, $nick, $chan, $text, $out);
                 continue;
             }
         }
