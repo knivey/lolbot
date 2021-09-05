@@ -18,6 +18,7 @@ $router = new Cmdr();
  */
 /*
  * TODO
+ * all commands add rate limiting, especially those that hit apis
  * art:
  * other todos in various files..
  * allow ircwatch arts in @random search - append ircwatch/name array
@@ -27,17 +28,21 @@ $router = new Cmdr();
  * website api for uploading, sending to chans, get keys from chat
  *
  * others:
- *
- * github: links to things like issues prs etc show more appropriate info
+ * github: links to prs etc show more appropriate info
  *  * later would be nice to have github webhooks?
  * translate
  * reddit urls
+ * url system better design for addon handlers
  *
  * rss feeds
  * main loop catching exceptions and ValueError dont die
  * user system
  *
  * codesand: add js, c++, cleanup the timeout problem, maxlines shown twice if error after
+ *
+ *
+ * cmdr alternative arg parsing using grammers/lexers
+ *
  */
 
 if(isset($argv[1])) {
