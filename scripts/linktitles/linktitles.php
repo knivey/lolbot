@@ -10,6 +10,7 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use League\Uri\Uri;
 
 require_once 'github.php';
 
@@ -41,9 +42,27 @@ if(!file_exists($dbfile)) {
 }
 /** @var $url_pdo \PDO */
 
+//feature requested by terps
+//sends all urls into a log channel for easier viewing url history
+//TODO take url as param to highlight it here
+function logUrl($bot, $nick, $chan, $line, $title) {
+    global $config;
+    if(!isset($config['url_log_chan']))
+        return;
+    $logChan = $config['url_log_chan'];
+    static $max = 0;
+    $max = max(strlen($chan), $max);
+    $chan = str_pad($chan, $max);
+    $bot->pm($logChan, "$chan | <$nick> $line");
+    $bot->pm($logChan, $title);
+}
+
+//TODO log all urls (imgs), img maybe lookup imgur info or file info (size, width, height)
+//TODO log from .tells too
+
 $link_history = [];
 $link_ratelimit = 0;
-function linktitles(\Irc\Client $bot, $chan, $text)
+function linktitles(\Irc\Client $bot, $nick, $chan, $text)
 {
     global $link_history, $link_ratelimit;
     foreach(explode(' ', $text) as $word) {
@@ -65,18 +84,42 @@ function linktitles(\Irc\Client $bot, $chan, $text)
         $link_history[$chan] = $word;
 
         if(time() < $link_ratelimit) {
+            logUrl($bot, $nick, $chan, $text, "Err: Rate limit exceeded");
             return;
         }
         $link_ratelimit = time() + 2;
 
         //Handle github user or project
-        if(preg_match("@^https?://(?:www\.)?github\.com/([^/?&#]+)(?:/([^/?#&]+))?[/?#]?.*$@i", $word, $m)) {
-            var_dump($m);
-            $user = $m[1];
-            $repo = $m[2] ?? null;
-            if($out = yield from github($user, $repo)) {
-                $bot->pm($chan, $out);
+        $uri = Uri::createFromString($word);
+        //array_values to make sure its indexed if anything removed with filter
+        $pathParts = array_values(array_filter(explode('/', $uri->getPath())));
+        //var_dump($word, $uri, $uri->getPath(), $pathParts);
+        if(preg_match("@^(?:www\.)?github\.com$@i", $uri->getHost())) {
+            $user = $pathParts[0];
+            //ignore site paths, probably more exists than these
+            if(in_array(strtolower($user), [
+                'pulls', 'issues', 'marketplace', 'explore', 'notifications', 'new', 'organizations', 'codespaces',
+                'account', 'settings', 'security', 'pricing', 'about'
+            ]))
                 continue;
+            $repo = $pathParts[1] ?? null;
+            $repoAction = $pathParts[2] ?? null;
+            if($repoAction == null) {
+                if ($out = yield github($user, $repo)) {
+                    $bot->pm($chan, $out);
+                    logUrl($bot, $nick, $chan, $text, $out);
+                    continue;
+                }
+            }
+            // in the future we can handle issues etc here
+            // bot for now it falls through like any normal url title
+            $repoParts = array_slice($pathParts, 3);
+            if(strtolower($repoAction) == 'issues' && isset($repoParts[0])) {
+                if($out = yield github_issueStr($user, $repo, $repoParts[0])) {
+                    $bot->pm($chan, $out);
+                    logUrl($bot, $nick, $chan, $text, $out);
+                    continue;
+                }
             }
         }
 
@@ -95,22 +138,12 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
             if ($response->getStatus() != 200) {
+                logUrl($bot, $nick, $chan, $text, "Err: {$response->getStatus()} {$response->getReason()}");
                 continue;
-                /*
-                $title = substr($body, 0, 200);
-                $title = strip_tags($m[1]);
-                $title = html_entity_decode($title,  ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $title = htmlspecialchars_decode($title);
-                $title = str_replace("\n", " ", $title);
-                $title = str_replace("\r", " ", $title);
-                $title = str_replace("\x01", "[CTCP]", $title);
-                $bot->pm($chan, "LinkTitles Error (" . $response->getStatus() . ") $title");
-                //var_dump($body);
-                continue;
-                */
             }
 
             if(!preg_match("/<title[^>]*>([^<]+)<\/title>/im", $body, $m)) {
+                logUrl($bot, $nick, $chan, $text, "Err: No <title>");
                 continue;
             }
 
@@ -122,7 +155,9 @@ function linktitles(\Irc\Client $bot, $chan, $text)
             $title = str_replace("\x01", "[CTCP]", $title);
             $title = substr(trim($title), 0, 300);
             $bot->pm($chan, "[ $title ]");
+            logUrl($bot, $nick, $chan, $text, $title);
         } catch (\Exception $error) {
+            logUrl($bot, $nick, $chan, $text, "Err: {$error->getMessage()}");
             echo "Link titles exception: {$error->getMessage()}\n";
         }
     }

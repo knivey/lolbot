@@ -44,6 +44,10 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[CallWrap("\Amp\asyncCall")]
 function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
+    global $config;
+    if(($config['throttle']??true)) {
+        return;
+    }
     try {
         $chart = yield from getCoinChart("dogecoin");
     } catch (\Exception $e) {
@@ -59,6 +63,9 @@ function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[CallWrap("\Amp\asyncCall")]
 function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
+    if(($config['throttle']??true)) {
+        return;
+    }
     try {
         $chart = yield from getCoinChart("bitcoin-cash");
     } catch (\Exception $e) {
@@ -74,6 +81,9 @@ function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[CallWrap("\Amp\asyncCall")]
 function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
+    if(($config['throttle']??true)) {
+        return;
+    }
     try {
         $chart = yield from getCoinChart("ethereum");
     } catch (\Exception $e) {

@@ -88,7 +88,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = $line;
                 if($cnt++ > ($config['url_max'] ?? 100)) {
                     $out[] = "wow thats a pretty big image, omitting ~" . count($thumbnail)-$cnt . "lines ;-(";
-                    return;
+                    break;
                 }
             }
             pumpToChan($args->chan, $out);
@@ -120,7 +120,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = $line;
                 if($cnt++ > ($config['url_max'] ?? 100)) {
                     $out[] = "wow thats a pretty big text, omitting ~" . count($body)-$cnt . "lines ;-(";
-                    return;
+                    break;
                 }
             }
             pumpToChan($args->chan, $out);
@@ -129,12 +129,12 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     } catch (\Amp\MultiReasonException $errors) {
         foreach ($errors->getReasons() as $error) {
             echo $error;
-            $bot->pm($args->chan, "\2URL Error:\2 " . substr($error, 0, strpos($error, "\n")));
+            $bot->pm($args->chan, "\2URL Error:\2 {$error->getMessage()}");
         }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error;
-        $bot->pm($args->chan, "\2URL Error:\2 " . substr($error, 0, strpos($error, "\n")));
+        $bot->pm($args->chan, "\2URL Error:\2 {$error->getMessage()}");
     }
 }

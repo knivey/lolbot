@@ -17,7 +17,15 @@ use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 
-$config = Yaml::parseFile(__DIR__ . '/artconfig.yaml');
+if(isset($argv[1])) {
+    if(!file_exists($argv[1]) || !is_file($argv[1]))
+        die("Usage: ".__FILE__." [config.yaml]\n  ({$argv[1]} does not exist or is not a file)\n");
+    $configFile = $argv[1];
+} else {
+    $configFile = __DIR__."/artconfig.yaml";
+}
+
+$config = Yaml::parseFile($configFile);
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
@@ -95,7 +103,7 @@ Loop::run(function () {
     });
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $config, $router;
+        global $config, $router, $reqArtOpts;
 
         if(isIgnored($args->fullhost))
             return;
@@ -134,7 +142,7 @@ Loop::run(function () {
             }
         } else {
             var_dump($text);
-            $opts = parseOpts($text, ['--flip', '--edit', '--asciibird']);
+            $opts = parseOpts($text, $reqArtOpts);
             var_dump($opts);
             $cmdArgs = \knivey\tools\makeArgs($text);
             if(!is_array($cmdArgs))
@@ -184,8 +192,8 @@ Loop::run(function () {
 
 $playing = [];
 
-function pumpToChan(string $chan, array $data) {
-    \Amp\asyncCall(function () use ($chan, $data) {
+function pumpToChan(string $chan, array $data, $speed = null) {
+    \Amp\asyncCall(function () use ($chan, $data, $speed) {
         global $playing, $bot, $config;
         if (isset($playing[$chan])) {
             array_push($playing[$chan], ...$data);
@@ -194,6 +202,8 @@ function pumpToChan(string $chan, array $data) {
             while (!empty($playing[$chan])) {
                 $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
                 $pumpLag = $config['pumplag'] ?? 25;
+                if($speed)
+                    $pumpLag = max($pumpLag, $speed);
                 yield \Amp\delay($pumpLag);
             }
             unset($playing[$chan]);

@@ -7,6 +7,7 @@ class Message
 
     public $nick = null;
     public $name = null;
+    public $ident = null;
     public $host = null;
     public $command = '';
     public $args = array();
@@ -21,6 +22,7 @@ class Message
                 $parts = preg_split('/[!@]/', $prefix);
                 $this->nick = !empty($parts[0]) ? $parts[0] : '';
                 $this->name = !empty($parts[1]) ? $parts[1] : '';
+                $this->ident = $this->name;
                 $this->host = !empty($parts[2]) ? $parts[2] : '';
             } else {
                 $this->nick = $prefix;
@@ -58,6 +60,13 @@ class Message
             $str .= "@$this->host";
 
         return $str;
+    }
+
+    public function getIdentHost() {
+        $str = '';
+        if($this->ident != null)
+            $str .= "$this->ident@";
+        return "{$str}$this->host";
     }
 
     public function getArg($index, $defaultValue = null)

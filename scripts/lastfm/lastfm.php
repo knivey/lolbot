@@ -7,14 +7,47 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use \RedBeanPHP\R as R;
 
-#[Cmd("lastfm")]
-#[Syntax('[user]')]
+
+global $config;
+$db = 'lastfm-' . uniqid();
+$dbfile = $config['lastfmdb'] ?? "lastfm.db";
+R::addDatabase($db, "sqlite:{$dbfile}");
+
+#[Cmd("setlastfm")]
+#[Syntax('<username>')]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--info")]
-function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
-    global $config;
+    global $config, $db;
+    $key = $config['lastfm'] ?? false;
+    if(!$key) {
+        echo "lastfm key not set on config\n";
+        return;
+    }
+    $user = urlencode($req->args['username']);
+    $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
+    try {
+        $body = yield async_get_contents($url);
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2setlastfm:\2 couldn't lookup that username");
+        return;
+    }
+    R::selectDatabase($db);
+    $ent = R::findOneOrDispense("lastfm", " `host` = ? ", [$args->identhost]);
+    $ent->username = $req->args['username'];
+    $ent->host = $args->identhost;
+    R::store($ent);
+    $bot->pm($args->chan, "\2setlastfm:\2 username saved for your host");
+}
+
+#[Cmd("np")]
+#[CallWrap("Amp\asyncCall")]
+function np($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config, $db;
     $key = $config['lastfm'] ?? false;
     if(!$key) {
         echo "lastfm key not set on config\n";
@@ -24,8 +57,68 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     if (isset($req->args['user'])) {
         $user = $req->args['user'];
     } else {
-        $user = $args->nick;
+        R::selectDatabase($db);
+        $user = R::findOne("lastfm", " `host` = ? ", [$args->identhost]);
+        if($user) {
+            $user = $user->username;
+        } else {
+            $user = $args->nick;
+        }
     }
+    $user = urlencode($user);
+    $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
+    try {
+        $body = yield async_get_contents($url);
+    } catch (\async_get_exception $error) {
+        echo $error;
+        $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
+        return;
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($args->chan, "\2lastfm:\2 {$error->getMessage()}");
+        return;
+    }
+    $res = json_decode($body, true);
+    if(!isset($res['recenttracks']['track'][0])) {
+        $bot->pm($args->chan, "Failed to find any recent tracks.");
+        return;
+    }
+    $track = $res['recenttracks']['track'][0];
+    $title = $track['name'] ?? 'No Title';
+    $artist = $track['artist']['#text'] ?? 'Unknown Artist';
+    $album = $track['album']['#text'] ?? 'Unknown Album';
+    if(isset($track['date']['uts'])) {
+        $bot->pm($args->chan, "{$args->nick} np: not currently scrobbling");
+        return;
+    }
+    $bot->pm($args->chan, "{$args->nick} np: $title - $album - $artist");
+}
+
+#[Cmd("lastfm")]
+#[Syntax('[user]')]
+#[CallWrap("Amp\asyncCall")]
+#[Options("--info")]
+function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config, $db;
+    $key = $config['lastfm'] ?? false;
+    if(!$key) {
+        echo "lastfm key not set on config\n";
+        return;
+    }
+
+    if (isset($req->args['user'])) {
+        $user = $req->args['user'];
+    } else {
+        R::selectDatabase($db);
+        $user = R::findOne("lastfm", " `host` = ? ", [$args->identhost]);
+        if($user) {
+            $user = $user->username;
+        } else {
+            $user = $args->nick;
+        }
+    }
+
     $user = urlencode($user);
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
     try {

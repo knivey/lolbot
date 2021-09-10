@@ -93,6 +93,28 @@ function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
+#[Cmd("whois")]
+#[Syntax('<nick>')]
+function whois($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+
+}
+
+#[Cmd("choice", "choose")]
+#[Syntax('<stuff>...')]
+function choice($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $opts = preg_split("/[,|]|or/", $req->args['stuff']);
+    if($opts === false) {
+        $bot->msg($args->chan, "i can't seem to decide :(");
+        return;
+    }
+    $opts = array_filter(array_map('trim', $opts));
+    if(count($opts) <2) {
+        $bot->msg($args->chan, "gimme more than one option separated by: , or |");
+        return;
+    }
+    $bot->msg($args->chan, "I choose: " . $opts[array_rand($opts)]);
+}
+
 #[Cmd("domaincheck", "dc")]
 #[Syntax('<domain>')]
 #[CallWrap("Amp\asyncCall")]

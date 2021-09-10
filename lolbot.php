@@ -18,6 +18,7 @@ $router = new Cmdr();
  */
 /*
  * TODO
+ * all commands add rate limiting, especially those that hit apis
  * art:
  * other todos in various files..
  * allow ircwatch arts in @random search - append ircwatch/name array
@@ -27,21 +28,32 @@ $router = new Cmdr();
  * website api for uploading, sending to chans, get keys from chat
  *
  * others:
- *
- * github: links to things like issues prs etc show more appropriate info
+ * github: links to prs etc show more appropriate info
  *  * later would be nice to have github webhooks?
  * translate
  * reddit urls
+ * url system better design for addon handlers
  *
  * rss feeds
  * main loop catching exceptions and ValueError dont die
  * user system
  *
  * codesand: add js, c++, cleanup the timeout problem, maxlines shown twice if error after
+ *
+ *
+ * cmdr alternative arg parsing using grammers/lexers
+ *
  */
 
-$config = Yaml::parseFile(__DIR__.'/config.yaml');
-if($config['codesand'] ?? false) {
+if(isset($argv[1])) {
+    if(!file_exists($argv[1]) || !is_file($argv[1]))
+        die("Usage: ".__FILE__." [config.yaml]\n  ({$argv[1]} does not exist or is not a file)\n");
+    $configFile = $argv[1];
+} else {
+    $configFile = __DIR__."/config.yaml";
+}
+
+$config = Yaml::parseFile($configFile);if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
 }
 
@@ -85,6 +97,7 @@ require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
 require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
+require_once 'scripts/alias/alias.php';
 
 require_once "scripts/JRH/jrh.php";
 
@@ -93,6 +106,26 @@ require_once 'scripts/youtube/youtube.php';
 
 $router->loadFuncs();
 
+//copied from Cmdr should give it its own function in there later
+function parseOpts(string &$msg, array $validOpts = []): array {
+    $opts = [];
+    $msg = explode(' ', $msg);
+    $msgb = [];
+    foreach ($msg as $w) {
+        if(str_contains($w, "=")) {
+            list($lhs, $rhs) = explode("=", $w, 2);
+        } else {
+            $lhs = $w;
+            $rhs = null;
+        }
+        if(in_array($lhs, $validOpts))
+            $opts[$lhs] = $rhs;
+        else
+            $msgb[] = $w;
+    }
+    $msg = implode(' ', $msgb);
+    return $opts;
+}
 
 $bot = null;
 try {
@@ -149,7 +182,7 @@ try {
                     \Amp\asyncCall('scripts\youtube\youtube', $bot, $args->from, $args->channel, $args->text);
                 }
                 if ($config['linktitles'] ?? false) {
-                    \Amp\asyncCall('scripts\linktitles\linktitles', $bot, $args->channel, $args->text);
+                    \Amp\asyncCall('scripts\linktitles\linktitles', $bot, $args->nick, $args->channel, $args->text);
                 }
 
                 if (isset($config['trigger'])) {
@@ -178,10 +211,25 @@ try {
                 $text = explode(' ', $text);
                 $cmd = array_shift($text);
                 $text = implode(' ', $text);
-                try {
-                    $router->call($cmd, $text, $args, $bot);
-                } catch (Exception $e) {
-                    $bot->notice($args->from, $e->getMessage());
+                if(trim($cmd) == '')
+                    return;
+
+                if(isset($router->cmds[$cmd])) {
+                    try {
+                        $router->call($cmd, $text, $args, $bot);
+                    } catch (Exception $e) {
+                        $bot->notice($args->from, $e->getMessage());
+                    }
+                } else {
+                    //call other cmd handlers
+                    $tmpText = $text;
+                    $opts = parseOpts($tmpText, []);
+                    $cmdArgs = \knivey\tools\makeArgs($tmpText);
+                    if(!is_array($cmdArgs))
+                        $cmdArgs = [];
+                    if(count($cmdArgs) == 1 && $cmdArgs[0] == "")
+                        $cmdArgs = [];
+                    \scripts\alias\handleCmd($args, $bot, $cmd, $cmdArgs, $opts);
                 }
             } catch (Exception $e) {
                 echo "UNCAUGHT EXCEPTION $e\n";
