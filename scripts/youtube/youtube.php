@@ -10,6 +10,7 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use League\Uri\UriString;
+use Carbon\Carbon;
 
 function ytDuration($input) {
     try {
@@ -155,12 +156,15 @@ function youtube(\Irc\Client $bot, $nick, $chan, $text)
             $chanTitle = $v->snippet->channelTitle;
             //$datef = 'M j, Y';
             //$date = date($datef, strtotime($v->snippet->publishedAt));
+            // 2021-09-09T22:52:30Z believe this is zulu but carbon wasnt paying attention to the Z
+            $date = Carbon::createFromTimeString($v->snippet->publishedAt, 'utc');
+            $ago = $date->shortRelativeToNowDiffForHumans(3);
             //$views = number_format($v->statistics->viewCount);
             //$likes = number_format($v->statistics->likeCount);
             //$hates = number_format($v->statistics->dislikeCount);
 
             $sent = false;
-            $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $dur";
+            $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $ago | $dur";
             $thumbnail = $v?->snippet?->thumbnails?->high?->url;
             if ($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                 $ext = explode('.', $thumbnail);
