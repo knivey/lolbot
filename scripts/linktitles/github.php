@@ -18,6 +18,8 @@ $eventProvider->addListener(
             $pathParts = array_values(array_filter(explode('/', $uri->getPath())));
             //var_dump($word, $uri, $uri->getPath(), $pathParts);
             if (preg_match("@^(?:www\.)?github\.com$@i", $uri->getHost())) {
+                if(!isset($pathParts[0]))
+                    return;
                 $user = $pathParts[0];
                 //ignore site paths, probably more exists than these
                 if (in_array(strtolower($user), [
