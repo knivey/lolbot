@@ -693,7 +693,7 @@ function quietExec($cmd)
     return [$rc, $out, $err];
 }
 
-#[Cmd("a2m")]
+#[Cmd("a2m", "ans")]
 #[Syntax('<url>')]
 #[Options('--width')]
 function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
