@@ -10,9 +10,10 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-use League\Uri\Uri;
 
 require_once 'github.php';
+
+
 
 // db is used for ignoring urls from userhosts or per channel URL regex ignores
 $dbfile = "linktitles.db";
@@ -45,7 +46,7 @@ if(!file_exists($dbfile)) {
 //feature requested by terps
 //sends all urls into a log channel for easier viewing url history
 //TODO take url as param to highlight it here
-function logUrl($bot, $nick, $chan, $line, $title) {
+function logUrl($bot, $nick, $chan, $line, string|array $title) {
     global $config;
     if(!isset($config['url_log_chan']))
         return;
@@ -54,73 +55,49 @@ function logUrl($bot, $nick, $chan, $line, $title) {
     $max = max(strlen($chan), $max);
     $chan = str_pad($chan, $max);
     $bot->pm($logChan, "$chan | <$nick> $line");
-    $bot->pm($logChan, $title);
+    if(is_string($title))
+        $title = [$title];
+    foreach ($title as $msg)
+        $bot->pm($logChan, $msg);
 }
 
-//TODO log all urls (imgs), img maybe lookup imgur info or file info (size, width, height)
-//TODO log from .tells too
+//TODO images: maybe lookup imgur info or file info (size, width, height)
 
 $link_history = [];
 $link_ratelimit = 0;
 function linktitles(\Irc\Client $bot, $nick, $chan, $text)
 {
-    global $link_history, $link_ratelimit;
-    foreach(explode(' ', $text) as $word) {
+    global $link_history, $link_ratelimit, $eventDispatcher;
+    foreach (explode(' ', $text) as $word) {
         if (filter_var($word, FILTER_VALIDATE_URL) === false) {
             continue;
         }
-        //Skip youtubes
-        $URL = '/^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/';
-        if (preg_match($URL, $word)) {
-            continue;
-        }
-
-        if(urlIsIgnored($chan, $word))
+        if (urlIsIgnored($chan, $word))
             continue;
 
-        if(($link_history[$chan] ?? "") == $word) {
+        if (($link_history[$chan] ?? "") == $word) {
             continue;
         }
         $link_history[$chan] = $word;
 
-        if(time() < $link_ratelimit) {
+        if (time() < $link_ratelimit) {
             logUrl($bot, $nick, $chan, $text, "Err: Rate limit exceeded");
             return;
         }
         $link_ratelimit = time() + 2;
 
-        //Handle github user or project
-        $uri = Uri::createFromString($word);
-        //array_values to make sure its indexed if anything removed with filter
-        $pathParts = array_values(array_filter(explode('/', $uri->getPath())));
-        //var_dump($word, $uri, $uri->getPath(), $pathParts);
-        if(preg_match("@^(?:www\.)?github\.com$@i", $uri->getHost())) {
-            $user = $pathParts[0];
-            //ignore site paths, probably more exists than these
-            if(in_array(strtolower($user), [
-                'pulls', 'issues', 'marketplace', 'explore', 'notifications', 'new', 'organizations', 'codespaces',
-                'account', 'settings', 'security', 'pricing', 'about'
-            ]))
-                continue;
-            $repo = $pathParts[1] ?? null;
-            $repoAction = $pathParts[2] ?? null;
-            if($repoAction == null) {
-                if ($out = yield github($user, $repo)) {
-                    $bot->pm($chan, $out);
-                    logUrl($bot, $nick, $chan, $text, $out);
-                    continue;
-                }
-            }
-            // in the future we can handle issues etc here
-            // bot for now it falls through like any normal url title
-            $repoParts = array_slice($pathParts, 3);
-            if(strtolower($repoAction) == 'issues' && isset($repoParts[0])) {
-                if($out = yield github_issueStr($user, $repo, $repoParts[0])) {
-                    $bot->pm($chan, $out);
-                    logUrl($bot, $nick, $chan, $text, $out);
-                    continue;
-                }
-            }
+        $urlEvent = new UrlEvent();
+        $urlEvent->url = $word;
+        $urlEvent->chan = $chan;
+        $urlEvent->nick = $nick;
+        $urlEvent->text = $text;
+        $eventDispatcher->dispatch($urlEvent);
+
+        yield \Amp\Promise\any($urlEvent->promises);
+        if($urlEvent->handled) {
+            $urlEvent->sendReplies($bot, $chan);
+            $urlEvent->doLog($bot);
+            continue;
         }
 
         try {
@@ -162,6 +139,10 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
         }
     }
 }
+
+
+
+
 
 function urlIsIgnored($chan, $url): bool {
     global $url_pdo;

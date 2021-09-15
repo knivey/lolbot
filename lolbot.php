@@ -5,8 +5,18 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Symfony\Component\Yaml\Yaml;
 use Amp\Loop;
 use knivey\cmdr\Cmdr;
+use Crell\Tukio\Dispatcher;
+use Crell\Tukio\OrderedListenerProvider;
+use monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 $router = new Cmdr();
+
+$eventLogger = new \Monolog\Logger("Events");
+$eventProvider = new OrderedListenerProvider();
+$eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
+
+
 
 /*
  * TODO:
@@ -14,7 +24,7 @@ $router = new Cmdr();
  * move all bots to one instance, surround everything with try catch (links youtube cmds etc)
  * each bot own config section, apis global?
  *  databases will need to be uniq for each bot, will likely put scripts into objects - this could be good for autoload
- * loading scripts maybe have recurvise dir include and dirs like all, extra
+ * loading scripts maybe have recursive dir include and dirs like all, extra
  */
 /*
  * TODO
@@ -24,15 +34,19 @@ $router = new Cmdr();
  * allow ircwatch arts in @random search - append ircwatch/name array
  * allow @ircwatch/file to only load from ircwatch
  * @fortune
+ * add database to add tags to art files and other metadata and user for searching
+ * move artfart to artbots
  *
  * website api for uploading, sending to chans, get keys from chat
  *
  * others:
  * github: links to prs etc show more appropriate info
  *  * later would be nice to have github webhooks?
+ *  * put into own script dir
  * translate
  * reddit urls
- * url system better design for addon handlers
+ * youtube support https://music.youtube.com/watch?v=FhBnW7bZHEE links
+ * help cmd make use of new cmdr stuff, add arg for only help of 1 cmd
  *
  * rss feeds
  * main loop catching exceptions and ValueError dont die
@@ -41,7 +55,7 @@ $router = new Cmdr();
  * codesand: add js, c++, cleanup the timeout problem, maxlines shown twice if error after
  *
  *
- * cmdr alternative arg parsing using grammers/lexers
+ * cmdr alternative arg parsing using grammars/lexers
  *
  */
 
@@ -178,9 +192,6 @@ try {
                 if(isIgnored($args->fullhost))
                     return;
 
-                if ($config['youtube'] ?? false) {
-                    \Amp\asyncCall('scripts\youtube\youtube', $bot, $args->from, $args->channel, $args->text);
-                }
                 if ($config['linktitles'] ?? false) {
                     \Amp\asyncCall('scripts\linktitles\linktitles', $bot, $args->nick, $args->channel, $args->text);
                 }

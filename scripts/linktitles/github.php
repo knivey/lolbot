@@ -4,6 +4,49 @@ namespace scripts\linktitles;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use League\Uri\Uri;
+
+global $eventProvider;
+$eventProvider->addListener(
+    function (UrlEvent $event) {
+        if ($event->handled)
+            return;
+        $event->promises[] = \Amp\call(function() use ($event) {
+            //Handle github user or project
+            $uri = Uri::createFromString($event->url);
+            //array_values to make sure its indexed if anything removed with filter
+            $pathParts = array_values(array_filter(explode('/', $uri->getPath())));
+            //var_dump($word, $uri, $uri->getPath(), $pathParts);
+            if (preg_match("@^(?:www\.)?github\.com$@i", $uri->getHost())) {
+                $user = $pathParts[0];
+                //ignore site paths, probably more exists than these
+                if (in_array(strtolower($user), [
+                    'pulls', 'issues', 'marketplace', 'explore', 'notifications', 'new', 'organizations', 'codespaces',
+                    'account', 'settings', 'security', 'pricing', 'about'
+                ]))
+                    return;
+                $repo = $pathParts[1] ?? null;
+                $repoAction = $pathParts[2] ?? null;
+                if ($repoAction == null) {
+                    if ($out = yield github($user, $repo)) {
+                        $event->reply($out);
+                        return;
+                    }
+                }
+                // in the future we can handle issues etc here
+                // bot for now it falls through like any normal url title
+                $repoParts = array_slice($pathParts, 3);
+                if (strtolower($repoAction) == 'issues' && isset($repoParts[0])) {
+                    if ($out = yield github_issueStr($user, $repo, $repoParts[0])) {
+                        $event->reply($out);
+                        return;
+                    }
+                }
+            }
+        });
+    }
+);
+
 
 function github_get_json($url, $assoc = false) {
     return \Amp\call(function() use ($url, $assoc) {

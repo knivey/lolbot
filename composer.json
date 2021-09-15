@@ -9,7 +9,7 @@
         "ext-json": "*",
         "ext-pcntl": "*",
         "amphp/http-server": "^2.1",
-        "monolog/monolog": "^2.1",
+        "monolog/monolog": "^2.3",
         "amphp/log": "^1.1",
         "knivey/cmdr": "^3.0.0",
         "knivey/irctools": "dev-master",
@@ -23,7 +23,8 @@
         "amphp/http-server-router": "^1.0",
         "cspray/labrador-http-cors": "^0.3.1",
         "amphp/http-client-cookies": "^1.1",
-        "league/uri": "^6.5"
+        "league/uri": "^6.5",
+        "crell/tukio": "^1.3"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",
