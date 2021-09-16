@@ -17,7 +17,7 @@ $eventProvider->addListener(
     function (UrlEvent $event) {
         if ($event->handled)
             return;
-        if(!preg_match("@^https?://twitter\.com/([^/]+)/status/(\d+).*$@i", $event->url, $m))
+        if(!preg_match("@^https?://(?:mobile\.)?twitter\.com/([^/]+)/status/(\d+).*$@i", $event->url, $m))
             return;
         $user = $m[1];
         $id = $m[2];
