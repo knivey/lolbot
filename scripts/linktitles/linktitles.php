@@ -124,10 +124,27 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
                 $size = \knivey\tools\convert($size);
                 $d = getimagesizefromstring($body);
                 if(!$d) {
-                    $out = "[ $m[1] $size ]";
+                    $out = "[ $m[1] image $size ]";
                 } else {
                     $out = "[ $m[1] image $size $d[0]x$d[1] ]";
                 }
+                $bot->pm($chan, $out);
+                logUrl($bot, $nick, $chan, $text, $out);
+                continue;
+            }
+            if(preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
+                $size = $response->getHeader("content-length");
+                $size = \knivey\tools\convert($size);
+                $getID3 = new \getID3();
+                $fn = "tmp_" . bin2hex(random_bytes(8)) . ".{$m[1]}";
+                file_put_contents($fn, $body);
+                $info = $getID3->analyze($fn);
+                unlink($fn);
+                if(isset($info['error'])) {
+                    echo "linktitles video getID3 got error\n";
+                    var_dump($info['error']);
+                }
+                $out = "[ $m[1] video ({$info['video']['dataformat']}) $size {$info['video']['resolution_x']}x{$info['video']['resolution_y']} @ {$info['video']['frame_rate']}fps duration: {$info['playtime_string']} ]";
                 $bot->pm($chan, $out);
                 logUrl($bot, $nick, $chan, $text, $out);
                 continue;
