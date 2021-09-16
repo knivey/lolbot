@@ -160,7 +160,7 @@ $eventProvider->addListener(
                 //$date = date($datef, strtotime($v->snippet->publishedAt));
                 // 2021-09-09T22:52:30Z believe this is zulu but carbon wasnt paying attention to the Z
                 $date = Carbon::createFromTimeString($v->snippet->publishedAt, 'utc');
-                $ago = $date->shortRelativeToNowDiffForHumans(3);
+                $ago = $date->shortRelativeToNowDiffForHumans(null, 3);
                 //$views = number_format($v->statistics->viewCount);
                 //$likes = number_format($v->statistics->likeCount);
                 //$hates = number_format($v->statistics->dislikeCount);

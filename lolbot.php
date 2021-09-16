@@ -119,6 +119,7 @@ require_once "scripts/JRH/jrh.php";
 
 require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
+require_once 'scripts/twitter/twitter.php';
 
 $router->loadFuncs();
 
