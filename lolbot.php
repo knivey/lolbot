@@ -36,13 +36,14 @@ $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
  * @fortune
  * add database to add tags to art files and other metadata and user for searching
  * move artfart to artbots
+ * @resume
  *
  * website api for uploading, sending to chans, get keys from chat
  *
  * others:
  * github: links to prs etc show more appropriate info
  *  * later would be nice to have github webhooks?
- *  * put into own script dir
+ *  * cmd for looking up user(/repo)?
  * translate
  * reddit urls
  * youtube support https://music.youtube.com/watch?v=FhBnW7bZHEE links
@@ -120,6 +121,7 @@ require_once "scripts/JRH/jrh.php";
 require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
 require_once 'scripts/twitter/twitter.php';
+require_once 'scripts/github/github.php';
 
 $router->loadFuncs();
 

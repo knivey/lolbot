@@ -11,8 +11,6 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
-require_once 'github.php';
-
 
 
 // db is used for ignoring urls from userhosts or per channel URL regex ignores

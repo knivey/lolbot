@@ -1,10 +1,11 @@
 <?php
-namespace scripts\linktitles;
+namespace scripts\github;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use League\Uri\Uri;
+use scripts\linktitles\UrlEvent;
 
 global $eventProvider;
 $eventProvider->addListener(
