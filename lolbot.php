@@ -47,6 +47,8 @@ $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
  * reddit urls
  * youtube support https://music.youtube.com/watch?v=FhBnW7bZHEE links
  * help cmd make use of new cmdr stuff, add arg for only help of 1 cmd
+ * see a list of your pending remindemes
+ *
  *
  * rss feeds
  * main loop catching exceptions and ValueError dont die

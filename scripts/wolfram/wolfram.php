@@ -22,7 +22,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
 
-    $query = waURL . urlencode($req->args['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=california';
+    $query = waURL . urlencode($req->args['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=california&podindex=1,2,3';
     try {
         $body = yield async_get_contents($query);
 
