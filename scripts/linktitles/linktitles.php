@@ -119,6 +119,20 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
                 continue;
             }
 
+            if(preg_match("@^image/(.*)$@i", $response->getHeader("content-type"), $m)) {
+                $size = $response->getHeader("content-length");
+                $size = \knivey\tools\convert($size);
+                $d = getimagesizefromstring($body);
+                if(!$d) {
+                    $out = "[ $m[1] $size ]";
+                } else {
+                    $out = "[ $m[1] image $size $d[0]x$d[1] ]";
+                }
+                $bot->pm($chan, $out);
+                logUrl($bot, $nick, $chan, $text, $out);
+                continue;
+            }
+
             if(!preg_match("/<title[^>]*>([^<]+)<\/title>/im", $body, $m)) {
                 logUrl($bot, $nick, $chan, $text, "Err: No <title>");
                 continue;
