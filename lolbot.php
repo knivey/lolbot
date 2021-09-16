@@ -43,7 +43,6 @@ $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
  * others:
  * github: links to prs etc show more appropriate info
  *  * later would be nice to have github webhooks?
- *  * cmd for looking up user(/repo)?
  * translate
  * reddit urls
  * youtube support https://music.youtube.com/watch?v=FhBnW7bZHEE links

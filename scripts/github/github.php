@@ -4,6 +4,10 @@ namespace scripts\github;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Irc\Exception;
+use knivey\cmdr\attributes\CallWrap;
+use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
 use League\Uri\Uri;
 use scripts\linktitles\UrlEvent;
 
@@ -50,7 +54,33 @@ $eventProvider->addListener(
     }
 );
 
+#[Cmd("gh", "github")]
+#[Syntax("<user/repo>")]
+#[CallWrap("Amp\asyncCall")]
+function github_cmd($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $query = $req->args['user/repo'];
+    if(!preg_match("@^([^/]+)(?:/([^/]+))?$@", $query, $m)) {
+        $bot->pm($args->chan, "\x02[GitHub]\x02 Query wasn't recognized, give me user or user/repo");
+        return;
+    }
+    $user = $m[1];
+    $repo = $m[2] ?? null;
+    try {
+        $out = yield github($user, $repo);
+        if(!$out) {
+            $bot->pm($args->chan, "\x02[GitHub]\x02 nothing found or server error :(");
+            return;
+        }
+        $bot->pm($args->chan, $out);
+    } catch (\async_get_exception $e) {
+        $bot->pm($args->chan, "\x02[GitHub]\x02 Error: {$e->getIRCMsg()}");
+    }
+    catch (Exception $e) {
+        $bot->pm($args->chan, "\x02[GitHub]\x02 Error: {$e->getMessage()}");
+    }
+}
 
+//TODO throw exceptions instead of just return false
 function github_get_json($url, $assoc = false) {
     return \Amp\call(function() use ($url, $assoc) {
         try {
