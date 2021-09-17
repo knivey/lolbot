@@ -97,7 +97,7 @@ $youtube_history = [];
 global $eventProvider;
 $eventProvider->addListener(
     function (UrlEvent $event) {
-        global $config, $youtube_history;
+        global $config;
 
         //Avoiding clobber of jewbirds radio adverts
         if (str_contains($event->text, "                     https://twitch.tv/hughbord")) {
@@ -120,6 +120,7 @@ $eventProvider->addListener(
         $id = $m[5];
 
         $event->addPromise(\Amp\call(function () use ($event, $id) {
+            global $config, $youtube_history;
             // Get this with https://www.youtube.com/watch?time_continue=165&v=Bfdy5a_R4K4
             if ($id == "watch") {
                 parse_str(parse_url($event->url, PHP_URL_QUERY), $params);
