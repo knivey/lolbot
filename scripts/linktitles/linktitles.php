@@ -56,7 +56,7 @@ function logUrl($bot, $nick, $chan, $line, string|array $title) {
     if(is_string($title))
         $title = [$title];
     foreach ($title as $msg)
-        $bot->pm($logChan, $msg);
+        $bot->pm($logChan, "  $msg");
 }
 
 //TODO images: maybe lookup imgur info or file info (size, width, height)
