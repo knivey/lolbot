@@ -69,7 +69,12 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         if ($outtatime != 'false') {
             $res = "Error, query took too long to parse.";
         }
-        $bot->pm($args->chan, "\2WA:\2 " . $res);
+        $out = explode("\n", wordwrap($res, 400, "\n", true));
+        $cnt = 0;
+        foreach ($out as $msg) {
+            $bot->pm($args->chan, "\2WA:\2 " . $msg);
+            if($cnt++ > 4) break;
+        }
     } catch (\async_get_exception $error) {
         echo $error->getMessage();
         $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
