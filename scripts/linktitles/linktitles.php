@@ -161,7 +161,7 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
             $title = str_replace("\x01", "[CTCP]", $title);
             $title = substr(trim($title), 0, 300);
             $bot->pm($chan, "[ $title ]");
-            logUrl($bot, $nick, $chan, $text, $title);
+            logUrl($bot, $nick, $chan, $text, "[ $title ]");
         } catch (\Exception $error) {
             logUrl($bot, $nick, $chan, $text, "Err: {$error->getMessage()}");
             echo "Link titles exception: {$error->getMessage()}\n";
