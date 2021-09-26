@@ -48,7 +48,7 @@ $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
  * youtube support https://music.youtube.com/watch?v=FhBnW7bZHEE links
  * help cmd make use of new cmdr stuff, add arg for only help of 1 cmd
  * see a list of your pending remindemes
- *
+ * linktitles images etc, if size exceeds show how big it was? maybe there is still some body data?
  *
  * rss feeds
  * main loop catching exceptions and ValueError dont die
