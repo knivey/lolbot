@@ -23,7 +23,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 
     //note width means pixels not text len
-    $query = waURL . urlencode($req->args['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=california&format=plaintext&width=3000';
+    $query = waURL . urlencode($req->args['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=Los+Angeles,+California&format=plaintext&width=3000';
     try {
         $body = yield async_get_contents($query);
 
