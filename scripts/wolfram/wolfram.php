@@ -29,8 +29,8 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
         $xml = simplexml_load_string($body);
         $res = '';
-        $resa = null;
-        $resb = null;
+        $resa = "";
+        $resb = "";
 
         //first check if there was an error
         if ($xml['success'] == 'false') {
@@ -46,6 +46,8 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
                     //input
                     $resa = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
                 }
+                if($pod->subpod->plaintext == '')
+                    continue;
                 if ($count == 1) {
                     $resb = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
                 }
