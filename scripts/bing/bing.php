@@ -6,13 +6,16 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
+$ratelimit = 0;
+$warned = false;
+
 #[Cmd("bing")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--amt", "--result")]
 function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
-    global $config;
+    global $config, $warned, $ratelimit;
     if(!isset($config['bingKey'])) {
         echo "bingKey not set in config\n";
         return;
@@ -25,6 +28,16 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         echo "bingLang not set in config\n";
         return;
     }
+
+    if (time() < $ratelimit) {
+        if(!$warned)
+            $bot->pm($args->chan, "Whoa slow down!");
+        $warned = true;
+        return;
+    }
+    $warned = false;
+    $ratelimit = time() + 2;
+
     $start = 1;
     $end = 1;
     if($req->args->getOpt("--amt")) {
