@@ -52,7 +52,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
                     $resb = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
                 }
                 if ($count != 1 && $pod['id'] == 'DecimalApproximation') {
-                    $resb .= " \2DecimalApproximation:\2 " . $pod->subpod->plaintext;
+                    $resb .= " \2DecimalApproximation:\2 " . substr($pod->subpod->plaintext, 0, 200);
                 }
                 $count++;
             }
