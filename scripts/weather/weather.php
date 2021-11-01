@@ -5,6 +5,7 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use JetBrains\PhpStorm\Pure;
 use knivey\cmdr;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
@@ -19,6 +20,7 @@ function kToC($temp) {
     return $temp - 273;
 }
 
+#[Pure]
 function displayTemp($temp, $si = false) {
     if($si)
         return round(kToC($temp)) . '°C';
