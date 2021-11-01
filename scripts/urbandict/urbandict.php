@@ -46,11 +46,13 @@ function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 
     $max = 2;
+    $num = 0;
     for ($i = 0; $i < $max && isset($defs[$i]); $i++) {
         if ((!isset($config['throttle']) || $config['throttle']) && $i > 1)
             break;
         $def = $defs[$i];
-        $num = $def->find('div.ribbon', 0)->plaintext;
+        //$num = $def->find('div.ribbon', 0)->plaintext;
+        $num++;
         if(str_contains($num, "Word of the Day")) {
             $max++;
             continue;
