@@ -612,7 +612,7 @@ class Client extends EventEmitter
                 break;
             case CMD_JOIN:
                 //Emit channel join events
-                $nick = $message->nick ? $message->nick : $this->nick;
+                $nick = $message->nick ?: $this->nick;
                 $channel = $message->getArg(0);
                 if($nick == $this->getNick()) {
                     $this->onChannels[$channel] = $channel;
@@ -625,7 +625,7 @@ class Client extends EventEmitter
                 break;
             case CMD_PART:
                 //Emit channel part events
-                $nick = $message->nick ? $message->nick : $this->nick;
+                $nick = $message->nick ?: $this->nick;
                 //$channel = $this->addAllChannel( $message->getArg( 0 ) );
                 $channel = $message->getArg(0);
                 if($nick == $this->getNick()) {
