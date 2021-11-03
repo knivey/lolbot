@@ -96,8 +96,7 @@ function github_get_json($url, $assoc = false) {
                 var_dump($body);
                 return false;
             }
-            $body = json_decode($body, $assoc);
-            return $body;
+            return json_decode($body, $assoc);
         } catch (\Exception $error) {
             echo "Github $url exception: $error\n";
             return false;

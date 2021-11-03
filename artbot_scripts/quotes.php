@@ -103,9 +103,7 @@ function stripTimestamp($line) {
     if(!strtotime(trim($test))) {
         return $line;
     }
-    $line = substr($line, strlen($m[1]));
-    //var_dump($line);
-    return $line;
+    return substr($line, strlen($m[1]));
 }
 
 #[Cmd("cancelquote")]
