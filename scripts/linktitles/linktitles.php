@@ -265,7 +265,6 @@ function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         try {
             $auth = yield getUserAuthServ($args->nick, $bot);
         } catch (\Exception $e) {
-            ;
         }
         $stmt = $url_pdo->prepare("insert into chan_re (regex,chan,nick,host,auth) values(:regex,:chan,:nick,:host,:auth);");
         if($stmt->execute([

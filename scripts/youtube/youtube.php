@@ -293,9 +293,9 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             break;
         $s = $i['snippet'];
         $url = "https://youtu.be/{$i['id']['videoId']}";
-        $title = html_entity_decode($s['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');;
+        $title = html_entity_decode($s['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $title = htmlspecialchars_decode($title);
-        $channel = html_entity_decode($s['channelTitle'], ENT_QUOTES | ENT_HTML5, 'UTF-8');;
+        $channel = html_entity_decode($s['channelTitle'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $channel = htmlspecialchars_decode($channel);
         //$desc = html_entity_decode($s['description'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
         //$desc = htmlspecialchars_decode($desc);
@@ -308,7 +308,6 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
                 $dur = " | $dur";
             }
         } catch (\Exception $e) {
-            ;
         }
         $reply("$url - $title | $channel{$dur}");
     }

@@ -167,7 +167,6 @@ function makeUrl(string $route): Promise {
                     if ($ourIp)
                         break;
                 } catch (\Exception $e) {
-                    ;
                 }
             }
             if (!$ourIp) {
@@ -737,7 +736,6 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
                         $width = $json->sauce->tinfo1;
                     }
                 } catch (\Exception $e) {
-                    ;
                 }
                 $url = "https://16colo.rs/pack/$m[1]/raw/$m[2]";
             }
