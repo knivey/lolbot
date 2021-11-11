@@ -9,6 +9,8 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Promise;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Option;
@@ -549,6 +551,37 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         } else
             $bot->pm($chan, "no matching art found");
     });
+}
+
+#[Cmd("recent")]
+#[Syntax('[since]...')]
+function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    $since = $req->args['since'] ?? '8 days ago';
+    if($time = strtotime($since) === false) {
+        $bot->pm($args->chan, "You must give me something php strtotime() can understand, Ex: 8 days ago");
+        return;
+    }
+    if($time > time()) {
+        $bot->pm($args->chan, "Pick a time in the past");
+        return;
+    }
+    $finder = new Symfony\Component\Finder\Finder();
+    $finder->files()->date("since $since");
+    $finder->in($config['artdir'])->exclude("p2u")->sortByModifiedTime();
+    if(!$finder->hasResults()) {
+        $bot->pm($args->chan, "Nothing found");
+        return;
+    }
+    $out = ["Found {$finder->count()} arts recorded since $since:"];
+    $table = [];
+    foreach($finder as $file) {
+        $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, false, 2);
+        $table[] = [$ago, substr($file->getRelativePathname(), 0, -4)];
+    }
+    $table = \knivey\tools\multi_array_padding($table);
+    $out = array_merge($out, array_map(fn($v) => implode($v), $table));
+    pumpToChan($args->chan, $out);
 }
 
 #[Cmd("random")]
