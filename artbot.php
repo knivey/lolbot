@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+use JetBrains\PhpStorm\Pure;
 use Symfony\Component\Yaml\Yaml;
 
 
@@ -213,7 +214,7 @@ function pumpToChan(string $chan, array $data, $speed = null) {
 
 
 //TODO move this to irctools package
-function hostmaskToRegex($mask) {
+#[Pure] function hostmaskToRegex($mask) {
     $out = '';
     $i = 0;
     while($i < strlen($mask)) {

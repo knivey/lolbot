@@ -9,6 +9,7 @@ use Amp\Socket;
 use Amp\Socket\EncryptableSocket;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\ClientTlsContext;
+use JetBrains\PhpStorm\Pure;
 use function Amp\Socket\connect;
 use function Amp\asyncCall;
 
@@ -176,7 +177,7 @@ class Client extends EventEmitter
         return $this->socket->write($line);
     }
 
-    public function hasLine()
+    #[Pure] public function hasLine()
     {
         if (strpos($this->inQ, "\r") !== false || strpos($this->inQ, "\n") !== false) {
             return true;
@@ -334,7 +335,7 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function getOption($option, $defaultValue = null)
+    #[Pure] public function getOption($option, $defaultValue = null)
     {
         $o = strtoupper($option);
 
