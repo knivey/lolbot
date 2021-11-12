@@ -580,7 +580,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $table[] = [$ago, substr($file->getRelativePathname(), 0, -4)];
     }
     $table = \knivey\tools\multi_array_padding($table);
-    $out = array_merge($out, array_map(fn($v) => implode($v), $table));
+    $out = array_merge($out, array_map(fn($v) => rtrim(implode($v)), $table));
     pumpToChan($args->chan, $out);
 }
 
