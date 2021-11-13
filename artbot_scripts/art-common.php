@@ -576,7 +576,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $out = ["Found {$finder->count()} arts recorded since $since:"];
     $table = [];
     foreach($finder as $file) {
-        $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, false, 2);
+        $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
         $table[] = [$ago, substr($file->getRelativePathname(), 0, -4)];
     }
     $table = \knivey\tools\multi_array_padding($table);

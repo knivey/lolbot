@@ -35,7 +35,7 @@ function seen($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     try {
-        $ago = (new Carbon($seen->time))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, false, 3);
+        $ago = (new Carbon($seen->time))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 3);
     } catch (\Exception $e) {
         echo $e->getMessage();
         $ago = "??? ago";
