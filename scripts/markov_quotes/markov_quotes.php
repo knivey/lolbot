@@ -24,11 +24,15 @@ function mquote($args, \Irc\Client $bot, cmdr\Request $req)
     $tries = 0;
     while($text == "" && $tries++ < 100) {
         $text = $markov->generateText(rand(80, 300), rand(15, 30), 1);
+        //start with a nick
         $text = preg_replace("/^[^<]+/", '', $text);
+        //end before next nick
         $last = strrpos($text, "<");
         if ($last) {
             $text = substr($text, 0, $last);
         }
+        //Alter nicknames so they aren't highlighted
+        $text = preg_replace_callback("/<([^> ]+)>/", fn ($m) => '<'.strrev($m[1]).'>', $text);
     }
     $bot->pm($args->chan, ($text == "" ? "Failed to make quote" : $text));
 }
