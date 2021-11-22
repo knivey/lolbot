@@ -102,7 +102,7 @@ function whois($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Cmd("choice", "choose")]
 #[Syntax('<stuff>...')]
 function choice($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    $opts = preg_split("/[,|]|or/", $req->args['stuff']);
+    $opts = preg_split("/[,|]| +or( +|$)/", $req->args['stuff']);
     if($opts === false) {
         $bot->msg($args->chan, "i can't seem to decide :(");
         return;
