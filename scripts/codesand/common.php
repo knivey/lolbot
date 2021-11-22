@@ -29,12 +29,12 @@ function getRun($ep, $code) {
         }
     } catch (\Exception $error) {
         echo $error;
-        return ["\2python3:\2 " . substr($error, 0, strpos($error, "\n"))];
+        return ["\2Server Error:\2 " . substr($error, 0, strpos($error, "\n"))];
     }
 
     $output = json_decode($body, true);
     if(!is_array($output)) {
-        echo "codesand $ep returnen non array:\n";
+        echo "codesand $ep returned non array:\n";
         var_dump($output);
         return ["something went badly"];
     }
