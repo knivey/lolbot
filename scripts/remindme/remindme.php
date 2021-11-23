@@ -20,8 +20,12 @@ R::addDatabase(REMINDERDB, "sqlite:{$dbfile}");
 function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     \Amp\asyncCall(function () use ($args, $bot, $req) {
         $in = string2Seconds($req->args['time']);
+        if(is_string($in)) {
+            $bot->pm($args->chan, "Error: $in, Give me a proper duration of at least 15 seconds with no spaces using yMwdhms (Ex: 1h10m15s)");
+            return;
+        }
         if($in < 15) {
-            $bot->pm($args->chan, "Give me a proper duration of at least 15 seconds with no spaces (Ex: 1h10m15s or 1:10:15)");
+            $bot->pm($args->chan, "Give me a proper duration of at least 15 seconds with no spaces (Ex: 1h10m15s)");
             return;
         }
 
