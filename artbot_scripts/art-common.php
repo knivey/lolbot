@@ -554,6 +554,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 #[Cmd("recent")]
+#[Option(["--play"], "Play each art")]
 #[Syntax('[since]...')]
 function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
@@ -574,6 +575,25 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     $out = ["Found {$finder->count()} arts recorded since $since:"];
+
+    //Play the full arts
+    if($req->args->getOpt("--play")) {
+        foreach($finder as $file) {
+            $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+            $name = substr($file->getRelativePathname(), 0, -4);
+            $len = strlen("-----------------------------------------------------------------------------------");
+            if(strlen("||||| $ago  $name |||||") < $len)
+                $pads = str_repeat("|", $len - strlen("||||| $ago  $name |||||"));
+            $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
+            $out[] = "\x02\x0300,12||||| $ago $pads $name |||||";
+            $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
+            $out = array_merge($out, irctools\loadartfile($file->getRealPath()));
+        }
+        pumpToChan($args->chan, $out);
+        return;
+    }
+
+
     $table = [];
     foreach($finder as $file) {
         $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
