@@ -578,6 +578,10 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
     //Play the full arts
     if($req->args->getOpt("--play")) {
+        if($finder->count() > 500) {
+            $bot->pm($args->chan, "thats too many arts to play :(");
+            return;
+        }
         foreach($finder as $file) {
             $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
             $name = substr($file->getRelativePathname(), 0, -4);
