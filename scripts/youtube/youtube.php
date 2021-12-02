@@ -37,7 +37,7 @@ function ytDuration($input) {
         }
         $dur = trim($dur);
         if ($dur == '') {
-            $dur = '\x0204⚫ LIVE';
+            $dur = "\x0204⚫ LIVE";
         }
     } catch (\Exception $e) {
         return '???';
