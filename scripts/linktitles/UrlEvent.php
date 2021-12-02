@@ -28,7 +28,7 @@ class UrlEvent
 
     public function sendReplies($bot, $chan) {
         foreach ($this->replies as $msg)
-            $bot->pm($chan, $msg);
+            $bot->pm($chan, "  $msg");
     }
 
     public function doLog($bot) {

@@ -126,7 +126,7 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
                 } else {
                     $out = "[ $m[1] image $size $d[0]x$d[1] ]";
                 }
-                $bot->pm($chan, $out);
+                $bot->pm($chan, "  $out");
                 logUrl($bot, $nick, $chan, $text, $out);
                 continue;
             }
@@ -143,7 +143,7 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
                     var_dump($info['error']);
                 }
                 $out = "[ $m[1] video ({$info['video']['dataformat']}) $size {$info['video']['resolution_x']}x{$info['video']['resolution_y']} @ {$info['video']['frame_rate']}fps duration: {$info['playtime_string']} ]";
-                $bot->pm($chan, $out);
+                $bot->pm($chan, "  $out");
                 logUrl($bot, $nick, $chan, $text, $out);
                 continue;
             }
@@ -160,7 +160,7 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
             $title = str_replace("\r", " ", $title);
             $title = str_replace("\x01", "[CTCP]", $title);
             $title = substr(trim($title), 0, 300);
-            $bot->pm($chan, "[ $title ]");
+            $bot->pm($chan, "  [ $title ]");
             logUrl($bot, $nick, $chan, $text, "[ $title ]");
         } catch (\Exception $error) {
             logUrl($bot, $nick, $chan, $text, "Err: {$error->getMessage()}");
