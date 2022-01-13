@@ -62,7 +62,7 @@ function getChanUsers($chan, $bot): \Amp\Promise {
     });
 }
 
-#[Cmd("jrh")]
+#[Cmd("jrh", "birdnest")]
 #[CallWrap("Amp\asyncCall")]
 function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
@@ -88,7 +88,7 @@ function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         if($margin > -60 && $margin < 0) {
             $time = "any minute now!";
         }
-        $bot->msg($args->chan, "No live streams for JRH, next stream starts $time");
+        $bot->msg($args->chan, "Currently no live streams for Birdnest, next stream starts $time");
         return;
     }
     $v = $vids[0];
@@ -123,7 +123,7 @@ $title
     $banner = trim($banner);
     $net = strtolower($bot->getOption('NETWORK'));
     if(!isset($config['throttle']) || $config['throttle']) {
-        $bot->msg($args->chan, "JRH now live! http://jewbird.live/ {$v->snippet->title}");
+        $bot->msg($args->chan, "Birdnest now live! http://jewbird.live/ {$v->snippet->title}");
         return;
     }
     foreach (explode("\n", $banner) as $line) {
