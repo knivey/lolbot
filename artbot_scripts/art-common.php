@@ -209,6 +209,7 @@ function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 $recordLimit = [];
 $limitWarns = [];
 
+//TODO recording over existing files, if we do this we need to erase old file if it is a different case, ALSO should save a history of old files
 #[Cmd("record")]
 #[Option(["--post", "--url"], "Get a URL to post the art data to")]
 #[Syntax('<filename>')]

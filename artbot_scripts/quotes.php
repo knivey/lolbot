@@ -17,6 +17,9 @@ $quote_recordings = [];
 
 //TODO website where you can select what lines to addquote from log
 
+//TODO quote search
+//TODO aliases like quoteadd
+
 #[Cmd("addquote")]
 #[Syntax("[quote]...")]
 #[Options('--keeptimes')]

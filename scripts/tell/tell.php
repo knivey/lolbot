@@ -24,6 +24,9 @@ if(isset($config['telldb'])) {
 $multiNet = $config['tell_multinet'] ?? false;
 
 if ($multiNet) {
+    R::selectDatabase('telldb');
+    R::exec("PRAGMA synchronous=FULL;");
+
     #[Cmd("gtell", "gask", "ginform")]
     #[Syntax("<nick> <msg>...")]
     function gtell($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
