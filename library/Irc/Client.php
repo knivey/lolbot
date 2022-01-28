@@ -54,6 +54,8 @@ class Client extends EventEmitter
 
     private ?string $nickHost;
 
+    private int $ErrDelay = 0;
+
     public function __construct($nick, $server, $port = self::DEFAULT_PORT, $bindIP = '0', bool $ssl = false)
     {
         $this->nick = $nick;
@@ -113,6 +115,10 @@ class Client extends EventEmitter
                 while ($this->isConnected) {
                     yield from $this->doRead();
                 }
+                $delay = $this->ErrDelay+10;
+                echo "Reconnecting in $delay seconds...\n";
+                yield \Amp\delay($delay * 1000);
+                $this->ErrDelay = 0;
             }
         });
     }
@@ -599,6 +605,9 @@ class Client extends EventEmitter
         static $namesReply = null,
         $listReply = null;
         switch ($message->command) {
+            case "ERROR":
+                $this->ErrDelay = 240;
+                break;
             case CMD_PING:
                 //Reply to pings
                 $this->send(CMD_PONG, $message->getArg(0, $this->server));
