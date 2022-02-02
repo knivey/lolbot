@@ -184,7 +184,7 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #include <wchar.h>
 #include <wctype.h>
 {$req->args['code']}";
-    $output = yield from getRun("/run/gcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration&flags2=-lm", $code);
+    $output = yield from getRun("/run/gcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration&flagsb=-lm", $code);
     sendOut($bot, $args->chan, $output);
 }
 
