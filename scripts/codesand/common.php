@@ -180,7 +180,7 @@ function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/gpp?maxlines=$maxlines&flags=-Wno-implicit-function-declaration", $req->args['code']);
+    $output = yield from getRun("/run/gpp?maxlines=$maxlines", $req->args['code']);
     sendOut($bot, $args->chan, $output);
 }
 
