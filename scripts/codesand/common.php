@@ -93,6 +93,32 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     sendOut($bot, $args->chan, $output);
 }
 
+#[Cmd("perl")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/perl?maxlines=$maxlines", $req->args['code']);
+    sendOut($bot, $args->chan, $output);
+}
+
+#[Cmd("java")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/java?maxlines=$maxlines", $req->args['code']);
+    sendOut($bot, $args->chan, $output);
+}
+
 #[Cmd("fish")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
@@ -115,7 +141,46 @@ function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/tcc?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("/run/tcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration", $req->args['code']);
+    sendOut($bot, $args->chan, $output);
+}
+
+#[Cmd("gcc")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/gcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration", $req->args['code']);
+    sendOut($bot, $args->chan, $output);
+}
+
+#[Cmd("tcl")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/tcl?maxlines=$maxlines", $req->args['code']);
+    sendOut($bot, $args->chan, $output);
+}
+
+#[Cmd("cpp", "g++")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/gpp?maxlines=$maxlines&flags=-Wno-implicit-function-declaration", $req->args['code']);
     sendOut($bot, $args->chan, $output);
 }
 
