@@ -63,6 +63,7 @@ function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[CallWrap("\Amp\asyncCall")]
 function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
+    global $config;
     if(($config['throttle']??true)) {
         return;
     }
@@ -81,6 +82,7 @@ function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[CallWrap("\Amp\asyncCall")]
 function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
+    global $config;
     if(($config['throttle']??true)) {
         return;
     }
