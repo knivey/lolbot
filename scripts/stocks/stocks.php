@@ -30,7 +30,17 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $change = "\x0304$change\x0F";
         }
 
-        $bot->pm($args->chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $change ($j[changePercent]%)");
+        if($j['isUSMarketOpen'])
+            $bot->pm($args->chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $j[currency] $change ($j[changePercent]%)");
+        else {
+            $eChange = $j['extendedChange'];
+            if($eChange > 0) {
+                $eChange = "\x0309$eChange\x0F";
+            } else {
+                $eChange = "\x0304$eChange\x0F";
+            }
+            $bot->pm($args->chan, "$j[symbol] ($j[companyName]) [Close: $j[latestPrice] $j[currency] $change ($j[changePercent]%)] [Extended: $j[extendedPrice] $j[currency] $eChange ($j[extendedChangePercent]%)  (diffs are to last close)]");
+        }
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2Stocks:\2 {$error->getIRCMsg()}");
