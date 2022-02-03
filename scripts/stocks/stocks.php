@@ -30,7 +30,7 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $change = "\x0304$change\x0F";
         }
 
-        if($j['isUSMarketOpen'])
+        if($j['isUSMarketOpen'] || !($j['extendedPrice'] ?? false))
             $bot->pm($args->chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $j[currency] $change ($j[changePercent]%)");
         else {
             $eChange = $j['extendedChange'];
