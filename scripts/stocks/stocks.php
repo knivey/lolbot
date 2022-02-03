@@ -39,7 +39,7 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             } else {
                 $eChange = "\x0304$eChange\x0F";
             }
-            $bot->pm($args->chan, "$j[symbol] ($j[companyName]) [Close: $j[latestPrice] $j[currency] $change ($j[changePercent]%)] [Extended: $j[extendedPrice] $j[currency] $eChange ($j[extendedChangePercent]%)  (diffs are to last close)]");
+            $bot->pm($args->chan, "$j[symbol] ($j[companyName]) [Close: $j[latestPrice] $j[currency] $change ($j[changePercent]%)] [Extended: $j[extendedPrice] $j[currency] $eChange ($j[extendedChangePercent]%)]");
         }
     } catch (\async_get_exception $error) {
         echo $error;
