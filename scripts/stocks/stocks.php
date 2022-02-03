@@ -97,6 +97,25 @@ function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
+#[Cmd("btc")]
+#[CallWrap("\Amp\asyncCall")]
+function btc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config;
+    if(($config['throttle']??true)) {
+        return;
+    }
+    try {
+        $chart = yield from getCoinChart("bitcoin");
+    } catch (\Exception $e) {
+        $bot->pm($args->chan, "Error getting data");
+        return;
+    }
+    foreach ($chart as $l) {
+        $bot->pm($args->chan, $l);
+    }
+}
+
 function getCoinChart($coin) {
     $data = yield async_get_contents("https://api.coingecko.com/api/v3/coins/$coin/market_chart?vs_currency=usd&days=7");
     $json = json_decode($data);
