@@ -209,8 +209,11 @@ function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!($config['codesand'] ?? false)) {
         return;
     }
+    $code = "#include <bits/stdc++.h>
+using namespace std;
+{$req->args['code']}";
     $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/gpp?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("/run/gpp?maxlines=$maxlines", $code);
     sendOut($bot, $args->chan, $output);
 }
 
