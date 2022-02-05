@@ -627,18 +627,45 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     pumpToChan($args->chan, $out);
 }
 
+function selectRandFile($search = null) : String|false {
+    global $config;
+    $base = $config['artdir'];
+    try {
+        $tree = knivey\tools\dirtree($base);
+    } catch (Exception $e) {
+        echo "{$e}\n";
+        return false;
+    }
+    //remove p2u files
+    $tree = array_filter($tree, function ($it) {
+        global $config;
+        $check = substr($it, strlen($config['artdir']));
+        return !preg_match("@^p2u/.*@", $check);
+    });
+
+    if($search != null) {
+        $search = strtolower($search);
+        $tree = array_filter($tree, function ($it) use ($search) {
+            global $config;
+            $check = substr($it, strlen($config['artdir']));
+            $check = preg_replace('/\.txt$/i', '', $check);
+            return fnmatch("*$search*", strtolower($check));
+        });
+    }
+    if(!empty($tree))
+        return $tree[array_rand($tree)];
+    return false;
+}
+
 #[Cmd("random")]
 #[Options("--flip", "--speed")]
 #[Syntax('[search]')]
 function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    $nick = $args->nick;
     $chan = $args->chan;
-
-    global $config, $playing;
+    global $playing;
     if(isset($playing[$chan])) {
         return;
     }
-
 
     $speed = null;
     if($req->args->getOpt("--speed")) {
@@ -650,34 +677,14 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $opts = $req->args->getOpts();
 
-
-    $base = $config['artdir'];
-    try {
-        $tree = knivey\tools\dirtree($base);
-    } catch (Exception $e) {
-        echo "{$e}\n";
-        return;
-    }
-    $tree = array_filter($tree, function ($it) {
-        global $config;
-        $check = substr($it, strlen($config['artdir']));
-        return !preg_match("@^p2u/.*@", $check);
-    });
-    $matches = $tree;
-    $file = '';
+    $search = '';
     if(isset($req->args['search'])) {
-        $file = strtolower($req->args['search']);
-        $matches = [];
-        foreach ($tree as $ent) {
-            $check = substr($ent, strlen($config['artdir']));
-            $check = str_replace('.txt', '', $check);
-            if (fnmatch("*$file*", strtolower($check))) {
-                $matches[] = $ent;
-            }
-        }
+        $search = strtolower($req->args['search']);
     }
-    if(!empty($matches))
-        playart($bot, $chan, $matches[array_rand($matches)], $file, $opts, [], $speed);
+    $art = selectRandFile($search);
+
+    if($art !== false)
+        playart($bot, $chan, $art, $search, $opts, [], $speed);
     else
         $bot->pm($chan, "no matching art found");
 }
