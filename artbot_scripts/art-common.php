@@ -512,7 +512,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $file = $req->args['query'];
     global $config;
     $max = $config['art_search_max'] ?? 100;
-    if($req->args->getOpt("max")) {
+    if($req->args->getOpt("--max")) {
         $max = $req->args->getOptVal("max");
         if (!is_numeric($max)) {
             $bot->msg($args->chan, "--max must be numeric");
