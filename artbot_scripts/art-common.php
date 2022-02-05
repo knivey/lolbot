@@ -504,12 +504,30 @@ function searchIrcwatch($file, $noglob = false) {
 
 //todo paginate search
 #[Cmd("search", "find")]
+#[Option(["--max"], "Max results to show")]
 #[Syntax('<query>')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
     $chan = $args->chan;
     $file = $req->args['query'];
-    \Amp\asyncCall(function () use ($bot, $chan, $file) {
+    global $config;
+    $max = $config['art_search_max'] ?? 100;
+    if($req->args->getOpt("max")) {
+        $max = $req->args->getOptVal("max");
+        if (!is_numeric($max)) {
+            $bot->msg($args->chan, "--max must be numeric");
+            return;
+        }
+        if ($max < 1) {
+            $bot->msg($args->chan, "--max too small, must be >0");
+            return;
+        }
+        if ($max > 10000) {
+            $bot->msg($args->chan, "--max too big, limit to <10000");
+            return;
+        }
+    }
+    \Amp\asyncCall(function () use ($bot, $chan, $file, $max) {
         global $config, $playing;
         if (isset($playing[$chan])) {
             return;
@@ -543,9 +561,8 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $cnt = 0;
             foreach ($matches as $match) {
                 $out[] = str_ireplace($file, "\x0306$file\x0F", $match);
-                $max = $config['art_search_max'] ?? 100;
                 if ($cnt++ > $max) {
-                    $out[] = count($matches) . " total matches only showing $max";
+                    $out[] = count($matches) . " total matches, only showing $max";
                     break;
                 }
             }
