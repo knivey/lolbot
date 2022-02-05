@@ -400,6 +400,14 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
             }
         }
 
+        if(strlen($file) > 1 && $file[0] == '@') {
+            $file = substr($file, 1);
+            $art = selectRandFile($file);
+            if($art !== false)
+                playart($bot, $chan, $art, $file, $opts, $args, $speed);
+            else
+                $bot->pm($chan, "no matching art found");
+        }
         //try fullpath first
         //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
         foreach($tree as $ent) {
