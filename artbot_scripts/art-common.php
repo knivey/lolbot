@@ -628,6 +628,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 #[Cmd("random")]
+#[Options("--flip", "--speed")]
 #[Syntax('[search]')]
 function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
@@ -637,6 +638,18 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(isset($playing[$chan])) {
         return;
     }
+
+
+    $speed = null;
+    if($req->args->getOpt("--speed")) {
+        $speed = $req->args->getOptVal("--speed");
+        if(!is_numeric($speed) || $speed < 20 || $speed > 500) {
+            $bot->pm($chan, "--speed must be between 20 and 500 (milliseconds between lines)");
+            return;
+        }
+    }
+    $opts = $req->args->getOpts();
+
 
     $base = $config['artdir'];
     try {
@@ -664,7 +677,7 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         }
     }
     if(!empty($matches))
-        playart($bot, $chan, $matches[array_rand($matches)], $file);
+        playart($bot, $chan, $matches[array_rand($matches)], $file, $opts, [], $speed);
     else
         $bot->pm($chan, "no matching art found");
 }
@@ -694,7 +707,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         return;
     }
     $pump = irctools\loadartfile($file);
-    var_dump($opts);
+    //var_dump($opts);
     if(array_key_exists('--flip', $opts)) {
         $pump = array_reverse($pump);
         //could be some dupes
