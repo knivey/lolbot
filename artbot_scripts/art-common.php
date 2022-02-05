@@ -543,8 +543,9 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $cnt = 0;
             foreach ($matches as $match) {
                 $out[] = str_ireplace($file, "\x0306$file\x0F", $match);
-                if ($cnt++ > 50) {
-                    $out[] = count($matches) . " total matches only showing 50";
+                $max = $config['art_search_max'] ?? 100;
+                if ($cnt++ > $max) {
+                    $out[] = count($matches) . " total matches only showing $max";
                     break;
                 }
             }
