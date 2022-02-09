@@ -18,9 +18,9 @@ $quote_recordings = [];
 //TODO website where you can select what lines to addquote from log
 
 //TODO quote search
-//TODO aliases like quoteadd
 
-#[Cmd("addquote")]
+
+#[Cmd("addquote", "quoteadd")]
 #[Syntax("[quote]...")]
 #[Options('--keeptimes')]
 function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {

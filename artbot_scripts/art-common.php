@@ -400,6 +400,14 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
             }
         }
 
+        if(strlen($file) > 1 && $file[0] == '@') {
+            $file = substr($file, 1);
+            $art = selectRandFile($file);
+            if($art !== false)
+                playart($bot, $chan, $art, $file, $opts, $args, $speed);
+            else
+                $bot->pm($chan, "no matching art found");
+        }
         //try fullpath first
         //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
         foreach($tree as $ent) {
@@ -504,12 +512,30 @@ function searchIrcwatch($file, $noglob = false) {
 
 //todo paginate search
 #[Cmd("search", "find")]
+#[Option(["--max"], "Max results to show")]
 #[Syntax('<query>')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
     $chan = $args->chan;
     $file = $req->args['query'];
-    \Amp\asyncCall(function () use ($bot, $chan, $file) {
+    global $config;
+    $max = $config['art_search_max'] ?? 100;
+    if($req->args->getOpt("--max")) {
+        $max = $req->args->getOptVal("--max");
+        if (!is_numeric($max)) {
+            $bot->msg($args->chan, "--max must be numeric");
+            return;
+        }
+        if ($max < 1) {
+            $bot->msg($args->chan, "--max too small, must be >0");
+            return;
+        }
+        if ($max > 10000) {
+            $bot->msg($args->chan, "--max too big, limit to <10000");
+            return;
+        }
+    }
+    \Amp\asyncCall(function () use ($bot, $chan, $file, $max) {
         global $config, $playing;
         if (isset($playing[$chan])) {
             return;
@@ -543,8 +569,8 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $cnt = 0;
             foreach ($matches as $match) {
                 $out[] = str_ireplace($file, "\x0306$file\x0F", $match);
-                if ($cnt++ > 50) {
-                    $out[] = count($matches) . " total matches only showing 50";
+                if ($cnt++ > $max) {
+                    $out[] = count($matches) . " total matches, only showing $max";
                     break;
                 }
             }
@@ -609,44 +635,64 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     pumpToChan($args->chan, $out);
 }
 
-#[Cmd("random")]
-#[Syntax('[search]')]
-function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    $nick = $args->nick;
-    $chan = $args->chan;
-
-    global $config, $playing;
-    if(isset($playing[$chan])) {
-        return;
-    }
-
+function selectRandFile($search = null) : String|false {
+    global $config;
     $base = $config['artdir'];
     try {
         $tree = knivey\tools\dirtree($base);
     } catch (Exception $e) {
         echo "{$e}\n";
-        return;
+        return false;
     }
+    //remove p2u files
     $tree = array_filter($tree, function ($it) {
         global $config;
         $check = substr($it, strlen($config['artdir']));
         return !preg_match("@^p2u/.*@", $check);
     });
-    $matches = $tree;
-    $file = '';
-    if(isset($req->args['search'])) {
-        $file = strtolower($req->args['search']);
-        $matches = [];
-        foreach ($tree as $ent) {
-            $check = substr($ent, strlen($config['artdir']));
-            $check = str_replace('.txt', '', $check);
-            if (fnmatch("*$file*", strtolower($check))) {
-                $matches[] = $ent;
-            }
+
+    if($search != null) {
+        $search = strtolower($search);
+        $tree = array_filter($tree, function ($it) use ($search) {
+            global $config;
+            $check = substr($it, strlen($config['artdir']));
+            $check = preg_replace('/\.txt$/i', '', $check);
+            return fnmatch("*$search*", strtolower($check));
+        });
+    }
+    if(!empty($tree))
+        return $tree[array_rand($tree)];
+    return false;
+}
+
+#[Cmd("random")]
+#[Options("--flip", "--speed")]
+#[Syntax('[search]')]
+function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    $chan = $args->chan;
+    global $playing;
+    if(isset($playing[$chan])) {
+        return;
+    }
+
+    $speed = null;
+    if($req->args->getOpt("--speed")) {
+        $speed = $req->args->getOptVal("--speed");
+        if(!is_numeric($speed) || $speed < 20 || $speed > 500) {
+            $bot->pm($chan, "--speed must be between 20 and 500 (milliseconds between lines)");
+            return;
         }
     }
-    if(!empty($matches))
-        playart($bot, $chan, $matches[array_rand($matches)], $file);
+    $opts = $req->args->getOpts();
+
+    $search = '';
+    if(isset($req->args['search'])) {
+        $search = strtolower($req->args['search']);
+    }
+    $art = selectRandFile($search);
+
+    if($art !== false)
+        playart($bot, $chan, $art, $search, $opts, [], $speed);
     else
         $bot->pm($chan, "no matching art found");
 }
@@ -676,7 +722,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         return;
     }
     $pump = irctools\loadartfile($file);
-    var_dump($opts);
+    //var_dump($opts);
     if(array_key_exists('--flip', $opts)) {
         $pump = array_reverse($pump);
         //could be some dupes

@@ -30,7 +30,17 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $change = "\x0304$change\x0F";
         }
 
-        $bot->pm($args->chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $change ($j[changePercent]%)");
+        if($j['isUSMarketOpen'] || !($j['extendedPrice'] ?? false))
+            $bot->pm($args->chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $j[currency] $change ($j[changePercent]%)");
+        else {
+            $eChange = $j['extendedChange'];
+            if($eChange > 0) {
+                $eChange = "\x0309$eChange\x0F";
+            } else {
+                $eChange = "\x0304$eChange\x0F";
+            }
+            $bot->pm($args->chan, "$j[symbol] ($j[companyName]) [Close: $j[latestPrice] $j[currency] $change ($j[changePercent]%)] [Extended: $j[extendedPrice] $j[currency] $eChange ($j[extendedChangePercent]%)]");
+        }
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2Stocks:\2 {$error->getIRCMsg()}");
@@ -45,10 +55,12 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     global $config;
-    if(($config['throttle']??true)) {
-        return;
-    }
     try {
+        if(($config['throttle']??true)) {
+            $bot->pm($args->chan, yield getCoinPrice('dogecoin'));
+            return;
+        }
+
         $chart = yield from getCoinChart("dogecoin");
     } catch (\Exception $e) {
         $bot->pm($args->chan, "Error getting data");
@@ -63,10 +75,13 @@ function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[CallWrap("\Amp\asyncCall")]
 function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
-    if(($config['throttle']??true)) {
-        return;
-    }
+    global $config;
     try {
+        if(($config['throttle']??true)) {
+            $bot->pm($args->chan, yield getCoinPrice('bitcoin-cash'));
+            return;
+        }
+
         $chart = yield from getCoinChart("bitcoin-cash");
     } catch (\Exception $e) {
         $bot->pm($args->chan, "Error getting data");
@@ -81,10 +96,13 @@ function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[CallWrap("\Amp\asyncCall")]
 function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
-    if(($config['throttle']??true)) {
-        return;
-    }
+    global $config;
     try {
+        if(($config['throttle']??true)) {
+            $bot->pm($args->chan, yield getCoinPrice('ethereum'));
+            return;
+        }
+
         $chart = yield from getCoinChart("ethereum");
     } catch (\Exception $e) {
         $bot->pm($args->chan, "Error getting data");
@@ -93,6 +111,36 @@ function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     foreach ($chart as $l) {
         $bot->pm($args->chan, $l);
     }
+}
+
+#[Cmd("btc")]
+#[CallWrap("\Amp\asyncCall")]
+function btc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    global $config;
+    try {
+        if(($config['throttle']??true)) {
+            $bot->pm($args->chan, yield getCoinPrice('bitcoin'));
+            return;
+        }
+
+        $chart = yield from getCoinChart("bitcoin");
+    } catch (\Exception $e) {
+        $bot->pm($args->chan, "Error getting data");
+        return;
+    }
+    foreach ($chart as $l) {
+        $bot->pm($args->chan, $l);
+    }
+}
+
+function getCoinPrice($coin) {
+    return \Amp\call(function () use ($coin) {
+        $json = json_decode(yield async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+        //hope this works out lol
+        $current = $json->$coin->usd;
+        return "Current price for $coin: $current USD";
+    });
 }
 
 function getCoinChart($coin) {

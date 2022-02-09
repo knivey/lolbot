@@ -20,7 +20,7 @@ $dbfile = "linktitles.db";
  */
 if(!file_exists($dbfile)) {
     $url_pdo = new \PDO("sqlite:$dbfile", null, null,
-        [\PDO::ATTR_PERSISTENT => true, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        [\PDO::ATTR_PERSISTENT => true, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
     $url_pdo->query("CREATE table chan_re(
         id integer primary key autoincrement,
         regex text unique not null,
