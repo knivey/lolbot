@@ -381,10 +381,10 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
             global $config;
             if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
                 if($ircwatch) {
-                    $bot->pm($chan, "https://asciibird.jewbird.live/?ircwatch=".urlencode($ent));
+                    $bot->pm($chan, "https://asciibird.jewbird.live/?ircwatch=$ent");
                 } else {
                     $relPath = substr($ent, strlen($config['artdir']));
-                    $bot->pm($chan, "https://asciibird.jewbird.live/?haxAscii=".urlencode($relPath));
+                    $bot->pm($chan, "https://asciibird.jewbird.live/?haxAscii=$relPath");
                 }
                 return true;
             }
