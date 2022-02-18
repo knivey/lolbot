@@ -37,7 +37,7 @@ function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
     $doc = new HtmlDocument($body);
 
-    $defs = @$doc->find('div.def-panel');
+    $defs = @$doc->find('div.definition');
 
     // wonder if this would happen after that earlier check?
     if (!$defs || empty($defs)) {
