@@ -8,15 +8,20 @@ require_once __DIR__ . '/vendor/autoload.php';
 use JetBrains\PhpStorm\Pure;
 use Symfony\Component\Yaml\Yaml;
 
+use Amp\ByteStream\ResourceOutputStream;
+use Amp\Log\ConsoleFormatter;
+use Amp\Log\StreamHandler;
+use monolog\Logger;
 
 use Amp\Loop;
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
 use knivey\irctools;
 use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
+
+$logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
+$logHandler->setFormatter(new ConsoleFormatter);
+$logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
 if(isset($argv[1])) {
     if(!file_exists($argv[1]) || !is_file($argv[1]))
@@ -59,9 +64,11 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 
 $bot = null;
 Loop::run(function () {
-    global $bot, $config;
+    global $bot, $config, $logHandler;
 
-    $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
+    $log = new Logger($config['name']);
+    $log->pushHandler($logHandler);
+    $bot = new \Irc\Client($config['name'], $config['server'], $log, $config['port'], $config['bindIp'], $config['ssl']);
     $bot->setThrottle($config['throttle'] ?? true);
     $bot->setServerPassword($config['pass'] ?? '');
 

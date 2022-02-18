@@ -2,17 +2,24 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
+use Amp\ByteStream\ResourceOutputStream;
+use Amp\Log\ConsoleFormatter;
+use Amp\Log\StreamHandler;
+use monolog\Logger;
 use Symfony\Component\Yaml\Yaml;
 use Amp\Loop;
 use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
 use Crell\Tukio\OrderedListenerProvider;
-use monolog\Logger;
-use Monolog\Handler\StreamHandler;
+
 
 $router = new Cmdr();
 
-$eventLogger = new \Monolog\Logger("Events");
+$logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
+$logHandler->setFormatter(new ConsoleFormatter);
+$logHandler->setLevel(\Psr\Log\LogLevel::INFO);
+
+$eventLogger = new Logger("Events");
 $eventProvider = new OrderedListenerProvider();
 $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
 
@@ -149,9 +156,11 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 $bot = null;
 try {
     Loop::run(function () {
-        global $bot, $config;
+        global $bot, $config, $logHandler;
 
-        $bot = new \Irc\Client($config['name'], $config['server'], $config['port'], $config['bindIp'], $config['ssl']);
+        $log = new Logger($config['name']);
+        $log->pushHandler($logHandler);
+        $bot = new \Irc\Client($config['name'], $config['server'], $log, $config['port'], $config['bindIp'], $config['ssl']);
         $bot->setThrottle($config['throttle'] ?? true);
         $bot->setServerPassword($config['pass'] ?? '');
         \scripts\tell\initTell($bot);

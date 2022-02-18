@@ -3,15 +3,13 @@
 namespace Irc;
 require_once 'Consts.php';
 
-use Amp\CancelledException;
 use Amp\Loop;
-use Amp\Socket;
 use Amp\Socket\EncryptableSocket;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\ClientTlsContext;
 use JetBrains\PhpStorm\Pure;
+use Monolog\Logger;
 use function Amp\Socket\connect;
-use function Amp\asyncCall;
 
 function stripForTerminal($str) {
     $str = preg_replace("/(\x1b\[|\x9b)[^@-_]*[@-_]|\x1b[@-_]/", "", $str);
@@ -21,7 +19,6 @@ function stripForTerminal($str) {
 
 class Client extends EventEmitter
 {
-
     const DEFAULT_PORT = 6667;
 
     public $exit = false;
@@ -48,7 +45,7 @@ class Client extends EventEmitter
     protected ?string $awaitingPong = null;
     protected $timeoutWatcherID = null;
     /**
-     * If we have connected and recieved the welcome thus ready to do any command
+     * If we have connected and received the welcome thus ready to do any command
      */
     protected bool $ircEstablished = false;
 
@@ -56,7 +53,7 @@ class Client extends EventEmitter
 
     private int $ErrDelay = 0;
 
-    public function __construct($nick, $server, $port = self::DEFAULT_PORT, $bindIP = '0', bool $ssl = false)
+    public function __construct($nick, $server, public Logger $log, $port = self::DEFAULT_PORT, $bindIP = '0', bool $ssl = false)
     {
         $this->nick = $nick;
         $this->name = $nick;
@@ -78,7 +75,7 @@ class Client extends EventEmitter
         if ($ssl) {
             $this->connectContext = $this->connectContext->withTlsContext((new ClientTlsContext($server))->withoutPeerVerification());
         }
-        echo "Bot made ($nick)\n";
+        $this->log->debug("Bot made", compact('nick'));
     }
 
     public function exit()
@@ -92,20 +89,20 @@ class Client extends EventEmitter
             if ($this->exit)
                 return;
 
-            echo "Bot go called {$this->getNick()}\n";
+            $this->log->debug("Bot go called");
             //return;
             while ($this->reconnect && !$this->exit) {
-                echo "connecting...\n";
+                $this->log->info("connecting...\n");
                 try {
                     $this->socket = yield connect($this->server . ':' . $this->port, $this->connectContext);
-                    echo "connected. . .\n";
+                    $this->log->info("connected. . .");
                     if ($this->ssl) {
-                        echo "starting tls\n";
+                        $this->log->info("starting tls");
                         yield $this->socket->setupTLS();
-                        echo "tls setup\n";
+                        $this->log->info("tls setup");
                     }
                 } catch (\Exception $e) {
-                    echo "connect failed " . $e->getMessage() . "\nreconnecting in 120 seconds.\n";
+                    $this->log->info("connect failed " . $e->getMessage() . " reconnecting in 120 seconds.");
                     yield \Amp\delay(120 * 1000);
                     continue;
                 }
@@ -116,7 +113,7 @@ class Client extends EventEmitter
                     yield from $this->doRead();
                 }
                 $delay = $this->ErrDelay+10;
-                echo "Reconnecting in $delay seconds...\n";
+                $this->log->info("Reconnecting in $delay seconds...");
                 yield \Amp\delay($delay * 1000);
                 $this->ErrDelay = 0;
             }
@@ -143,7 +140,7 @@ class Client extends EventEmitter
 
     public function onDisconnect()
     {
-        echo "disconnected\n";
+        $this->log->info("disconnected");
         $this->sendQ = [];
         if ($this->sendWatcherID != null) {
             Loop::cancel($this->sendWatcherID);
@@ -167,7 +164,7 @@ class Client extends EventEmitter
         $this->timeoutWatcherID = null;
         if ($this->awaitingPong != null) {
             $this->socket->close();
-            echo "Closed connection do to ping timeout.\n";
+            $this->log->info("Closed connection do to ping timeout.");
             return;
         }
         $this->awaitingPong = time();
@@ -179,7 +176,7 @@ class Client extends EventEmitter
     {
         if (!$this->isConnected)
             return new \Amp\Failure(new Exception("Not connected"));
-        echo stripForTerminal(">>>> $line") . "\n";
+        $this->log->info(stripForTerminal(">>>> $line"));
         return $this->socket->write($line);
     }
 
@@ -200,7 +197,6 @@ class Client extends EventEmitter
         }
         $end = (int)max($r, $n) + 1;
         $line = substr($this->inQ, 0, $end);
-        //echo "r: $r n: $n end: $end line: $line\ninQ: $this->inQ";
         $this->inQ = (string)substr($this->inQ, $end);
         return trim($line, "\r\n");
     }
@@ -385,22 +381,27 @@ class Client extends EventEmitter
     {
         while ($this->hasLine()) {
             $message = $this->getLine();
-            echo stripForTerminal("<< $message") . "\n";
 
-            if (empty($message))
+            if (empty($message)) {
+                $this->log->debug("doLine got empty message");
                 return $this;
+            }
 
             $msg = Message::parse($message);
+            if($msg->command == CMD_PING || $msg->command == CMD_PONG)
+                $this->log->debug("IN", ['line' => stripForTerminal("$message")]);
+            else
+                $this->log->info("IN", ['line' => stripForTerminal("$message")]);
             $this->emit("message, message:$msg->command", array('message' => $msg, 'raw' => $message));
         }
         return $this;
     }
 
-    public function reconnect()
-    {
-        return $this->disconnect()
-            ->connect();
-    }
+    //public function reconnect()
+    //{
+    //    return $this->disconnect()
+    //        ->connect();
+    //}
 
     public function setThrottle(bool $throttle)
     {
@@ -415,16 +416,19 @@ class Client extends EventEmitter
     //Should only be called by watcher
     public function processSendq()
     {
-        echo "processing sendQ\n";
+        $this->log->debug("processing sendQ");
         if (empty($this->sendQ)) {
-            echo "sendQ empty\n";
+            $this->log->debug("sendQ empty");
             return;
         }
 
         if ($this->doThrottle == false) {
             while(!empty($this->sendQ)) {
                 $msg = array_shift($this->sendQ);
-                echo stripForTerminal(">> $msg") . "\n";
+                if(preg_match("/(PING|PONG) .*/i", $msg))
+                    $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
+                else
+                    $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
                 yield $this->socket->write($msg);
             }
             $this->sendWatcherID = null;
@@ -443,7 +447,10 @@ class Client extends EventEmitter
             if ($this->msg_since - microtime(true) >= 10) {
                 break;
             }
-            echo stripForTerminal("> $msg") . "\n";
+            if(preg_match("/(PING|PONG) .*/i", $msg))
+                $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
+            else
+                $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
             //TODO catch exception?
             yield $this->socket->write($msg);
             $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
@@ -453,7 +460,7 @@ class Client extends EventEmitter
 
         if (!empty($this->sendQ)) {
             $next = $this->msg_since - 10 - microtime(true) + 0.1;
-            echo "delay processingsendq for " . $next * 1000 . "ms\n";
+            $this->log->debug("delay processingsendq for " . $next * 1000 . "ms");
             $this->sendWatcherID = Loop::delay($next * 1000, [$this, 'processSendq']);
         }
     }

@@ -10,12 +10,14 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Symfony\Component\Yaml\Yaml;
 
+use Amp\ByteStream\ResourceOutputStream;
+use Amp\Log\ConsoleFormatter;
+use Amp\Log\StreamHandler;
+use monolog\Logger;
 
 use Amp\Loop;
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
 use knivey\irctools;
+
 use const Irc\ERR_CANNOTSENDTOCHAN;
 use \Ayesh\CaseInsensitiveArray\Strict as CIArray;
 $playing = new CIArray();
@@ -37,6 +39,11 @@ class Playing {
 use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
+
+$logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
+$logHandler->setFormatter(new ConsoleFormatter);
+$logHandler->setLevel(\Psr\Log\LogLevel::INFO);
+
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
@@ -116,12 +123,14 @@ function onchat($args, \Irc\Client $bot)
 $bots = [];
 
 Loop::run(function () {
-    global $bots, $config;
+    global $bots, $config, $logHandler;
     var_dump($config);
 
     $cnt = 0;
     foreach ($config['bots'] as $bcfg) {
-        $bot = new \Irc\Client($bcfg['name'], $bcfg['server'], $bcfg['port'], $bcfg['bindIp'], $bcfg['ssl']);
+        $log = new Logger($bcfg['name']);
+        $log->pushHandler($logHandler);
+        $bot = new \Irc\Client($bcfg['name'], $bcfg['server'], $log, $bcfg['port'], $bcfg['bindIp'], $bcfg['ssl']);
         $bots[] = $bot;
         $bot->setThrottle($bcfg['throttle'] ?? true);
         $bot->setServerPassword($bcfg['pass'] ?? '');
