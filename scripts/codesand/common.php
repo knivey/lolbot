@@ -210,10 +210,12 @@ function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     $code = "#include <bits/stdc++.h>
+    #include <fmt/core.h>
+    
 using namespace std;
 {$req->args['code']}";
     $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/gpp?maxlines=$maxlines&flags=-Wfatal-errors", $code);
+    $output = yield from getRun("/run/gpp?maxlines=$maxlines&flags=-Wfatal-errors&flagsb=-lfmt", $code);
     sendOut($bot, $args->chan, $output);
 }
 
