@@ -586,14 +586,17 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $since = $req->args['since'] ?? '8 days ago';
-    if($time = strtotime($since) === false) {
+    $time = strtotime($since);
+    //sometimes people just put "5 hours" when they mean "5 hours ago";
+    if(time() <= $time) {
+        $since = "$since ago";
+        $time = strtotime($since);
+    }
+    if($time === false) {
         $bot->pm($args->chan, "You must give me something php strtotime() can understand, Ex: 8 days ago");
         return;
     }
-    if($time > time()) {
-        $bot->pm($args->chan, "Pick a time in the past");
-        return;
-    }
+
     $finder = new Symfony\Component\Finder\Finder();
     $finder->files()->date("since $since");
     $finder->in($config['artdir'])->exclude("p2u")->sortByModifiedTime();
