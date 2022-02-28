@@ -510,6 +510,31 @@ function searchIrcwatch($file, $noglob = false) {
     });
 }
 
+function getFinder() {
+    global $config;
+    $finder = new Symfony\Component\Finder\Finder();
+    $finder->files();
+    $finder->in($config['artdir'])->exclude("p2u");
+    return $finder;
+}
+
+function globToRegex($glob, $delimiter = '/') {
+    $out = '';
+    $i = 0;
+    while($i < strlen($glob)) {
+        $nextc = strcspn($glob, '*?', $i);
+        $out .= preg_quote(substr($glob, $i, $nextc), $delimiter);
+        if($nextc + $i == strlen($glob))
+            break;
+        if($glob[$nextc + $i] == '?')
+            $out .= '.';
+        if($glob[$nextc + $i] == '*')
+            $out .= '.*';
+        $i += $nextc + 1;
+    }
+    return "${delimiter}{$out}${delimiter}";
+}
+
 //todo paginate search
 #[Cmd("search", "find")]
 #[Option(["--max"], "Max results to show")]
@@ -536,47 +561,42 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         }
     }
     \Amp\asyncCall(function () use ($bot, $chan, $file, $max) {
-        global $config, $playing;
+        global $playing;
         if (isset($playing[$chan])) {
             return;
         }
-        $file = strtolower($file);
-        $base = $config['artdir'];
-        try {
-            $tree = knivey\tools\dirtree($base);
-        } catch (Exception $e) {
-            echo "{$e}\n";
+        $finder = getFinder();
+        $finder->path(globToRegex("*$file*.txt") . 'i');
+        $ircwatch = yield searchIrcwatch($file);
+        foreach($finder as $f) {
+            /** @var $f Symfony\Component\Finder\SplFileInfo */
+            unset($ircwatch[$f->getBasename('.txt')]);
+        }
+        $finder->sortByModifiedTime();
+        $out = [];
+        foreach($finder as $f) {
+            /** @var $f Symfony\Component\Finder\SplFileInfo */
+            $out[] = substr($f->getRelativePathname(), 0, -4);
+        }
+        foreach ($ircwatch as $f) {
+            $out[] = "ircwatch/$f";
+        }
+
+        if(empty($out)) {
+            $bot->pm($chan, "no matching art found");
             return;
         }
-        $matches = $tree;
-        $ircwatch = yield searchIrcwatch($file);
-        if ($file != '') {
-            $matches = [];
-            foreach ($tree as $ent) {
-                $check = substr($ent, strlen($config['artdir']));
-                $check = str_replace('.txt', '', $check);
-                if (fnmatch("*$file*", strtolower($check))) {
-                    $matches[] = substr($ent, strlen($config['artdir']));
-                    unset($ircwatch[basename($ent, '.txt')]);
-                }
-            }
+
+        array_walk($out, function (&$val, $key) use($file) {
+            $val = str_ireplace($file, "\x0306$file\x0F", $val);
+        });
+
+        if($cnt = count($out) > $max) {
+            $out = array_slice($out, 0, $max);
+            $out[] = "$cnt total matches, only showing $max";
         }
-        foreach ($ircwatch as $iw) {
-            $matches[] = "ircwatch/$iw";
-        }
-        $out = [];
-        if (!empty($matches)) {
-            $cnt = 0;
-            foreach ($matches as $match) {
-                $out[] = str_ireplace($file, "\x0306$file\x0F", $match);
-                if ($cnt++ > $max) {
-                    $out[] = count($matches) . " total matches, only showing $max";
-                    break;
-                }
-            }
-            pumpToChan($chan, $out);
-        } else
-            $bot->pm($chan, "no matching art found");
+
+        pumpToChan($chan, $out);
     });
 }
 
