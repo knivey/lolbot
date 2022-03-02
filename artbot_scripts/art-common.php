@@ -17,6 +17,7 @@ use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
+use knivey\tools;
 use Amp\Http\Server\RequestHandler\CallableRequestHandler;
 use Amp\Http\Server\Response as HttpResponse;
 use Amp\Http\Server\Request as HttpRequest;
@@ -521,24 +522,6 @@ function getFinder() : \Symfony\Component\Finder\Finder {
     return $finder;
 }
 
-function globToRegex($glob, $delimiter = '/') {
-    $out = '';
-    $i = 0;
-    while($i < strlen($glob)) {
-        $nextc = strcspn($glob, '*?', $i);
-        $out .= preg_quote(substr($glob, $i, $nextc), $delimiter);
-        if($nextc + $i == strlen($glob))
-            break;
-        if($glob[$nextc + $i] == '?')
-            $out .= '.';
-        if($glob[$nextc + $i] == '*')
-            $out .= '.*';
-        $i += $nextc + 1;
-    }
-    return "${delimiter}{$out}${delimiter}";
-}
-
-//todo paginate search
 #[Cmd("search", "find")]
 #[Option(["--max"], "Max results to show")]
 #[Syntax('<query>')]
@@ -569,7 +552,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
         $finder = getFinder();
-        $finder->path(globToRegex("*$file*.txt") . 'i');
+        $finder->path(tools\globToRegex("*$file*.txt") . 'i');
         $ircwatch = yield searchIrcwatch($file);
         foreach($finder as $f) {
             /** @var $f Symfony\Component\Finder\SplFileInfo */
@@ -590,9 +573,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
 
-        array_walk($out, function (&$val, $key) use($file) {
-            $val = str_ireplace($file, "\x0306$file\x0F", $val);
-        });
+        $out = preg_replace(tools\globToRegex($file) . 'i', "\x0306\\0\x0F", $out);
 
         if($cnt = count($out) > $max) {
             $out = array_slice($out, 0, $max);
