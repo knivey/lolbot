@@ -160,7 +160,7 @@ try {
 
         $log = new Logger($config['name']);
         $log->pushHandler($logHandler);
-        $bot = new \Irc\Client($config['name'], $config['server'], $log, $config['port'], $config['bindIp'], $config['ssl']);
+        $bot = new \Irc\Client($config['name'], $config['server'], $log, $config['port'], ($config['bindIp'] ?? '0'), $config['ssl']);
         $bot->setThrottle($config['throttle'] ?? true);
         $bot->setServerPassword($config['pass'] ?? '');
         \scripts\tell\initTell($bot);
