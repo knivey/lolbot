@@ -510,7 +510,10 @@ function searchIrcwatch($file, $noglob = false) {
     });
 }
 
-function getFinder() {
+/**
+ * Gets Finder for art dir, excluding p2u
+ */
+function getFinder() : \Symfony\Component\Finder\Finder {
     global $config;
     $finder = new Symfony\Component\Finder\Finder();
     $finder->files();
@@ -617,9 +620,9 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
 
-    $finder = new Symfony\Component\Finder\Finder();
-    $finder->files()->date("since $since");
-    $finder->in($config['artdir'])->exclude("p2u")->sortByModifiedTime();
+    $finder = getFinder();
+    $finder->date("since $since");
+    $finder->sortByModifiedTime();
     if(!$finder->hasResults()) {
         $bot->pm($args->chan, "Nothing found");
         return;
