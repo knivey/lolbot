@@ -20,10 +20,10 @@ class Message
         if (!empty($prefix)) {
             if (strpos($prefix, '!') !== false) {
                 $parts = preg_split('/[!@]/', $prefix);
-                $this->nick = !empty($parts[0]) ? $parts[0] : '';
-                $this->name = !empty($parts[1]) ? $parts[1] : '';
+                $this->nick = $parts[0];
+                $this->name = $parts[1] ?? '';
                 $this->ident = $this->name;
-                $this->host = !empty($parts[2]) ? $parts[2] : '';
+                $this->host = $parts[2] ?? '';
             } else {
                 $this->nick = $prefix;
             }
