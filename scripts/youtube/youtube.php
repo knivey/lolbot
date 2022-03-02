@@ -4,6 +4,7 @@ namespace scripts\youtube;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\Promise;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
@@ -12,7 +13,9 @@ use League\Uri\UriString;
 use Carbon\Carbon;
 use scripts\linktitles\UrlEvent;
 
-function ytDuration($input) {
+require_once 'library/async_get_contents.php';
+
+function ytDuration($input): string {
     try {
         $di = new \DateInterval($input);
         $dur = '';
@@ -37,7 +40,7 @@ function ytDuration($input) {
         }
         $dur = trim($dur);
         if ($dur == '') {
-            $dur = "\x02\x0304⚫ LIVE";
+            $dur = "\x02\x0304🔴 LIVE";
         }
     } catch (\Exception $e) {
         return '???';
@@ -45,7 +48,7 @@ function ytDuration($input) {
     return $dur;
 }
 
-function getLiveVideos($channelId) {
+function getLiveVideos($channelId): Promise {
     return \Amp\call(function () use ($channelId) {
         global $config;
         if(!isset($config['gkey'])) {
@@ -68,10 +71,9 @@ function getLiveVideos($channelId) {
 
 /**
  * @param $id
- * @throws \async_get_exception
- * @return \Amp\Promise
+ * @return Promise
  */
-function getVideoInfo($id) {
+function getVideoInfo($id): Promise {
     return \Amp\call(function () use ($id) {
         global $config;
         if(!isset($config['gkey'])) {
@@ -94,6 +96,9 @@ function getVideoInfo($id) {
 
 
 $youtube_history = [];
+/**
+ * @psalm-suppress InvalidGlobal
+ */
 global $eventProvider;
 $eventProvider->addListener(
     function (UrlEvent $event) {
@@ -234,11 +239,11 @@ $eventProvider->addListener(
                 }
             } catch (\async_get_exception $e) {
                 $event->reply("\2YouTube Error:\2 {$e->getIRCMsg()}");
-                echo "YouTube Error: $e\n";
+                echo "YouTube async Exception: $e\n";
             } catch (\Exception $e) {
                 $event->reply("\2YouTube Error:\2 Unknown data received.");
-                echo "YouTube Error: Unknown data received.\n";
-                var_dump($v);
+                echo "YouTube Exception:\n";
+                //var_dump($v);
                 echo $e->getMessage();
             }
         }));
@@ -247,7 +252,7 @@ $eventProvider->addListener(
 
 
 #[Cmd("yt", "ytsearch", "youtube")]
-#[Syntax('[query]...')]
+#[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--amt")]
 function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
@@ -267,7 +272,9 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             return;
         }
     }
-
+    /**
+     * @psalm-suppress NullArgument
+     */
     $q = urlencode($req->args['query']);
     // search only supports snippet part :(
     $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";

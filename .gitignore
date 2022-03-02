@@ -9,3 +9,4 @@ scripts/notifier/notifier_keys.yaml
 ignores.txt
 composer-dev.lock
 /composer.phar
+/.phplint-cache

@@ -319,7 +319,6 @@ function timeOut($watcher, $data) {
 function endart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
     $chan = $args->chan;
-//function endart($bot, $nick, $chan, $text) {
     global $recordings, $config;
     if(!isset($recordings[$nick])) {
         $bot->pm($chan, "You aren't doing a recording");
