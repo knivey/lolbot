@@ -19,30 +19,35 @@ function stripForTerminal($str) {
 
 class Client extends EventEmitter
 {
-    const DEFAULT_PORT = 6667;
+    const DEFAULT_PORT = '6667';
 
-    public $exit = false;
-    protected $nick = 'phpump';
-    protected $name = 'phpump';
-    protected $realName = 'we pumpin!';
-    protected $serverPassword;
-    protected $options = array();
-    protected $reconnect = true;
-    protected $reconnectInterval = 3000;
-    protected $rawMode = false;
+    public bool $exit = false;
+    protected string $name = 'phpump';
+    protected string $realName = 'we pumpin!';
+    protected ?string $serverPassword;
+    /**
+     * OPTIONNAME => Value
+     * Name always uppercased
+     * @var array<string, string|array|null>
+     */
+    protected array $options = array();
+    protected bool $reconnect = true;
+    protected int $reconnectInterval = 3000;
+    protected bool $rawMode = false;
+    /**
+     * ChannelName => ChannelName
+     * @var array<string, string>
+     */
+    protected array $onChannels = [];
 
-    protected $onChannels = [];
-
-    protected bool $ssl = false;
     protected ?ConnectContext $connectContext;
     protected ?EncryptableSocket $socket;
-    protected $server;
-    protected $port;
-    public $isConnected;
-    protected $inQ;
+    public bool $isConnected;
+
+    protected string $inQ = '';
 
     protected $lastRecvTime;
-    protected ?string $awaitingPong = null;
+    protected ?int $awaitingPong = null;
     protected $timeoutWatcherID = null;
     /**
      * If we have connected and received the welcome thus ready to do any command
@@ -53,20 +58,17 @@ class Client extends EventEmitter
 
     private int $ErrDelay = 0;
 
-    public function __construct($nick, $server, public Logger $log, $port = self::DEFAULT_PORT, $bindIP = '0', bool $ssl = false)
+    public function __construct(
+        protected string $nick,
+        protected string $server,
+        public Logger $log,
+        protected string $port = self::DEFAULT_PORT,
+        protected string $bindIP = '0',
+        protected bool $ssl = false)
     {
-        $this->nick = $nick;
-        $this->name = $nick;
-        $this->realName = $nick;
-        $this->ssl = $ssl;
-        $this->server = $server;
-        $this->port = $port;
-
         //attach basic triggers
         $this->on('message', array($this, 'handleMessage'));
 
-        //Maybe ned to emit
-        //$this->on('disconnected', array($this, 'onDisconnect'));
         if ($bindIP != '0') {
             $this->connectContext = (new ConnectContext)->withBindTo($bindIP);
         } else {
@@ -110,7 +112,7 @@ class Client extends EventEmitter
                 //Yay connected, now login..
                 $this->sendLogin();
                 while ($this->isConnected) {
-                    yield from $this->doRead();
+                    yield $this->doRead();
                 }
                 $delay = $this->ErrDelay+10;
                 $this->log->info("Reconnecting in $delay seconds...");
@@ -122,20 +124,22 @@ class Client extends EventEmitter
 
     function doRead()
     {
-        $s = yield $this->socket->read();
-        if ($s === null) {
-            $this->onDisconnect();
-            return;
-        }
-        $this->lastRecvTime = time();
-        if ($this->timeoutWatcherID != null) {
-            Loop::cancel($this->timeoutWatcherID);
-        }
-        $this->timeoutWatcherID = Loop::delay(160000, [$this, 'pingCheck']);
-        $this->inQ .= $s;
-        if ($this->hasLine()) {
-            $this->doLine();
-        }
+        return \Amp\call(function () {
+            $s = yield $this->socket->read();
+            if ($s === null) {
+                $this->onDisconnect();
+                return;
+            }
+            $this->lastRecvTime = time();
+            if ($this->timeoutWatcherID != null) {
+                Loop::cancel($this->timeoutWatcherID);
+            }
+            $this->timeoutWatcherID = Loop::delay(160000, [$this, 'pingCheck']);
+            $this->inQ .= $s;
+            if ($this->hasLine()) {
+                $this->doLine();
+            }
+        });
     }
 
     public function onDisconnect()
@@ -149,14 +153,14 @@ class Client extends EventEmitter
         if ($this->timeoutWatcherID != null) {
             Loop::cancel($this->timeoutWatcherID);
         }
-        //$timer = new Timer([$this, 'connect']);
-        //$timer->in(90);
-        //EventLoop::addTimer($timer);
-        //$this->emit('reconnecting');
+        if(!$this->socket->isClosed())
+            $this->socket->close();
         $this->ircEstablished = false;
         $this->isConnected = false;
         $this->awaitingPong = null;
         $this->onChannels = [];
+        $this->inQ = '';
+        $this->emit('disconnected');
     }
 
     public function pingCheck()
@@ -172,7 +176,7 @@ class Client extends EventEmitter
         $this->timeoutWatcherID = Loop::delay(160000, [$this, 'pingCheck']);
     }
 
-    public function sendNow($line)
+    public function sendNow($line): \Amp\Promise
     {
         if (!$this->isConnected)
             return new \Amp\Failure(new Exception("Not connected"));
@@ -180,12 +184,9 @@ class Client extends EventEmitter
         return $this->socket->write($line);
     }
 
-    #[Pure] public function hasLine()
+    #[Pure] public function hasLine(): bool
     {
-        if (strpos($this->inQ, "\r") !== false || strpos($this->inQ, "\n") !== false) {
-            return true;
-        }
-        return false;
+        return (str_contains($this->inQ, "\r") || str_contains($this->inQ, "\n"));
     }
 
     public function getLine(): ?string
@@ -206,7 +207,7 @@ class Client extends EventEmitter
         if ($this->rawMode)
             return;
 
-        if (!empty($this->serverPassword))
+        if ($this->serverPassword !== null)
             $this->send(CMD_PASS, $this->serverPassword);
 
         if (empty($this->name))
@@ -219,17 +220,17 @@ class Client extends EventEmitter
         $this->send(CMD_USER, $this->name, $this->name, $this->name, $this->realName);
     }
 
-    public function isEstablished()
+    public function isEstablished(): bool
     {
         return $this->ircEstablished;
     }
 
-    public function getNick()
+    public function getNick(): string
     {
         return $this->nick;
     }
 
-    public function setNick($nick)
+    public function setNick(string $nick): static
     {
         if ($this->isConnected || $this->ircEstablished) {
             //Change nick via NICK command
@@ -245,12 +246,12 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
-    public function setName($name)
+    public function setName(string $name): static
     {
         if (!$this->isConnected) {
             $this->name = $name;
@@ -264,12 +265,12 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function getRealName()
+    public function getRealName(): string
     {
         return $this->realName;
     }
 
-    public function setRealName($realName)
+    public function setRealName(string $realName): static
     {
         if (!$this->isConnected) {
             $this->realName = $realName;
@@ -283,12 +284,12 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function getServerPassword()
+    public function getServerPassword(): ?string
     {
         return $this->serverPassword;
     }
 
-    public function setServerPassword($password)
+    public function setServerPassword(string $password): static
     {
         if (!$this->isConnected) {
             $this->serverPassword = $password;
@@ -296,8 +297,10 @@ class Client extends EventEmitter
 
         return $this;
     }
+/* currently not used but if we enabled them it would have two intervals, one for normal and one longer for error
+    also a retry amount
 
-    public function getReconnectInterval()
+    public function getReconnectInterval(): int
     {
         return $this->reconnectInterval;
     }
@@ -306,83 +309,76 @@ class Client extends EventEmitter
     {
         $this->reconnectInterval = $interval;
     }
-
-    public function setTickInterval($interval)
-    {
-        $this->tickInterval = $interval;
-        return $this;
-    }
-
-    public function enableReconnection()
+*/
+    public function enableReconnection(): static
     {
         $this->reconnect = true;
         return $this;
     }
 
-    public function disableReconnection()
+    public function disableReconnection(): static
     {
         $this->reconnect = false;
         return $this;
     }
 
-    public function enableRawMode()
+    public function enableRawMode(): static
     {
         $this->rawMode = true;
         return $this;
     }
 
-    public function disableRawMode()
+    public function disableRawMode(): static
     {
         $this->rawMode = false;
         return $this;
     }
 
-    #[Pure] public function getOption($option, $defaultValue = null)
+    #[Pure] public function getOption(string $option, null|string|array $defaultValue = null): string|array|null
     {
-        $o = strtoupper($option);
-
-        if (empty($this->options[$o]))
-            if (empty($this->options[$option]))
-                return $defaultValue;
-            else
-                return $this->options[$option];
-
-        return $this->options[$o];
+        return ($this->options[strtoupper($option)] ?? $defaultValue);
     }
 
-    public function getOptions()
+    public function getOptions(): array
     {
         return $this->options;
     }
 
-    public function inOptionValues($option, $value)
+    /**
+     * some options are arrays
+     * check if value is in options array
+     * @param string $option
+     * @param string $value
+     * @return bool
+     */
+    public function inOptionValues(string $option, string $value): bool
     {
         $oValue = $this->getOption($option, array());
         return in_array($value, $oValue);
     }
 
-    public function inOptionKeys($option, $value)
+    public function inOptionKeys(string $option, string $value): bool
     {
         $oValue = $this->getOption($option, array());
         return in_array($value, array_keys($oValue));
     }
 
-    public function isChannel($nick)
+    public function isChannel(string $nick): bool
     {
-        return $this->inOptionValues('chantypes', $nick[0]);
+        return $this->inOptionValues('CHANTYPES', $nick[0]);
     }
 
-    public function isUser($nick)
+    public function isUser(string $nick): bool
     {
         return !$this->isChannel($nick);
     }
 
-    public function doLine()
+    public function doLine(): static
     {
         while ($this->hasLine()) {
             $message = $this->getLine();
 
-            if (empty($message)) {
+            if ($message == '') {
                 $this->log->debug("doLine got empty message");
                 return $this;
             }
@@ -397,21 +393,15 @@ class Client extends EventEmitter
         return $this;
     }
 
-    //public function reconnect()
-    //{
-    //    return $this->disconnect()
-    //        ->connect();
-    //}
-
     public function setThrottle(bool $throttle)
     {
         $this->doThrottle = $throttle;
     }
 
-    public $msg_since;
-    public $sendQ = array();
-    public $doThrottle = true;
-    protected $sendWatcherID = null;
+    public float $msg_since = 0;
+    public array $sendQ = array();
+    public bool $doThrottle = true;
+    protected ?string $sendWatcherID = null;
 
     //Should only be called by watcher
     public function processSendq()
@@ -429,12 +419,15 @@ class Client extends EventEmitter
                     $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
                 else
                     $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
-                yield $this->socket->write($msg);
+                try {
+                    yield $this->socket->write($msg);
+                } catch (\Exception $e) {
+                    $this->log->info("Exception while writing", compact('e'));
+                    $this->onDisconnect();
+                    return;
+                }
             }
             $this->sendWatcherID = null;
-            if (!empty($this->sendQ)) {
-                $this->sendWatcherID = Loop::defer([$this, 'processSendq']);
-            }
             return;
         }
 
@@ -451,8 +444,13 @@ class Client extends EventEmitter
                 $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
             else
                 $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
-            //TODO catch exception?
-            yield $this->socket->write($msg);
+            try {
+                yield $this->socket->write($msg);
+            } catch (\Exception $e) {
+                $this->log->info("Exception while writing", compact('e'));
+                $this->onDisconnect();
+                return;
+            }
             $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
             unset($this->sendQ[$key]);
         }
@@ -461,17 +459,20 @@ class Client extends EventEmitter
         if (!empty($this->sendQ)) {
             $next = $this->msg_since - 10 - microtime(true) + 0.1;
             $this->log->debug("delay processingsendq for " . $next * 1000 . "ms");
-            $this->sendWatcherID = Loop::delay($next * 1000, [$this, 'processSendq']);
+            $this->sendWatcherID = Loop::delay((int)round($next * 1000), [$this, 'processSendq']);
         }
     }
 
-    public function send($command)
+    /**
+     * @param string|Message $command
+     * @param string ...$args
+     * @return $this
+     */
+    public function send(string|Message $command, string ...$args): static
     {
-        $args = func_get_args();
         unset($args[0]);
         $args = array_values(array_filter($args, function ($arg) {
-            //$arg = trim( $arg );
-            return !empty($arg);
+            return $arg != '';
         }));
 
         $message = $command instanceof Message ? $command : new Message($command, $args);
@@ -496,28 +497,19 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function sendPrefixed($prefix, $command)
-    {
-        $args = func_get_args();
-        unset($args[0]);
-        unset($args[1]);
-        $args = array_values(array_filter($args, function ($arg) {
-            //$arg = trim( $arg );
-            return !empty($arg);
-        }));
-
-        $message = new Message($command, $args, $prefix);
-
-        return $this->send($message);
-    }
-
-    public function join($channel, $password = null)
+    /**
+     * $channel can be ['#chan','#chan2'] '#channel' or ['#chan'=>'pass', '#chan2'=>'']
+     * @param string|array<string> $channel
+     * @param string|null $password only used if channel is a string
+     * @return $this
+     */
+    public function join(string|array $channel, ?string $password = null): static
     {
         $channelString = '';
         $passString = '';
 
         if (is_array($channel)) {
-            if (array_keys($channel) !== range(0, count($channel) - 1)) {
+            if (!array_is_list($channel)) {
                 //channel => password array
                 $channelString = implode(',', array_keys($channel));
                 $passString = implode(',', array_values($channel));
@@ -525,9 +517,8 @@ class Client extends EventEmitter
                 $channelString = implode(',', $channel);
             }
         } else {
-
             $channelString = $channel;
-            if ($password)
+            if ($password !== null)
                 $passString = $password;
         }
 
@@ -536,60 +527,73 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function part($channel)
+    /**
+     * @param string|array<string> $channel
+     * @return $this
+     */
+    public function part(string|array $channel): static
     {
         $channel = is_array($channel) ? implode(',', $channel) : $channel;
         $this->send(CMD_PART, $channel);
         return $this;
     }
 
-    public function names($channel = null, $server = null)
+    /**
+     * @param string|array<string>|null $channel
+     * @param string|null $server
+     * @return $this
+     */
+    public function names(string|array|null $channel = null, ?string $server = null): static
     {
         $channel = is_array($channel) ? implode(',', $channel) : $channel;
         $this->send(CMD_NAMES, $channel, $server);
         return $this;
     }
 
-    public function onChannel($channel) {
+    public function onChannel(string $channel): bool {
         return in_array(strtolower($channel), array_map('strtolower', array_keys($this->onChannels)), true);
     }
 
-    public function getJoinedChannels() {
+    /**
+     * @return string[]
+     */
+    public function getJoinedChannels(): array
+    {
         return $this->onChannels;
     }
 
-    public function listChannels($channel = null, $server = null)
+    /**
+     * @param string|array<string>|null $channel
+     * @param string|null $server
+     * @return $this
+     */
+    public function listChannels(string|array|null $channel = null, ?string $server = null): static
     {
         $channel = is_array($channel) ? implode(',', $channel) : $channel;
         $this->send(CMD_LIST, $channel, $server);
         return $this;
     }
 
-    //public function chat( $channel, $message ) {
-    //    $this->sendPrefixed( "$this->nick!$this->name", CMD_PRIVMSG, $channel, $message );
-    //    return $this;
-    //}
-
-    public function pm($nick, $message)
+    public function pm(string $nick, string $message): static
     {
         $this->send(CMD_PRIVMSG, $nick, $message);
         return $this;
     }
 
-    public function msg($target, $message)
+    public function msg(string $target, string $message): static
     {
         return $this->pm($target, $message);
     }
 
-    public function notice($nick, $message)
+    public function notice(string $nick, string $message): static
     {
         $this->send(CMD_NOTICE, $nick, $message);
         return $this;
     }
 
-    public function nick($nick = null)
+    public function nick(?string $nick = null)
     {
-        if (!$nick)
+        if ($nick === null)
             $nick = $this->nick;
 
         $this->send(CMD_NICK, $nick);
@@ -597,7 +601,7 @@ class Client extends EventEmitter
 
     protected function handleMessage($e)
     {
-        /* This one handles basic server reponses so that the user
+        /* This one handles basic server responses so that the user
            can care about useful functionality instead.
 
            You can use rawMode to disable automatic interaction in here.
@@ -606,8 +610,13 @@ class Client extends EventEmitter
         if ($this->rawMode)
             return;
 
+        /**
+         * @var Message|null $message
+         */
         $message = $e->message;
         $raw = $e->raw;
+        if($message === null)
+            return;
 
         static $namesReply = null,
         $listReply = null;
@@ -801,7 +810,7 @@ class Client extends EventEmitter
                 unset($args[0], $args[count($args)]);
 
                 foreach ($args as $arg) {
-                    @list($key, $val) = explode('=', $arg);
+                    @list($key, $val) = explode('=', $arg, 2);
 
                     //handle some keys specifically
                     switch (strtolower($key)) {
@@ -828,7 +837,7 @@ class Client extends EventEmitter
                             break;
                     }
 
-                    $this->options[$key] = $val;
+                    $this->options[strtoupper($key)] = $val;
                 }
 
                 $this->emit('options', array('options' => $this->options));

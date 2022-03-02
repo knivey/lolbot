@@ -21,11 +21,11 @@ class async_get_exception extends Exception {
 
 /**
  * @param $url
- * @param array $headers
- * @throws \async_get_exception
+ * @param string[] $headers
+ * @throws async_get_exception
  * @return \Amp\Promise
  */
-function async_get_contents($url, $headers = []) {
+function async_get_contents(string $url, array $headers = []): \Amp\Promise {
     return \Amp\call(function () use ($url, $headers) {
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url);
