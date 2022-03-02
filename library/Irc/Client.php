@@ -42,7 +42,7 @@ class Client extends EventEmitter
 
     protected ?ConnectContext $connectContext;
     protected ?EncryptableSocket $socket;
-    public bool $isConnected;
+    public bool $isConnected = false;
 
     protected string $inQ = '';
 
