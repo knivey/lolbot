@@ -207,7 +207,7 @@ class Client extends EventEmitter
         if ($this->rawMode)
             return;
 
-        if ($this->serverPassword !== null)
+        if ($this->serverPassword != '')
             $this->send(CMD_PASS, $this->serverPassword);
 
         if (empty($this->name))
@@ -470,7 +470,6 @@ class Client extends EventEmitter
      */
     public function send(string|Message $command, string ...$args): static
     {
-        unset($args[0]);
         $args = array_values(array_filter($args, function ($arg) {
             return $arg != '';
         }));
