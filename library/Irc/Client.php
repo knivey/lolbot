@@ -7,9 +7,7 @@ use Amp\Loop;
 use Amp\Socket\EncryptableSocket;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\ClientTlsContext;
-use JetBrains\PhpStorm\Pure;
 use Monolog\Logger;
-use React\Promise\Promise;
 use function Amp\Socket\connect;
 
 function stripForTerminal(string $str): string {
