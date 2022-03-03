@@ -9,9 +9,10 @@ use Amp\Socket\ConnectContext;
 use Amp\Socket\ClientTlsContext;
 use JetBrains\PhpStorm\Pure;
 use Monolog\Logger;
+use React\Promise\Promise;
 use function Amp\Socket\connect;
 
-function stripForTerminal($str) {
+function stripForTerminal(string $str): string {
     $str = preg_replace("/(\x1b\[|\x9b)[^@-_]*[@-_]|\x1b[@-_]/", "", $str);
     $str = preg_replace("/[\x1-\x1f]/", "", $str);
     return $str;
@@ -24,7 +25,7 @@ class Client extends EventEmitter
     public bool $exit = false;
     protected string $name = 'phpump';
     protected string $realName = 'we pumpin!';
-    protected ?string $serverPassword;
+    protected ?string $serverPassword = null;
     /**
      * OPTIONNAME => Value
      * Name always uppercased
@@ -41,20 +42,20 @@ class Client extends EventEmitter
     protected array $onChannels = [];
 
     protected ?ConnectContext $connectContext;
-    protected ?EncryptableSocket $socket;
+    protected ?EncryptableSocket $socket = null;
     public bool $isConnected = false;
 
     protected string $inQ = '';
 
-    protected $lastRecvTime;
+    protected ?int $lastRecvTime = null;
     protected ?int $awaitingPong = null;
-    protected $timeoutWatcherID = null;
+    protected ?string $timeoutWatcherID = null;
     /**
      * If we have connected and received the welcome thus ready to do any command
      */
     protected bool $ircEstablished = false;
 
-    private ?string $nickHost;
+    private ?string $nickHost = null;
 
     private int $ErrDelay = 0;
 
@@ -80,19 +81,19 @@ class Client extends EventEmitter
         $this->log->debug("Bot made", compact('nick'));
     }
 
-    public function exit()
+    public function exit(): void
     {
         $this->exit = true;
     }
 
-    public function go()
+    public function go(): void
     {
         \Amp\asyncCall(function() {
             if ($this->exit)
                 return;
 
             $this->log->debug("Bot go called");
-            //return;
+
             while ($this->reconnect && !$this->exit) {
                 $this->log->info("connecting...\n");
                 try {
@@ -122,9 +123,11 @@ class Client extends EventEmitter
         });
     }
 
-    function doRead()
+    protected function doRead(): \Amp\Promise
     {
         return \Amp\call(function () {
+            if(!isset($this->socket))
+                return;
             $s = yield $this->socket->read();
             if ($s === null) {
                 $this->onDisconnect();
@@ -134,7 +137,7 @@ class Client extends EventEmitter
             if ($this->timeoutWatcherID != null) {
                 Loop::cancel($this->timeoutWatcherID);
             }
-            $this->timeoutWatcherID = Loop::delay(160000, [$this, 'pingCheck']);
+            $this->timeoutWatcherID = Loop::delay(160000, $this->pingCheck(...));
             $this->inQ .= $s;
             if ($this->hasLine()) {
                 $this->doLine();
@@ -142,7 +145,7 @@ class Client extends EventEmitter
         });
     }
 
-    public function onDisconnect()
+    protected function onDisconnect(): void
     {
         $this->log->info("disconnected");
         $this->sendQ = [];
@@ -153,7 +156,7 @@ class Client extends EventEmitter
         if ($this->timeoutWatcherID != null) {
             Loop::cancel($this->timeoutWatcherID);
         }
-        if(!$this->socket->isClosed())
+        if(isset($this->socket) && !$this->socket->isClosed())
             $this->socket->close();
         $this->ircEstablished = false;
         $this->isConnected = false;
@@ -163,28 +166,36 @@ class Client extends EventEmitter
         $this->emit('disconnected');
     }
 
-    public function pingCheck()
+    //TODO use a lambda not a public function
+    public function pingCheck(): void
     {
         $this->timeoutWatcherID = null;
         if ($this->awaitingPong != null) {
-            $this->socket->close();
+            $this->socket?->close();
             $this->log->info("Closed connection do to ping timeout.");
             return;
         }
         $this->awaitingPong = time();
         $this->send("PING :" . $this->awaitingPong);
-        $this->timeoutWatcherID = Loop::delay(160000, [$this, 'pingCheck']);
+        $this->timeoutWatcherID = Loop::delay(160000, $this->pingCheck(...));
     }
 
-    public function sendNow($line): \Amp\Promise
+    /**
+     * @throws \Exception
+     * @throws \Amp\ByteStream\ClosedException
+     * @throws \Amp\ByteStream\StreamException
+     */
+    public function sendNow(string $line): \Amp\Promise
     {
         if (!$this->isConnected)
             return new \Amp\Failure(new Exception("Not connected"));
-        $this->log->info(stripForTerminal(">>>> $line"));
+        $this->log->info("SENDNOW", ['data' => stripForTerminal($line)]);
+        if(!isset($this->socket))
+            return new \Amp\Failure(new \Exception("sendNow called but socket is null"));
         return $this->socket->write($line);
     }
 
-    #[Pure] public function hasLine(): bool
+    public function hasLine(): bool
     {
         return (str_contains($this->inQ, "\r") || str_contains($this->inQ, "\n"));
     }
@@ -198,11 +209,11 @@ class Client extends EventEmitter
         }
         $end = (int)max($r, $n) + 1;
         $line = substr($this->inQ, 0, $end);
-        $this->inQ = (string)substr($this->inQ, $end);
+        $this->inQ = substr($this->inQ, $end);
         return trim($line, "\r\n");
     }
 
-    protected function sendLogin()
+    protected function sendLogin(): void
     {
         if ($this->rawMode)
             return;
@@ -257,7 +268,7 @@ class Client extends EventEmitter
             $this->name = $name;
         } else {
             //Set it on the next disconnect
-            $this->once('disconnected', function ($e, $c) use ($name) {
+            $this->once('disconnected', function (object $_e, Client $c) use ($name) {
                 $c->setName($name);
             });
         }
@@ -276,7 +287,7 @@ class Client extends EventEmitter
             $this->realName = $realName;
         } else {
             //Set it on the next disconnect
-            $this->once('disconnected', function ($e, $c) use ($realName) {
+            $this->once('disconnected', function (object $_e, Client $c) use ($realName) {
                 $c->setRealName($realName);
             });
         }
@@ -334,7 +345,7 @@ class Client extends EventEmitter
         return $this;
     }
 
-    #[Pure] public function getOption(string $option, null|string|array $defaultValue = null): string|array|null
+    public function getOption(string $option, null|string|array $defaultValue = null): string|array|null
     {
         return ($this->options[strtoupper($option)] ?? $defaultValue);
     }
@@ -354,12 +365,16 @@ class Client extends EventEmitter
     public function inOptionValues(string $option, string $value): bool
     {
         $oValue = $this->getOption($option, array());
+        if(!is_array($oValue))
+            return false;
         return in_array($value, $oValue);
     }
 
     public function inOptionKeys(string $option, string $value): bool
     {
         $oValue = $this->getOption($option, array());
+        if(!is_array($oValue))
+            return false;
         return in_array($value, array_keys($oValue));
     }
 
@@ -382,40 +397,81 @@ class Client extends EventEmitter
                 $this->log->debug("doLine got empty message");
                 return $this;
             }
+            if ($message == null) {
+                $this->log->debug("doLine got null type message");
+                return $this;
+            }
 
             $msg = Message::parse($message);
+            if($msg === null) {
+                $this->log->debug("Unable to parse message", compact('message'));
+                continue;
+            }
             if($msg->command == CMD_PING || $msg->command == CMD_PONG)
                 $this->log->debug("IN", ['line' => stripForTerminal("$message")]);
             else
                 $this->log->info("IN", ['line' => stripForTerminal("$message")]);
-            $this->emit("message, message:$msg->command", array('message' => $msg, 'raw' => $message));
+            $this->emit("message, message:{$msg->command}", array('message' => $msg, 'raw' => $message));
         }
         return $this;
     }
 
-    public function setThrottle(bool $throttle)
+    public function setThrottle(bool $throttle): void
     {
         $this->doThrottle = $throttle;
     }
 
     public float $msg_since = 0;
+    /**
+     * @var array<string>
+     */
     public array $sendQ = array();
     public bool $doThrottle = true;
     protected ?string $sendWatcherID = null;
 
     //Should only be called by watcher
-    public function processSendq()
+    public function processSendq(): \Amp\Promise
     {
-        $this->log->debug("processing sendQ");
-        if (empty($this->sendQ)) {
-            $this->log->debug("sendQ empty");
-            return;
-        }
+        return \Amp\call(function () {
+            $this->log->debug("processing sendQ");
+            if (empty($this->sendQ)) {
+                $this->log->debug("sendQ empty");
+                return;
+            }
+            if($this->socket == null) {
+                $this->log->debug("sendQ socket null");
+                return;
+            }
 
-        if ($this->doThrottle == false) {
-            while(!empty($this->sendQ)) {
-                $msg = array_shift($this->sendQ);
-                if(preg_match("/(PING|PONG) .*/i", $msg))
+            if ($this->doThrottle == false) {
+                while (!empty($this->sendQ)) {
+                    $msg = array_shift($this->sendQ);
+                    if (preg_match("/(PING|PONG) .*/i", $msg))
+                        $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
+                    else
+                        $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
+                    try {
+                        yield $this->socket->write($msg);
+                    } catch (\Exception $e) {
+                        $this->log->info("Exception while writing", compact('e'));
+                        $this->onDisconnect();
+                        return;
+                    }
+                }
+                $this->sendWatcherID = null;
+                return;
+            }
+
+            $time = microtime(true);
+            if ($time > $this->msg_since) {
+                $this->msg_since = $time;
+            }
+
+            foreach ($this->sendQ as $key => $msg) {
+                if ($this->msg_since - microtime(true) >= 10) {
+                    break;
+                }
+                if (preg_match("/(PING|PONG) .*/i", $msg))
                     $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
                 else
                     $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
@@ -426,41 +482,17 @@ class Client extends EventEmitter
                     $this->onDisconnect();
                     return;
                 }
+                $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
+                unset($this->sendQ[$key]);
             }
             $this->sendWatcherID = null;
-            return;
-        }
 
-        $time = microtime(true);
-        if ($time > $this->msg_since) {
-            $this->msg_since = $time;
-        }
-
-        foreach ($this->sendQ as $key => $msg) {
-            if ($this->msg_since - microtime(true) >= 10) {
-                break;
+            if (!empty($this->sendQ)) {
+                $next = $this->msg_since - 10 - microtime(true) + 0.1;
+                $this->log->debug("delay processing sendq for " . $next * 1000 . "ms");
+                $this->sendWatcherID = Loop::delay((int)round($next * 1000), $this->processSendq(...));
             }
-            if(preg_match("/(PING|PONG) .*/i", $msg))
-                $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
-            else
-                $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
-            try {
-                yield $this->socket->write($msg);
-            } catch (\Exception $e) {
-                $this->log->info("Exception while writing", compact('e'));
-                $this->onDisconnect();
-                return;
-            }
-            $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
-            unset($this->sendQ[$key]);
-        }
-        $this->sendWatcherID = null;
-
-        if (!empty($this->sendQ)) {
-            $next = $this->msg_since - 10 - microtime(true) + 0.1;
-            $this->log->debug("delay processingsendq for " . $next * 1000 . "ms");
-            $this->sendWatcherID = Loop::delay((int)round($next * 1000), [$this, 'processSendq']);
-        }
+        });
     }
 
     /**
@@ -489,7 +521,7 @@ class Client extends EventEmitter
         }
 
         if ($this->sendWatcherID == null) {
-            $this->sendWatcherID = Loop::defer([$this, 'processSendq']);
+            $this->sendWatcherID = Loop::defer($this->processSendq(...));
         }
 
         $this->emit("sent, sent:$message->command", array('message' => $message));
@@ -504,7 +536,6 @@ class Client extends EventEmitter
      */
     public function join(string|array $channel, ?string $password = null): static
     {
-        $channelString = '';
         $passString = '';
 
         if (is_array($channel)) {
@@ -590,7 +621,7 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function nick(?string $nick = null)
+    public function nick(?string $nick = null): void
     {
         if ($nick === null)
             $nick = $this->nick;
@@ -598,7 +629,16 @@ class Client extends EventEmitter
         $this->send(CMD_NICK, $nick);
     }
 
-    protected function handleMessage($e)
+    /**
+     * @var ?object{nick: string, channelType: string, channel: string, names: list<string>}
+     */
+    protected ?object $namesReply = null;
+    /**
+     * @var ?array<string, object{channel: string, userCount: string, topic: string}>
+     */
+    protected ?array $listReply = null;
+
+    protected function handleMessage(object $e): void
     {
         /* This one handles basic server responses so that the user
            can care about useful functionality instead.
@@ -613,12 +653,9 @@ class Client extends EventEmitter
          * @var Message|null $message
          */
         $message = $e->message;
-        $raw = $e->raw;
         if($message === null)
             return;
 
-        static $namesReply = null,
-        $listReply = null;
         switch ($message->command) {
             case "ERROR":
                 $this->ErrDelay = 240;
@@ -639,7 +676,7 @@ class Client extends EventEmitter
                 //Emit channel join events
                 $nick = $message->nick ?: $this->nick;
                 $channel = $message->getArg(0);
-                if($nick == $this->getNick()) {
+                if($nick == $this->getNick() && $channel !== null) {
                     $this->onChannels[$channel] = $channel;
                 }
 
@@ -651,9 +688,8 @@ class Client extends EventEmitter
             case CMD_PART:
                 //Emit channel part events
                 $nick = $message->nick ?: $this->nick;
-                //$channel = $this->addAllChannel( $message->getArg( 0 ) );
                 $channel = $message->getArg(0);
-                if($nick == $this->getNick()) {
+                if($nick == $this->getNick() && $channel !== null) {
                     unset($this->onChannels[$channel]);
                 }
 
@@ -666,7 +702,7 @@ class Client extends EventEmitter
                 //Emit kick events
                 $channel = $message->getArg(0);
                 $nick = $message->getArg(1);
-                if($nick == $this->getNick()) {
+                if($nick == $this->getNick() && $channel !== null) {
                     unset($this->onChannels[$channel]);
                 }
 
@@ -708,6 +744,8 @@ class Client extends EventEmitter
                 //Handle private messages (Normal chat messages)
                 $from = $message->nick;
                 $to = $message->getArg(0);
+                if($to === null)
+                    break;
                 $text = $message->getArg(1, '');
 
                 if ($this->isChannel($to)) {
@@ -738,43 +776,45 @@ class Client extends EventEmitter
                 ));
                 break;
             case RPL_NAMREPLY:
-                if($namesReply != null) {
-                    $namesReply->names = array_merge($namesReply->names, explode(' ', $message->getArg(3)));
+                if($this->namesReply != null) {
+                    $this->namesReply->names = array_merge($this->namesReply->names, explode(' ', $message->getArg(3, '')));
                 } else {
-                    $namesReply = (object)array(
-                        'nick' => $message->getArg(0),
-                        'channelType' => $message->getArg(1),
-                        'channel' => $message->getArg(2),
-                        'names' => explode(' ', $message->getArg(3))
+                    $this->namesReply = (object)array(
+                        'nick' => $message->getArg(0, ''),
+                        'channelType' => $message->getArg(1, ''),
+                        'channel' => $message->getArg(2, ''),
+                        'names' => explode(' ', $message->getArg(3, ''))
                     );
                 }
                 break;
             case RPL_ENDOFNAMES:
-                if (empty($namesReply))
+                if (empty($this->namesReply))
                     break;
 
-                $channel = $namesReply->channel;
+                $channel = $this->namesReply->channel;
 
                 $this->emit("names, names:$channel", array(
-                    'names' => $namesReply,
+                    'names' => $this->namesReply,
                     'channel' => $channel
                 ));
-                $namesReply = null;
+                $this->namesReply = null;
                 break;
             case RPL_LISTSTART:
-                $listReply = array();
+                $this->listReply = array();
                 break;
             case RPL_LIST:
                 $channel = $message->getArg(1);
-                $listReply[$channel] = (object)array(
+                if($channel === null)
+                    break;
+                $this->listReply[$channel] = (object)array(
                     'channel' => $channel,
-                    'userCount' => $message->getArg(2),
-                    'topic' => $message->getArg(3)
+                    'userCount' => $message->getArg(2, ''),
+                    'topic' => $message->getArg(3, '')
                 );
                 break;
             case RPL_LISTEND:
-                $this->emit('list', array('list' => $listReply));
-                $listReply = null;
+                $this->emit('list', array('list' => $this->listReply));
+                $this->listReply = null;
                 break;
             case RPL_WELCOME:
                 //correct internal nickname, if given a new one by the server
@@ -786,7 +826,7 @@ class Client extends EventEmitter
                 break;
             case RPL_WHOISUSER:
                 //var_dump($message);
-                if ($message->getArg(1) == $this->nick) {
+                if ($message->getArg(1) === $this->nick) {
                     $ident = $message->getArg(2);
                     $host = $message->getArg(3);
                     $this->nickHost = "{$this->nick}!{$ident}@$host";
@@ -814,28 +854,23 @@ class Client extends EventEmitter
                     //handle some keys specifically
                     switch (strtolower($key)) {
                         case 'prefix':
-
-                            list($modes, $prefixes) = explode(')', ltrim($val, '('));
+                            list($modes, $prefixes) = explode(')', ltrim($val??'', '('));
                             $modes = str_split($modes);
                             $prefixes = str_split($prefixes);
                             $val = array();
                             foreach ($modes as $k => $v)
                                 $val[$prefixes[$k]] = $v;
-
                             break;
                         case 'chantypes':
                         case 'statusmsg':
                         case 'elist':
-
-                            $val = str_split($val);
+                            $val = str_split($val??'');
                             break;
                         case 'chanmodes':
                         case 'language':
-
-                            $val = explode(',', $val);
+                            $val = explode(',', $val??'');
                             break;
                     }
-
                     $this->options[strtoupper($key)] = $val;
                 }
 
@@ -847,8 +882,9 @@ class Client extends EventEmitter
                 //sometimes connecting to znc or a server will change our nick like so
                 //:knivey!~knivy@2001:bc8:182c:a4e::1 NICK :sludg
             case CMD_NICK:
-                if($this->getNick() == $message->nick) {
-                    $this->nick = $message->getArg(0);
+                $newNick = $message->getArg(0);
+                if($this->getNick() == $message->nick && $newNick !== null) {
+                    $this->nick = $newNick;
                 }
                 break;
             default:

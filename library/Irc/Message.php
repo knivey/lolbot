@@ -5,20 +5,28 @@ namespace Irc;
 class Message
 {
 
-    public $nick = null;
-    public $name = null;
-    public $ident = null;
-    public $host = null;
-    public $command = '';
-    public $args = array();
+    public ?string $nick = null;
+    public ?string $name = null;
+    public ?string $ident = null;
+    public ?string $host = null;
+    public string $command = '';
+    /**
+     * @var array<string>
+     */
+    public array $args = array();
 
-    public function __construct($command, $args = array(), $prefix = null)
+    /**
+     * @param string $command
+     * @param list<string> $args
+     * @param string|null $prefix
+     */
+    public function __construct(string $command, array $args = array(), ?string $prefix = null)
     {
         $this->command = $command;
         $this->args = $args;
 
         if (!empty($prefix)) {
-            if (strpos($prefix, '!') !== false) {
+            if (str_contains($prefix, '!')) {
                 $parts = preg_split('/[!@]/', $prefix);
                 $this->nick = $parts[0];
                 $this->name = $parts[1] ?? '';
@@ -30,57 +38,64 @@ class Message
         }
     }
 
-    public function __toString()
+    public function __toString(): string
     {
-        $args = array_map('strval', $this->args);
+        $args = array_map(strval(...), $this->args);
         $len = count($args);
         $last = $len - 1;
 
-        if ($len > 0 && (strpos(' ', $args[$last]) !== -1 || $args[$last][0] === ':')) {
+        if ($len > 0 && (str_contains($args[$last], ' ') || $args[$last][0] === ':')) {
             $args[$last] = ':' . $args[$last];
         }
 
         $prefix = $this->getHostString();
 
         array_unshift($args, $this->command);
-        if (!empty($prefix))
+        if ($prefix != '')
             array_unshift($args, ":$prefix");
 
         return implode(' ', $args);
     }
 
-    public function getHostString()
+    public function getHostString(): string
     {
         $str = "$this->nick";
 
-        if (!empty($this->name))
+        if ($this->name !== null)
             $str .= "!$this->name";
 
-        if (!empty($this->host))
+        if ($this->host !== null)
             $str .= "@$this->host";
 
         return $str;
     }
 
-    public function getIdentHost() {
+    public function getIdentHost(): string {
         $str = '';
         if($this->ident != null)
             $str .= "$this->ident@";
         return "{$str}$this->host";
     }
 
-    public function getArg($index, $defaultValue = null)
+    /**
+     * @param int $index
+     * @param string|null $defaultValue
+     * @return string|null
+     *
+     * @psalm-template T
+     * @psalm-param T $defaultValue
+     * @psalm-return T|string
+     */
+    public function getArg(int $index, ?string $defaultValue = null): ?string
     {
-        return !empty($this->args[$index]) ? $this->args[$index] : $defaultValue;
+        return $this->args[$index] ?? $defaultValue;
     }
 
-    public static function parse($message)
+    public static function parse(string $message): ?Message
     {
         if (empty($message))
             return null;
 
-        $prefix = '';
-        $command = '';
         $args = array();
         $matches = array();
 
@@ -95,11 +110,11 @@ class Message
 
             $spacedArg = false;
             if (!empty($matches['args'])) {
-                if (strpos($matches['args'], ' :') !== false) {
+                if (str_contains($matches['args'], ' :')) {
                     $parts = explode(' :', $matches['args'], 2);
                     $args = explode(' ', $parts[0]);
                     $spacedArg = $parts[1];
-                } else if (strpos($matches['args'], ':') === 0)
+                } else if (str_starts_with($matches['args'], ':'))
                     $spacedArg = substr($matches['args'], 1);
                 else
                     $args = explode(' ', $matches['args']);

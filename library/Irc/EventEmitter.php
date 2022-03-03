@@ -4,12 +4,24 @@ namespace Irc;
 
 class EventEmitter
 {
-    protected $eventCallbacks = array();
-    protected $onceEventCallbacks = array();
+    /**
+     * @var array<string, list<callable>>
+     */
+    protected array $eventCallbacks = array();
+    /**
+     * @var array<string, list<callable>>
+     */
+    protected array $onceEventCallbacks = array();
 
-    public function on($event, $callback, &$idx = 0)
+    /**
+     * @param string $event
+     * @param callable(object $event, EventEmitter $eventEmitter) $callback
+     * @param int|null $idx
+     * @return $this
+     */
+    public function on(string $event, callable $callback, ?int &$idx = null): static
     {
-        if (strpos($event, ',') !== false) {
+        if (str_contains($event, ',')) {
             $events = explode(',', $event);
             foreach ($events as $event) {
                 $this->on($event, $callback);
@@ -17,46 +29,52 @@ class EventEmitter
             return $this;
         }
 
-        if (empty($this->eventCallbacks[$event]))
-            $this->eventCallbacks[$event] = array();
-
         $this->eventCallbacks[$event][] = $callback;
         $idx = array_key_last($this->eventCallbacks[$event]);
         return $this;
     }
 
-    public function off($event, $callback, $idx = null)
+    /**
+     * @param string $event
+     * @param callable(object $event, EventEmitter $eventEmitter) $callback
+     * @param int|null $idx
+     * @return $this
+     */
+    public function off(string $event, callable $callback, ?int $idx = null): static
     {
-        if (empty($this->eventCallbacks[$event]))
+        if (!isset($this->eventCallbacks[$event]) || empty($this->eventCallbacks[$event]) )
             return $this;
 
-        if($idx == null) {
+        if($idx === null) {
             foreach ($this->eventCallbacks[$event] as $key => $cb)
                 if ($callback === $cb) {
                     $idx = $key;
                     break;
                 }
         }
+        if($idx === null)
+            return $this;
 
         unset($this->eventCallbacks[$event][$idx]);
         return $this;
     }
 
-    public function once($event, $callback)
+    /**
+     * @param string $event
+     * @param callable(object $event, EventEmitter $eventEmitter) $callback
+     * @return $this
+     */
+    public function once(string $event, callable $callback): static
     {
-        if (empty($this->onceEventCallbacks[$event]))
-            $this->onceEventCallbacks[$event] = array();
-
         $this->onceEventCallbacks[$event][] = $callback;
         return $this;
     }
 
-    public function emit($event, $args = array())
+    //TODO the object sent by this is stupid and dumb would like to make better defined objects
+
+    public function emit(string $event, array $args = array()): static
     {
-        //if (debug_backtrace()[1]['function'] != 'emit')
-        //    echo "EVENT: " . $event . "\n";
-        //var_dump($args);
-        if (strpos($event, ',') !== false) {
+        if (str_contains($event, ',')) {
             $events = explode(',', $event);
             foreach ($events as $event) {
                 $this->emit(trim($event), $args);

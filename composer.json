@@ -41,7 +41,10 @@
         "psr-4": {
             "scripts\\": "scripts",
             "Irc\\": "library/Irc"
-        }
+        },
+        "files": [
+            "library/Irc/Consts.php"
+        ]
     },
     "require-dev": {
         "ramsey/composer-repl": "^1.2",
