@@ -210,7 +210,6 @@ function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 $recordLimit = [];
 $limitWarns = [];
 
-//TODO recording over existing files, if we do this we need to erase old file if it is a different case, ALSO should save a history of old files
 #[Cmd("record")]
 #[Option(["--post", "--url"], "Get a URL to post the art data to")]
 #[Syntax('<filename>')]
@@ -236,7 +235,6 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($chan, "Don't use control chars in filename.");
         return;
     }
-    //todo would be nice to use cmdr to make this now that is runs artbot cmds
     $reserved = ['artfart', 'random', 'search', 'find', 'stop', 'record', 'end', 'cancel',
         'addquote', 'quote', 'bash', 'circles', 'lines', 'img', 'url', 'cancelquote', 'endquote', 'stopquote'];
     if(in_array(strtolower($file), $reserved)) {
@@ -332,7 +330,6 @@ function endart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         unset($recordings[$nick]);
         return;
     }
-    //TODO make h4x channel name?
     $dir = "${config['artdir']}h4x/$nick";
     if(file_exists($dir) && !is_dir($dir)) {
         $bot->pm($recordings[$nick]['chan'], "crazy error occurred panicing atm");
@@ -410,7 +407,6 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
             return;
         }
         //try fullpath first
-        //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
         foreach($tree as $ent) {
             if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
                 if($tryEdit($ent))
@@ -721,7 +717,6 @@ function stop($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
 }
 
-// TODO use $args to do str_replace on {{args}}
 function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], $speed = null)
 {
     global $playing, $config;

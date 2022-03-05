@@ -59,8 +59,6 @@ function logUrl($bot, $nick, $chan, $line, string|array $title) {
         $bot->pm($logChan, "  $msg");
 }
 
-//TODO images: maybe lookup imgur info or file info (size, width, height)
-
 $link_history = [];
 $link_ratelimit = 0;
 function linktitles(\Irc\Client $bot, $nick, $chan, $text)

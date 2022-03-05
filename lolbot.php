@@ -24,50 +24,6 @@ $eventProvider = new OrderedListenerProvider();
 $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
 
 
-
-/*
- * TODO:
- * Find places where using delayed makes more sense
- * move all bots to one instance, surround everything with try catch (links youtube cmds etc)
- * each bot own config section, apis global?
- *  databases will need to be uniq for each bot, will likely put scripts into objects - this could be good for autoload
- * loading scripts maybe have recursive dir include and dirs like all, extra
- */
-/*
- * TODO
- * all commands add rate limiting, especially those that hit apis
- * art:
- * other todos in various files..
- * allow ircwatch arts in @random search - append ircwatch/name array
- * allow @ircwatch/file to only load from ircwatch
- * @fortune
- * add database to add tags to art files and other metadata and user for searching
- * move artfart to artbots
- * @resume
- *
- * website api for uploading, sending to chans, get keys from chat
- *
- * others:
- * github: links to prs etc show more appropriate info
- *  * later would be nice to have github webhooks?
- * translate
- * reddit urls
- * youtube support https://music.youtube.com/watch?v=FhBnW7bZHEE links
- * help cmd make use of new cmdr stuff, add arg for only help of 1 cmd
- * see a list of your pending remindemes
- * linktitles images etc, if size exceeds show how big it was? maybe there is still some body data?
- *
- * rss feeds
- * main loop catching exceptions and ValueError dont die
- * user system
- *
- * codesand: add js, c++, cleanup the timeout problem, maxlines shown twice if error after
- *
- *
- * cmdr alternative arg parsing using grammars/lexers
- *
- */
-
 if(isset($argv[1])) {
     if(!file_exists($argv[1]) || !is_file($argv[1]))
         die("Usage: ".__FILE__." [config.yaml]\n  ({$argv[1]} does not exist or is not a file)\n");

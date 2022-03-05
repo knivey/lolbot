@@ -15,10 +15,6 @@ R::addDatabase('quotes', "sqlite:{$config['quotedb']}");
 
 $quote_recordings = [];
 
-//TODO website where you can select what lines to addquote from log
-
-//TODO quote search
-
 
 #[Cmd("addquote", "quoteadd")]
 #[Syntax("[quote]...")]
