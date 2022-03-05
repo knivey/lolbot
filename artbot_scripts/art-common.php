@@ -407,6 +407,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
                 playart($bot, $chan, $art, $file, $opts, $args, $speed);
             else
                 $bot->pm($chan, "no matching art found");
+            return;
         }
         //try fullpath first
         //TODO match last part of paths ex terps/artfile matches h4x/terps/artfile
