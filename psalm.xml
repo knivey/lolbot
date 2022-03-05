@@ -2,12 +2,20 @@
 <psalm
     errorLevel="1"
     resolveFromConfigFile="true"
+    hideExternalErrors="true"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="https://getpsalm.org/schema/config"
     xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
 >
     <projectFiles>
-        <directory name="." />
+        <directory name="artbot_scripts" />
+        <directory name="library" />
+        <directory name="scripts" />
+        <file name="artbot.php"/>
+        <file name="artbot_rest_server.php"/>
+        <file name="multiartbot.php"/>
+        <file name="lolbot.php"/>
+
 
         <ignoreFiles>
             <directory name="vendor" />

@@ -76,23 +76,31 @@ if(isset($argv[1])) {
     $configFile = __DIR__."/config.yaml";
 }
 
-$config = Yaml::parseFile($configFile);if($config['codesand'] ?? false) {
+$config = Yaml::parseFile($configFile);
+if(!is_array($config))
+    die("bad config file");
+
+if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
 }
 
 /**
  * helper to make replies in cmds easier
+ * @param object $args
+ * @param \Irc\Client $bot
+ * @param string $prefix
+ * @return array<Closure(string,string)>
  */
-function makeRepliers($args, \Irc\Client $bot, string $prefix) {
+function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
     return [
-        function ($msg, $err = null) use ($args, $bot, $prefix) {
+        function (string $msg, ?string $err = null) use ($args, $bot, $prefix) {
             if($err == null) {
                 $bot->pm($args->chan, "\2$prefix:\2 $msg");
             } else {
                 $bot->pm($args->chan, "\2$prefix $err:\2 $msg");
             }
         },
-        function ($msg, $err = null) use ($args, $bot, $prefix) {
+        function (string $msg, ?string $err = null) use ($args, $bot, $prefix) {
             if($err == null) {
                 $bot->notice($args->nick, "\2$prefix:\2 $msg");
             } else {
@@ -254,7 +262,7 @@ try {
                         $cmdArgs = [];
                     if(count($cmdArgs) == 1 && $cmdArgs[0] == "")
                         $cmdArgs = [];
-                    \scripts\alias\handleCmd($args, $bot, $cmd, $cmdArgs, $opts);
+                    \scripts\alias\handleCmd($args, $bot, $cmd, $cmdArgs);
                 }
             } catch (Exception $e) {
                 echo "UNCAUGHT EXCEPTION $e\n";

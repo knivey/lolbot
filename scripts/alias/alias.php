@@ -4,20 +4,23 @@ namespace scripts\alias;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use RedBeanPHP\OODBBean;
 use \RedBeanPHP\R as R;
 
+/**
+ * @var array $config
+ */
 
-global $config;
 $aliasdb = 'alias-' . uniqid();
-$dbfile = $config['aliasdb'] ?? "alias.db";
+$dbfile = (string)($config['aliasdb'] ?? "alias.db");
 R::addDatabase($aliasdb, "sqlite:{$dbfile}");
 
 #[Cmd("alias")]
 #[Syntax("<name> <value>...")]
 #[Options("--me", "--act")]
-function alias($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Request $req): void {
     global $aliasdb;
-    list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
+    [$rpl] = \makeRepliers($args, $bot, "alias");
     R::selectDatabase($aliasdb);
     $alias = R::findOne("alias", " `name_lowered` = ? AND `chan_lowered` = ? ",
         [strtolower($req->args['name']), strtolower($args->chan)]);
@@ -25,6 +28,7 @@ function alias($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if ($alias != null) {
         $msg = "That alias already exists, updating it... ";
     } else {
+        /** @psalm-var OODBBean $alias */
         $alias = R::dispense("alias");
     }
     $alias->name = $req->args['name'];
@@ -40,7 +44,7 @@ function alias($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
 #[Cmd("unalias")]
 #[Syntax("<name>")]
-function unalias($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function unalias($args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
 {
     global $aliasdb;
     list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
@@ -56,7 +60,7 @@ function unalias($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 }
 
 #[Cmd("aliases")]
-function aliases($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function aliases($args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
 {
     global $aliasdb;
     list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
@@ -71,7 +75,15 @@ function aliases($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $rpl("$list", 'list');
 }
 
-function handleCmd($args, $bot, $cmd, $cmdArgs, $opts) {
+/**
+ * @param object $args
+ * @param \Irc\Client $bot
+ * @param string $cmd
+ * @param array<string> $cmdArgs
+ * @return bool
+ * @throws \RedBeanPHP\RedException
+ */
+function handleCmd(object $args, \Irc\Client $bot, string $cmd, array $cmdArgs): bool {
     global $aliasdb;
     R::selectDatabase($aliasdb);
     $alias = R::findOne("alias", " `name_lowered` = ? AND `chan_lowered` = ? ",

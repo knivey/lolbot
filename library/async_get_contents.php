@@ -5,7 +5,7 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
 class async_get_exception extends Exception {
-    public function getMessageStripped($maxLen = 200) {
+    public function getMessageStripped($maxLen = 200): string {
         $out = $this->getMessage();
         $out = str_replace(["\n", "\r"], " ", $out);
         $out = html_entity_decode($out,  ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -14,7 +14,7 @@ class async_get_exception extends Exception {
         return substr($out, 0, 200);
     }
 
-    public function getIRCMsg() {
+    public function getIRCMsg(): string {
         return "Error ({$this->getCode()}): {$this->getMessageStripped()}";
     }
 }
@@ -23,7 +23,7 @@ class async_get_exception extends Exception {
  * @param $url
  * @param string[] $headers
  * @throws async_get_exception
- * @return \Amp\Promise
+ * @return \Amp\Promise<string>
  */
 function async_get_contents(string $url, array $headers = []): \Amp\Promise {
     return \Amp\call(function () use ($url, $headers) {

@@ -32,6 +32,9 @@ if(isset($argv[1])) {
 }
 
 $config = Yaml::parseFile($configFile);
+if(!is_array($config))
+    die("bad config file");
+
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';

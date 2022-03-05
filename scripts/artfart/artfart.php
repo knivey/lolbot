@@ -8,7 +8,7 @@ use knivey\cmdr\attributes\Options;
 #[Cmd("artfart")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb")]
-function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Request $req)
+function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Request $req): \Generator
 {
     $url = "http://www.asciiartfarts.com/random.cgi";
     try {

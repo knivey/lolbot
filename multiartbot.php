@@ -31,6 +31,8 @@ if(isset($argv[1])) {
 }
 
 $config = Yaml::parseFile($configFile);
+if(!is_array($config))
+    die("bad config file");
 
 // Workaround with CIArray to have php pass reference
 class Playing {
