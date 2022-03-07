@@ -31,7 +31,10 @@
         "symfony/finder": "^5.3",
         "decidedly/decidedly-markov": "^1.1",
         "itwmw/color-difference": "^1.2",
-        "knivey/reddit": "^0.1.0"
+        "knivey/reddit": "^0.1.0",
+        "doctrine/migrations": "^3.4",
+        "doctrine/orm": "^2.11",
+        "symfony/cache": "^6.0"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",
@@ -44,7 +47,8 @@
     "autoload": {
         "psr-4": {
             "scripts\\": "scripts",
-            "Irc\\": "library/Irc"
+            "Irc\\": "library/Irc",
+            "lolbot\\entities\\": "entities"
         },
         "files": [
             "library/Irc/Consts.php"
@@ -52,7 +56,6 @@
     },
     "require-dev": {
         "ramsey/composer-repl": "^1.2",
-
         "phpstan/phpstan": "^1.8",
         "amphp/file": "^2.0",
         "amphp/process": "^1.1"
