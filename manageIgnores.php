@@ -1,11 +1,12 @@
 <?php
 require_once 'bootstrap.php';
+/**
+ * @psalm-suppress InvalidGlobal
+ */
+global $entityManager;
 
 use lolbot\entities\Ignore;
 
-/**
- * @var Doctrine\ORM\EntityManager $entityManager
- */
 
 $args = $argv;
 
@@ -44,11 +45,22 @@ switch (array_shift($args)) {
         die();
     case 'update':
         die("not implemented\n");
+    case 'test':
+        /**
+         * @var \lolbot\entities\IgnoreRepository $repo
+         */
+        $repo = $entityManager->getRepository(Ignore::class);
+        $ignores = $repo->findByHost(array_shift($args));
+        foreach ($ignores as $ignore) {
+            echo $ignore . "\n";
+        }
+        die();
     default:
         die(implode("\n", [
             "Usage:",
             "    add <hostmask> [reason]",
             "    delete <id>",
-            "    list"
+            "    list",
+            "    test <host>"
         ])."\n");
 }

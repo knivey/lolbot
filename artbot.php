@@ -6,6 +6,7 @@
 require_once __DIR__ . '/vendor/autoload.php';
 
 use JetBrains\PhpStorm\Pure;
+use lolbot\entities\Ignore;
 use Symfony\Component\Yaml\Yaml;
 
 use Amp\ByteStream\ResourceOutputStream;
@@ -127,9 +128,9 @@ Loop::run(function () {
     });
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $config, $router, $reqArtOpts;
+        global $config, $router, $reqArtOpts, $entityManager;
 
-        if(isIgnored($args->fullhost))
+        if(count($entityManager->getRepository(Ignore::class)->findByHost($args->fullhost)) > 0)
             return;
 
         tryRec($bot, $args->from, $args->channel, $args->text);
@@ -234,47 +235,4 @@ function pumpToChan(string $chan, array $data, $speed = null) {
             unset($playing[$chan]);
         }
     });
-}
-
-
-//TODO move this to irctools package
-#[Pure] function hostmaskToRegex($mask) {
-    $out = '';
-    $i = 0;
-    while($i < strlen($mask)) {
-        $nextc = strcspn($mask, '*?', $i);
-        $out .= preg_quote(substr($mask, $i, $nextc), '@');
-        if($nextc + $i == strlen($mask))
-            break;
-        if($mask[$nextc + $i] == '?')
-            $out .= '.';
-        if($mask[$nextc + $i] == '*')
-            $out .= '.*';
-        $i += $nextc + 1;
-    }
-    return "@{$out}@i";
-}
-
-function getIgnores($file = "ignores.txt") {
-    static $ignores;
-    static $mtime;
-    if(!file_exists($file))
-        return [];
-    // Retarded that i had to figure out to do this otherwise php caches mtime..
-    clearstatcache();
-    $newmtime = filemtime($file);
-    if($newmtime <= ($mtime ?? 0))
-        return ($ignores ?? []);
-    $mtime = $newmtime;
-    return $ignores = file($file, FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
-}
-
-function isIgnored($fullhost) {
-    $ignores = getIgnores();
-    foreach ($ignores as $i) {
-        if (preg_match(hostmaskToRegex($i), $fullhost)) {
-            return true;
-        }
-    }
-    return false;
 }

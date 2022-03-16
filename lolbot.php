@@ -1,6 +1,7 @@
 #!/usr/bin/env php
 <?php
-require_once __DIR__ . '/vendor/autoload.php';
+require_once 'bootstrap.php';
+dieIfPendingMigration();
 
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Log\ConsoleFormatter;
@@ -12,6 +13,7 @@ use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
 use Crell\Tukio\OrderedListenerProvider;
 
+use lolbot\entities\Ignore;
 
 $router = new Cmdr();
 
@@ -191,9 +193,9 @@ try {
 
         $bot->on('chat', function ($args, \Irc\Client $bot) {
             try {
-                global $config, $router, $chans;
+                global $config, $router, $chans, $entityManager;
 
-                if(isIgnored($args->fullhost))
+                if(count($entityManager->getRepository(Ignore::class)->findByHost($args->fullhost)) > 0)
                     return;
 
                 if ($config['linktitles'] ?? false) {
