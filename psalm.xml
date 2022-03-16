@@ -28,4 +28,7 @@
         <ForbiddenCode errorLevel="suppress">
         </ForbiddenCode>
     </issueHandlers>
+    <globals>
+        <var name="entityManager" type="Doctrine\ORM\EntityManager" />
+    </globals>
 </psalm>

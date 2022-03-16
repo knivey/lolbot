@@ -8,6 +8,7 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+use lolbot\entities\Ignore;
 use Symfony\Component\Yaml\Yaml;
 
 use Amp\ByteStream\ResourceOutputStream;
@@ -77,7 +78,10 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 
 function onchat($args, \Irc\Client $bot)
 {
-    global $config, $router, $reqArtOpts;
+    global $config, $router, $reqArtOpts, $entityManager;
+
+    if(count($entityManager->getRepository(Ignore::class)->findByHost($args->fullhost)) > 0)
+        return;
 
     tryRec($bot, $args->from, $args->channel, $args->text);
     if (isset($config['trigger'])) {

@@ -1,6 +1,7 @@
 #!/usr/bin/env php
 <?php
-require_once __DIR__ . '/vendor/autoload.php';
+require_once 'bootstrap.php';
+dieIfPendingMigration();
 
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Log\ConsoleFormatter;
@@ -12,6 +13,7 @@ use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
 use Crell\Tukio\OrderedListenerProvider;
 
+use lolbot\entities\Ignore;
 
 $router = new Cmdr();
 
@@ -165,9 +167,9 @@ try {
 
         $bot->on('chat', function ($args, \Irc\Client $bot) {
             try {
-                global $config, $router;
+                global $config, $router, $entityManager;
 
-                if(isIgnored($args->fullhost))
+                if(count($entityManager->getRepository(Ignore::class)->findByHost($args->fullhost)) > 0)
                     return;
 
                 if ($config['linktitles'] ?? false) {
@@ -348,47 +350,4 @@ function getUserChanAccess($nick, $chan, $bot): \Amp\Promise {
             $bot->off('notice', null, $idx);
         return $auth;
     });
-}
-
-//TODO move this to irctools package
-function hostmaskToRegex($mask) {
-    $out = '';
-    $i = 0;
-    while($i < strlen($mask)) {
-        $nextc = strcspn($mask, '*?', $i);
-        $out .= preg_quote(substr($mask, $i, $nextc), '@');
-        if($nextc + $i == strlen($mask))
-            break;
-        if($mask[$nextc + $i] == '?')
-            $out .= '.';
-        if($mask[$nextc + $i] == '*')
-            $out .= '.*';
-        $i += $nextc + 1;
-    }
-    return "@{$out}@i";
-}
-
-//TODO replace this with something that doesnt check mtime, probably use rpc to manage admin things off irc
-function getIgnores($file = "ignores.txt") {
-    static $ignores;
-    static $mtime;
-    if(!file_exists($file))
-        return [];
-    // Retarded that i had to figure out to do this otherwise php caches mtime..
-    clearstatcache();
-    $newmtime = filemtime($file);
-    if($newmtime <= ($mtime ?? 0))
-        return ($ignores ?? []);
-    $mtime = $newmtime;
-    return $ignores = file($file, FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
-}
-
-function isIgnored($fullhost) {
-    $ignores = getIgnores();
-    foreach ($ignores as $i) {
-        if (preg_match(hostmaskToRegex($i), $fullhost)) {
-            return true;
-        }
-    }
-    return false;
 }

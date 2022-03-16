@@ -3,11 +3,12 @@ namespace lolbot\entities;
 
 use knivey\tools;
 use Doctrine\ORM\Mapping as ORM;
+use lolbot\entities\IgnoreRepository;
 
 /**
  * @psalm-suppress PropertyNotSetInConstructor
  */
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: IgnoreRepository::class)]
 class Ignore
 {
     #[ORM\Id]
@@ -25,7 +26,7 @@ class Ignore
     protected \DateTime $created;
 
     public function matches(string $nickHost): bool {
-        return (bool)preg_match(tools\globToRegex($this->hostmask), $nickHost);
+        return (bool)preg_match(tools\globToRegex($this->hostmask) . 'i', $nickHost);
     }
 
     public function setReason(?string $reason): void {
