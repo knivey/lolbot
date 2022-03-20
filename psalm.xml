@@ -11,11 +11,12 @@
         <directory name="artbot_scripts" />
         <directory name="library" />
         <directory name="scripts" />
+        <directory name="entities" />
+        <directory name="cli_cmds" />
         <file name="artbot.php"/>
         <file name="artbot_rest_server.php"/>
         <file name="multiartbot.php"/>
         <file name="lolbot.php"/>
-        <file name="manageIgnores.php"/>
         <file name="bootstrap.php"/>
 
 
