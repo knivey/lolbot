@@ -19,7 +19,9 @@ $markov->parseText(file_get_contents($config['markov_quotefile']));
 #[Cmd("mquote")]
 function mquote($args, \Irc\Client $bot, cmdr\Request $req)
 {
-    global $markov;
+    global $markov, $config;
+    if(!isset($config['markov_quotefile']) || !is_file($config['markov_quotefile']))
+        return;
     $text = "";
     $tries = 0;
     while($text == "" && $tries++ < 100) {
