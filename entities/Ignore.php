@@ -1,6 +1,7 @@
 <?php
 namespace lolbot\entities;
 
+use Doctrine\Common\Collections\Collection;
 use knivey\tools;
 use Doctrine\ORM\Mapping as ORM;
 use lolbot\entities\IgnoreRepository;
@@ -24,6 +25,15 @@ class Ignore
 
     #[ORM\Column]
     protected \DateTime $created;
+
+    #[ORM\Column]
+    private bool $allBots = false;
+
+    #[ORM\Column]
+    private bool $allNetworks = false;
+
+    #[ORM\ManyToMany(targetEntity: Bot::class, inversedBy: 'ignores')]
+    private Collection $onlyBots;
 
     public function matches(string $nickHost): bool {
         return (bool)preg_match(tools\globToRegex($this->hostmask) . 'i', $nickHost);

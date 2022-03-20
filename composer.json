@@ -30,7 +30,8 @@
         "decidedly/decidedly-markov": "^1.1",
         "doctrine/migrations": "^3.4",
         "doctrine/orm": "^2.11",
-        "symfony/cache": "^6.0"
+        "symfony/cache": "^6.0",
+        "ulrichsg/getopt-php": "^4.0"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",
@@ -44,7 +45,8 @@
         "psr-4": {
             "scripts\\": "scripts",
             "Irc\\": "library/Irc",
-            "lolbot\\entities\\": "entities"
+            "lolbot\\entities\\": "entities",
+            "lolbot\\cli_cmds\\": "cli_cmds"
         },
         "files": [
             "library/Irc/Consts.php"
