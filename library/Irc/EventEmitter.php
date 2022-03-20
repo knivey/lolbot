@@ -36,11 +36,11 @@ class EventEmitter
 
     /**
      * @param string $event
-     * @param callable(object $event, EventEmitter $eventEmitter) $callback
+     * @param ?callable(object $event, EventEmitter $eventEmitter) $callback
      * @param int|null $idx
      * @return $this
      */
-    public function off(string $event, callable $callback, ?int $idx = null): static
+    public function off(string $event, ?callable $callback, ?int $idx = null): static
     {
         if (!isset($this->eventCallbacks[$event]) || empty($this->eventCallbacks[$event]) )
             return $this;
