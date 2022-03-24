@@ -155,6 +155,7 @@ function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     $lines = explode("\n", $quote['data']);
+    $lines = array_map(fn ($it) => "  $it", $lines);
     array_unshift($lines, $header);
     pumpToChan($args->chan, $lines);
 }
