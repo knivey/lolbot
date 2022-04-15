@@ -101,7 +101,7 @@ function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $title = str_pad($title, $pad, " ", STR_PAD_LEFT);
 
     $banner = "
-https://www.youtube.com/watch?v={$v->id->videoId}                               https://twitch.tv/hughbord
+https://www.youtube.com/watch?v={$v->id->videoId}                               https://twitch.tv/birdnestshow
 $title
       😁 😆 😅 😂 🤣 ☺️ 😊 😇 🙂 🙃 😉 😌 😍 ASCIIBIRD DEVELOPMENT STREAM 😀 😃 😄 😁 😆 😅 😂 🤣 ☺️ 😊 😇 🙂 🙃
                    WATCH THE WONDERFUL BIRD AND ASCIIBIRD NEARING COMPLETION LIVE NOW
@@ -117,7 +117,7 @@ $title
            [STREAMLABS] http://streamlabs.jewbird.live [PATREON] http://patreon.jewbird.live
      [YT] http://yt.jewbird.live [TWITCH] http://twitch.jewbird.live [GITHUB] http://git.jewbird.live
 😀 😃 😄 😁 😆 😅 😂 🤣 ☺️ 😊 😇 🙂 🙃 😉 😌 😍 ASCIIBIRD DEVELOPMENT STREAM 😀 😃 😄 😁 😆 😅 😂 🤣 ☺️ 😊 😇 🙂 🙃
-https://www.youtube.com/watch?v={$v->id->videoId}                                https://twitch.tv/hughbord
+https://www.youtube.com/watch?v={$v->id->videoId}                                https://twitch.tv/birdnestshow
 $title
  NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE NOW LIVE";
     $banner = trim($banner);
