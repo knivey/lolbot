@@ -119,6 +119,30 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     unset($quote_recordings[$nick]);
 }
 
+#[Cmd("searchquote", "searchquotes", "quotesearch", "querch", "findquote", "quotefind")]
+#[Syntax("<query>...")]
+function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    R::selectDatabase('quotes');
+    $query = "%" . str_replace("*", "%", $req->args['query']) . "%";
+    $quotes = R::find('quote', 'data LIKE ?', [$query]);
+    if(empty($quotes)) {
+        $bot->pm($args->chan, "Nothing found");
+        return;
+    }
+    $cnt = count($quotes);
+    if($cnt == 1) {
+        showQuote($bot, $args->chan, array_pop($quotes));
+        return;
+    }
+    $ids = array_map(fn($it) => $it->id, $quotes);
+    $ids = array_slice($ids, 0, 50);
+    $ids = implode(', ', $ids);
+    if($cnt > 50)
+        $bot->pm($args->chan, "Found ($cnt) quotes limiting to 50: $ids");
+    else
+        $bot->pm($args->chan, "Found ($cnt) quotes: $ids");
+}
+
 function initQuotes($bot) {
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $quote_recordings;
@@ -148,16 +172,20 @@ function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $quote = R::findFromSQL("quote", "SELECT * FROM quote ORDER BY RANDOM() LIMIT 1");
         $quote = array_pop($quote);
     }
+    showQuote($bot, $args->chan, $quote);
+}
+
+function showQuote($bot, $chan, $quote) {
     $creator = $quote->creator;
     $header = "\2Quote {$quote['id']} recorded by {$creator['nick']} ({$creator['host']}) on {$quote['date']} in {$quote['chan']}";
     if(!is_string($quote['data'])) {
-        $bot->pm($args->chan, "whoops something wrong with quote..");
+        $bot->pm($chan, "whoops something wrong with quote..");
         return;
     }
     $lines = explode("\n", $quote['data']);
     $lines = array_map(fn ($it) => "  $it", $lines);
     array_unshift($lines, $header);
-    pumpToChan($args->chan, $lines);
+    pumpToChan($chan, $lines);
 }
 
 /*
