@@ -604,17 +604,20 @@ class Client extends EventEmitter
 
     public function pm(string $nick, string $message): static
     {
+        $message = str_replace(["\r", "\n"], '', $message);
         $this->send(CMD_PRIVMSG, $nick, $message);
         return $this;
     }
 
     public function msg(string $target, string $message): static
     {
+        $message = str_replace(["\r", "\n"], '', $message);
         return $this->pm($target, $message);
     }
 
     public function notice(string $nick, string $message): static
     {
+        $message = str_replace(["\r", "\n"], '', $message);
         $this->send(CMD_NOTICE, $nick, $message);
         return $this;
     }
