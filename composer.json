@@ -25,7 +25,6 @@
         "amphp/http-client-cookies": "^1.1",
         "league/uri": "^6.5",
         "crell/tukio": "^1.3",
-        "james-heinrich/getid3": "^1.9",
         "symfony/finder": "^5.3",
         "decidedly/decidedly-markov": "^1.1"
     },

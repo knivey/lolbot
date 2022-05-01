@@ -131,16 +131,55 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
             if(preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
                 $size = $response->getHeader("content-length");
                 $size = \knivey\tools\convert($size);
-                $getID3 = new \getID3();
+
+                if(!`which mediainfo`) {
+                    echo "mediainfo not found, only giving basic url info\n";
+                    $out = "[ $m[1] {$response->getHeader("content-type")} ]";
+                    $bot->pm($chan, "  $out");
+                    logUrl($bot, $nick, $chan, $text, $out);
+                    continue;
+                }
                 $fn = "tmp_" . bin2hex(random_bytes(8)) . ".{$m[1]}";
                 file_put_contents($fn, $body);
-                $info = $getID3->analyze($fn);
+                $mi = simplexml_load_string(`mediainfo $fn --Output=XML`);
                 unlink($fn);
-                if(isset($info['error'])) {
-                    echo "linktitles video getID3 got error\n";
-                    var_dump($info['error']);
+
+                if(!isset($mi->media) || !isset($mi->media->track)) {
+                    echo "linktitles video error\n";
+                    var_dump($mi);
                 }
-                $out = "[ $m[1] video ({$info['video']['dataformat']}) $size {$info['video']['resolution_x']}x{$info['video']['resolution_y']} @ {$info['video']['frame_rate']}fps duration: {$info['playtime_string']} ]";
+                $vt = null;
+                $at = null;
+                foreach($mi->media->track as $track) {
+                    if($track['type'] == 'Video')
+                        $vt = $track;
+                    if($track['type'] == 'Audio')
+                        $at = $track;
+                }
+                $videoFormat = $vt->Format;
+                if(isset($vt->FrameRate))
+                    $frameRate = round((float)$vt->FrameRate) . 'fps';
+                else
+                    $frameRate = $vt->FrameRate_Mode ?? '?';
+
+
+                $resX = $vt->Width ?? '?';
+                $resY = $vt->Height ?? '?';
+
+                if(isset($vt->Duration)) {
+                    $dur = Duration_toString(round((float)$vt->Duration)) . ' long';
+                } else {
+                    $dur = 'unknown duration';
+                }
+
+                if($at == null) {
+                    $audio = "No audio track";
+                } else {
+                    $audio = "{$at->Format} audio";
+                }
+
+
+                $out = "[ $dur $m[1] video ({$videoFormat}) $size {$resX}x{$resY} @ {$frameRate}, $audio ]";
                 $bot->pm($chan, "  $out");
                 logUrl($bot, $nick, $chan, $text, $out);
                 continue;
