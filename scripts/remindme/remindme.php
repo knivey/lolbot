@@ -15,10 +15,25 @@ const REMINDERDB = "reminderdb";
 $dbfile = $config[REMINDERDB] ?? "reminder.db";
 R::addDatabase(REMINDERDB, "sqlite:{$dbfile}");
 
+$cmdLimit = [];
+$limitWarns = [];
+
 #[Cmd("in", "remindme")]
 #[Syntax("<time> <msg>...")]
 function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     \Amp\asyncCall(function () use ($args, $bot, $req) {
+        global $cmdLimit, $limitWarns;
+        $host = $args->host;
+        if(isset($cmdLimit[$host]) && $cmdLimit[$host] > time()) {
+            if(!isset($limitWarns[$host]) || $limitWarns[$host] < time()-2) {
+                $bot->pm($args->chan, "You're going too fast, wait awhile");
+                $limitWarns[$host] = time();
+            }
+            return;
+        }
+        $cmdLimit[$host] = time()+2;
+        unset($limitWarns[$host]);
+
         $in = string2Seconds($req->args['time']);
         if(is_string($in)) {
             $bot->pm($args->chan, "Error: $in, Give me a proper duration of at least 15 seconds with no spaces using yMwdhms (Ex: 1h10m15s)");
