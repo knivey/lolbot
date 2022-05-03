@@ -54,24 +54,30 @@ $Duration_periods = array(
 
 /**
  * Takes a string duration like srvx ex(1h30m) and turns it into int seconds
- * @author knivey
  * @param string $duration
+ * @return int|string
+ * @author knivey
  */
-function string2Seconds($duration) {
+function string2Seconds(string $duration): int|string {
 	global $Duration_periods;
     $string = trim($duration);
     $string = str_split($string);
     $num = '';
     $total = 0;
     foreach ($string as $chunk) {
-        if (is_numeric($chunk)) { //its a number!
+        if (is_numeric($chunk)) {
             $num .= $chunk;
         } else {
-            $times = 1;
             if(array_key_exists($chunk, $Duration_periods)) {
             	$total += $num * $Duration_periods[$chunk];
             } else {
             	return "$chunk is an unknown time identifier";
+            }
+            if($total > PHP_INT_MAX) {
+                return "$duration is too great";
+            }
+            if(!is_int($total)) {
+                return "$duration not understood";
             }
             $num = 0;
         }

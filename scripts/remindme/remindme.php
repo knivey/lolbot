@@ -28,6 +28,10 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $bot->pm($args->chan, "Give me a proper duration of at least 15 seconds with no spaces (Ex: 1h10m15s)");
             return;
         }
+        if($in > string2Seconds("69y")) {
+            $bot->pm($args->chan, "Yeah sure I'll totally remind you in " . Duration_toString($in) . " ;-)");
+            return;
+        }
 
         R::selectDatabase(REMINDERDB);
         $r = R::dispense("reminder");
