@@ -144,15 +144,15 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         if(!isset($xml->CommandResponse))
             throw new \Exception("API didnt include response");
         if($xml->CommandResponse->DomainCheckResult["Available"] == "true") {
-            $bot->pm($args->chan, "\2DomainCheck:\2 That domain is available for register!");
+            $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) That domain is available for register!");
         } else {
-            $bot->pm($args->chan, "\2DomainCheck:\2 That domain is already taken :(");
+            $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) That domain is already taken :(");
         }
     } catch (\async_get_exception $error) {
-        $bot->pm($args->chan, "\2DomainCheck:\2 Connection error :( try again later");
+        $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) Connection error :( try again later");
         echo $error->getMessage();
     } catch (\Exception $error) {
-        $bot->pm($args->chan, "\2DomainCheck:\2 i unno some kinda error happen :(");
+        $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) i unno some kinda error happen :(");
         echo $error->getMessage();
     }
 }
