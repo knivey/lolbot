@@ -511,6 +511,77 @@ function searchIrcwatch($file, $noglob = false) {
     });
 }
 
+$trashLimit = [];
+$trashLimitWarns = [];
+#[Cmd("trash")]
+#[Syntax("<file>")]
+function trash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config, $trashLimit, $trashLimitWarns;
+    $host = $args->host;
+    if(isset($trashLimit[$host]) && $trashLimit[$host] > time()) {
+        if(!isset($trashLimitWarns[$host]) || $trashLimitWarns[$host] < time()-2) {
+            $bot->pm($args->chan, "You're trashing too fast, wait awhile");
+            $trashLimitWarns[$host] = time();
+        }
+        return;
+    }
+    $trashLimit[$host] = time()+2;
+    unset($trashLimitWarns[$host]);
+
+    //Some networks can easily fake hosts to bypass host based auth
+    if(!($config['trustedNetwork'] ?? false)) {
+        $bot->pm($args->chan, "This network isn't trusted for authentication");
+        return;
+    }
+    if(!isset($config['trashDir'])) {
+        $bot->pm($args->chan, "Trash not configured");
+        return;
+    }
+    $allowed = file("artadmins.txt", FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES);
+    $pass = false;
+    foreach ($allowed as $mask) {
+        if(preg_match(\knivey\tools\globToRegex($mask).'i', $args->fullhost))
+            $pass = true;
+    }
+    if(!$pass) {
+        $bot->pm($args->chan, "Your host isn't authorized");
+        return;
+    }
+    $file = $req->args['file'];
+    if(!str_starts_with($file, 'h4x/')) {
+        $bot->pm($args->chan, "You can only trash files in h4x/ give the full art path/name (no .txt)");
+        return;
+    }
+    $fullpath = realpath($config['artdir']) . "/{$file}.txt";
+    if(!is_file($fullpath)) {
+        $bot->pm($args->chan, "That doesnt seem to be a file..");
+        return;
+    }
+    $mustBeIn = realpath($config['artdir'] . '/h4x') . '/';
+    if(!str_starts_with(realpath($fullpath), $mustBeIn)) {
+        $bot->pm($args->chan, "You can only trash files in h4x/ no dirty tricks!!");
+        return;
+    }
+    $end = substr(realpath($fullpath), strlen($mustBeIn));
+    $end = dirname($end);
+
+    $trashDir = $config['trashDir'];
+    if(file_exists($trashDir) && !is_dir($trashDir)) {
+        $bot->pm($args->chan, "Problem with trash directory config");
+        return;
+    }
+    if(!file_exists($trashDir))
+        mkdir($trashDir, 0777, true);
+
+    $trashTo = "{$trashDir}/$end";
+    @mkdir($trashTo, 0777, true);
+    $to = "{$trashTo}/" . basename($fullpath) . tools\microtime_float();
+    rename($fullpath, $to);
+    $log = "{$args->fullhost} {$file}  $fullpath => $to\n";
+    file_put_contents("$trashDir/log", $log, FILE_APPEND|LOCK_EX);
+    $bot->pm($args->chan, "Art file moved to trash");
+}
+
 /**
  * Gets Finder for art dir, excluding p2u
  */
