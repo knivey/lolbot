@@ -260,6 +260,10 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     foreach($tree as $ent) {
+        if(strtolower(substr($ent, strlen($config['artdir']))) == strtolower("h4x/{$nick}/$file.txt")) {
+            $bot->pm($chan, "\x0300,04\x02You can no longer record over arts due to abuse >:(\x02\x03 you can ask slime or jewbird to delete the file");
+            return;
+        }
         if($file == strtolower(basename($ent, '.txt'))) {
             $exists = substr($ent, strlen($config['artdir']));
             break;
