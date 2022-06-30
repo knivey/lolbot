@@ -86,7 +86,7 @@ require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
 require_once 'scripts/alias/alias.php';
 require_once 'scripts/markov_quotes/markov_quotes.php';
-
+require_once 'scripts/insult/insult.php';
 require_once "scripts/JRH/jrh.php";
 
 require_once 'scripts/linktitles/linktitles.php';
