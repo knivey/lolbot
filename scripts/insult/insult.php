@@ -434,9 +434,7 @@ function insult($args, \Irc\Client $bot, $req)
     shuffle($insults);
     $string = "";
     for($i = 0; $i < rand(5, 8); $i++) {
-        $rd = array_rand($insults);
-        $string .= $insults[$rd] . " + ";
-        unset($insults[$rd]);
+        $string .= $insults[$i] . " + ";
     }
 
     $msg = rtrim($string, " + ");
