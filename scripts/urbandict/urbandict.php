@@ -8,7 +8,7 @@ use simplehtmldom\HtmlDocument;
 
 //TODO --amt for ud
 
-#[Cmd("ud")]
+#[Cmd("ud", "urban", "urbandict")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
 function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
