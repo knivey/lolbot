@@ -429,6 +429,7 @@ function insult($args, \Irc\Client $bot, $req)
         "u tried to run apt on arch",
         "u blame isis for yr relationship problems",
         "u confessed to a priest lmao",
+        "u smell like freshly cut grass",
     ];
 
     shuffle($insults);
