@@ -25,6 +25,8 @@ use Amp\Http\Status;
 use function Amp\call;
 
 
+define("IRC_WATCH", "https://internetrelaychat.github.io");
+
 $recordings = [];
 
 global $restRouter;
@@ -429,8 +431,8 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
         }
         try { // TODO one art is all caps and request is case sensitive, so get the correct name from ascii-index.js
             $client = HttpClientBuilder::buildDefault();
-            $url = "https://irc.watch/ascii/$file/";
-            $req = new Request("https://irc.watch/ascii/txt/$file.txt");
+            $url = IRC_WATCH . "/ascii/$file/";
+            $req = new Request(IRC_WATCH . "/ascii/txt/$file.txt");
             /** @var Response $response */
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
@@ -459,7 +461,7 @@ function searchIrcwatch($file, $noglob = false) {
     return \Amp\call(function () use ($file, $noglob) {
         try {
             $client = HttpClientBuilder::buildDefault();
-            $req = new Request("https://irc.watch/js/ascii-index.js");
+            $req = new Request(IRC_WATCH . "/js/ascii-index.js");
             /** @var Response $response */
             $response = yield $client->request($req);
             $body = yield $response->getBody()->buffer();
