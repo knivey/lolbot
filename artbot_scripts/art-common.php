@@ -899,7 +899,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
              *
              * TODO since we are limiting to 16colo.rs just allow any url to the file and auto get width option etc
              */
-            if(!preg_match("@https?://16colo\.rs/.+\.(?:ans|asc)@i", $url)) {
+            if(!preg_match("@https?://16colo\.rs/.+\.(?:ans|asc|cia)@i", $url)) {
                 $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ urls (ans|asc) (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
                 return;
             }
@@ -907,8 +907,9 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             // https://16colo.rs/pack/croyale01/raw/sp-coc.asc
             // https://16colo.rs/pack/ane-0696/DA-MASK.ANS
             // https://16colo.rs/pack/ane-0696/data/DA-MASK.ANS
-            if(!preg_match("@https?://16colo\.rs/pack/[^/]+/raw/.+\.(?:ans|asc)@i", $url)) {
-                if(!preg_match("@https?://16colo\.rs/pack/([^/]+)/(.+\.(?:ans|asc))@i", $url, $m)) {
+            // https://16colo.rs/pack/ciapak12/raw/DA-NXS.CIA
+            if(!preg_match("@https?://16colo\.rs/pack/[^/]+/raw/.+\.(?:ans|asc|cia)@i", $url)) {
+                if(!preg_match("@https?://16colo\.rs/pack/([^/]+)/(.+\.(?:ans|asc|cia))@i", $url, $m)) {
                     $bot->pm($chan, "\2a2m Error:\2 url seems wrong");
                     return;
                 }
