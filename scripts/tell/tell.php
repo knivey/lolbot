@@ -51,7 +51,7 @@ if ($multiNet) {
     }
 }
 
-#[Cmd("tell", "ask", "inform")]
+#[Cmd("tell", "ask", "inform", "pester")]
 #[Syntax("<nick> <msg>...")]
 function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $disabled, $config, $multiNet;
@@ -148,6 +148,7 @@ function initTell($bot) {
             if(strtolower($net) != strtolower($msg->network))
                 $sendMsg .= "on {$msg->network} ";
             $sendMsg .= " <{$msg->from}> {$msg->msg}";
+            //TODO if we can't send to channel (+m or +b), PM them
             if(++$cnt > $max) {
                 $bot->pm($msg->to, $sendMsg);
             } else {
