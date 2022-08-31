@@ -210,7 +210,10 @@ function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         return;
     }
     $code = "#include <bits/stdc++.h>
+    #define FMT_HEADER_ONLY
     #include <fmt/core.h>
+    #include <fmt/format.h>
+    #include <fmt/format-inl.h>
     
 using namespace std;
 {$req->args['code']}";
