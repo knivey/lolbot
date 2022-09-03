@@ -646,7 +646,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
 
-        preg_replace(tools\globToRegex($file, '/', false) . 'i', "\x0306\$0\x0F", $out);
+        $out = preg_replace(tools\globToRegex($file, '/', false) . 'i', "\x0306\$0\x0F", $out);
 
         if($cnt = count($out) > $max) {
             $out = array_slice($out, 0, $max);
