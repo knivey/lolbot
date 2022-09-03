@@ -852,8 +852,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
     else
         $pmsg = "Playing from ircwatch";
     if($searched) {
-        //TODO: use regex to know what to replace, for keeping case and for ?* in middle of word
-        $pmsg = str_ireplace($searched, "\x0306$searched\x0F", $pmsg);
+        $pmsg = preg_replace(tools\globToRegex($searched, '/', false) . 'i', "\x0306\$0\x0F", $pmsg);
     }
     array_unshift($pump, $pmsg);
     pumpToChan($chan, $pump, speed: $speed);
