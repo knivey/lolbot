@@ -166,12 +166,6 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
 
-        $type = explode("/", $response->getHeader('content-type'));
-        if(!isset($type[0])) {
-            $bot->pm($args->chan, "content-type not provided");
-            return;
-        }
-
         $palette = [
             [255, 255, 255],
             [0, 0, 0],
