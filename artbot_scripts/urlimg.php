@@ -341,7 +341,18 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             }
 
             $img_string .= "\n";
-            $out[] = $img_string;
+        }
+
+        $out = [];
+        foreach(explode("\n", $img_string) as $line) {
+            if($line == '') {
+                continue;
+            }
+            $out[] = $line;
+            if($cnt++ > ($config['url_max'] ?? 200)) {
+                $out[] = "wow thats a pretty big jones, omitting ~" . count($body)-$cnt . "lines ;-(";
+                break;
+            }
         }
 
         pumpToChan($args->chan, $out);
