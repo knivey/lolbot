@@ -140,12 +140,12 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 #[Cmd("ascii")]
-#[Syntax("<img url> <custom text>")]
+#[Syntax("<img_url> [custom_text...]")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--width", "--edit", "--block")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
-    $url = $req->args[0] ?? '';
+    $url = $req->args[0];
     if(!filter_var($url, FILTER_VALIDATE_URL)) {
         $bot->pm($args->chan, "invalid url");
         return;
@@ -295,7 +295,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
         $size = $img->getImageGeometry();
 
-        $text = $req->args[1] ?? "";
+        $text = $req->args[1];
         if($text != "") {
             $text = strtoupper($text);
             $text = str_replace(' ', '', $text);
