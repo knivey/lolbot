@@ -286,9 +286,8 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             }
         }
 
-        $filename = '/tmp/' . uniqid();
-        file_put_contents($filename, $body);
-        $img = new Imagick($filename);
+        $img = new Imagick();
+        $img->readImageBlob($body);
         $size = $img->getImageGeometry();
         $factor = $width / $size['width'];
         $img->scaleImage(round($size['width'] * $factor), round($size['height'] * $factor / 2));
