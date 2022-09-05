@@ -166,7 +166,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
 
-        $palette = [
+        static $palette = [
             [255, 255, 255],
             [0, 0, 0],
             [0, 0, 127],
@@ -305,9 +305,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $pixel = $img->getImagePixelColor($col, $row);
                 $rgb = array_values($pixel->getColor());
 
-                // todo: use imagick for this - https://www.php.net/manual/en/imagickpixel.ispixelsimilar.php
-                $color_delta_e = new color_difference($rgb);
-                $match_index = $color_delta_e->getClosestMatch($palette);
+                $match_index = getClosestMatch($palette, $rgb);
 
                 if(isset($words)) {
                     if($match_index != $last_match_index) {
@@ -398,6 +396,22 @@ function render($lum) {
         default:
             return $chars[0];
     }
+}
+
+function getClosestMatch($pallet, $rgb) {
+    list($r1, $g1, $b1) = $rgb;
+    $matchIndex = 0;
+    $dist = 999999;
+    foreach ($pallet as $idx => $p) {
+        list($r2, $g2, $b2) = $p;
+        // don't really need sqrt here since its just comparing?
+        $d = ($r2-$r1)**2 + ($g2-$g1)**2 + ($b2-$b1)**2;
+        if ($d < $dist) {
+            $matchIndex = $idx;
+            $dist = $d;
+        }
+    }
+    return $matchIndex;
 }
 
 function add($x, $y) {
