@@ -140,7 +140,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 #[Cmd("ascii")]
-#[Syntax("<img_url> [custom_text...]")]
+#[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--width", "--edit", "--block")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
