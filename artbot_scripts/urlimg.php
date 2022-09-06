@@ -246,7 +246,7 @@ $paletteHSL = array_map(fn ($it) => $it->getHSL(), $palette);
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block", "--quality", "--hsl")]
+#[Options("--width", "--edit", "--block", "--quality", "--redmean")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0];
@@ -412,10 +412,10 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 if($req->args->getOpt("--quality")) {
                     $color_delta_e = new color_difference($rgb);
                     $match_index = $color_delta_e->getClosestMatch($palette);
-                } elseif ($req->args->getOpt("--hsl")) {
-                    $match_index = getClosestMatch2($pixel);
-                } else {
+                } elseif ($req->args->getOpt("--redmean")) {
                     $match_index = getClosestMatch($palette, $rgb);
+                } else {
+                    $match_index = getClosestMatch2($pixel);
                 }
 
                 if(isset($words)) {
