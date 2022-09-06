@@ -139,10 +139,114 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
 }
 
+static $palette = [
+    new \ImagickPixel('rgb(255, 255, 255)'),
+    new \ImagickPixel('rgb(0, 0, 0)'),
+    new \ImagickPixel('rgb(0, 0, 127)'),
+    new \ImagickPixel('rgb(0, 147, 0)'),
+    new \ImagickPixel('rgb(255, 0, 0)'),
+    new \ImagickPixel('rgb(127, 0, 0)'),
+    new \ImagickPixel('rgb(156, 0, 156)'),
+    new \ImagickPixel('rgb(252, 127, 0)'),
+    new \ImagickPixel('rgb(255, 255, 0)'),
+    new \ImagickPixel('rgb(0, 252, 0)'),
+    new \ImagickPixel('rgb(0, 147, 147)'),
+    new \ImagickPixel('rgb(0, 255, 255)'),
+    new \ImagickPixel('rgb(0, 0, 252)'),
+    new \ImagickPixel('rgb(255, 0, 255)'),
+    new \ImagickPixel('rgb(127, 127, 127)'),
+    new \ImagickPixel('rgb(210, 210, 210)'),
+    new \ImagickPixel('#470000'),
+    new \ImagickPixel('#472100'),
+    new \ImagickPixel('#474700'),
+    new \ImagickPixel('#324700'),
+    new \ImagickPixel('#004700'),
+    new \ImagickPixel('#00472c'),
+    new \ImagickPixel('#004747'),
+    new \ImagickPixel('#002747'),
+    new \ImagickPixel('#000047'),
+    new \ImagickPixel('#2e0047'),
+    new \ImagickPixel('#470047'),
+    new \ImagickPixel('#47002a'),
+    new \ImagickPixel('#740000'),
+    new \ImagickPixel('#743a00'),
+    new \ImagickPixel('#747400'),
+    new \ImagickPixel('#517400'),
+    new \ImagickPixel('#007400'),
+    new \ImagickPixel('#007449'),
+    new \ImagickPixel('#007474'),
+    new \ImagickPixel('#004074'),
+    new \ImagickPixel('#000074'),
+    new \ImagickPixel('#4b0074'),
+    new \ImagickPixel('#740074'),
+    new \ImagickPixel('#740045'),
+    new \ImagickPixel('#b50000'),
+    new \ImagickPixel('#b56300'),
+    new \ImagickPixel('#b5b500'),
+    new \ImagickPixel('#7db500'),
+    new \ImagickPixel('#00b500'),
+    new \ImagickPixel('#00b571'),
+    new \ImagickPixel('#00b5b5'),
+    new \ImagickPixel('#0063b5'),
+    new \ImagickPixel('#0000b5'),
+    new \ImagickPixel('#7500b5'),
+    new \ImagickPixel('#b500b5'),
+    new \ImagickPixel('#b5006b'),
+    new \ImagickPixel('#ff0000'),
+    new \ImagickPixel('#ff8c00'),
+    new \ImagickPixel('#ffff00'),
+    new \ImagickPixel('#b2ff00'),
+    new \ImagickPixel('#00ff00'),
+    new \ImagickPixel('#00ffa0'),
+    new \ImagickPixel('#00ffff'),
+    new \ImagickPixel('#008cff'),
+    new \ImagickPixel('#0000ff'),
+    new \ImagickPixel('#a500ff'),
+    new \ImagickPixel('#ff00ff'),
+    new \ImagickPixel('#ff0098'),
+    new \ImagickPixel('#ff5959'),
+    new \ImagickPixel('#ffb459'),
+    new \ImagickPixel('#ffff71'),
+    new \ImagickPixel('#cfff60'),
+    new \ImagickPixel('#6fff6f'),
+    new \ImagickPixel('#65ffc9'),
+    new \ImagickPixel('#6dffff'),
+    new \ImagickPixel('#59b4ff'),
+    new \ImagickPixel('#5959ff'),
+    new \ImagickPixel('#c459ff'),
+    new \ImagickPixel('#ff66ff'),
+    new \ImagickPixel('#ff59bc'),
+    new \ImagickPixel('#ff9c9c'),
+    new \ImagickPixel('#ffd39c'),
+    new \ImagickPixel('#ffff9c'),
+    new \ImagickPixel('#e2ff9c'),
+    new \ImagickPixel('#9cff9c'),
+    new \ImagickPixel('#9cffdb'),
+    new \ImagickPixel('#9cffff'),
+    new \ImagickPixel('#9cd3ff'),
+    new \ImagickPixel('#9c9cff'),
+    new \ImagickPixel('#dc9cff'),
+    new \ImagickPixel('#ff9cff'),
+    new \ImagickPixel('#ff94d3'),
+    new \ImagickPixel('#000000'),
+    new \ImagickPixel('#131313'),
+    new \ImagickPixel('#282828'),
+    new \ImagickPixel('#363636'),
+    new \ImagickPixel('#4d4d4d'),
+    new \ImagickPixel('#656565'),
+    new \ImagickPixel('#818181'),
+    new \ImagickPixel('#9f9f9f'),
+    new \ImagickPixel('#bcbcbc'),
+    new \ImagickPixel('#e2e2e2'),
+    new \ImagickPixel('#ffffff')
+];
+
+$paletteHSL = array_map(fn ($it) => $it->getHSL(), $palette);
+
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block")]
+#[Options("--width", "--edit", "--block", "--quality", "--hsl")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0];
@@ -305,7 +409,14 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $pixel = $img->getImagePixelColor($col, $row);
                 $rgb = array_values($pixel->getColor());
 
-                $match_index = getClosestMatch($palette, $rgb);
+                if($req->args->getOpt("--quality")) {
+                    $color_delta_e = new color_difference($rgb);
+                    $match_index = $color_delta_e->getClosestMatch($palette);
+                } elseif ($req->args->getOpt("--hsl")) {
+                    $match_index = getClosestMatch2($pixel);
+                } else {
+                    $match_index = getClosestMatch($palette, $rgb);
+                }
 
                 if(isset($words)) {
                     if($match_index != $last_match_index) {
@@ -335,13 +446,14 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         }
 
         $out = [];
+        $cnt = 0;
         foreach(explode("\n", $img_string) as $line) {
             if($line == '') {
                 continue;
             }
             $out[] = $line;
             if($cnt++ > ($config['url_max'] ?? 200)) {
-                $out[] = "wow thats a pretty big jones, omitting ~" . count($body)-$cnt . "lines ;-(";
+                $out[] = "wow thats a pretty big jones, omitting ~" . count(explode("\n", $img_string))-$cnt . "lines ;-(";
                 break;
             }
         }
@@ -398,14 +510,32 @@ function render($lum) {
     }
 }
 
-function getClosestMatch($pallet, $rgb) {
+function getClosestMatch($palette, $rgb) {
     list($r1, $g1, $b1) = $rgb;
     $matchIndex = 0;
-    $dist = 999999;
-    foreach ($pallet as $idx => $p) {
+    $dist = 9999999999999;
+    foreach ($palette as $idx => $p) {
         list($r2, $g2, $b2) = $p;
-        // don't really need sqrt here since its just comparing?
-        $d = ($r2-$r1)**2 + ($g2-$g1)**2 + ($b2-$b1)**2;
+        $rmean = ($r1+$r2)/2;
+        $d = (2+ $rmean/256)* ($r2-$r1)**2 + 4*(($g2-$g1)**2) + (2+(255-$rmean)/256)*(($b2-$b1)**2);
+
+        if ($d < $dist) {
+            $matchIndex = $idx;
+            $dist = $d;
+        }
+    }
+    return $matchIndex;
+}
+
+function getClosestMatch2(ImagickPixel $pixel) {
+    global $paletteHSL;
+    list($h1, $s1, $l1) = array_values($pixel->getHSL());
+    $matchIndex = 0;
+    $dist = 9999999999999;
+    foreach ($paletteHSL as $idx => $p) {
+        list($h2, $s2, $l2) = array_values($p);
+        $d = 4*($h2-$h1)**2 + 2*(($s2-$s1)**2) + (($l2-$l1)**2/16);
+
         if ($d < $dist) {
             $matchIndex = $idx;
             $dist = $d;
