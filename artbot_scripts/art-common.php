@@ -652,7 +652,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             }
         }
         if($req->args->getOpt("--details")) {
-            $out = array_map(fn($it) => implode(' ', $it), tools\multi_array_padding($out));
+            $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
         }
         foreach ($ircwatch as $f) {
             $out[] = "ircwatch/$f";
