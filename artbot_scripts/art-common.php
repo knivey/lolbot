@@ -648,7 +648,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                     $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
                 else
                     $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
-                $out[] = ["$lines lines",  substr($f->getRelativePathname(), 0, -4), $ago];
+                $out[] = ["$lines lines", $ago, substr($f->getRelativePathname(), 0, -4)];
             }
         }
         if($req->args->getOpt("--details")) {
