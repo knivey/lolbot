@@ -597,6 +597,10 @@ function getFinder() : \Symfony\Component\Finder\Finder {
 
 #[Cmd("search", "find")]
 #[Option(["--max"], "Max results to show")]
+#[Options("--details", "--dates")]
+//gotta update Cmdr
+//#[Option("--details", "show more details about results")]
+//#[Option("--dates", "show dates instead of diffs")]
 #[Syntax('<query>')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $nick = $args->nick;
@@ -619,7 +623,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
     }
-    \Amp\asyncCall(function () use ($bot, $chan, $file, $max) {
+    \Amp\asyncCall(function () use ($bot, $chan, $file, $max, $req) {
         global $playing;
         if (isset($playing[$chan])) {
             return;
@@ -635,7 +639,20 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $out = [];
         foreach($finder as $f) {
             /** @var $f Symfony\Component\Finder\SplFileInfo */
-            $out[] = substr($f->getRelativePathname(), 0, -4);
+            if(!$req->args->getOpt("--details")) {
+                $out[] = substr($f->getRelativePathname(), 0, -4);
+            } else {
+                $lines = mb_substr_count($f->getContents(), "\n");
+                $l = strlen($f->getRelativePathname()) -4;
+                if($req->args->getOpt("--dates"))
+                    $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
+                else
+                    $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+                $out[] = ["$lines lines",  substr($f->getRelativePathname(), 0, -4), $ago];
+            }
+        }
+        if($req->args->getOpt("--details")) {
+            $out = array_map(fn($it) => implode(' ', $it), tools\multi_array_padding($out));
         }
         foreach ($ircwatch as $f) {
             $out[] = "ircwatch/$f";
@@ -648,7 +665,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
         $out = preg_replace(tools\globToRegex($file, '/', false) . 'i', "\x0306\$0\x0F", $out);
 
-        if($cnt = count($out) > $max) {
+        if(($cnt = count($out)) > $max) {
             $out = array_slice($out, 0, $max);
             $out[] = "$cnt total matches, only showing $max";
         }
