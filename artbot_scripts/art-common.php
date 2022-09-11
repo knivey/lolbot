@@ -651,16 +651,16 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = ["$lines lines", $ago, substr($f->getRelativePathname(), 0, -4)];
             }
         }
+        if(empty($out) && empty($ircwatch)) {
+            $bot->pm($chan, "no matching art found");
+            return;
+        }
+
         if($req->args->getOpt("--details")) {
             $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
         }
         foreach ($ircwatch as $f) {
             $out[] = "ircwatch/$f";
-        }
-
-        if(empty($out)) {
-            $bot->pm($chan, "no matching art found");
-            return;
         }
 
         $out = preg_replace(tools\globToRegex($file, '/', false) . 'i', "\x0306\$0\x0F", $out);
