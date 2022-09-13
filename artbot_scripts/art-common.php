@@ -111,7 +111,7 @@ $restRouter->addRoute('POST', '/record/{key}', new CallableRequestHandler(functi
     }
     $file = "$dir/{$token->file}.txt";
     file_put_contents($file, implode("\n", $msg));
-    pumpToChan($token->chan, ["{$token->nick} has has posted a new art @{$token->file}"]);
+    pumpToChan($token->chan, ["{$token->nick} has posted a new art @{$token->file}"]);
     return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "SAVED!\n");
 }));
 
