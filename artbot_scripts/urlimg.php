@@ -246,7 +246,7 @@ static $palette = [
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block", "--quality", "--lab")]
+#[Options("--width", "--edit", "--block", "--quality", "--lab", "--render2")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0];
@@ -328,7 +328,11 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                     }
                 }
                 else {
-                    $str_char = render($pixel->getHSL()['luminosity']);
+                    if($req->args->getOpt('--render2')) {
+                        $str_char = render2($pixel->getHSL()['luminosity']);
+                    } else {
+                        $str_char = render($pixel->getHSL()['luminosity']);
+                    }
                     if($match_index != $last_match_index) {
                         $img_string .= "\x03{$match_index}{$str_char}";
                     }
@@ -410,6 +414,13 @@ function getClosestMatchEuclideanLab(Color $color) {
         }
     }
     return $matchIndex;
+}
+
+
+function render2($lum)
+{
+    $chars = ['.', '-', '+', '*', '=', '%', '$', '&', '#', '@'];
+    return $chars[round($lum * (count($chars) -1))];
 }
 
 function render($lum) {
