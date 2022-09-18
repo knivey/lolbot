@@ -7,6 +7,8 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use Itwmw\ColorDifference\Color;
+use Itwmw\ColorDifference\Lib\RGB;
 
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
@@ -140,113 +142,111 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 static $palette = [
-    new \ImagickPixel('rgb(255, 255, 255)'),
-    new \ImagickPixel('rgb(0, 0, 0)'),
-    new \ImagickPixel('rgb(0, 0, 127)'),
-    new \ImagickPixel('rgb(0, 147, 0)'),
-    new \ImagickPixel('rgb(255, 0, 0)'),
-    new \ImagickPixel('rgb(127, 0, 0)'),
-    new \ImagickPixel('rgb(156, 0, 156)'),
-    new \ImagickPixel('rgb(252, 127, 0)'),
-    new \ImagickPixel('rgb(255, 255, 0)'),
-    new \ImagickPixel('rgb(0, 252, 0)'),
-    new \ImagickPixel('rgb(0, 147, 147)'),
-    new \ImagickPixel('rgb(0, 255, 255)'),
-    new \ImagickPixel('rgb(0, 0, 252)'),
-    new \ImagickPixel('rgb(255, 0, 255)'),
-    new \ImagickPixel('rgb(127, 127, 127)'),
-    new \ImagickPixel('rgb(210, 210, 210)'),
-    new \ImagickPixel('#470000'),
-    new \ImagickPixel('#472100'),
-    new \ImagickPixel('#474700'),
-    new \ImagickPixel('#324700'),
-    new \ImagickPixel('#004700'),
-    new \ImagickPixel('#00472c'),
-    new \ImagickPixel('#004747'),
-    new \ImagickPixel('#002747'),
-    new \ImagickPixel('#000047'),
-    new \ImagickPixel('#2e0047'),
-    new \ImagickPixel('#470047'),
-    new \ImagickPixel('#47002a'),
-    new \ImagickPixel('#740000'),
-    new \ImagickPixel('#743a00'),
-    new \ImagickPixel('#747400'),
-    new \ImagickPixel('#517400'),
-    new \ImagickPixel('#007400'),
-    new \ImagickPixel('#007449'),
-    new \ImagickPixel('#007474'),
-    new \ImagickPixel('#004074'),
-    new \ImagickPixel('#000074'),
-    new \ImagickPixel('#4b0074'),
-    new \ImagickPixel('#740074'),
-    new \ImagickPixel('#740045'),
-    new \ImagickPixel('#b50000'),
-    new \ImagickPixel('#b56300'),
-    new \ImagickPixel('#b5b500'),
-    new \ImagickPixel('#7db500'),
-    new \ImagickPixel('#00b500'),
-    new \ImagickPixel('#00b571'),
-    new \ImagickPixel('#00b5b5'),
-    new \ImagickPixel('#0063b5'),
-    new \ImagickPixel('#0000b5'),
-    new \ImagickPixel('#7500b5'),
-    new \ImagickPixel('#b500b5'),
-    new \ImagickPixel('#b5006b'),
-    new \ImagickPixel('#ff0000'),
-    new \ImagickPixel('#ff8c00'),
-    new \ImagickPixel('#ffff00'),
-    new \ImagickPixel('#b2ff00'),
-    new \ImagickPixel('#00ff00'),
-    new \ImagickPixel('#00ffa0'),
-    new \ImagickPixel('#00ffff'),
-    new \ImagickPixel('#008cff'),
-    new \ImagickPixel('#0000ff'),
-    new \ImagickPixel('#a500ff'),
-    new \ImagickPixel('#ff00ff'),
-    new \ImagickPixel('#ff0098'),
-    new \ImagickPixel('#ff5959'),
-    new \ImagickPixel('#ffb459'),
-    new \ImagickPixel('#ffff71'),
-    new \ImagickPixel('#cfff60'),
-    new \ImagickPixel('#6fff6f'),
-    new \ImagickPixel('#65ffc9'),
-    new \ImagickPixel('#6dffff'),
-    new \ImagickPixel('#59b4ff'),
-    new \ImagickPixel('#5959ff'),
-    new \ImagickPixel('#c459ff'),
-    new \ImagickPixel('#ff66ff'),
-    new \ImagickPixel('#ff59bc'),
-    new \ImagickPixel('#ff9c9c'),
-    new \ImagickPixel('#ffd39c'),
-    new \ImagickPixel('#ffff9c'),
-    new \ImagickPixel('#e2ff9c'),
-    new \ImagickPixel('#9cff9c'),
-    new \ImagickPixel('#9cffdb'),
-    new \ImagickPixel('#9cffff'),
-    new \ImagickPixel('#9cd3ff'),
-    new \ImagickPixel('#9c9cff'),
-    new \ImagickPixel('#dc9cff'),
-    new \ImagickPixel('#ff9cff'),
-    new \ImagickPixel('#ff94d3'),
-    new \ImagickPixel('#000000'),
-    new \ImagickPixel('#131313'),
-    new \ImagickPixel('#282828'),
-    new \ImagickPixel('#363636'),
-    new \ImagickPixel('#4d4d4d'),
-    new \ImagickPixel('#656565'),
-    new \ImagickPixel('#818181'),
-    new \ImagickPixel('#9f9f9f'),
-    new \ImagickPixel('#bcbcbc'),
-    new \ImagickPixel('#e2e2e2'),
-    new \ImagickPixel('#ffffff')
+    new Color('#FFFFFF'),
+    new Color('#000000'),
+    new Color('#00007F'),
+    new Color('#009300'),
+    new Color('#FF0000'),
+    new Color('#7F0000'),
+    new Color('#9C009C'),
+    new Color('#FC7F00'),
+    new Color('#FFFF00'),
+    new Color('#00FC00'),
+    new Color('#009393'),
+    new Color('#00FFFF'),
+    new Color('#0000FC'),
+    new Color('#FF00FF'),
+    new Color('#7F7F7F'),
+    new Color('#D2D2D2'),
+    new Color('#470000'),
+    new Color('#472100'),
+    new Color('#474700'),
+    new Color('#324700'),
+    new Color('#004700'),
+    new Color('#00472c'),
+    new Color('#004747'),
+    new Color('#002747'),
+    new Color('#000047'),
+    new Color('#2e0047'),
+    new Color('#470047'),
+    new Color('#47002a'),
+    new Color('#740000'),
+    new Color('#743a00'),
+    new Color('#747400'),
+    new Color('#517400'),
+    new Color('#007400'),
+    new Color('#007449'),
+    new Color('#007474'),
+    new Color('#004074'),
+    new Color('#000074'),
+    new Color('#4b0074'),
+    new Color('#740074'),
+    new Color('#740045'),
+    new Color('#b50000'),
+    new Color('#b56300'),
+    new Color('#b5b500'),
+    new Color('#7db500'),
+    new Color('#00b500'),
+    new Color('#00b571'),
+    new Color('#00b5b5'),
+    new Color('#0063b5'),
+    new Color('#0000b5'),
+    new Color('#7500b5'),
+    new Color('#b500b5'),
+    new Color('#b5006b'),
+    new Color('#ff0000'),
+    new Color('#ff8c00'),
+    new Color('#ffff00'),
+    new Color('#b2ff00'),
+    new Color('#00ff00'),
+    new Color('#00ffa0'),
+    new Color('#00ffff'),
+    new Color('#008cff'),
+    new Color('#0000ff'),
+    new Color('#a500ff'),
+    new Color('#ff00ff'),
+    new Color('#ff0098'),
+    new Color('#ff5959'),
+    new Color('#ffb459'),
+    new Color('#ffff71'),
+    new Color('#cfff60'),
+    new Color('#6fff6f'),
+    new Color('#65ffc9'),
+    new Color('#6dffff'),
+    new Color('#59b4ff'),
+    new Color('#5959ff'),
+    new Color('#c459ff'),
+    new Color('#ff66ff'),
+    new Color('#ff59bc'),
+    new Color('#ff9c9c'),
+    new Color('#ffd39c'),
+    new Color('#ffff9c'),
+    new Color('#e2ff9c'),
+    new Color('#9cff9c'),
+    new Color('#9cffdb'),
+    new Color('#9cffff'),
+    new Color('#9cd3ff'),
+    new Color('#9c9cff'),
+    new Color('#dc9cff'),
+    new Color('#ff9cff'),
+    new Color('#ff94d3'),
+    new Color('#000000'),
+    new Color('#131313'),
+    new Color('#282828'),
+    new Color('#363636'),
+    new Color('#4d4d4d'),
+    new Color('#656565'),
+    new Color('#818181'),
+    new Color('#9f9f9f'),
+    new Color('#bcbcbc'),
+    new Color('#e2e2e2'),
+    new Color('#ffffff')
 ];
-
-$paletteHSL = array_map(fn ($it) => $it->getHSL(), $palette);
 
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block", "--quality", "--redmean")]
+#[Options("--width", "--edit", "--block", "--quality", "--lab")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0];
@@ -269,108 +269,6 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
             return;
         }
-
-        static $palette = [
-            [255, 255, 255],
-            [0, 0, 0],
-            [0, 0, 127],
-            [0, 147, 0],
-            [255, 0, 0],
-            [127, 0, 0],
-            [156, 0, 156],
-            [252, 127, 0],
-            [255, 255, 0],
-            [0, 252, 0],
-            [0, 147, 147],
-            [0, 255, 255],
-            [0, 0, 252],
-            [255, 0, 255],
-            [127, 127, 127],
-            [210, 210, 210],
-            [0x47, 0x00, 0x00],
-            [0x47, 0x21, 0x00],
-            [0x47, 0x47, 0x00],
-            [0x32, 0x47, 0x00],
-            [0x00, 0x47, 0x00],
-            [0x00, 0x47, 0x2c],
-            [0x00, 0x47, 0x47],
-            [0x00, 0x27, 0x47],
-            [0x00, 0x00, 0x47],
-            [0x2e, 0x00, 0x47],
-            [0x47, 0x00, 0x47],
-            [0x47, 0x00, 0x2a],
-            [0x74, 0x00, 0x00],
-            [0x74, 0x3a, 0x00],
-            [0x74, 0x74, 0x00],
-            [0x51, 0x74, 0x00],
-            [0x00, 0x74, 0x00],
-            [0x00, 0x74, 0x49],
-            [0x00, 0x74, 0x74],
-            [0x00, 0x40, 0x74],
-            [0x00, 0x00, 0x74],
-            [0x4b, 0x00, 0x74],
-            [0x74, 0x00, 0x74],
-            [0x74, 0x00, 0x45],
-            [0xb5, 0x00, 0x00],
-            [0xb5, 0x63, 0x00],
-            [0xb5, 0xb5, 0x00],
-            [0x7d, 0xb5, 0x00],
-            [0x00, 0xb5, 0x00],
-            [0x00, 0xb5, 0x71],
-            [0x00, 0xb5, 0xb5],
-            [0x00, 0x63, 0xb5],
-            [0x00, 0x00, 0xb5],
-            [0x75, 0x00, 0xb5],
-            [0xb5, 0x00, 0xb5],
-            [0xb5, 0x00, 0x6b],
-            [0xff, 0x00, 0x00],
-            [0xff, 0x8c, 0x00],
-            [0xff, 0xff, 0x00],
-            [0xb2, 0xff, 0x00],
-            [0x00, 0xff, 0x00],
-            [0x00, 0xff, 0xa0],
-            [0x00, 0xff, 0xff],
-            [0x00, 0x8c, 0xff],
-            [0x00, 0x00, 0xff],
-            [0xa5, 0x00, 0xff],
-            [0xff, 0x00, 0xff],
-            [0xff, 0x00, 0x98],
-            [0xff, 0x59, 0x59],
-            [0xff, 0xb4, 0x59],
-            [0xff, 0xff, 0x71],
-            [0xcf, 0xff, 0x60],
-            [0x6f, 0xff, 0x6f],
-            [0x65, 0xff, 0xc9],
-            [0x6d, 0xff, 0xff],
-            [0x59, 0xb4, 0xff],
-            [0x59, 0x59, 0xff],
-            [0xc4, 0x59, 0xff],
-            [0xff, 0x66, 0xff],
-            [0xff, 0x59, 0xbc],
-            [0xff, 0x9c, 0x9c],
-            [0xff, 0xd3, 0x9c],
-            [0xff, 0xff, 0x9c],
-            [0xe2, 0xff, 0x9c],
-            [0x9c, 0xff, 0x9c],
-            [0x9c, 0xff, 0xdb],
-            [0x9c, 0xff, 0xff],
-            [0x9c, 0xd3, 0xff],
-            [0x9c, 0x9c, 0xff],
-            [0xdc, 0x9c, 0xff],
-            [0xff, 0x9c, 0xff],
-            [0xff, 0x94, 0xd3],
-            [0x00, 0x00, 0x00],
-            [0x13, 0x13, 0x13],
-            [0x28, 0x28, 0x28],
-            [0x36, 0x36, 0x36],
-            [0x4d, 0x4d, 0x4d],
-            [0x65, 0x65, 0x65],
-            [0x81, 0x81, 0x81],
-            [0x9f, 0x9f, 0x9f],
-            [0xbc, 0xbc, 0xbc],
-            [0xe2, 0xe2, 0xe2],
-            [0xff, 0xff, 0xff],
-        ];
 
         $img_string = '';
         $pos = 0;
@@ -407,15 +305,14 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $last_match_index = -1;
             for($col = 0; $col < $size['width']; $col++) {
                 $pixel = $img->getImagePixelColor($col, $row);
-                $rgb = array_values($pixel->getColor());
+                $color = new Color(new RGB(...array_values($pixel->getColor())));
 
                 if($req->args->getOpt("--quality")) {
-                    $color_delta_e = new color_difference($rgb);
-                    $match_index = $color_delta_e->getClosestMatch($palette);
-                } elseif ($req->args->getOpt("--redmean")) {
-                    $match_index = getClosestMatch($palette, $rgb);
+                    $match_index = getClosestMatchCIEDE2000($color);
+                } elseif ($req->args->getOpt("--lab")) {
+                    $match_index = getClosestMatchEuclideanLab($color);
                 } else {
-                    $match_index = getClosestMatch2($pixel);
+                    $match_index = getClosestMatchDin99($color);
                 }
 
                 if(isset($words)) {
@@ -473,6 +370,48 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
 }
 
+function getClosestMatchCIEDE2000(Color $color) {
+    global $palette;
+    $matchIndex = 0;
+    $dist = 9999999999999;
+    foreach ($palette as $idx => $p) {
+        $d = $color->getDifferenceCIEDE2000($p);
+        if($d < $dist) {
+            $matchIndex = $idx;
+            $dist = $d;
+        }
+    }
+    return $matchIndex;
+}
+
+function getClosestMatchDin99(Color $color) {
+    global $palette;
+    $matchIndex = 0;
+    $dist = 9999999999999;
+    foreach ($palette as $idx => $p) {
+        $d = $color->getDifferenceDin99($p);
+        if($d < $dist) {
+            $matchIndex = $idx;
+            $dist = $d;
+        }
+    }
+    return $matchIndex;
+}
+
+function getClosestMatchEuclideanLab(Color $color) {
+    global $palette;
+    $matchIndex = 0;
+    $dist = 9999999999999;
+    foreach ($palette as $idx => $p) {
+        $d = $color->getDifferenceEuclideanLab($p);
+        if($d < $dist) {
+            $matchIndex = $idx;
+            $dist = $d;
+        }
+    }
+    return $matchIndex;
+}
+
 function render($lum) {
     $chars = [' ','@','8','%','#','*','!','+','=','-',';',':',',','.', '$'];
     $total = $lum * 256;
@@ -508,175 +447,4 @@ function render($lum) {
         default:
             return $chars[0];
     }
-}
-
-function getClosestMatch($palette, $rgb) {
-    list($r1, $g1, $b1) = $rgb;
-    $matchIndex = 0;
-    $dist = 9999999999999;
-    foreach ($palette as $idx => $p) {
-        list($r2, $g2, $b2) = $p;
-        $rmean = ($r1+$r2)/2;
-        $d = (2+ $rmean/256)* ($r2-$r1)**2 + 4*(($g2-$g1)**2) + (2+(255-$rmean)/256)*(($b2-$b1)**2);
-
-        if ($d < $dist) {
-            $matchIndex = $idx;
-            $dist = $d;
-        }
-    }
-    return $matchIndex;
-}
-
-function getClosestMatch2(ImagickPixel $pixel) {
-    global $paletteHSL;
-    list($h1, $s1, $l1) = array_values($pixel->getHSL());
-    $matchIndex = 0;
-    $dist = 9999999999999;
-    foreach ($paletteHSL as $idx => $p) {
-        list($h2, $s2, $l2) = array_values($p);
-        $d = 4*($h2-$h1)**2 + 2*(($s2-$s1)**2) + (($l2-$l1)**2/16);
-
-        if ($d < $dist) {
-            $matchIndex = $idx;
-            $dist = $d;
-        }
-    }
-    return $matchIndex;
-}
-
-function add($x, $y) {
-    return $x + $y;
-}
-
-// https://github.com/nalipaz/php-color-difference/blob/master/lib/color_difference.class.php
-class color_difference {
-
-    public $color = array();
-    public $difference = NULL;
-
-    /**
-     * Initialize object
-     *
-     * @param int $color An integer color, such as a return value from imagecolorat()
-     */
-    public function __construct($color = array()) {
-        if ($color) {
-            $this->color = $color;
-        }
-    }
-
-    public function deltaECIE2000($rgb1, $rgb2) {
-        list($l1, $a1, $b1) = $this->_rgb2lab($rgb1);
-        list($l2, $a2, $b2) = $this->_rgb2lab($rgb2);
-
-        $avg_lp = ($l1 + $l2) / 2;
-        $c1 = sqrt(pow($a1, 2) + pow($b1, 2));
-        $c2 = sqrt(pow($a2, 2) + pow($b2, 2));
-        $avg_c = ($c1 + $c2) / 2;
-        $g = (1 - sqrt(pow($avg_c, 7) / (pow($avg_c, 7) + pow(25, 7)))) / 2;
-        $a1p = $a1 * (1 + $g);
-        $a2p = $a2 * (1 + $g);
-        $c1p = sqrt(pow($a1p, 2) + pow($b1, 2));
-        $c2p = sqrt(pow($a2p, 2) + pow($b2, 2));
-        $avg_cp = ($c1p + $c2p) / 2;
-        $h1p = rad2deg(atan2($b1, $a1p));
-        if ($h1p < 0) {
-            $h1p += 360;
-        }
-        $h2p = rad2deg(atan2($b2, $a2p));
-        if ($h2p < 0) {
-            $h2p += 360;
-        }
-        $avg_hp = abs($h1p - $h2p) > 180 ? ($h1p + $h2p + 360) / 2 : ($h1p + $h2p) / 2;
-        $t = 1 - 0.17 * cos(deg2rad($avg_hp - 30)) + 0.24 * cos(deg2rad(2 * $avg_hp)) + 0.32 * cos(deg2rad(3 * $avg_hp + 6)) - 0.2 * cos(deg2rad(4 * $avg_hp - 63));
-        $delta_hp = $h2p - $h1p;
-        if (abs($delta_hp) > 180) {
-            if ($h2p <= $h1p) {
-                $delta_hp += 360;
-            }
-            else {
-                $delta_hp -= 360;
-            }
-        }
-        $delta_lp = $l2 - $l1;
-        $delta_cp = $c2p - $c1p;
-        $delta_hp = 2 * sqrt($c1p * $c2p) * sin(deg2rad($delta_hp) / 2);
-
-        $s_l = 1 + ((0.015 * pow($avg_lp - 50, 2)) / sqrt(20 + pow($avg_lp - 50, 2)));
-        $s_c = 1 + 0.045 * $avg_cp;
-        $s_h = 1 + 0.015 * $avg_cp * $t;
-
-        $delta_ro = 30 * exp(-(pow(($avg_hp - 275) / 25, 2)));
-        $r_c = 2 * sqrt(pow($avg_cp, 7) / (pow($avg_cp, 7) + pow(25, 7)));
-        $r_t = -$r_c * sin(2 * deg2rad($delta_ro));
-
-        $kl = $kc = $kh = 1;
-
-        $delta_e = sqrt(pow($delta_lp / ($s_l * $kl), 2) + pow($delta_cp / ($s_c * $kc), 2) + pow($delta_hp / ($s_h * $kh), 2) + $r_t * ($delta_cp / ($s_c * $kc)) * ($delta_hp / ($s_h * $kh)));
-
-        $this->difference = $delta_e;
-        return $delta_e;
-    }
-
-    private function _rgb2lab($rgb) {
-        return $this->_xyz2lab($this->_rgb2xyz($rgb));
-    }
-
-    private function _rgb2xyz($rgb) {
-        list($r, $g, $b) = $rgb;
-
-        $r = $r <= 0.04045 ? $r / 12.92 : pow(($r + 0.055) / 1.055, 2.4);
-        $g = $g <= 0.04045 ? $g / 12.92 : pow(($g + 0.055) / 1.055, 2.4);
-        $b = $b <= 0.04045 ? $b / 12.92 : pow(($b + 0.055) / 1.055, 2.4);
-
-        $r *= 100;
-        $g *= 100;
-        $b *= 100;
-
-        $x = $r * 0.412453 + $g * 0.357580 + $b * 0.180423;
-        $y = $r * 0.212671 + $g * 0.715160 + $b * 0.072169;
-        $z = $r * 0.019334 + $g * 0.119193 + $b * 0.950227;
-
-        return [ $x, $y, $z];
-    }
-
-    private function _xyz2lab($xyz) {
-        list ($x, $y, $z) = $xyz;
-
-        $x /= 95.047;
-        $y /= 100;
-        $z /= 108.883;
-
-        $x = $x > 0.008856 ? pow($x, 1 / 3) : $x * 7.787 + 16 / 116;
-        $y = $y > 0.008856 ? pow($y, 1 / 3) : $y * 7.787 + 16 / 116;
-        $z = $z > 0.008856 ? pow($z, 1 / 3) : $z * 7.787 + 16 / 116;
-
-        $l = $y * 116 - 16;
-        $a = ($x - $y) * 500;
-        $b = ($y - $z) * 200;
-
-        return [ $l, $a, $b];
-    }
-
-    /**
-     * Get the closest matching color from the given array of colors
-     *
-     * @param array $colors array of integers or Color objects
-     *
-     * @return mixed the array key of the matched color
-     */
-    public function getClosestMatch(array $colors) {
-        $matchDist = 10000;
-        $matchKey = null;
-        foreach ($colors as $key => $color) {
-            $dist = (new color_difference())->deltaECIE2000($this->color, $color);
-            if ($dist < $matchDist) {
-                $matchDist = $dist;
-                $matchKey = $key;
-            }
-        }
-
-        return $matchKey;
-    }
-
 }
