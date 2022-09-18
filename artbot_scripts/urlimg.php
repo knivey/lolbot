@@ -417,13 +417,13 @@ function getClosestMatchEuclideanLab(Color $color) {
 }
 
 
-function render2($lum)
+function render($lum)
 {
     $chars = ['.', '-', '+', '*', '=', '%', '$', '&', '#', '@'];
     return $chars[round($lum * (count($chars) -1))];
 }
 
-function render($lum) {
+function render2($lum) {
     $chars = [' ','@','8','%','#','*','!','+','=','-',';',':',',','.', '$'];
     $total = $lum * 256;
     switch($total) {
