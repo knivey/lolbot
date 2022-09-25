@@ -273,7 +273,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $img_string = '';
         $pos = 0;
 
-        $width = 80;
+        $width = 120;
         if($req->args->getOptVal("--width") !== false) {
             $width = intval($req->args->getOptVal("--width"));
             if($width < 10 || $width > 200) {
