@@ -246,7 +246,7 @@ static $palette = [
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block", "--quality", "--lab", "--render2")]
+#[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0];
@@ -273,7 +273,10 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $img_string = '';
         $pos = 0;
 
-        $width = 120;
+        if($req->args->getOpt("--halfblock"))
+            $width = 80;
+        else
+            $width = 120;
         if($req->args->getOptVal("--width") !== false) {
             $width = intval($req->args->getOptVal("--width"));
             if($width < 10 || $width > 200) {
@@ -286,7 +289,10 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $img->readImageBlob($body);
         $size = $img->getImageGeometry();
         $factor = $width / $size['width'];
-        $img->scaleImage(round($size['width'] * $factor), round($size['height'] * $factor / 2));
+        if($req->args->getOpt("--halfblock"))
+            $img->scaleImage(round($size['width'] * $factor), make_even(round($size['height'] * $factor)));
+        else
+            $img->scaleImage(round($size['width'] * $factor), round($size['height'] * $factor / 2));
 
         $size = $img->getImageGeometry();
 
@@ -297,15 +303,22 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $words = str_split($text);
         }
         if($req->args->getOptVal("--block") !== false) {
-            // todo: half block mode
             $words =  ["█"];
         }
 
         for($row = 0; $row < $size['height']; $row++) {
             $last_match_index = -1;
+            $fg = -1;
+            $bg = -1;
+            $hb = "▀";
             for($col = 0; $col < $size['width']; $col++) {
                 $pixel = $img->getImagePixelColor($col, $row);
                 $color = new Color(new RGB(...array_values($pixel->getColor())));
+                if($req->args->getOpt("--halfblock")) {
+                    $pixel2 = $img->getImagePixelColor($col, $row + 1);
+                    $color2 = new Color(new RGB(...array_values($pixel2->getColor())));
+                }
+
 
                 if($req->args->getOpt("--quality")) {
                     $match_index = getClosestMatchCIEDE2000($color);
@@ -313,6 +326,32 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                     $match_index = getClosestMatchEuclideanLab($color);
                 } else {
                     $match_index = getClosestMatchDin99($color);
+                }
+
+                if($req->args->getOpt("--halfblock")) {
+                    if($req->args->getOpt("--quality")) {
+                        $match_index2 = getClosestMatchCIEDE2000($color2);
+                    } elseif ($req->args->getOpt("--lab")) {
+                        $match_index2 = getClosestMatchEuclideanLab($color2);
+                    } else {
+                        $match_index2 = getClosestMatchDin99($color2);
+                    }
+                    //just keeping this simple to start with
+                    if($match_index != $fg || $match_index2 != $bg) {
+                        if($match_index == $match_index2 && $match_index2 == $bg) {
+                            $img_string .= " ";
+                            continue;
+                        }
+                        $img_string .= "\x03$match_index,$match_index2";
+                        $fg = $match_index;
+                        $bg = $match_index2;
+                    }
+                    if($match_index != $match_index2)
+                        $img_string .= $hb;
+                    else
+                        $img_string .= " ";
+
+                    continue;
                 }
 
                 if(isset($words)) {
@@ -341,8 +380,10 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                     }
                 }
                 $last_match_index = $match_index;
-            }
 
+            }
+            if($req->args->getOpt("--halfblock"))
+                $row++;
             $img_string .= "\n";
         }
 
@@ -372,6 +413,10 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         echo $error;
         $bot->pm($args->chan, "\2URL Error:\2 {$error->getMessage()}");
     }
+}
+
+function make_even($n) {
+    return $n - $n % 2;
 }
 
 function getClosestMatchCIEDE2000(Color $color) {
