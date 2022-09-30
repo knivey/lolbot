@@ -7,6 +7,7 @@ use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
+use League\Uri\UriString;
 use Symfony\Component\Yaml\Yaml;
 
 function getRun($ep, $code) {
@@ -51,7 +52,7 @@ function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/php?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("bash")]
@@ -64,7 +65,7 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/bash?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("py3", "py", "python", "python3")]
@@ -77,7 +78,7 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/python3?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("py2", "python2")]
@@ -90,7 +91,7 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/python2?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("perl")]
@@ -103,7 +104,7 @@ function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/perl?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("java")]
@@ -116,7 +117,7 @@ function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/java?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("fish")]
@@ -129,7 +130,7 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/fish?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("c", "tcc")]
@@ -142,7 +143,7 @@ function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/tcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("gcc")]
@@ -185,7 +186,7 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #include <wctype.h>
 {$req->args['code']}";
     $output = yield from getRun("/run/gcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration&flagsb=-lm", $code);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("tcl")]
@@ -198,7 +199,7 @@ function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
     $output = yield from getRun("/run/tcl?maxlines=$maxlines", $req->args['code']);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("cpp", "g++")]
@@ -221,15 +222,48 @@ using namespace std;
     //$gccArgs = urlencode("-Wfatal-errors -std=c++17");
     $gccArgs = urlencode("-Wfatal-errors");
     $output = yield from getRun("/run/gpp?maxlines=$maxlines&flags=$gccArgs", $code);
-    sendOut($bot, $args->chan, $output);
+    yield sendOut($bot, $args->chan, $output);
 }
 
-function sendOut($bot, $chan, $data) {
-    foreach ($data as $line) {
-        if(substr($line, 0, strlen("OUT: ")) == "OUT: ")
-            $line = substr($line, strlen("OUT: "));
-        if(substr($line, 0, strlen("ERR: ")) == "ERR: ")
-            $line = "\x0304". substr($line, strlen("OUT: "));
-        $bot->pm($chan, $line);
-    }
+function sendOut($bot, $chan, $data): \Amp\Promise {
+    return \Amp\call(function () use ($bot, $chan, $data) {
+        global $config;
+        $data = array_map(function ($line) {
+            if(str_starts_with($line, "OUT: "))
+                $line = substr($line, strlen("OUT: "));
+            if(str_starts_with($line, "ERR: "))
+                $line = "\x0304". substr($line, strlen("OUT: "));
+            return $line;
+        }, $data);
+        if(isset($config['pump_host']) && isset($config['pump_key'])) {
+            try {
+                $client = HttpClientBuilder::buildDefault();
+                $pumpchan = urlencode(substr($chan, 1));
+                $pumpUrl = UriString::parse($config['pump_host']);
+                $pumpUrl['path'] .= "/privmsg/$pumpchan";
+                $pumpUrl['path'] = preg_replace("@/+@", "/", $pumpUrl['path']);
+                $pumpUrl = UriString::build($pumpUrl);
+    
+                $request = new Request($pumpUrl, "POST");
+                $request->setBody(implode("\n", $data));
+                $request->setHeader('key', $config['pump_key']);
+                /** @var Response $response */
+                $response = yield $client->request($request);
+                //$body = yield $response->getBody()->buffer();
+                if ($response->getStatus() != 200) {
+                    echo "Problem sending codesand to $pumpUrl response: {$response->getStatus()}\n";
+                    $bot->pm($chan, "Error: problem sending output to pump bots");
+                }
+            } catch (\Exception $e) {
+                $bot->pm($chan, "Error: problem sending output to pump bots");
+                echo "Problem sending codesand to pumpers\n";
+                echo $e;
+                return;
+            }
+        } else {
+            foreach ($data as $line) {
+                $bot->pm($chan, $line);
+            }
+        }
+    });
 }
