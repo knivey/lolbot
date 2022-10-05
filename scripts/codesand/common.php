@@ -133,6 +133,19 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     yield sendOut($bot, $args->chan, $output);
 }
 
+#[Cmd("ruby")]
+#[Syntax("<code>...")]
+#[CallWrap("\Amp\asyncCall")]
+function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $config;
+    if(!($config['codesand'] ?? false)) {
+        return;
+    }
+    $maxlines = $config['codesand_maxlines'] ?? 10;
+    $output = yield from getRun("/run/ruby?maxlines=$maxlines", $req->args['code']);
+    yield sendOut($bot, $args->chan, $output);
+}
+
 #[Cmd("c", "tcc")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
