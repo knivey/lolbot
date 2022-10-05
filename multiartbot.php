@@ -320,7 +320,7 @@ function startPump($chan, $speed = null) {
                 }
             }
             try {
-                yield \Amp\Promise\timeout($def->promise(), 2000);
+                yield \Amp\Promise\timeout($def->promise(), 8000);
             } catch (\Amp\TimeoutException $e) {
                 echo "Something horrible has happened, timeout on looking for pump lines\n";
                 unset($playing[$chan]);
