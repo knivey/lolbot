@@ -464,7 +464,7 @@ function getClosestMatchEuclideanLab(Color $color) {
 
 function render($lum)
 {
-    $chars = ['.', '-', '+', '*', '=', '%', '$', '&', '#', '@'];
+    $chars = ['.', ':', '-', '~', '+', '*', '=', '>', '%', '$', '&', '#', '@'];
     return $chars[round($lum * (count($chars) -1))];
 }
 
