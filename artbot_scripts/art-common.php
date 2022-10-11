@@ -597,7 +597,7 @@ function getFinder() : \Symfony\Component\Finder\Finder {
 
 #[Cmd("search", "find")]
 #[Option(["--max"], "Max results to show")]
-#[Options("--details", "--dates", "--play")]
+#[Options("--details", "--dates", "--play", "--maxlines")]
 //gotta update Cmdr
 //#[Option("--details", "show more details about results")]
 //#[Option("--dates", "show dates instead of diffs")]
@@ -637,7 +637,17 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         }
         $finder->sortByModifiedTime();
         if($req->args->getOpt("--play")) {
+            $maxlines = $req->args->getOptVal("--maxlines");
+            if($maxlines === false)
+                $maxlines = 100;
+            if($maxlines <= 0) {
+                $bot->msg($chan, "--maxlines must be positive number");
+                return;
+            }
             foreach($finder as $file) {
+                if($maxlines && mb_substr_count($file->getContents(), "\n") > $maxlines) {
+                    continue;
+                }
                 $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
                 $name = substr($file->getRelativePathname(), 0, -4);
                 $len = strlen("-----------------------------------------------------------------------------------");
@@ -691,6 +701,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
 #[Cmd("recent")]
 #[Option(["--play"], "Play each art")]
+#[Options("--maxlines")]
 #[Syntax('[since]...')]
 function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
@@ -721,7 +732,17 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $bot->pm($args->chan, "thats too many arts to play :(");
             return;
         }
+        $maxlines = $req->args->getOptVal("--maxlines");
+        if($maxlines === false)
+            $maxlines = 100;
+        if($maxlines <= 0) {
+            $bot->msg($chan, "--maxlines must be positive number");
+            return;
+        }
         foreach($finder as $file) {
+            if($maxlines && mb_substr_count($file->getContents(), "\n") > $maxlines) {
+                continue;
+            }
             $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
             $name = substr($file->getRelativePathname(), 0, -4);
             $len = strlen("-----------------------------------------------------------------------------------");
