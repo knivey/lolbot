@@ -597,7 +597,7 @@ function getFinder() : \Symfony\Component\Finder\Finder {
 
 #[Cmd("search", "find")]
 #[Option(["--max"], "Max results to show")]
-#[Options("--details", "--dates")]
+#[Options("--details", "--dates", "--play")]
 //gotta update Cmdr
 //#[Option("--details", "show more details about results")]
 //#[Option("--dates", "show dates instead of diffs")]
@@ -648,7 +648,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                     $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
                 else
                     $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
-                $out[] = ["$lines lines", $ago, substr($f->getRelativePathname(), 0, -4)];
+                $out[] = ["$lines lines ", $ago, substr($f->getRelativePathname(), 0, -4)];
             }
         }
         if(empty($out) && empty($ircwatch)) {
@@ -724,8 +724,9 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
     $table = [];
     foreach($finder as $file) {
+        $lines = mb_substr_count($file->getContents(), "\n");
         $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
-        $table[] = [$ago, substr($file->getRelativePathname(), 0, -4)];
+        $table[] = ["$lines lines ", $ago, substr($file->getRelativePathname(), 0, -4)];
     }
     $table = \knivey\tools\multi_array_padding($table);
     $out = array_merge($out, array_map(fn($v) => rtrim(implode($v)), $table));
