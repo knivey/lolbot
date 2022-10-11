@@ -78,6 +78,8 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 function onchat($args, \Irc\Client $bot)
 {
     global $config, $router, $reqArtOpts;
+    if(isIgnored($args->fullhost))
+        return;
 
     tryRec($bot, $args->from, $args->channel, $args->text);
     if (isset($config['trigger'])) {
@@ -329,4 +331,47 @@ function startPump($chan, $speed = null) {
         }
         unset($playing[$chan]);
     });
+}
+
+//TODO move this to irctools package
+function hostmaskToRegex($mask) {
+    $out = '';
+    $i = 0;
+    while($i < strlen($mask)) {
+        $nextc = strcspn($mask, '*?', $i);
+        $out .= preg_quote(substr($mask, $i, $nextc), '@');
+        if($nextc + $i == strlen($mask))
+            break;
+        if($mask[$nextc + $i] == '?')
+            $out .= '.';
+        if($mask[$nextc + $i] == '*')
+            $out .= '.*';
+        $i += $nextc + 1;
+    }
+    return "@{$out}@i";
+}
+
+//TODO replace this with something that doesnt check mtime, probably use rpc to manage admin things off irc
+function getIgnores($file = "ignores.txt") {
+    static $ignores;
+    static $mtime;
+    if(!file_exists($file))
+        return [];
+    // Retarded that i had to figure out to do this otherwise php caches mtime..
+    clearstatcache();
+    $newmtime = filemtime($file);
+    if($newmtime <= ($mtime ?? 0))
+        return ($ignores ?? []);
+    $mtime = $newmtime;
+    return $ignores = file($file, FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
+}
+
+function isIgnored($fullhost) {
+    $ignores = getIgnores();
+    foreach ($ignores as $i) {
+        if (preg_match(hostmaskToRegex($i), $fullhost)) {
+            return true;
+        }
+    }
+    return false;
 }
