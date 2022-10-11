@@ -636,6 +636,22 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             unset($ircwatch[$f->getBasename('.txt')]);
         }
         $finder->sortByModifiedTime();
+        if($req->args->getOpt("--play")) {
+            foreach($finder as $file) {
+                $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+                $name = substr($file->getRelativePathname(), 0, -4);
+                $len = strlen("-----------------------------------------------------------------------------------");
+                if(strlen("||||| $ago  $name |||||") < $len)
+                    $pads = str_repeat("|", $len - strlen("||||| $ago  $name |||||"));
+                $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
+                $out[] = "\x02\x0300,12||||| $ago $pads $name |||||";
+                $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
+                $out = array_merge($out, irctools\loadartfile($file->getRealPath()));
+            }
+            pumpToChan($chan, $out);
+            return;
+        }
+
         $out = [];
         foreach($finder as $f) {
             /** @var $f Symfony\Component\Finder\SplFileInfo */
@@ -643,7 +659,6 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = substr($f->getRelativePathname(), 0, -4);
             } else {
                 $lines = mb_substr_count($f->getContents(), "\n");
-                $l = strlen($f->getRelativePathname()) -4;
                 if($req->args->getOpt("--dates"))
                     $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
                 else
