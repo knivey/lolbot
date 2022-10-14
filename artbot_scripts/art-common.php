@@ -544,6 +544,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $finder = getFinder();
         $finder->path(tools\globToRegex("*$file*.txt") . 'i');
         $finder->sortByModifiedTime();
+        $out = [];
         if($req->args->getOpt("--play")) {
             $maxlines = $req->args->getOptVal("--maxlines");
             if($maxlines === false)
@@ -566,11 +567,14 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
                 $out = array_merge($out, irctools\loadartfile($file->getRealPath()));
             }
+            if(empty($out)) {
+                $bot->pm($chan, "no matching art found");
+                return;
+            }
             pumpToChan($chan, $out);
             return;
         }
 
-        $out = [];
         foreach($finder as $f) {
             /** @var $f Symfony\Component\Finder\SplFileInfo */
             if(!$req->args->getOpt("--details")) {
@@ -641,7 +645,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         if($maxlines === false)
             $maxlines = 100;
         if($maxlines <= 0) {
-            $bot->msg($chan, "--maxlines must be positive number");
+            $bot->msg($args->chan, "--maxlines must be positive number");
             return;
         }
         foreach($finder as $file) {
