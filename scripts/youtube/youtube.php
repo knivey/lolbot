@@ -202,7 +202,7 @@ $eventProvider->addListener(
                             try {
                                 $client = HttpClientBuilder::buildDefault();
                                 $host = $config['youtube_pump_host'];
-                                $pumpchan = substr($event->chan, 1);
+                                $pumpchan = urlencode(substr($event->chan, 1));
                                 $pumpUrl = UriString::parse($host);
                                 $pumpUrl['path'] .= "/privmsg/$pumpchan";
                                 $pumpUrl['path'] = preg_replace("@/+@", "/", $pumpUrl['path']);
