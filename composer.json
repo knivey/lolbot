@@ -49,7 +49,8 @@
     },
     "require-dev": {
         "ramsey/composer-repl": "^1.2",
-        "vimeo/psalm": "dev-master"
+        "vimeo/psalm": "dev-master",
+        "phpstan/phpstan": "^1.8"
     },
     "config": {
         "allow-plugins": {
