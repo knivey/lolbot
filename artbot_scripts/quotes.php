@@ -32,7 +32,7 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         'chan' => $chan,
         'lines' => [],
         'keeptimes' => $req->args->getOpt('--keeptimes'),
-        'timeOut' => Amp\Loop::delay(15000, 'quoteTimeOut', [$nick, $bot]),
+        'timeOut' => Amp\Loop::delay(15000, quoteTimeOut(...), [$nick, $bot]),
     ];
     if(isset($req->args['quote'])) {
         $quote_recordings[$nick]['lines'][] = $req->args['quote'];
@@ -43,7 +43,7 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $bot->pm($chan, "Quote recording started type \x02\x034@endquote\x03\x02 when done or discard with @cancelquote or just wait 15 seconds.");
 }
 
-function quoteTimeOut($watcher, $data) {
+function quoteTimeOut($watcher, $data): void {
     global $quote_recordings;
     list ($nick, $bot) = $data;
     if(!isset($quote_recordings[$nick])) {
@@ -151,7 +151,7 @@ function initQuotes($bot) {
         if(!isset($quote_recordings[$nick]))
             return;
         Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
-        $quote_recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, 'timeOut', [$nick, $bot]);
+        $quote_recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, quoteTimeOut(...), [$nick, $bot]);
         if(!$quote_recordings[$nick]['keeptimes'])
             $text = stripTimestamp($text);
         $quote_recordings[$nick]['lines'][] = $text;
