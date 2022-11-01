@@ -87,6 +87,7 @@ require_once 'scripts/alias/alias.php';
 require_once 'scripts/markov_quotes/markov_quotes.php';
 require_once 'scripts/insult/insult.php';
 require_once "scripts/JRH/jrh.php";
+require_once "scripts/mal/mal.php";
 
 require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
