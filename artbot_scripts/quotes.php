@@ -5,6 +5,7 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
@@ -121,12 +122,25 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
 #[Cmd("searchquote", "searchquotes", "quotesearch", "querch", "findquote", "quotefind")]
 #[Syntax("<query>...")]
+#[Option("--play", "Play the results up to limit")]
 function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     R::selectDatabase('quotes');
     $query = "%" . str_replace("*", "%", $req->args['query']) . "%";
     $quotes = R::find('quote', 'data LIKE ?', [$query]);
     if(empty($quotes)) {
         $bot->pm($args->chan, "Nothing found");
+        return;
+    }
+    if($req->args->getOpt("--play")) {
+        $cnt = 0;
+        foreach($quotes as $quote) {
+            $cnt++;
+            if($cnt > 10) {
+                pumpToChan($args->chan, ["Limiting to 10 quotes..."]);
+                return;
+            }
+            showQuote($bot, $args->chan, $quote);
+        }
         return;
     }
     $cnt = count($quotes);
