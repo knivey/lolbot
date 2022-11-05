@@ -78,7 +78,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 }
                 $name = bin2hex(random_bytes(7)) . '.txt';
                 file_put_contents("$artSavePath/$name", $thumbnail);
-                $bot->pm($args->chan, "https://asciibird.jewbird.live/?haxAscii=p2u/$name");
+                $bot->pm($args->chan, "https://asciibird.birdnest.live/?haxAscii=p2u/$name");
                 return;
             }
             $cnt = 0;
