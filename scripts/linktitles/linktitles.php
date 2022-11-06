@@ -44,6 +44,14 @@ if(!file_exists($dbfile)) {
 //feature requested by terps
 //sends all urls into a log channel for easier viewing url history
 //TODO take url as param to highlight it here
+/**
+ * @param $bot
+ * @param $nick
+ * @param $chan
+ * @param $line
+ * @param string|array $title
+ * @return void
+ */
 function logUrl($bot, $nick, $chan, $line, string|array $title) {
     global $config;
     if(!isset($config['url_log_chan']))
@@ -61,14 +69,14 @@ function logUrl($bot, $nick, $chan, $line, string|array $title) {
 
 $link_history = [];
 $link_ratelimit = 0;
-function linktitles(\Irc\Client $bot, $nick, $chan, $text)
+function linktitles(\Irc\Client $bot, $nick, $chan, $host, $text)
 {
     global $link_history, $link_ratelimit, $eventDispatcher;
     foreach (explode(' ', $text) as $word) {
         if (filter_var($word, FILTER_VALIDATE_URL) === false) {
             continue;
         }
-        if (urlIsIgnored($chan, $word))
+        if (urlIsIgnored($chan, $nick, $host, $word))
             continue;
 
         if (($link_history[$chan] ?? "") == $word) {
@@ -210,17 +218,31 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $text)
 
 
 
-function urlIsIgnored($chan, $url): bool {
+function urlIsIgnored($chan, $nick, $host, $url): bool {
+    /** @var \PDO $url_pdo */
     global $url_pdo;
     $stmt = $url_pdo->prepare("select regex from chan_re where chan = :chan;");
-    $stmt->execute([":chan" => $chan]);
     if(!$stmt->execute([":chan" => $chan])) {
-        echo "URL ignore list fetch FAILED\n";
+        echo "URL chan ignore list fetch FAILED\n";
+    } else {
+        $iggys = $stmt->fetchAll();
+        foreach ($iggys as $iggy) {
+            if (preg_match($iggy['regex'], $url)) {
+                return true;
+            }
+        }
+    }
+    $stmt = $url_pdo->prepare("select * from userhosts;");
+    if(!$stmt->execute()) {
+        echo "URL userhost ignore list fetch FAILED\n";
         return false;
     }
     $iggys = $stmt->fetchAll();
     foreach ($iggys as $iggy) {
-        if(preg_match($iggy['regex'], $url)) {
+        $n = \knivey\tools\globToRegex($iggy['nick']) . 'i';
+        $h = \knivey\tools\globToRegex($iggy['host']) . 'i';
+        //$a = \knivey\tools\globToRegex($iggy['auth']) . 'i';
+        if(preg_match($iggy['ignore_re'], $url) && preg_match($n, $nick) && preg_match($h, $host) /* && preg_match($auth, $a) */) {
             return true;
         }
     }

@@ -172,7 +172,7 @@ try {
                     return;
 
                 if ($config['linktitles'] ?? false) {
-                    \Amp\asyncCall('scripts\linktitles\linktitles', $bot, $args->nick, $args->channel, $args->text);
+                    \Amp\asyncCall(scripts\linktitles\linktitles(...), $bot, $args->nick, $args->channel, $args->identhost, $args->text);
                 }
 
                 if (isset($config['trigger'])) {
