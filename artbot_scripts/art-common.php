@@ -682,7 +682,6 @@ function selectRandFile($search = null) : String|false {
     $finder = getFinder();
     if($search != null) {
         $finder->path(tools\globToRegex("*$search*.txt") . 'i');
-        $search = strtolower($search);
     }
     $tree = iterator_to_array($finder, false);
     if(!empty($tree))
