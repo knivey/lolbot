@@ -679,32 +679,14 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 function selectRandFile($search = null) : String|false {
-    global $config;
-    $base = $config['artdir'];
-    try {
-        $tree = knivey\tools\dirtree($base);
-    } catch (Exception $e) {
-        echo "{$e}\n";
-        return false;
-    }
-    //remove p2u files
-    $tree = array_filter($tree, function ($it) {
-        global $config;
-        $check = substr($it, strlen($config['artdir']));
-        return !preg_match("@^p2u/.*@", $check);
-    });
-
+    $finder = getFinder();
     if($search != null) {
+        $finder->path(tools\globToRegex("*$search*.txt") . 'i');
         $search = strtolower($search);
-        $tree = array_filter($tree, function ($it) use ($search) {
-            global $config;
-            $check = substr($it, strlen($config['artdir']));
-            $check = preg_replace('/\.txt$/i', '', $check);
-            return fnmatch("*$search*", strtolower($check));
-        });
     }
+    $tree = iterator_to_array($finder, false);
     if(!empty($tree))
-        return $tree[array_rand($tree)];
+        return $tree[array_rand($tree)]->getRealPath();
     return false;
 }
 
