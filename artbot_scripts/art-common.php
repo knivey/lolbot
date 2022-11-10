@@ -554,7 +554,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 return;
             }
             foreach($finder as $file) {
-                if($maxlines && mb_substr_count($file->getContents(), "\n") > $maxlines) {
+                if($maxlines && mb_substr_count($file->getContents(), "\n")+1 > $maxlines) {
                     continue;
                 }
                 $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
@@ -580,7 +580,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             if(!$req->args->getOpt("--details")) {
                 $out[] = substr($f->getRelativePathname(), 0, -4);
             } else {
-                $lines = mb_substr_count($f->getContents(), "\n");
+                $lines = mb_substr_count($f->getContents(), "\n")+1;
                 if($req->args->getOpt("--dates"))
                     $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
                 else
@@ -649,7 +649,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
         foreach($finder as $file) {
-            if($maxlines && mb_substr_count($file->getContents(), "\n") > $maxlines) {
+            if($maxlines && mb_substr_count($file->getContents(), "\n")+1 > $maxlines) {
                 continue;
             }
             $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
@@ -669,7 +669,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
     $table = [];
     foreach($finder as $file) {
-        $lines = mb_substr_count($file->getContents(), "\n");
+        $lines = mb_substr_count($file->getContents(), "\n")+1;
         $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
         $table[] = ["$lines lines ", $ago, substr($file->getRelativePathname(), 0, -4)];
     }
