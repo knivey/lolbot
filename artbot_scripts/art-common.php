@@ -250,28 +250,24 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $recordLimit[$host] = time()+2;
     unset($limitWarns[$host]);
 
-    $exists = false;
-    $base = $config['artdir'];
-    try {
-        $tree = knivey\tools\dirtree($base);
-    } catch (Exception $e) {
-        echo "{$e}\n";
+    $files = getFinder()->path("@^h4x/" . preg_quote($nick, "@") . "/". preg_quote($file, "@") ."\.txt$@i");
+    if($files->hasResults()) {
+        //should just be one file
+        $existing = implode(', ', array_map(function ($file) {
+            return substr($file->getRelativePathname(), 0, -4);
+        }, iterator_to_array($files, false)));
+        $bot->pm($chan, "$existing already exists, \x0300,04\x02Existing arts files can no longer be recorded over due to abuse >:(\x02\x03 you can ask slime, jewbird or sansGato to delete the file or pick another name");
         return;
     }
-    foreach($tree as $ent) {
-        if(strtolower(substr($ent, strlen($config['artdir']))) == strtolower("h4x/{$nick}/$file.txt")) {
-            $bot->pm($chan, "\x0300,04\x02You can no longer record over arts due to abuse >:(\x02\x03 you can ask slime or jewbird to delete the file");
-            return;
-        }
-        if($file == strtolower(basename($ent, '.txt'))) {
-            $exists = substr($ent, strlen($config['artdir']));
-            break;
-        }
+    $files = getFinder()->name("@^" . preg_quote($file, "@") . "\.txt$@i");
+    if($files->hasResults()) {
+        $files = implode(', ', array_map(function ($file) {
+            return substr($file->getRelativePathname(), 0, -4);
+        }, iterator_to_array($files, false)));
+        $bot->pm($chan, "Warning: That file name has been used by $files, to playback may require a full path or you can @record again to use a new name");
     }
 
     if($req->args->getOpt('--post') || $req->args->getOpt('--url')) {
-        if($exists)
-            $bot->pm($chan, "Warning: That file name has been used by $exists, to playback may require a full path or you can @record --post again to use a new name");
         try {
             $url = yield requestRecordUrl($nick, $chan, $file, 60);
         } catch (\Exception $e) {
@@ -281,9 +277,6 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->notice($nick, "  $url   This is valid for one recording, valid for 60 minutes unless another recording url is requested");
         return;
     }
-
-    if($exists)
-        $bot->pm($chan, "Warning: That file name has been used by $exists, to playback may require a full path or you can @cancel and use a new name");
 
     $recordings[$nick] = [
         'name' => $file,
