@@ -208,7 +208,7 @@ $eventProvider->addListener(
                 return;
 
             $shorts = "";
-            if(isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') && ($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false)) {
+            if(isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') && (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
                 try {
                     //TODO check if file was already downloaded
                     $proc = new Process("yt-dlp --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
