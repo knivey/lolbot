@@ -50,7 +50,9 @@
     "require-dev": {
         "ramsey/composer-repl": "^1.2",
         "vimeo/psalm": "dev-master",
-        "phpstan/phpstan": "^1.8"
+        "phpstan/phpstan": "^1.8",
+        "amphp/file": "^2.0",
+        "amphp/process": "^1.1"
     },
     "config": {
         "allow-plugins": {

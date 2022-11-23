@@ -1,9 +1,11 @@
 <?php
 namespace scripts\youtube;
 
+use Amp\Http\Client\Body\FormBody;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\Process\Process;
 use Amp\Promise;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
@@ -94,6 +96,30 @@ function getVideoInfo($id): Promise {
     });
 }
 
+function hostToFilehole(string $filename): Promise
+{
+    return \Amp\call(function () use ($filename) {
+        if(!file_exists($filename))
+            throw new \Exception("hostToFilehole called with non existant filename: $filename");
+        $client = HttpClientBuilder::buildDefault();
+        $request = new Request("https://filehole.org", "POST");
+        $body = new FormBody();
+        $body->addField('url_len', '5');
+        $body->addField('expiry', '86400');
+        $body->addFile('file', $filename);
+        $request->setBody($body);
+        //var_dump($request);
+        /** @var Response $response */
+        $response = yield $client->request($request);
+        //var_dump($response);
+        if ($response->getStatus() != 200) {
+            throw new \Exception("filehole.org returned {$response->getStatus()}");
+        }
+        $respBody = yield $response->getBody()->buffer();
+        return $respBody;
+    });
+}
+
 
 $youtube_history = [];
 /**
@@ -143,6 +169,28 @@ $eventProvider->addListener(
             $youtube_history[$event->chan] = $id;
             echo "Looking up youtube video $id\n";
 
+            $shorts = "";
+            if(str_contains($event->url, '/shorts/') && ($config['youtube_upload_shorts'] ?? false)) {
+                try {
+                    $proc = new Process("yt-dlp --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
+                    yield $proc->start();
+                    $ytjson = yield \Amp\ByteStream\buffer($proc->getStdout());
+                    yield $proc->join();
+                    $ytjson = json_decode($ytjson);
+                    if (isset($ytjson->filename)) {
+                        echo "file: {$ytjson->filename}\n";
+                        $shorts = yield hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
+                        $shorts = " | $shorts";
+                        echo "shorts: $shorts\n";
+                        unlink($ytjson->filename);
+                    }
+                } catch (\Throwable $e) {
+                    echo "Exception:\n";
+                    var_dump($e);
+                }
+            }
+
+
             try {
                 $v = yield getVideoInfo($id);
             } catch (\async_get_exception $error) {
@@ -172,7 +220,7 @@ $eventProvider->addListener(
                 //$hates = number_format($v->statistics->dislikeCount);
 
                 $sent = false;
-                $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $ago | $dur";
+                $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $ago | $dur $shorts";
                 $thumbnail = $v?->snippet?->thumbnails?->high?->url;
                 if ($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                     $ext = explode('.', $thumbnail);
