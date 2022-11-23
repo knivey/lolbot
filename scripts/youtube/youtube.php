@@ -14,6 +14,7 @@ use knivey\cmdr\attributes\Syntax;
 use League\Uri\UriString;
 use Carbon\Carbon;
 use scripts\linktitles\UrlEvent;
+use function Amp\File\move;
 
 require_once 'library/async_get_contents.php';
 
@@ -120,6 +121,28 @@ function hostToFilehole(string $filename): Promise
     });
 }
 
+function isShort($duration) {
+    try {
+        $di = new \DateInterval($duration);
+        if ($di->y > 0 || $di->m > 0 || $di->h > 0 || $di->d > 0) {
+            return false;
+        }
+        $s = 0;
+        if ($di->s > 0) {
+            $s += $di->s;
+        }
+        if ($di->i > 0) {
+            $s += $di->i * 60;
+        }
+        if($s < 90 && $s > 0)
+            return true;
+    } catch (\Throwable $e) {
+        var_dump($e);
+        return false;
+    }
+    return false;
+}
+
 
 $youtube_history = [];
 /**
@@ -169,28 +192,6 @@ $eventProvider->addListener(
             $youtube_history[$event->chan] = $id;
             echo "Looking up youtube video $id\n";
 
-            $shorts = "";
-            if(str_contains($event->url, '/shorts/') && ($config['youtube_upload_shorts'] ?? false)) {
-                try {
-                    $proc = new Process("yt-dlp --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
-                    yield $proc->start();
-                    $ytjson = yield \Amp\ByteStream\buffer($proc->getStdout());
-                    yield $proc->join();
-                    $ytjson = json_decode($ytjson);
-                    if (isset($ytjson->filename)) {
-                        echo "file: {$ytjson->filename}\n";
-                        $shorts = yield hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
-                        $shorts = " | $shorts";
-                        echo "shorts: $shorts\n";
-                        unlink($ytjson->filename);
-                    }
-                } catch (\Throwable $e) {
-                    echo "Exception:\n";
-                    var_dump($e);
-                }
-            }
-
-
             try {
                 $v = yield getVideoInfo($id);
             } catch (\async_get_exception $error) {
@@ -205,6 +206,32 @@ $eventProvider->addListener(
             //dont want to spam on lots of errors with videos
             if ($v == null)
                 return;
+
+            $shorts = "";
+            if(isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') && ($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false)) {
+                try {
+                    //TODO check if file was already downloaded
+                    $proc = new Process("yt-dlp --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
+                    yield $proc->start();
+                    $ytjson = yield \Amp\ByteStream\buffer($proc->getStdout());
+                    yield $proc->join();
+                    $ytjson = json_decode($ytjson);
+                    if (isset($ytjson->filename)) {
+                        echo "file: {$ytjson->filename}\n";
+                        if(($config['youtube_host_shorts'] ?? false)) {
+                            rename($ytjson->filename, $config['youtube_host_shorts'] . '/' . $ytjson->filename);
+                            $shorts = " | " . ($config['youtube_host_shorts_url'] ?? "https://localhost/") . $ytjson->filename;
+                        } else {
+                            $shorts = " | " . yield hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
+                            unlink($ytjson->filename);
+                        }
+                        echo "shorts: $shorts\n";
+                    }
+                } catch (\Throwable $e) {
+                    echo "Exception:\n";
+                    var_dump($e);
+                }
+            }
 
             try {
                 $title = $v->snippet->title;
