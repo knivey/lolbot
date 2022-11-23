@@ -208,14 +208,16 @@ $eventProvider->addListener(
                 return;
 
             $shorts = "";
-            if(isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') && (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
+            if(isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') &&
+                (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
                 try {
                     //TODO check if file was already downloaded
-                    $proc = new Process("yt-dlp --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
+                    $proc = new Process("yt-dlp --no-progress -q --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
                     yield $proc->start();
-                    $ytjson = yield \Amp\ByteStream\buffer($proc->getStdout());
-                    yield $proc->join();
-                    $ytjson = json_decode($ytjson);
+                    $ytjson_raw = yield \Amp\ByteStream\buffer($proc->getStdout());
+                    $ytjsonerr = yield \Amp\ByteStream\buffer($proc->getStderr());
+                    $code = yield $proc->join();
+                    $ytjson = json_decode($ytjson_raw);
                     if (isset($ytjson->filename)) {
                         echo "file: {$ytjson->filename}\n";
                         if(($config['youtube_host_shorts'] ?? false)) {
@@ -226,6 +228,10 @@ $eventProvider->addListener(
                             unlink($ytjson->filename);
                         }
                         echo "shorts: $shorts\n";
+                    } else {
+                        file_put_contents("ytjson", $ytjson_raw);
+                        file_put_contents("ytjsonerr", $ytjsonerr);
+                        echo "ytjson filename missing! retcode: $code output saved to ytjson and ytjsonerr";
                     }
                 } catch (\Throwable $e) {
                     echo "Exception:\n";
