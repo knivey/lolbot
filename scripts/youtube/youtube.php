@@ -212,7 +212,7 @@ $eventProvider->addListener(
                 (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
                 try {
                     //TODO check if file was already downloaded
-                    $proc = new Process("yt-dlp --no-progress -q --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
+                    $proc = new Process("yt-dlp --no-playlist --no-progress -q --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
                     yield $proc->start();
                     $ytjson_raw = yield \Amp\ByteStream\buffer($proc->getStdout());
                     $ytjsonerr = yield \Amp\ByteStream\buffer($proc->getStderr());
