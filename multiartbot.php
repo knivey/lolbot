@@ -255,7 +255,7 @@ function startPump($chan, $speed = null) {
         }
         //we cant send empty lines
         $playing[$chan]->data = array_filter($playing[$chan]->data);
-        if (count($playing[$chan]->data) > 6000) {
+        if (count($playing[$chan]->data) > 6001) {
             $playing[$chan]->data = [$playing[$chan]->data[0], "that arts too big for this network"];
         }
         $bot = null;
@@ -312,7 +312,7 @@ function startPump($chan, $speed = null) {
                 if(isset($playing[$chan]) && !empty($playing[$chan]->data)) {
                     $line = array_shift($playing[$chan]->data);
                     $bot->pm($chan, irctools\fixColors($line));
-                    $delay = 300 / $botson;
+                    $delay = 550 / $botson;
                     if($delay < 85)
                         $delay = 85;
                     if($speed) {
