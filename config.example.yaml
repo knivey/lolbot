@@ -1,3 +1,34 @@
+name: lolbot
+server: localhost
+#server: "[::1]"
+# server password
+#pass: password
+#port: 6667
+port: 6697
+# Which IP we should use to connect from, 0 binds to any that will work
+bindIp: 0
+# Note that currently SSL certificates are not verified so the bot will still connect if they are "invalid"
+#ssl: false
+ssl: true
+# Slows down the rate we send lines for networks that disconnect you for flooding
+throttle: true
+channels: ['#bots','#h4x']
+
+# Use one or the other here
+# This is what precedes bot commands like -bing
+trigger: "."
+#trigger_re: "\\.|lolbot.? "
+
+# Alternate location for tell.db (from when bots shared tells)
+#telldb: "tell.db"
+
+
+# Uncomment to start the notification listen server
+# Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
+# echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
+#listen: "0.0.0.0:1337"
+
+
 # key for wolfram alpha
 # https://products.wolframalpha.com/api/
 #waKey: 'key'
@@ -22,6 +53,14 @@
 #bingMapsKey: "key"
 
 
+# Should the bot fetch urls and display the title of the page
+linktitles: true
+
+
+# Twitter API (for link info)
+#twitter_bearer: "key"
+
+
 # Youtube api key
 # https://support.google.com/googleapi/answer/6158862?hl=en
 #gkey: "key"
@@ -30,8 +69,18 @@
 # If the bot should use p2u to send a thumbnail to channel
 #youtube_thumb: true
 #youtube_thumbwidth: 60
+
+# If enabled are set then you need to have yt-dlp
+youtube_download_shorts: false
+# the bot will download youtube shorts less than 1 minute in length and save to a folder
+# the url is used to make a direct link for display in channel
+#youtube_host_shorts: "/home/knivey/files/"
+#youtube_host_shorts_url: "https://files.h4x.life/"
+#If shorts are enabled and the above options not set the bot will try to upload to filehole service
+
 # Location of p2u binary
 # https://git.trollforge.org/p2u/
+# rehosted at https://github.com/knivey/p2u
 #p2u: "~/p2u/p2u"
 
 
@@ -40,39 +89,15 @@
 #lastfm: key
 
 
-# namecheap API key
+# namecheap API user/key
 #namecheap_key: key
-# namecheap user
 #namecheap_user: user
 
-# Set to true to enable codesand
+# Set to true to enable codesand (configure server in scripts/codesand/config.yaml)
 codesand: false
-
-
-# Should the bot fetch urls and display the title of the page
-linktitles: true
 
 
 # username:password on a github account, not strictly required but will greatly increase api limits
 # Can just register a throwaway github for this
 #github_auth: ""
 
-
-name: pee
-server: localhost
-# server password
-#pass: password
-port: 6667
-bindIp: 0
-ssl: false
-throttle: true
-
-# Use one or the other here
-# This is what preceeds bot commands like -bing
-trigger: "-"
-#trigger_re: "\\.|pee "
-
-# Uncomment to start the notification listen server
-# Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
-# echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
-#listen: "0.0.0.0:1337"

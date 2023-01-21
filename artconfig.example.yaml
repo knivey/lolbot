@@ -1,0 +1,29 @@
+name: van
+trigger: "@"
+server: localhost
+port: 6697
+ssl: true
+throttle: false
+bindIp: 0
+channels: ['#knivey','#h4x']
+artdir: "/home/knivey/ircart/"
+pumplag: 25
+#a2m: ~/a2m/a2m
+#p2u: ~/p2u/p2u
+
+# can override default if sharing with other bots
+#quotedb: "/home/knivey/quote.db"
+
+# used for recording art with http post
+listen: "0.0.0.0:1212"
+# I put the above listen behind a nginx reverse proxy so that it can easily have ssl and a nice url
+# this is used for the bot to show a url
+rest_url: "https://arts.h4x.life/pn"
+#listen_cert: "cert.pem"
+
+# for the @url and @img commands when used with an image (does p2u)
+url_default_width: 80
+
+# For the trash command to delete art
+trustedNetwork: false
+trashDir: "/home/knivey/trashed"

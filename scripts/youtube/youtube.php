@@ -208,34 +208,36 @@ $eventProvider->addListener(
                 return;
 
             $shorts = "";
-            if(isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') &&
-                (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
-                try {
-                    //TODO check if file was already downloaded
-                    $proc = new Process("yt-dlp --no-playlist --no-progress -q --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
-                    yield $proc->start();
-                    $ytjson_raw = yield \Amp\ByteStream\buffer($proc->getStdout());
-                    $ytjsonerr = yield \Amp\ByteStream\buffer($proc->getStderr());
-                    $code = yield $proc->join();
-                    $ytjson = json_decode($ytjson_raw);
-                    if (isset($ytjson->filename)) {
-                        echo "file: {$ytjson->filename}\n";
-                        if(($config['youtube_host_shorts'] ?? false)) {
-                            rename($ytjson->filename, $config['youtube_host_shorts'] . '/' . $ytjson->filename);
-                            $shorts = " | " . ($config['youtube_host_shorts_url'] ?? "https://localhost/") . $ytjson->filename;
+            if(($config['youtube_download_shorts'] ?? false)) {
+                if (isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') &&
+                    (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
+                    try {
+                        //TODO check if file was already downloaded
+                        $proc = new Process("yt-dlp --no-playlist --no-progress -q --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
+                        yield $proc->start();
+                        $ytjson_raw = yield \Amp\ByteStream\buffer($proc->getStdout());
+                        $ytjsonerr = yield \Amp\ByteStream\buffer($proc->getStderr());
+                        $code = yield $proc->join();
+                        $ytjson = json_decode($ytjson_raw);
+                        if (isset($ytjson->filename)) {
+                            echo "file: {$ytjson->filename}\n";
+                            if (($config['youtube_host_shorts'] ?? false)) {
+                                rename($ytjson->filename, $config['youtube_host_shorts'] . '/' . $ytjson->filename);
+                                $shorts = " | " . ($config['youtube_host_shorts_url'] ?? "https://localhost/") . $ytjson->filename;
+                            } else {
+                                $shorts = " | " . yield hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
+                                unlink($ytjson->filename);
+                            }
+                            echo "shorts: $shorts\n";
                         } else {
-                            $shorts = " | " . yield hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
-                            unlink($ytjson->filename);
+                            file_put_contents("ytjson", $ytjson_raw);
+                            file_put_contents("ytjsonerr", $ytjsonerr);
+                            echo "ytjson filename missing! retcode: $code output saved to ytjson and ytjsonerr";
                         }
-                        echo "shorts: $shorts\n";
-                    } else {
-                        file_put_contents("ytjson", $ytjson_raw);
-                        file_put_contents("ytjsonerr", $ytjsonerr);
-                        echo "ytjson filename missing! retcode: $code output saved to ytjson and ytjsonerr";
+                    } catch (\Throwable $e) {
+                        echo "Exception:\n";
+                        var_dump($e);
                     }
-                } catch (\Throwable $e) {
-                    echo "Exception:\n";
-                    var_dump($e);
                 }
             }
 
