@@ -74,7 +74,6 @@ require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/lastfm/lastfm.php';
 require_once 'scripts/help/help.php';
-require_once 'scripts/artfart/artfart.php';
 require_once 'scripts/tools/tools.php';
 require_once 'scripts/tell/tell.php';
 require_once 'scripts/remindme/remindme.php';
