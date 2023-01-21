@@ -69,7 +69,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             unlink($filename);
             if($req->args->getOpt('--edit')) {
                 if(!isset($config['artdir'])) {
-                    $bot->pm($args->chan, "artdir not configued");
+                    $bot->pm($args->chan, "artdir not configured");
                     return;
                 }
                 $artSavePath = "{$config['artdir']}/p2u/";
@@ -246,7 +246,7 @@ static $palette = [
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2")]
+#[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2", "--edit")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     global $config;
     $url = $req->args[0];
@@ -305,6 +305,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         if($req->args->getOptVal("--block") !== false) {
             $words =  ["█"];
         }
+        pumpToChan($args->chan, ["ok give me a few seconds to generate the ascii.."]);
 
         for($row = 0; $row < $size['height']; $row++) {
             $last_match_index = -1;
@@ -398,6 +399,21 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $out[] = "wow thats a pretty big jones, omitting ~" . count(explode("\n", $img_string))-$cnt . "lines ;-(";
                 break;
             }
+        }
+
+        if($req->args->getOpt('--edit')) {
+            if(!isset($config['artdir'])) {
+                $bot->pm($args->chan, "artdir not configured");
+                return;
+            }
+            $artSavePath = "{$config['artdir']}/p2u/";
+            if(!is_dir($artSavePath)) {
+                mkdir($artSavePath);
+            }
+            $name = bin2hex(random_bytes(7)) . '.txt';
+            file_put_contents("$artSavePath/$name", implode("\n", $out));
+            $bot->pm($args->chan, "https://asciibird.birdnest.live/?haxAscii=p2u/$name");
+            return;
         }
 
         pumpToChan($args->chan, $out);
