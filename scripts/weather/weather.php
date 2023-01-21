@@ -29,7 +29,7 @@ function displayTemp($temp, $si = false) {
 
 function windDir($deg) {
     $dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-    return $dirs[round((($deg % 360) / 45))];
+    return $dirs[round((($deg % 360) / 45))%8];
 }
 
 /**
