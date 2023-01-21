@@ -27,6 +27,15 @@ function displayTemp($temp, $si = false) {
     return round(kToF($temp)) . '°F';
 }
 
+#[Pure]
+function displayWindspeed($speed, $si = false): string {
+    if($si) {
+        return "$speed m/s";
+    }
+    $speed = round($speed * 2.23694, 1);
+    return "$speed mph";
+}
+
 function windDir($deg) {
     $dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
     return $dirs[round((($deg % 360) / 45))%8];
@@ -166,8 +175,9 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
             $sunset = '';
         }
         $temp = displayTemp($cur['temp'], $si);
+        $windSpeed = displayWindspeed($cur['wind_speed'], $si);
         if (!$fc) {
-            $bot->pm($args->chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind direction " . windDir($cur['wind_deg']) . " at $cur[wind_speed] m/s Sun: $sunrise - $sunset");
+            $bot->pm($args->chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind " . windDir($cur['wind_deg']) . " at $windSpeed Sun: $sunrise - $sunset");
         } else {
             $out = '';
             $cnt = 0;
