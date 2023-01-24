@@ -125,7 +125,10 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $host, $text)
 
             if(preg_match("@^image/(.*)$@i", $response->getHeader("content-type"), $m)) {
                 $size = $response->getHeader("content-length");
-                $size = \knivey\tools\convert($size);
+                if($size !== null && is_numeric($size))
+                    $size = \knivey\tools\convert($size);
+                else
+                    $size = "?b";
                 $d = getimagesizefromstring($body);
                 if(!$d) {
                     $out = "[ $m[1] image $size ]";
@@ -138,7 +141,10 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $host, $text)
             }
             if(preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
                 $size = $response->getHeader("content-length");
-                $size = \knivey\tools\convert($size);
+                if($size !== null && is_numeric($size))
+                    $size = \knivey\tools\convert($size);
+                else
+                    $size = "?b";
 
                 if(!`which mediainfo`) {
                     echo "mediainfo not found, only giving basic url info\n";
