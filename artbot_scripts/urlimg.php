@@ -306,6 +306,8 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $words =  ["█"];
         }
         pumpToChan($args->chan, ["ok give me a few seconds to generate the ascii.."]);
+        //delay so the above actualy has a chance to send first
+        yield \Amp\delay(100);
 
         for($row = 0; $row < $size['height']; $row++) {
             $last_match_index = -1;
