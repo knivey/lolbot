@@ -42,12 +42,40 @@ function getRun($ep, $code) {
     return $output;
 }
 
+function canRun($args): bool {
+    global $nicks, $config;
+    if(!($config['codesand'] ?? false)) {
+        return false;
+    }
+    if(isset($config['codesandMinAccess'])) {
+        if(!is_string($config['codesandMinAccess']) ||
+            strlen($config['codesandMinAccess']) > 1 ||
+            !str_contains('~&@%+', $config['codesandMinAccess'])
+        ) {
+            echo "codesandMinAccess configured incorrectly, must be one of ~&@%+\n";
+            return false;
+        }
+        switch($config['codesandMinAccess']) {
+            case '~':
+                return $nicks->isOwner($args->nick, $args->channel);
+            case '&':
+                return $nicks->isAdminOrHigher($args->nick, $args->channel);
+            case '@':
+                return $nicks->isOpOrHigher($args->nick, $args->channel);
+            case '%':
+                return $nicks->isHalfOpOrHigher($args->nick, $args->channel);
+            case '+':
+                return $nicks->isVoiceOrHigher($args->nick, $args->channel);
+        }
+    }
+    return true;
+}
+
 #[Cmd("php")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -59,8 +87,7 @@ function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -72,8 +99,7 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -85,8 +111,7 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -98,8 +123,7 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -111,8 +135,7 @@ function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -124,8 +147,7 @@ function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -137,8 +159,7 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -150,8 +171,7 @@ function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -163,8 +183,7 @@ function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -206,8 +225,7 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $maxlines = $config['codesand_maxlines'] ?? 10;
@@ -219,8 +237,7 @@ function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $config;
-    if(!($config['codesand'] ?? false)) {
+    if(!canRun($args)) {
         return;
     }
     $code = "#include <bits/stdc++.h>

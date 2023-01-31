@@ -94,6 +94,12 @@ require_once 'scripts/twitter/twitter.php';
 require_once 'scripts/github/github.php';
 require_once 'scripts/durendaltv/durendaltv.php';
 
+#[\knivey\cmdr\attributes\PrivCmd("dumpnicks")]
+function dumpnicks($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $nicks;
+    print_r($nicks->ppl);
+}
+
 $router->loadFuncs();
 
 //copied from Cmdr should give it its own function in there later
@@ -117,10 +123,12 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     return $opts;
 }
 
+require_once 'library/Nicks.php';
 $bot = null;
+$nicks = null;
 try {
     Loop::run(function () {
-        global $bot, $config, $logHandler;
+        global $bot, $config, $logHandler, $nicks;
 
         $log = new Logger($config['name']);
         $log->pushHandler($logHandler);
@@ -131,6 +139,7 @@ try {
         \scripts\seen\initSeen($bot);
         \scripts\remindme\initRemindme($bot);
 
+        $nicks = new Nicks($bot);
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;
             $nick = $bot->getNick();
@@ -222,6 +231,20 @@ try {
                 }
             } catch (Exception $e) {
                 echo "UNCAUGHT EXCEPTION $e\n";
+            }
+        });
+        $bot->on('pm', function ($args, \Irc\Client $bot) {
+            global $router;
+            $text = explode(' ', $args->text);
+            $cmd = array_shift($text);
+            $text = implode(' ', $text);
+            if(trim($cmd) == '')
+                return;
+
+            try {
+                $router->callPriv($cmd, $text, $args, $bot);
+            } catch (Exception $e) {
+                $bot->notice($args->from, $e->getMessage());
             }
         });
         $server = yield from \scripts\notifier\notifier($bot);
