@@ -93,6 +93,7 @@ require_once 'scripts/youtube/youtube.php';
 require_once 'scripts/twitter/twitter.php';
 require_once 'scripts/github/github.php';
 require_once 'scripts/durendaltv/durendaltv.php';
+require_once 'scripts/bomb_game/bomb_game.php';
 
 #[\knivey\cmdr\attributes\PrivCmd("dumpnicks")]
 function dumpnicks($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
@@ -128,7 +129,7 @@ $bot = null;
 $nicks = null;
 try {
     Loop::run(function () {
-        global $bot, $config, $logHandler, $nicks;
+        global $bot, $config, $logHandler, $nicks, $router;
 
         $log = new Logger($config['name']);
         $log->pushHandler($logHandler);
@@ -138,6 +139,8 @@ try {
         \scripts\tell\initTell($bot);
         \scripts\seen\initSeen($bot);
         \scripts\remindme\initRemindme($bot);
+        $bomb_game = new \scripts\bomb_game\bomb_game();
+        $router->loadMethods($bomb_game);
 
         $nicks = new Nicks($bot);
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
