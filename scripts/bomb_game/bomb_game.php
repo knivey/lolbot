@@ -20,7 +20,7 @@ class bomb_game
         "I can't fit another bomb in %target%'s pants!"
     ];
     const BOMB = [
-        "Hey, %target%! Don't look but, I think there's a bomb in your pants.\x02 %time% minute\x02 timer, \x025 wires\x02: Red, Yelow, Blue, White and Black. Which wire should I cut? Don't worry, I know what I'm doing! (respond with .cutwire color)"
+        "Hey, %target%! Don't look but, I think there's a bomb in your pants.\x02 %time% minute\x02 timer, \x025 wires\x02: \x034Red\x03, \x038Yellow\x03, \x032Blue\x03, \x031White\x03 and \x031Black\x03. Which wire should I cut? Don't worry, I know what I'm doing! (respond with .cutwire color)"
     ];
     const BOMBING = [
         "Hey, don't tell %target%, but the %color% wire? Yeah, that's the one. But shh! Don't say anything!"
