@@ -12,6 +12,11 @@ use \RedBeanPHP\R as R;
 /**
  * @var array $config
  */
+
+/**
+ * @var \Nicks $nicks
+ */
+
 class bomb_game
 {
     const COLORS = ['Red', 'Yellow', 'Blue', 'White', 'Black'];
@@ -20,7 +25,7 @@ class bomb_game
         "I can't fit another bomb in %target%'s pants!"
     ];
     const BOMB = [
-        "Hey, %target%! Don't look but, I think there's a bomb in your pants.\x02 %time% minute\x02 timer, \x025 wires\x02: \x034Red\x03, \x038Yellow\x03, \x032Blue\x03, \x030,15White\x03 and \x031,15Black\x03. Which wire should I cut? Don't worry, I know what I'm doing! (respond with .cutwire color)"
+        "Hey, %target%! Don't look but, I think there's a bomb in your pants.\x02 %time% minute\x02 timer, \x025 wires\x02: \x034Red\x03, \x038Yellow\x03, \x032Blue\x03, \x030,14White\x03 and \x031,15Black\x03. Which wire should I cut? Don't worry, I know what I'm doing! (respond with .cutwire color)"
     ];
     const BOMBING = [
         "Hey, don't tell %target%, but the %color% wire? Yeah, that's the one. But shh! Don't say anything!"
@@ -33,6 +38,9 @@ class bomb_game
     ];
     const TIMESUP = [
         "Oh, come on, %target%! You could've at least picked one! Now you're dead. Guts, all over the place. You see that? Guts, all over YourPants. You should have picked the %color% wire."
+    ];
+    const NOT_ON_CHAN = [
+        "I don't know where, %target% is!"
     ];
 
     protected string $db;
@@ -58,8 +66,13 @@ class bomb_game
     #[Syntax("<target>")]
     function bomb(object $args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
     {
-        \Amp\asyncCall(function () use ($args, $bot, $req) {
-            $target = $req->args["target"];
+        global $nicks;
+        $target = $req->args["target"];
+        if(empty($nicks->getChanNickKey($target, $args->chan))) {
+            $bot->msg($args->chan, self::randReply(self::NOT_ON_CHAN, compact("target")));
+            return;
+        }
+        \Amp\asyncCall(function () use ($args, $bot, $req, $target) {
             if (array_key_exists(strtolower($target), $this->bombs)) {
                 $bot->msg($args->chan, self::randReply(self::ALREADY_BOMBING, compact("target")));
                 return;
