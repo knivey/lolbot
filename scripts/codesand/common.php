@@ -10,9 +10,11 @@ use knivey\cmdr\attributes\Syntax;
 use League\Uri\UriString;
 use Symfony\Component\Yaml\Yaml;
 
-function getRun($ep, $code) {
+function getRun($ep, $code, $extraParam = '') {
+    global $config;
+    $maxlines = $config['codesand_maxlines'] ?? 10;
     $csConfig = Yaml::parseFile(__DIR__.'/config.yaml');
-
+    $ep = "/run/$ep?maxlines=$maxlines{$extraParam}";
     try {
         $client = HttpClientBuilder::buildDefault();
         /** @var Response $response */
@@ -78,8 +80,7 @@ function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/php?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("php", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -90,8 +91,7 @@ function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/bash?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("bash", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -102,8 +102,7 @@ function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/python3?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("python3", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -114,8 +113,7 @@ function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/python2?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("python2", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -126,8 +124,7 @@ function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/perl?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("perl", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -138,8 +135,7 @@ function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/java?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("java", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -150,8 +146,7 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/fish?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("fish", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -162,8 +157,7 @@ function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/ruby?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("ruby", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -174,8 +168,7 @@ function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/tcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration", $req->args['code']);
+    $output = yield from getRun("tcc", $req->args['code'], "&flags=-Wno-implicit-function-declaration");
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -186,7 +179,6 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
     $code = "#include <assert.h>
 #include <complex.h>
 #include <ctype.h>
@@ -217,7 +209,7 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #include <wchar.h>
 #include <wctype.h>
 {$req->args['code']}";
-    $output = yield from getRun("/run/gcc?maxlines=$maxlines&flags=-Wno-implicit-function-declaration&flagsb=-lm", $code);
+    $output = yield from getRun("gcc", $code, "&flags=-Wno-implicit-function-declaration&flagsb=-lm");
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -228,8 +220,7 @@ function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     if(!canRun($args)) {
         return;
     }
-    $maxlines = $config['codesand_maxlines'] ?? 10;
-    $output = yield from getRun("/run/tcl?maxlines=$maxlines", $req->args['code']);
+    $output = yield from getRun("tcl", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -248,10 +239,9 @@ function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     
 using namespace std;
 {$req->args['code']}";
-    $maxlines = $config['codesand_maxlines'] ?? 10;
     //$gccArgs = urlencode("-Wfatal-errors -std=c++17");
     $gccArgs = urlencode("-Wfatal-errors");
-    $output = yield from getRun("/run/gpp?maxlines=$maxlines&flags=$gccArgs", $code);
+    $output = yield from getRun("gpp", $code, "&flags=$gccArgs");
     yield sendOut($bot, $args->chan, $output);
 }
 
