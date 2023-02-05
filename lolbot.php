@@ -92,6 +92,7 @@ require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
 require_once 'scripts/twitter/twitter.php';
 require_once 'scripts/github/github.php';
+require_once 'scripts/reddit/reddit.php';
 require_once 'scripts/durendaltv/durendaltv.php';
 require_once 'scripts/bomb_game/bomb_game.php';
 
