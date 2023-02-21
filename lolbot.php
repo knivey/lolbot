@@ -95,6 +95,7 @@ require_once 'scripts/github/github.php';
 require_once 'scripts/reddit/reddit.php';
 require_once 'scripts/durendaltv/durendaltv.php';
 require_once 'scripts/bomb_game/bomb_game.php';
+require_once 'scripts/translate/translate.php';
 
 #[\knivey\cmdr\attributes\PrivCmd("dumpnicks")]
 function dumpnicks($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
