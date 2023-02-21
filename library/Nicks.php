@@ -41,7 +41,7 @@ class Nicks {
         });
         $doWho = function($args, $bot) {
             if(!empty($this->whoHook))
-                $bot->off($this->whoHook[0], $this->whoHook[1]);
+                $bot->off($this->whoHook[0], null, $this->whoHook[1]);
             //If server doesn't have multi-prefix or WHOX then we likely will not be knowing full op/voice state
             //On some servers (ircu) whox will give all the @+
             $idx = null;
