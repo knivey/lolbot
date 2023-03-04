@@ -71,7 +71,7 @@ function github_cmd($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $bot->pm($args->chan, "\x02[GitHub]\x02 nothing found or server error :(");
             return;
         }
-        $bot->pm($args->chan, $out);
+        $bot->pm($args->chan, "$out -- https://github.com/$query");
     } catch (\async_get_exception $e) {
         $bot->pm($args->chan, "\x02[GitHub]\x02 Error: {$e->getIRCMsg()}");
     }
