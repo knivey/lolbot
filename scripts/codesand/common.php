@@ -139,7 +139,8 @@ function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     yield sendOut($bot, $args->chan, $output);
 }
 
-#[Cmd("fish")]
+/*
+#[Cmd("fish-shell")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
@@ -149,6 +150,7 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $output = yield from getRun("fish", $req->args['code']);
     yield sendOut($bot, $args->chan, $output);
 }
+*/
 
 #[Cmd("ruby")]
 #[Syntax("<code>...")]
