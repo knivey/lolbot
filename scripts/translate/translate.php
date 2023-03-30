@@ -35,7 +35,7 @@ function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $body = new FormBody();
     $body->addField('sl', $fromLang);
     $body->addField('tl', $toLang);
-    $body->addField('q', urlencode($text));
+    $body->addField('q', $text);
     $request->setBody($body);
     $response = yield $client->request($request);
     if ($response->getStatus() != 200) {
