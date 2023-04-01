@@ -62,13 +62,16 @@ function string2Seconds(string $duration): int|string {
 	global $Duration_periods;
     $string = trim($duration);
     $string = str_split($string);
-    $num = '';
+    $num = 0;
     $total = 0;
     foreach ($string as $chunk) {
         if (is_numeric($chunk)) {
             $num .= $chunk;
         } else {
             if(array_key_exists($chunk, $Duration_periods)) {
+                if($num == 0) {
+                    return "No value given for time identifier $chunk";
+                }
             	$total += $num * $Duration_periods[$chunk];
             } else {
             	return "$chunk is an unknown time identifier";
