@@ -14,41 +14,48 @@ use knivey\cmdr\attributes\Syntax;
 #[Options("--langs")]
 function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
-    $text = $req->args['input'];
-    $fromLang = "auto";
-    $toLang = "en";
+    try {
+        $text = $req->args['input'];
+        $fromLang = "auto";
+        $toLang = "en";
 
-    $languages = $req->args->getOptVal("--langs");
-    if ($languages != "") {
-        $languages = validateLanguages($languages);
-        if ($languages == false) {
-            $bot->pm($args->chan, "invalid languages");
-            return;
+        $languages = $req->args->getOptVal("--langs");
+        if ($languages != "") {
+            $languages = validateLanguages($languages);
+            if ($languages == false) {
+                $bot->pm($args->chan, "invalid languages");
+                return;
+            }
+            
+            extract($languages, EXTR_OVERWRITE);
         }
-        
-        extract($languages, EXTR_OVERWRITE);
+
+        $url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t";
+        $client = HttpClientBuilder::buildDefault();
+        $request = new Request($url, "POST");
+        $body = new FormBody();
+        $body->addField('sl', $fromLang);
+        $body->addField('tl', $toLang);
+        $body->addField('q', $text);
+        $request->setBody($body);
+        $response = yield $client->request($request);
+        if ($response->getStatus() != 200) {
+            $body = yield $response->getBody()->buffer();
+            echo $body;
+            throw new \Exception("gTranslate returned {$response->getStatus()}");
+        }
+        $respBody = yield $response->getBody()->buffer();
+
+        $translation = explode(",", $respBody)[0];
+        $translation = substr($translation, strpos($translation, '"') + 1);
+        $translation = substr($translation, 0, strpos($translation, '"'));
+        $translation = urldecode($translation);
+
+        $bot->pm($args->chan, $translation);
+    } catch (Exception $e) {
+        echo $e;
+        $bot->pm($args->chan, $e->getMessage());
     }
-
-    $url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t";
-    $client = HttpClientBuilder::buildDefault();
-    $request = new Request($url, "POST");
-    $body = new FormBody();
-    $body->addField('sl', $fromLang);
-    $body->addField('tl', $toLang);
-    $body->addField('q', $text);
-    $request->setBody($body);
-    $response = yield $client->request($request);
-    if ($response->getStatus() != 200) {
-        throw new \Exception("gTranslate returned {$response->getStatus()}");
-    }
-    $respBody = yield $response->getBody()->buffer();
-
-    $translation = explode(",", $respBody)[0];
-    $translation = substr($translation, strpos($translation, '"') + 1);
-    $translation = substr($translation, 0, strpos($translation, '"'));
-    $translation = urldecode($translation);
-
-    $bot->pm($args->chan, $translation);
 
 }
 
