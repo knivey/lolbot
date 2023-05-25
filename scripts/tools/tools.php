@@ -157,16 +157,12 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
-function hash32($name)
-{
+function hash32($name) {
     $n = 42;
     $r = strlen($name);
-    $o = 0;
-    while ($o < $r) {
-        $n = (($n << 5) - $n + ord($name[$o]));
-        $o += 1;
+    for ($o = 0; $o < $r; $o++) {
+        $n = (($n << 5) - $n + ord($name[$o])) & 0xffffffff;
     }
-    $n = ($n & 0xFFFFFFFF);
     if ($n & 0x80000000) {
         $n = -((~$n & 0xFFFFFFFF) + 1);
     }
@@ -188,7 +184,7 @@ function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
     $domain = $req->args['domain'];
 
-    if(!preg_match('/^[a-zA-Z0-9-]+$/', $domain) || strlen($domain) > 14) {
+    if(!preg_match('/^[a-zA-Z0-9-]+$/', $domain) || strlen($domain) > 25) {
         return $bot->pm($args->chan, "grow up");
     }
 
@@ -235,10 +231,10 @@ function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         }
 
         if($tld->isRegistered == false) {
-            $string = str_pad("\x033 $domain.$tld->tld ✅", 35, " ", STR_PAD_RIGHT);
+            $string = str_pad("\x033 [✓] $domain.$tld->tld", 40, " ", STR_PAD_RIGHT);
         }
         else {
-            $string = str_pad("\x034 $domain.$tld->tld ❌", 35, " ", STR_PAD_RIGHT);
+            $string = str_pad("\x034 [☓] $domain.$tld->tld", 40, " ", STR_PAD_RIGHT);
         }
 
         $msgString .= $string;
