@@ -149,10 +149,11 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) That domain is already taken :(");
         }
     } catch (\async_get_exception $error) {
+        // keys should only be leaked in this exception message, other one is from xml error message
         $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) Connection error :( try again later");
         echo $error->getMessage();
     } catch (\Exception $error) {
-        $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) i unno some kinda error happen :(");
+        $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) {$error->getMessage()}");
         echo $error->getMessage();
     }
 }
