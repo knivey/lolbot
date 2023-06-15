@@ -22,6 +22,7 @@ use Amp\Http\Server\RequestHandler\CallableRequestHandler;
 use Amp\Http\Server\Response as HttpResponse;
 use Amp\Http\Server\Request as HttpRequest;
 use Amp\Http\Status;
+use Symfony\Component\Yaml\Yaml;
 use function Amp\call;
 
 $recordings = [];
@@ -46,6 +47,12 @@ function buffer(InputStream $stream, int $max): Promise {
 
 $allowedPumps = [];
 
+function asciipost_to_array(string $msg): array {
+    $msg = str_replace("\r", "\n", $msg);
+    $msg = explode("\n", $msg);
+    return array_filter($msg);
+}
+
 $restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function (HttpRequest $request) {
     global $allowedPumps;
     $args = $request->getAttribute(Router::class);
@@ -63,13 +70,60 @@ $restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function
             "content-type" => "text/plain; charset=utf-8"
         ], "{$e->getMessage()}\n");
     }
-    $msg = str_replace("\r", "\n", $msg);
-    $msg = explode("\n", $msg);
-    $msg = array_filter($msg);
+    $msg = asciipost_to_array($msg);
+    if(count($msg) > 9000)
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "Too many lines\n");
     array_unshift($msg, "Pump brought to you by {$pumpInfo['nick']}");
     pumpToChan($pumpInfo['chan'], $msg);
     unset($allowedPumps[$args['key']]);
     return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "PUMPED!\n");
+}));
+
+$restRouter->addRoute('POST', '/record2/{key}/{filename}', new CallableRequestHandler(function (HttpRequest $request) {
+    global $config;
+    $keys = Yaml::parseFile('recording_keys.yaml');
+    $args = $request->getAttribute(Router::class);
+    if(!isset($args['key']) || !isset($keys[$args['key']])) {
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "Invalid key\n");
+    }
+    $user = $keys[$args['key']];
+    if(!isset($args['filename'])) {
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "Missing required filename\n");
+    }
+
+    $file = $args['filename'];
+
+    try {
+        $msg = yield buffer($request->getBody(), 1024 * 9000);
+    } catch (\BufferOverFlow $e) {
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "{$e->getMessage()}\n");
+    }
+    $msg = asciipost_to_array($msg);
+    if(count($msg) > 9000)
+        return new HttpResponse(Status::FORBIDDEN, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "Too many lines\n");
+
+    $dir = "${config['artdir']}h4x/{$user}";
+    if(file_exists($dir) && !is_dir($dir)) {
+        return new HttpResponse(Status::INTERNAL_SERVER_ERROR, [
+            "content-type" => "text/plain; charset=utf-8"
+        ], "dir for recordings is not valid plz tell admin to fix\n");
+    }
+    if(!file_exists($dir)) {
+        mkdir($dir, 0777, true);
+    }
+    $file = "$dir/{$file}.txt";
+    file_put_contents($file, implode("\n", $msg));
+    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "$file\n");
 }));
 
 $restRouter->addRoute('POST', '/record/{key}', new CallableRequestHandler(function (HttpRequest $request) {
@@ -88,9 +142,7 @@ $restRouter->addRoute('POST', '/record/{key}', new CallableRequestHandler(functi
             "content-type" => "text/plain; charset=utf-8"
         ], "{$e->getMessage()}\n");
     }
-    $msg = str_replace("\r", "\n", $msg);
-    $msg = explode("\n", $msg);
-    $msg = array_filter($msg);
+    $msg = asciipost_to_array($msg);
 
     if(count($msg) > 9000)
         return new HttpResponse(Status::FORBIDDEN, [

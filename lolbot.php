@@ -74,7 +74,6 @@ require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/lastfm/lastfm.php';
 require_once 'scripts/help/help.php';
-require_once 'scripts/artfart/artfart.php';
 require_once 'scripts/tools/tools.php';
 require_once 'scripts/tell/tell.php';
 require_once 'scripts/remindme/remindme.php';
@@ -93,7 +92,16 @@ require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
 require_once 'scripts/twitter/twitter.php';
 require_once 'scripts/github/github.php';
+require_once 'scripts/reddit/reddit.php';
 require_once 'scripts/durendaltv/durendaltv.php';
+require_once 'scripts/bomb_game/bomb_game.php';
+require_once 'scripts/translate/translate.php';
+
+#[\knivey\cmdr\attributes\PrivCmd("dumpnicks")]
+function dumpnicks($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+    global $nicks;
+    print_r($nicks->ppl);
+}
 
 $router->loadFuncs();
 
@@ -118,10 +126,12 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     return $opts;
 }
 
+require_once 'library/Nicks.php';
 $bot = null;
+$nicks = null;
 try {
     Loop::run(function () {
-        global $bot, $config, $logHandler;
+        global $bot, $config, $logHandler, $nicks, $router;
 
         $log = new Logger($config['name']);
         $log->pushHandler($logHandler);
@@ -131,7 +141,10 @@ try {
         \scripts\tell\initTell($bot);
         \scripts\seen\initSeen($bot);
         \scripts\remindme\initRemindme($bot);
+        $bomb_game = new \scripts\bomb_game\bomb_game();
+        $router->loadMethods($bomb_game);
 
+        $nicks = new Nicks($bot);
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;
             $nick = $bot->getNick();
@@ -223,6 +236,20 @@ try {
                 }
             } catch (Exception $e) {
                 echo "UNCAUGHT EXCEPTION $e\n";
+            }
+        });
+        $bot->on('pm', function ($args, \Irc\Client $bot) {
+            global $router;
+            $text = explode(' ', $args->text);
+            $cmd = array_shift($text);
+            $text = implode(' ', $text);
+            if(trim($cmd) == '')
+                return;
+
+            try {
+                $router->callPriv($cmd, $text, $args, $bot);
+            } catch (Exception $e) {
+                $bot->notice($args->from, $e->getMessage());
             }
         });
         $server = yield from \scripts\notifier\notifier($bot);

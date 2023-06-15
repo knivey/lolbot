@@ -57,6 +57,11 @@ class Client extends EventEmitter
 
     private int $ErrDelay = 0;
 
+    /**
+     * IRCv3 Capability enabled
+     */
+    protected array $caps = [];
+
     public function __construct(
         protected string $nick,
         protected string $server,
@@ -108,7 +113,8 @@ class Client extends EventEmitter
                     continue;
                 }
                 $this->isConnected = true;
-                //Yay connected, now login..
+                //Yay connected, try CAP and login
+                $this->send('CAP LS');
                 $this->sendLogin();
                 while ($this->isConnected) {
                     yield $this->doRead();
@@ -161,6 +167,7 @@ class Client extends EventEmitter
         $this->awaitingPong = null;
         $this->onChannels = [];
         $this->inQ = '';
+        $this->caps = [];
         $this->emit('disconnected');
     }
 
@@ -234,9 +241,22 @@ class Client extends EventEmitter
         return $this->ircEstablished;
     }
 
+    public function getCaps(): array {
+        return $this->caps;
+    }
+
+    public function hasCap(string $cap): bool {
+        return in_array(strtolower($cap), array_map(strtolower(...), $this->caps));
+    }
+
     public function getNick(): string
     {
         return $this->nick;
+    }
+
+    public function isCurrentNick(string $nick): bool
+    {
+        return strtolower($nick) == strtolower($this->nick);
     }
 
     public function setNick(string $nick): static
@@ -346,6 +366,11 @@ class Client extends EventEmitter
     public function getOption(string $option, null|string|array $defaultValue = null): string|array|null
     {
         return ($this->options[strtoupper($option)] ?? $defaultValue);
+    }
+
+    public function hasOption(string $option): bool
+    {
+        return array_key_exists(strtoupper($option), $this->options);
     }
 
     public function getOptions(): array
@@ -673,6 +698,18 @@ class Client extends EventEmitter
                     'arg' => $message->getArg(1)
                 ));
                 break;
+            case "CAP":
+                if($message->getArg(1) == "LS") {
+                    $caps = explode(" ", $message->getArg(2));
+                    if(in_array('multi-prefix', $caps)) {
+                        $this->send("CAP REQ :multi-prefix");
+                        $this->send("CAP END");
+                    }
+                }
+                if($message->getArg(1) == "ACK") {
+                    $this->caps = explode(" ", $message->getArg(2));
+                }
+                break;
             case CMD_JOIN:
                 //Emit channel join events
                 $nick = $message->nick ?: $this->nick;
@@ -683,6 +720,7 @@ class Client extends EventEmitter
 
                 $this->emit("join, join:$channel, join:$nick, join:$channel:$nick", array(
                     'nick' => $nick,
+                    'identhost' => $message->getIdentHost(),
                     'channel' => $channel
                 ));
                 break;
@@ -696,6 +734,7 @@ class Client extends EventEmitter
 
                 $this->emit("part, part:$channel, part:$nick, part:$channel:$nick", array(
                     'nick' => $nick,
+                    'identhost' => $message->getIdentHost(),
                     'channel' => $channel
                 ));
                 break;
@@ -709,6 +748,7 @@ class Client extends EventEmitter
 
                 $this->emit("kick, kick:$channel, kick:$nick, kick:$channel:$nick", array(
                     'nick' => $nick,
+                    'identhost' => $message->getIdentHost(),
                     'channel' => $channel
                 ));
                 break;
@@ -738,6 +778,7 @@ class Client extends EventEmitter
                     'host' => $message->host,
                     'fullhost' => $message->getHostString(),
                     'on' => $message->getArg(0),
+                    'target' => $message->getArg(0),
                     'args' => array_splice($message->args, 1)
                 ]);
                 break;
@@ -771,6 +812,7 @@ class Client extends EventEmitter
                     'ident' => $message->name,
                     'host' => $message->host,
                     'fullhost' => $message->getHostString(),
+                    'identhost' => $message->getIdentHost(),
                     'to' => $to,
                     'target' => $to,
                     'text' => $text
@@ -887,6 +929,20 @@ class Client extends EventEmitter
                 if($this->getNick() == $message->nick && $newNick !== null) {
                     $this->nick = $newNick;
                 }
+                $this->emit("nick", array(
+                    'old' => $message->nick,
+                    'new' => $newNick
+                ));
+                break;
+            case "QUIT":
+                $this->emit("quit", array(
+                    'nick' => $message->nick,
+                    'ident' => $message->name,
+                    'host' => $message->host,
+                    'fullhost' => $message->getHostString(),
+                    'identhost' => $message->getIdentHost(),
+                    'msg' => $message->getArg(0)
+                ));
                 break;
             default:
                 $this->emit($message->command, ['message' => $message]);

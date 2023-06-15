@@ -58,7 +58,7 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         R::store($r);
 
         $bot->pm($args->chan, "Ok, I'll remind you in " . Duration_toString($in));
-        yield from sendDelayed($bot, $r, $in);
+        sendDelayed($bot, $r, $in);
     });
 }
 
@@ -105,41 +105,46 @@ function at($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 function sendDelayed(\Irc\Client $bot, $r, $seconds) {
-    yield \Amp\delay($seconds * 1000);
-    //if bot somehow isnt connected keep retrying
-    while (!$bot->isEstablished()) {
-        yield \Amp\delay(10000);
-    }
-    $bot->pm($r->chan, "[REMINDER: {$r->nick}] {$r->msg}");
-    $r->sent = 1;
-    R::selectDatabase(REMINDERDB);
-    R::store($r);
+    \Amp\asyncCall(function () use ($bot, $r, $seconds) {
+        if($seconds > 0)
+            yield \Amp\delay($seconds * 1000);
+        //if bot somehow isnt connected keep retrying
+        while (!$bot->isEstablished()) {
+            yield \Amp\delay(10000);
+        }
+        $bot->pm($r->chan, "[REMINDER: {$r->nick}] {$r->msg}");
+        $r->sent = 1;
+        R::selectDatabase(REMINDERDB);
+        R::store($r);
+    });
 }
 
 
-function initRemindme($bot) {
+function initRemindme(\Irc\Client $bot) {
     static $inited = false;
     if($inited)
         return;
     $inited = true;
+    echo "Initializing remindme...\n";
     \Amp\asyncCall(function () use ($bot) {
+        while (!$bot->isEstablished()) {
+            yield \Amp\delay(10000);
+        }
         //A bit of a hack here so we give the bot time to join channels etc
         yield \Amp\delay(5000);
         R::selectDatabase(REMINDERDB);
         //load our reminders from db and call sendDelayed on all
         $rs = R::findAll("reminder", " `sent` = 0 ");
+        echo "remindme has " . count($rs) . " reminders loaded from db\n";
         foreach ($rs as $r) {
             //whoops already passed while bot was down
             if ($r->at <= time()) {
-                while (!$bot->isEstablished()) {
-                    yield \Amp\delay(10000);
-                }
                 $ago = Duration_toString(time() - $r->at);
                 $bot->pm($r->chan, "[REMINDER: {$r->nick} (late by $ago)] {$r->msg}");
                 $r->sent = 1;
                 R::store($r);
             } else {
-                yield from sendDelayed($bot, $r, $r->at - time());
+                sendDelayed($bot, $r, $r->at - time());
             }
         }
     });

@@ -158,6 +158,98 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 }
 
+function hash32($name) {
+    $n = 42;
+    $r = strlen($name);
+    for ($o = 0; $o < $r; $o++) {
+        $n = (($n << 5) - $n + ord($name[$o])) & 0xffffffff;
+    }
+    if ($n & 0x80000000) {
+        $n = -((~$n & 0xFFFFFFFF) + 1);
+    }
+    return $n;
+}
+
+function validateDomain($domainName) {
+    if (preg_match('/^[a-zA-Z0-9-]+$/', $domainName)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+#[Cmd("tldcheck", "tc")]
+#[Syntax('<domain>')]
+#[CallWrap("Amp\asyncCall")]
+function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+{
+    $domain = $req->args['domain'];
+
+    if(!preg_match('/^[a-zA-Z0-9-]+$/', $domain) || strlen($domain) > 25) {
+        return $bot->pm($args->chan, "grow up");
+    }
+
+    $bot->pm($args->chan, "checking available tlds for {$domain}.*");
+
+    $hash = hash32($domain);
+
+    $headers = [
+        'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0',
+        'Accept: application/x-ndjson',
+        'Accept-Language: en-US,en;q=0.5',
+        'Accept-Encoding: gzip, deflate, br',
+        'Referer: https://instantdomainsearch.com/domain/extensions?q='.$domain,
+        'Alt-Used: instantdomainsearch.com',
+        'Connection: keep-alive',
+        'Sec-Fetch-Dest: empty',
+        'Sec-Fetch-Mode: cors',
+        'Sec-Fetch-Site: same-origin',
+        'Pragma: no-cache',
+        'Cache-Control: no-cache',
+        'Te: trailers',
+    ];
+
+    $urls = [
+        "https://instantdomainsearch.com/services/dns-names/$domain?hash=$hash&limit=1000&tldTags=all",
+        "https://instantdomainsearch.com/services/zone-names/$domain?hash=$hash&limit=1000&tldTags=all"
+    ];
+
+    $lines = [];
+    foreach($urls as $url) {
+        $result = yield async_get_contents($url, $headers);
+        $results = explode("\n", $result);
+        $lines = array_merge($lines, $results);
+    }
+
+    // funky handling of ndjson response - https://www.pragmanotdogma.com/26-handling-ndjson-with-javascript-and-php
+    $json = array_map('json_decode', $lines);
+
+    $msgString = '';
+    $c = 0;
+    foreach ($json as $tld) {
+        if (!isset($tld->isRegistered) || !isset($tld->tld)) {
+            continue;
+        }
+
+        if($tld->isRegistered == false) {
+            $string = str_pad("\x033 [✓] $domain.$tld->tld", 40, " ", STR_PAD_RIGHT);
+        }
+        else {
+            $string = str_pad("\x034 [☓] $domain.$tld->tld", 40, " ", STR_PAD_RIGHT);
+        }
+
+        $msgString .= $string;
+
+        if($c % 3 == 0) {
+            $bot->msg($args->chan, trim($msgString));
+            $msgString = '';
+        }
+
+        $c++;
+    }
+
+}
+
 #[Cmd("affirm")]
 #[Syntax('[nick]...')]
 #[CallWrap("Amp\asyncCall")]

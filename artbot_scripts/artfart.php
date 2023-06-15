@@ -1,5 +1,5 @@
 <?php
-namespace scripts\artfart;
+namespace artbot_scripts;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
@@ -21,9 +21,9 @@ function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Request $req): \Generator
         $fart = trim(htmlspecialchars_decode($m[1], ENT_QUOTES|ENT_HTML5), "\n\r");
         if($req->args->getOpt('--rnb') || $req->args->getOpt('--rainbow'))
             $fart = \knivey\ircTools\diagRainbow($fart);
-        foreach (explode("\n", $fart) as $line) {
-            $bot->pm($args->chan, rtrim($line));
-        }
+        $fart = explode("\n", $fart);
+        $fart = array_map(rtrim(...), $fart);
+        pumpToChan($args->chan, $fart);
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2artfart:\2 {$error->getIRCMsg()}");

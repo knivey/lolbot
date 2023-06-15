@@ -1,3 +1,5 @@
+#general options from artconfig.yaml may be used in here
+
 channels: ['#knivey']
 trigger: "@"
 artdir: "/home/knivey/ircart/"

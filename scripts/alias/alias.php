@@ -72,7 +72,8 @@ function aliases($args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
         return;
     }
     $list = implode(', ', array_map(fn($it) => $it->name, $aliases));
-    $rpl("$list", 'list');
+    foreach (explode("\n", wordwrap($list, 300, "\n", true)) as $line)
+        $rpl("$line", 'list');
 }
 
 /**

@@ -28,7 +28,8 @@
         "symfony/finder": "^5.3",
         "decidedly/decidedly-markov": "^1.1",
         "ext-imagick": "*",
-        "itwmw/color-difference": "^1.2"
+        "itwmw/color-difference": "^1.2",
+        "knivey/reddit": "^0.1.0"
     },
     "name": "knivey/lolbot",
     "description": "IRC bot made for fun for friends",

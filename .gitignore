@@ -4,9 +4,12 @@ ircart
 vendor
 config.yaml
 artconfig.yaml
+multiartconfig.yaml
 composer.lock
 scripts/notifier/notifier_keys.yaml
 ignores.txt
 composer-dev.lock
 /composer.phar
 /.phplint-cache
+*.db
+

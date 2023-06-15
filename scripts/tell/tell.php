@@ -42,7 +42,7 @@ if ($multiNet) {
         }
         $max = $config['tell_max_inbox'] ?? 10;
         $net = $bot->getOption('NETWORK', 'UnknownNet');
-        if (countMsgs($req->args['nick'], $net, true) >= $max) {
+        if ((countMsgs($req->args['nick'], $net, true) >= $max) && !strcasecmp($req->args['nick'], 'terps')) {
             $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
             return;
         }
