@@ -183,10 +183,16 @@ function validateDomain($domainName) {
 #[CallWrap("Amp\asyncCall")]
 function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 {
+    global $config;
     $domain = $req->args['domain'];
 
     if(!preg_match('/^[a-zA-Z0-9-]+$/', $domain) || strlen($domain) > 25) {
         return $bot->pm($args->chan, "grow up");
+    }
+
+    if(!isset($config['throttle']) || $config['throttle']) {
+        $bot->msg($args->chan, "output too big for this network :(");
+        return;
     }
 
     $bot->pm($args->chan, "checking available tlds for {$domain}.*");
