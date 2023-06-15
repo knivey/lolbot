@@ -121,9 +121,14 @@ $restRouter->addRoute('POST', '/record2/{key}/{filename}', new CallableRequestHa
     if(!file_exists($dir)) {
         mkdir($dir, 0777, true);
     }
-    $file = "$dir/{$file}.txt";
-    file_put_contents($file, implode("\n", $msg));
-    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "$file\n");
+    $cnt = 0;
+    while((file_exists("$dir/{$file}.txt") && $cnt == 0) || file_exists("$dir/{$file}-$cnt.txt")) {
+        $cnt++;
+    }
+    if($cnt > 0)
+        $file = "$file-$cnt";
+    file_put_contents("$dir/{$file}.txt", implode("\n", $msg));
+    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "h4x/{$user}/$file.txt\n");
 }));
 
 $restRouter->addRoute('POST', '/record/{key}', new CallableRequestHandler(function (HttpRequest $request) {
