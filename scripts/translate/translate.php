@@ -12,15 +12,15 @@ use knivey\cmdr\attributes\Syntax;
 #[Syntax('<input>...')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--langs")]
-function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     try {
-        $text = $req->args['input'];
+        $text = $cmdArgs['input'];
         $fromLang = "auto";
         $toLang = "en";
 
-        $languages = $req->args->getOptVal("--langs");
-        if ($languages != "") {
+        $languages = $cmdArgs->getOpt("--langs");
+        if ($languages) {
             $languages = validateLanguages($languages);
             if ($languages == false) {
                 $bot->pm($args->chan, "invalid languages");

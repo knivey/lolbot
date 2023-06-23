@@ -212,24 +212,14 @@ class Art {
 }
 
 #[Cmd("linetest")]
-#[Syntax('<sx> <sy> <ex> <ey>')]
-function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+#[Syntax('<sx: uint max=100> <sy: uint max=100> <ex: uint max=100> <ey: uint max=100>')]
+function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(30, 14);
-    $sx = $req->args['sx'];
-    $sy = $req->args['sy'];
-    $ex = $req->args['ex'];
-    $ey = $req->args['ey'];
-    foreach(compact(['sx', 'sy', 'ex', 'ey']) as $k => $v) {
-        if(!is_numeric($v)) {
-            $bot->msg($args->chan, "argument $k must be numeric");
-            return;
-        }
-        if($v > 1000) {
-            $bot->msg($args->chan, "argument $k too big, limit to <1000");
-            return;
-        }
-    }
+    $sx = $cmdArgs['sx'];
+    $sy = $cmdArgs['sy'];
+    $ex = $cmdArgs['ex'];
+    $ey = $cmdArgs['ey'];
 
     $art->drawLine($sx, $sy, $ex, $ey, new Color(04,0), "x");
 
@@ -238,49 +228,31 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 
 #[Cmd("filledellipsetest")]
-#[Syntax('<cx> <cy> <w> <h>')]
-function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+#[Syntax('<cx: uint max=100> <cy: uint max=100> <w: uint max=100> <h: uint max=100>')]
+function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 24);
-    $cx = $req->args['cx'];
-    $cy = $req->args['cy'];
-    $w = $req->args['w'];
-    $h = $req->args['h'];
-    foreach(compact(['cx', 'cy', 'w', 'h']) as $k => $v) {
-        if(!is_numeric($v)) {
-            $bot->msg($args->chan, "argument $k must be numeric");
-            return;
-        }
-        if($v > 1000) {
-            $bot->msg($args->chan, "argument $k too big, limit to <1000");
-            return;
-        }
-    }
+    $cx = $cmdArgs['cx'];
+    $cy = $cmdArgs['cy'];
+    $w = $cmdArgs['w'];
+    $h = $cmdArgs['h'];
+
     $art->drawFilledEllipse($cx, $cy, $w, $h, new Color(04,0), "x");
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
 
 #[Cmd("ellipsetest")]
-#[Syntax('<cx> <cy> <w> <h> <segs>')]
-function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+#[Syntax('<cx: uint max=100> <cy: uint max=100> <w: uint max=100> <h: uint max=100> <segs: uint max=100>')]
+function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 24);
-    $cx = $req->args['cx'];
-    $cy = $req->args['cy'];
-    $w = $req->args['w'];
-    $h = $req->args['h'];
-    $segs = $req->args['segs'];
-    foreach(compact(['cx', 'cy', 'w', 'h', 'segs']) as $k => $v) {
-        if(!is_numeric($v)) {
-            $bot->msg($args->chan, "argument $k must be numeric");
-            return;
-        }
-        if($v > 1000) {
-            $bot->msg($args->chan, "argument $k too big, limit to <1000");
-            return;
-        }
-    }
+    $cx = $cmdArgs['cx'];
+    $cy = $cmdArgs['cy'];
+    $w = $cmdArgs['w'];
+    $h = $cmdArgs['h'];
+    $segs = $cmdArgs['segs'];
+
     $art->drawEllipse($cx, $cy, $w, $h, new Color(04,0), "x", $segs);
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
@@ -288,7 +260,7 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 
 #[Cmd("lines")]
-function lines($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 24);
     $numlines = rand(5,20);
@@ -306,7 +278,7 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 
 #[Cmd("circles")]
-function circles($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 24);
     $numlines = rand(5,20);

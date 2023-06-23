@@ -20,7 +20,7 @@ $quote_recordings = [];
 #[Cmd("addquote", "quoteadd")]
 #[Syntax("[quote]...")]
 #[Options('--keeptimes')]
-function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
     global $quote_recordings, $config;
@@ -32,13 +32,13 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         'nick' => $nick,
         'chan' => $chan,
         'lines' => [],
-        'keeptimes' => $req->args->getOpt('--keeptimes'),
+        'keeptimes' => $cmdArgs->optEnabled('--keeptimes'),
         'timeOut' => Amp\Loop::delay(15000, quoteTimeOut(...), [$nick, $bot]),
     ];
-    if(isset($req->args['quote'])) {
-        $quote_recordings[$nick]['lines'][] = $req->args['quote'];
+    if(isset($cmdArgs['quote'])) {
+        $quote_recordings[$nick]['lines'][] = $cmdArgs['quote'];
         $quote_recordings[$nick]['lines'][] = "removed by array_pop";
-        endquote($args, $bot, $req);
+        endquote($args, $bot, $cmdArgs);
         return;
     }
     $bot->pm($chan, "Quote recording started type \x02\x034@endquote\x03\x02 when done or discard with @cancelquote or just wait 15 seconds.");
@@ -57,7 +57,7 @@ function quoteTimeOut($watcher, $data): void {
 }
 
 #[Cmd("endquote", "stopquote")]
-function endquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function endquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $host = $args->host;
     $chan = $args->chan;
@@ -107,7 +107,7 @@ function stripTimestamp($line) {
 }
 
 #[Cmd("cancelquote")]
-function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
     global $quote_recordings;
@@ -123,15 +123,15 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Cmd("searchquote", "searchquotes", "quotesearch", "querch", "findquote", "quotefind")]
 #[Syntax("<query>...")]
 #[Option("--play", "Play the results up to limit")]
-function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     R::selectDatabase('quotes');
-    $query = "%" . str_replace("*", "%", $req->args['query']) . "%";
+    $query = "%" . str_replace("*", "%", $cmdArgs['query']) . "%";
     $quotes = R::find('quote', 'data LIKE ?', [$query]);
     if(empty($quotes)) {
         $bot->pm($args->chan, "Nothing found");
         return;
     }
-    if($req->args->getOpt("--play")) {
+    if($cmdArgs->optEnabled("--play")) {
         $cnt = 0;
         foreach($quotes as $quote) {
             $cnt++;
@@ -174,10 +174,10 @@ function initQuotes($bot) {
 
 #[Cmd("quote")]
 #[Syntax("[id]")]
-function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     R::selectDatabase('quotes');
-    if(isset($req->args['id'])) {
-        $quote = R::findOne('quote', ' id = ? ', [$req->args['id']]);
+    if(isset($cmdArgs['id'])) {
+        $quote = R::findOne('quote', ' id = ? ', [$cmdArgs['id']]);
         if($quote == null) {
             $bot->pm($args->chan, "Quote by that ID not found.");
             return;
@@ -205,13 +205,13 @@ function showQuote($bot, $chan, $quote) {
 /*
 // need auth system so only TRUSTED users can delete
 #[Cmd("delquote")]
-function delquote($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function delquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 //website not ready
 #[Cmd("quoteweb")]
-function quoteweb($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function quoteweb($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 */

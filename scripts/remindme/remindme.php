@@ -20,8 +20,8 @@ $limitWarns = [];
 
 #[Cmd("in", "remindme")]
 #[Syntax("<time> <msg>...")]
-function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    \Amp\asyncCall(function () use ($args, $bot, $req) {
+function in($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    \Amp\asyncCall(function () use ($args, $bot, $cmdArgs) {
         global $cmdLimit, $limitWarns;
         $host = $args->host;
         if(isset($cmdLimit[$host]) && $cmdLimit[$host] > time()) {
@@ -34,7 +34,7 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $cmdLimit[$host] = time()+2;
         unset($limitWarns[$host]);
 
-        $in = string2Seconds($req->args['time']);
+        $in = string2Seconds($cmdArgs['time']);
         if(is_string($in)) {
             $bot->pm($args->chan, "Error: $in, Give me a proper duration of at least 15 seconds with no spaces using yMwdhms (Ex: 1h10m15s)");
             return;
@@ -54,7 +54,7 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $r->chan = $args->chan;
         $r->at = time() + $in;
         $r->sent = 0;
-        $r->msg = $req->args['msg'];
+        $r->msg = $cmdArgs['msg'];
         R::store($r);
 
         $bot->pm($args->chan, "Ok, I'll remind you in " . Duration_toString($in));
@@ -68,8 +68,8 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 // TODO let users save a timezone so they dont have always include it here
 #[Cmd("at", "on")]
 #[Syntax("<timemsg>...")]
-function at($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    $r = makeArgs($req->args['timemsg']);
+function at($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $r = makeArgs($cmdArgs['timemsg']);
     if(!is_array($r) || count($r) < 2) {
         $bot->pm($args->chan, "Syntax: <datetime> <msg>  If datetime is more than one word put it inside quotes, you should include your timezone");
         $bot->pm($args->chan, "Example: .on \"next Friday EDT\" watch new JRH  <- Will trigger at 00:00");

@@ -338,7 +338,7 @@ $eventProvider->addListener(
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--amt")]
-function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     $reply = function($msg) use($bot, $args) {$bot->pm($args->chan, "\2ytsearch:\2 $msg");};
@@ -348,8 +348,8 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
     $amt = 1;
-    if($req->args->getOpt("--amt")) {
-        $amt = $req->args->getOptVal("--amt");
+    if($cmdArgs->optEnabled("--amt")) {
+        $amt = $cmdArgs->getOpt("--amt");
         if($amt < 1 || $amt > 5) { //If greater than 5 should increase maxResults in api call
             $reply("Result --amt should be from 1 to 5");
             return;
@@ -358,7 +358,7 @@ function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     /**
      * @psalm-suppress NullArgument
      */
-    $q = urlencode($req->args['query']);
+    $q = urlencode($cmdArgs['query']);
     // search only supports snippet part :(
     $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";
     try {

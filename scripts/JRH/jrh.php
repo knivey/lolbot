@@ -8,7 +8,7 @@ use knivey\cmdr\attributes\Syntax;
 use function scripts\youtube\getLiveVideos;
 
 #[Cmd("masshl")]
-function masshl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function masshl($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $jewbirdHosts = [
         "*@vegan.fried.chicken.with.sodiumchlori.de"
     ];
@@ -63,7 +63,7 @@ function getChanUsers($chan, $bot): \Amp\Promise {
 
 #[Cmd("jrh", "birdnest")]
 #[CallWrap("Amp\asyncCall")]
-function jrh($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function jrh($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
     if(!function_exists('\scripts\youtube\getLiveVideos')) {
         echo "JRH requires youtube script loaded";

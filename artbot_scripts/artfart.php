@@ -8,7 +8,7 @@ use knivey\cmdr\attributes\Options;
 #[Cmd("artfart")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb")]
-function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Request $req): \Generator
+function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Args $cmdArgs): \Generator
 {
     $url = "http://www.asciiartfarts.com/random.cgi";
     try {
@@ -19,7 +19,7 @@ function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Request $req): \Generator
         }
 
         $fart = trim(htmlspecialchars_decode($m[1], ENT_QUOTES|ENT_HTML5), "\n\r");
-        if($req->args->getOpt('--rnb') || $req->args->getOpt('--rainbow'))
+        if($cmdArgs->optEnabled('--rnb') || $cmdArgs->optEnabled('--rainbow'))
             $fart = \knivey\ircTools\diagRainbow($fart);
         $fart = explode("\n", $fart);
         $fart = array_map(rtrim(...), $fart);

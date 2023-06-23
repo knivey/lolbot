@@ -11,7 +11,7 @@ use Symfony\Component\Yaml\Yaml;
 
 #[Cmd("owncast", "popcorn", "🍿")]
 #[CallWrap("Amp\asyncCall")]
-function owncast($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function owncast($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     if(!file_exists(__DIR__.'/casts.yaml')) {
         echo "casts.yaml doernt exist\n";

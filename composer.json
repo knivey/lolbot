@@ -16,7 +16,7 @@
         "amphp/http-server": "^2.1",
         "monolog/monolog": "^2.3",
         "amphp/log": "^1.1",
-        "knivey/cmdr": "dev-master",
+        "knivey/cmdr": "^4.0",
         "knivey/irctools": "dev-master",
         "knivey/tools":  "dev-master",
         "gabordemooij/redbean": "^5.7",

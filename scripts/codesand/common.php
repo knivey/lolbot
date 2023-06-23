@@ -76,66 +76,66 @@ function canRun($args): bool {
 #[Cmd("php")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("php", $req->args['code']);
+    $output = yield from getRun("php", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("bash")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runBash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runBash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("bash", $req->args['code']);
+    $output = yield from getRun("bash", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("py3", "py", "python", "python3")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("python3", $req->args['code']);
+    $output = yield from getRun("python3", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("py2", "python2")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("python2", $req->args['code']);
+    $output = yield from getRun("python2", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("perl")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("perl", $req->args['code']);
+    $output = yield from getRun("perl", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("java")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runJava($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("java", $req->args['code']);
+    $output = yield from getRun("java", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
@@ -143,11 +143,11 @@ function runJava($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Cmd("fish-shell")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runFish($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("fish", $req->args['code']);
+    $output = yield from getRun("fish", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 */
@@ -155,29 +155,29 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Cmd("ruby")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("ruby", $req->args['code']);
+    $output = yield from getRun("ruby", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("c", "tcc")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("tcc", $req->args['code'], "&flags=-Wno-implicit-function-declaration");
+    $output = yield from getRun("tcc", $cmdArgs['code'], "&flags=-Wno-implicit-function-declaration");
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("gcc")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
@@ -210,7 +210,7 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #include <uchar.h>
 #include <wchar.h>
 #include <wctype.h>
-{$req->args['code']}";
+{$cmdArgs['code']}";
     $output = yield from getRun("gcc", $code, "&flags=-Wno-implicit-function-declaration&flagsb=-lm");
     yield sendOut($bot, $args->chan, $output);
 }
@@ -218,18 +218,18 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Cmd("tcl")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
-    $output = yield from getRun("tcl", $req->args['code']);
+    $output = yield from getRun("tcl", $cmdArgs['code']);
     yield sendOut($bot, $args->chan, $output);
 }
 
 #[Cmd("cpp", "g++")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
-function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
         return;
     }
@@ -240,7 +240,7 @@ function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     #include <fmt/format-inl.h>
     
 using namespace std;
-{$req->args['code']}";
+{$cmdArgs['code']}";
     //$gccArgs = urlencode("-Wfatal-errors -std=c++17");
     $gccArgs = urlencode("-Wfatal-errors");
     $output = yield from getRun("gpp", $code, "&flags=$gccArgs");

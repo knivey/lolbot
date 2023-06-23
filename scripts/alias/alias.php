@@ -2,6 +2,8 @@
 namespace scripts\alias;
 
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use RedBeanPHP\OODBBean;
@@ -16,14 +18,16 @@ $dbfile = (string)($config['aliasdb'] ?? "alias.db");
 R::addDatabase($aliasdb, "sqlite:{$dbfile}");
 
 #[Cmd("alias")]
+#[Desc("Add a new alias")]
 #[Syntax("<name> <value>...")]
-#[Options("--me", "--act")]
-function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Request $req): void {
+#[Option("--me", "Make the alias reply with /me")]
+#[Option("--act", "same as --me")]
+function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     global $aliasdb;
     [$rpl] = \makeRepliers($args, $bot, "alias");
     R::selectDatabase($aliasdb);
     $alias = R::findOne("alias", " `name_lowered` = ? AND `chan_lowered` = ? ",
-        [strtolower($req->args['name']), strtolower($args->chan)]);
+        [strtolower($cmdArgs['name']), strtolower($args->chan)]);
     $msg='';
     if ($alias != null) {
         $msg = "That alias already exists, updating it... ";
@@ -31,26 +35,26 @@ function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Request $req): void 
         /** @psalm-var OODBBean $alias */
         $alias = R::dispense("alias");
     }
-    $alias->name = $req->args['name'];
-    $alias->name_lowered = strtolower($req->args['name']);
-    $alias->value = $req->args['value'];
+    $alias->name = $cmdArgs['name'];
+    $alias->name_lowered = strtolower($cmdArgs['name']);
+    $alias->value = $cmdArgs['value'];
     $alias->chan = $args->chan;
     $alias->chan_lowered = strtolower($args->chan);
     $alias->fullhost = $args->fullhost;
-    $alias->act = ($req->args->getOpt('--act') || $req->args->getOpt('--me'));
+    $alias->act = ($cmdArgs->optEnabled('--act') || $cmdArgs->optEnabled('--me'));
     R::store($alias);
     $rpl("{$msg}alias saved");
 }
 
 #[Cmd("unalias")]
 #[Syntax("<name>")]
-function unalias($args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
+function unalias($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $aliasdb;
     list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
     R::selectDatabase($aliasdb);
     $alias = R::findOne("alias", " `name_lowered` = ? AND `chan_lowered` = ? ",
-        [strtolower($req->args['name']), strtolower($args->chan)]);
+        [strtolower($cmdArgs['name']), strtolower($args->chan)]);
     if ($alias == null) {
         $rpl("That alias not found");
         return;
@@ -60,7 +64,7 @@ function unalias($args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
 }
 
 #[Cmd("aliases")]
-function aliases($args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
+function aliases($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $aliasdb;
     list($rpl, $rpln) = makeRepliers($args, $bot, "alias");

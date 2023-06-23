@@ -9,7 +9,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Cmd("stock")]
 #[Syntax('<query>')]
 #[CallWrap("Amp\asyncCall")]
-function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function stock($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     if(!isset($config['iexKey'])) {
@@ -17,7 +17,7 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
 
-    $query = rawurlencode($req->args['query']);
+    $query = rawurlencode($cmdArgs['query']);
     $url = "https://cloud.iexapis.com/stable/stock/$query/quote?token=" . $config['iexKey'] . '&displayPercent=true';
     try {
         $body = yield \async_get_contents($url);
@@ -52,7 +52,7 @@ function stock($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("doge")]
 #[CallWrap("\Amp\asyncCall")]
-function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function doge($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     try {
@@ -73,7 +73,7 @@ function doge($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("bch")]
 #[CallWrap("\Amp\asyncCall")]
-function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function bch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     try {
@@ -94,7 +94,7 @@ function bch($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("eth")]
 #[CallWrap("\Amp\asyncCall")]
-function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function eth($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     try {
@@ -115,7 +115,7 @@ function eth($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("btc")]
 #[CallWrap("\Amp\asyncCall")]
-function btc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function btc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     try {

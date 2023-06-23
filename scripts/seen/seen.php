@@ -20,9 +20,9 @@ R::addDatabase($seendb, "sqlite:{$dbfile}");
 
 #[Cmd("seen")]
 #[Syntax("<nick>")]
-function seen($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function seen($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $seendb;
-    $nick = strtolower($req->args['nick']);
+    $nick = strtolower($cmdArgs['nick']);
     if($nick == strtolower($bot->getNick())) {
         $bot->pm($args->chan, "I'm here bb");
         return;

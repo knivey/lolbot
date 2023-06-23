@@ -11,10 +11,10 @@ use simplehtmldom\HtmlDocument;
 #[Cmd("ud", "urban", "urbandict")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
-function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function ud($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
-    $query = urlencode($req->args['query']);
+    $query = urlencode($cmdArgs['query']);
     try {
         $body = yield async_get_contents("http://www.urbandictionary.com/define.php?term=$query");
     } catch (\async_get_exception $e) {
@@ -41,7 +41,7 @@ function ud($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
     // wonder if this would happen after that earlier check?
     if (!$defs || empty($defs)) {
-        $bot->msg($args->chan, "ud: Couldn't find an entry matching {$req->args['query']}");
+        $bot->msg($args->chan, "ud: Couldn't find an entry matching {$cmdArgs['query']}");
         return;
     }
 

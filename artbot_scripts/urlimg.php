@@ -14,9 +14,9 @@ use Itwmw\ColorDifference\Lib\RGB;
 #[Syntax('<input>')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb", "--bsize", "--width", '--edit')]
-function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
-    $url = $req->args[0] ?? '';
+    $url = $cmdArgs[0] ?? '';
     if(!filter_var($url, FILTER_VALIDATE_URL)) {
         $bot->pm($args->chan, "invalid url");
         return;
@@ -57,8 +57,8 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             echo "saving to $filename\n";
             file_put_contents($filename, $body);
             $width = ($config['url_default_width'] ?? 55);
-            if($req->args->getOptVal("--width") !== false) {
-                $width = intval($req->args->getOptVal("--width"));
+            if($cmdArgs->optEnabled("--width")) {
+                $width = intval($cmdArgs->getOpt("--width"));
                 if($width < 10 || $width > 200) {
                     $bot->pm($args->chan, "--width should be between 10 and 200");
                     return;
@@ -67,7 +67,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             $filename_safe = escapeshellarg($filename);
             $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
             unlink($filename);
-            if($req->args->getOpt('--edit')) {
+            if($cmdArgs->optEnabled('--edit')) {
                 if(!isset($config['artdir'])) {
                     $bot->pm($args->chan, "artdir not configured");
                     return;
@@ -101,12 +101,12 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $bot->pm($args->chan, "content-type was ".implode('/', $type)." should be text/plain or image/* (pastebin.com maybe works too)");
                 return;
             }
-            if($req->args->getOpt('--rainbow') || $req->args->getOpt('--rnb')) {
-                $dir = $req->args->getOptVal('--rainbow');
+            if($cmdArgs->optEnabled('--rainbow') || $cmdArgs->optEnabled('--rnb')) {
+                $dir = $cmdArgs->getOpt('--rainbow');
                 if($dir === false)
-                    $dir = $req->args->getOptVal('--rnb');
+                    $dir = $cmdArgs->getOpt('--rnb');
                 $dir = intval($dir);
-                $bsize = $req->args->getOptVal('--bsize');
+                $bsize = $cmdArgs->getOpt('--bsize');
                 if(!$bsize)
                     $bsize = null;
                 else
@@ -247,9 +247,9 @@ static $palette = [
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2", "--edit")]
-function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
-    $url = $req->args[0];
+    $url = $cmdArgs[0];
     if(!filter_var($url, FILTER_VALIDATE_URL)) {
         $bot->pm($args->chan, "invalid url");
         return;
@@ -273,12 +273,12 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $img_string = '';
         $pos = 0;
 
-        if($req->args->getOpt("--halfblock"))
+        if($cmdArgs->optEnabled("--halfblock"))
             $width = 80;
         else
             $width = 120;
-        if($req->args->getOptVal("--width") !== false) {
-            $width = intval($req->args->getOptVal("--width"));
+        if($cmdArgs->optEnabled("--width")) {
+            $width = intval($cmdArgs->getOpt("--width"));
             if($width < 10 || $width > 200) {
                 $bot->pm($args->chan, "--width should be between 10 and 200");
                 return;
@@ -289,20 +289,20 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $img->readImageBlob($body);
         $size = $img->getImageGeometry();
         $factor = $width / $size['width'];
-        if($req->args->getOpt("--halfblock"))
+        if($cmdArgs->optEnabled("--halfblock"))
             $img->scaleImage(round($size['width'] * $factor), make_even(round($size['height'] * $factor)));
         else
             $img->scaleImage(round($size['width'] * $factor), round($size['height'] * $factor / 2));
 
         $size = $img->getImageGeometry();
 
-        $text = $req->args[1];
+        $text = $cmdArgs[1];
         if($text != "") {
             $text = strtoupper($text);
             $text = str_replace(' ', '', $text);
             $words = str_split($text);
         }
-        if($req->args->getOptVal("--block") !== false) {
+        if($cmdArgs->optEnabled("--block")) {
             $words =  ["█"];
         }
         pumpToChan($args->chan, ["ok give me a few seconds to generate the ascii.."]);
@@ -317,24 +317,24 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             for($col = 0; $col < $size['width']; $col++) {
                 $pixel = $img->getImagePixelColor($col, $row);
                 $color = new Color(new RGB(...array_values($pixel->getColor())));
-                if($req->args->getOpt("--halfblock")) {
+                if($cmdArgs->optEnabled("--halfblock")) {
                     $pixel2 = $img->getImagePixelColor($col, $row + 1);
                     $color2 = new Color(new RGB(...array_values($pixel2->getColor())));
                 }
 
 
-                if($req->args->getOpt("--quality")) {
+                if($cmdArgs->optEnabled("--quality")) {
                     $match_index = getClosestMatchCIEDE2000($color);
-                } elseif ($req->args->getOpt("--lab")) {
+                } elseif ($cmdArgs->optEnabled("--lab")) {
                     $match_index = getClosestMatchEuclideanLab($color);
                 } else {
                     $match_index = getClosestMatchDin99($color);
                 }
 
-                if($req->args->getOpt("--halfblock")) {
-                    if($req->args->getOpt("--quality")) {
+                if($cmdArgs->optEnabled("--halfblock")) {
+                    if($cmdArgs->optEnabled("--quality")) {
                         $match_index2 = getClosestMatchCIEDE2000($color2);
-                    } elseif ($req->args->getOpt("--lab")) {
+                    } elseif ($cmdArgs->optEnabled("--lab")) {
                         $match_index2 = getClosestMatchEuclideanLab($color2);
                     } else {
                         $match_index2 = getClosestMatchDin99($color2);
@@ -370,7 +370,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                     }
                 }
                 else {
-                    if($req->args->getOpt('--render2')) {
+                    if($cmdArgs->optEnabled('--render2')) {
                         $str_char = render2($pixel->getHSL()['luminosity']);
                     } else {
                         $str_char = render($pixel->getHSL()['luminosity']);
@@ -385,7 +385,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
                 $last_match_index = $match_index;
 
             }
-            if($req->args->getOpt("--halfblock"))
+            if($cmdArgs->optEnabled("--halfblock"))
                 $row++;
             $img_string .= "\n";
         }
@@ -403,7 +403,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             }
         }
 
-        if($req->args->getOpt('--edit')) {
+        if($cmdArgs->optEnabled('--edit')) {
             if(!isset($config['artdir'])) {
                 $bot->pm($args->chan, "artdir not configured");
                 return;

@@ -41,43 +41,43 @@ class User {
 
 }
 
-function auth($request) : User {
-
-}
+//function auth($request) : User {
+//
+//}
 
 #[PrivCmd("register")]
-function register($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function register($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 #[PrivCmd("auth")]
-function cmd_auth($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function cmd_auth($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 //a setting for if hostmask should be remembered or they need to auth every upon connection
 #[PrivCmd("paranoid")]
-function paranoid($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function paranoid($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 #[PrivCmd("pass")]
-function pass($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function pass($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 //flags are acls in Access
 #[PrivCmd("setflags")]
-function addadmin($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function addadmin($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 #[PrivCmd("addflags")]
-function addflags($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function addflags($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 #[PrivCmd("delflags")]
-function delflags($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function delflags($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }

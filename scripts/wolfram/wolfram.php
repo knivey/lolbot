@@ -14,7 +14,7 @@ const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 #[Cmd("calc", "wa")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
-function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function calc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     if(!isset($config['waKey'])) {
@@ -23,7 +23,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
 
     //note width means pixels not text len
-    $query = waURL . urlencode($req->args['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=Los+Angeles,+California&format=plaintext&width=3000';
+    $query = waURL . urlencode($cmdArgs['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=Los+Angeles,+California&format=plaintext&width=3000';
     try {
         $body = yield async_get_contents($query);
 

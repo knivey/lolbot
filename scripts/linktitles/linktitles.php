@@ -269,7 +269,7 @@ function fmtRow($row) {
 #[Syntax('[regex_or_id]')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--list", "--del")]
-function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $url_pdo;
 
     try {
@@ -283,7 +283,7 @@ function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
 
     /** @var $url_pdo \PDO */
-    if($req->args->getOpt("--list") || ! isset($req->args[0])) {
+    if($cmdArgs->optEnabled("--list") || ! isset($cmdArgs[0])) {
         try {
             $stmt = $url_pdo->prepare("select * from chan_re where chan = :chan;");
             $stmt->execute([":chan" => $args->chan]);
@@ -301,17 +301,17 @@ function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         }
         return;
     }
-    if($req->args->getOpt("--del")) {
+    if($cmdArgs->optEnabled("--del")) {
         try {
             $stmt = $url_pdo->prepare("select id from chan_re where id = :id and chan = :chan;");
-            $stmt->execute([":id" => $req->args[0], ":chan" => $args->chan]);
+            $stmt->execute([":id" => $cmdArgs[0], ":chan" => $args->chan]);
             if(count($stmt->fetchAll()) == 0) {
                 $bot->notice($args->nick, "No ignores removed, check the provided ID is correct and is from this chan.");
                 return;
             }
             $stmt = $url_pdo->prepare("delete from chan_re where id = :id and chan = :chan;");
-            if($stmt->execute([":id" => $req->args[0], ":chan" => $args->chan])) {
-                $bot->notice($args->nick, "Ignore ID {$req->args[0]} removed");
+            if($stmt->execute([":id" => $cmdArgs[0], ":chan" => $args->chan])) {
+                $bot->notice($args->nick, "Ignore ID {$cmdArgs[0]} removed");
             } else {
                 $bot->notice($args->nick, "No ignores removed, check the provided ID is correct and is from this chan.");
             }
@@ -320,7 +320,7 @@ function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         }
         return;
     }
-    $re = "@{$req->args[0]}@i";
+    $re = "@{$cmdArgs[0]}@i";
     if(preg_match($re, "") === false) {
         $bot->notice($args->nick, "You haven't provided a valid regex, note delimiters are added for you and its @");
         return;

@@ -71,7 +71,7 @@ function getLocation($query): \Amp\Promise
 #[Syntax('[query]...')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
-function weather($args, \Irc\Client $bot, cmdr\Request $req)
+function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     if(!isset($config['bingMapsKey'])) {
@@ -90,14 +90,14 @@ function weather($args, \Irc\Client $bot, cmdr\Request $req)
     $imp = false;
     $fc = false;
 
-    $query = $req->args['query'] ?? '';
-    if($req->args->getOpt("--si") || $req->args->getOpt("--metric")) {
+    $query = $cmdArgs['query'] ?? '';
+    if($cmdArgs->optEnabled("--si") || $cmdArgs->optEnabled("--metric")) {
         $si = true;
     }
-    if($req->args->getOpt("--us") || $req->args->getOpt("--imperial")) {
+    if($cmdArgs->optEnabled("--us") || $cmdArgs->optEnabled("--imperial")) {
         $imp = true;
     }
-    if($req->args->getOpt("--fc") || $req->args->getOpt("--forecast")) {
+    if($cmdArgs->optEnabled("--fc") || $cmdArgs->optEnabled("--forecast")) {
         $fc = true;
     }
 
@@ -215,15 +215,15 @@ if(!file_exists("weather.db")) {
 #[Syntax("<query>...")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--si", "--metric")]
-function setlocation($args, \Irc\Client $bot, cmdr\Request $req)
+function setlocation($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $si = false;
-    if($req->args->getOpt("--si") || $req->args->getOpt("--metric")) {
+    if($cmdArgs->optEnabled("--si") || $cmdArgs->optEnabled("--metric")) {
         $si = true;
     }
 
     try {
-        $loc = yield getLocation($req->args['query']);
+        $loc = yield getLocation($cmdArgs['query']);
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2getLocation error:\2 {$error->getIRCMsg()}");

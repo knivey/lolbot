@@ -15,9 +15,9 @@ use knivey\irctools;
 #[Cmd("define", "dictionary")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
-function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $word = rawurlencode($req->args['query']);
+    $word = rawurlencode($cmdArgs['query']);
     try {
         $body = yield \async_get_contents("https://api.dictionaryapi.dev/api/v2/entries/en/$word");
     } catch (\async_get_exception $e) {
@@ -62,22 +62,22 @@ function getDnsType($type) {
 #[Cmd("dns", "resolve")]
 #[Syntax('<query> [type]')]
 #[CallWrap("Amp\asyncCall")]
-function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function dns($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     try {
-        if(isset($req->args['type'])) {
-            $type = getDnsType($req->args['type']);
+        if(isset($cmdArgs['type'])) {
+            $type = getDnsType($cmdArgs['type']);
             if($type === false) {
                 $bot->pm($args->chan, "Unsupported record type");
                 return;
             }
 
             /** @var \Amp\Dns\Record[] $records */
-            $records = yield \Amp\Dns\query($req->args['query'], $type);
+            $records = yield \Amp\Dns\query($cmdArgs['query'], $type);
         } else {
             /** @var \Amp\Dns\Record[] $records */
-            $records = yield \Amp\Dns\resolve($req->args['query']);
+            $records = yield \Amp\Dns\resolve($cmdArgs['query']);
         }
         $recs = [];
         foreach ($records as $r) {
@@ -87,7 +87,7 @@ function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $recs = 'No records';
         else
             $recs = implode(' | ', $recs);
-        $bot->pm($args->chan, "DNS for {$req->args['query']} ".($req->args['type'] ?? 'A, AAAA')." - $recs");
+        $bot->pm($args->chan, "DNS for {$cmdArgs['query']} ".($cmdArgs['type'] ?? 'A, AAAA')." - $recs");
     } catch (\Exception $e) {
         $bot->pm($args->chan, "DNS Exception {$e->getMessage()}");
     }
@@ -95,14 +95,14 @@ function dns($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("whois")]
 #[Syntax('<nick>')]
-function whois($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function whois($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 #[Cmd("choice", "choose")]
 #[Syntax('<stuff>...')]
-function choice($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    $opts = preg_split("/[,|]| +or( +|$)/", $req->args['stuff']);
+function choice($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $opts = preg_split("/[,|]| +or( +|$)/", $cmdArgs['stuff']);
     if($opts === false) {
         $bot->msg($args->chan, "i can't seem to decide :(");
         return;
@@ -118,7 +118,7 @@ function choice($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Cmd("domaincheck", "dc")]
 #[Syntax('<domain>')]
 #[CallWrap("Amp\asyncCall")]
-function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     $key = $config['namecheap_key'] ?? false;
@@ -127,7 +127,7 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $bot->pm($args->chan, "namecheap key or user not set on config");
         return;
     }
-    $domain = $req->args['domain'];
+    $domain = $cmdArgs['domain'];
     $domain = urlencode($domain);
     //ClientIP 127.0.0.1 seems to work weird for API to want this..
     $url = "https://api.namecheap.com/xml.response?ApiUser=$user&ApiKey=$key&UserName=$user&Command=namecheap.domains.check&ClientIp=127.0.0.1&DomainList=$domain";
@@ -144,16 +144,16 @@ function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         if(!isset($xml->CommandResponse))
             throw new \Exception("API didnt include response");
         if($xml->CommandResponse->DomainCheckResult["Available"] == "true") {
-            $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) That domain is available for register!");
+            $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) That domain is available for register!");
         } else {
-            $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) That domain is already taken :(");
+            $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) That domain is already taken :(");
         }
     } catch (\async_get_exception $error) {
         // keys should only be leaked in this exception message, other one is from xml error message
-        $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) Connection error :( try again later");
+        $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) Connection error :( try again later");
         echo $error->getMessage();
     } catch (\Exception $error) {
-        $bot->pm($args->chan, "\2DomainCheck:\2 ({$req->args['domain']}) {$error->getMessage()}");
+        $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) {$error->getMessage()}");
         echo $error->getMessage();
     }
 }
@@ -181,10 +181,10 @@ function validateDomain($domainName) {
 #[Cmd("tldcheck", "tc")]
 #[Syntax('<domain>')]
 #[CallWrap("Amp\asyncCall")]
-function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
-    $domain = $req->args['domain'];
+    $domain = $cmdArgs['domain'];
 
     if(!preg_match('/^[a-zA-Z0-9-]+$/', $domain) || strlen($domain) > 25) {
         return $bot->pm($args->chan, "grow up");
@@ -259,7 +259,7 @@ function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[Cmd("affirm")]
 #[Syntax('[nick]...')]
 #[CallWrap("Amp\asyncCall")]
-function affirm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function affirm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     try {
         $body = yield async_get_contents("https://www.affirmations.dev");
@@ -267,8 +267,8 @@ function affirm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         if(!isset($j->affirmation))
             throw new \Exception("affirmation not set: $body\n");
         $a = $j->affirmation;
-        if(isset($req->args['nick'])) {
-            $a = "{$req->args['nick']}, $a";
+        if(isset($cmdArgs['nick'])) {
+            $a = "{$cmdArgs['nick']}, $a";
         }
         $bot->msg($args->chan, $a);
     } catch (\Exception $error) {
@@ -278,9 +278,9 @@ function affirm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("rainbow", "rnb", "nes")]
 #[Syntax('<input>...')]
-function nes($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function nes($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $text = str_replace('\n', "\n", $req->args[0]);
+    $text = str_replace('\n', "\n", $cmdArgs[0]);
     $text = irctools\diagRainbow($text);
     foreach(explode("\n", $text) as $line) {
         $bot->pm($args->chan, $line);
@@ -290,9 +290,9 @@ function nes($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[Cmd("authname")]
 #[Syntax('<nick>')]
 #[CallWrap("Amp\asyncCall")]
-function authname($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function authname($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $who = $req->args['nick'];
+    $who = $cmdArgs['nick'];
     try {
         $auth = yield getUserAuthServ($who, $bot);
     } catch(\Exception $e) {
@@ -309,9 +309,9 @@ function authname($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[Cmd("chanaccess")]
 #[Syntax('<nick>')]
 #[CallWrap("Amp\asyncCall")]
-function chanaccess($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function chanaccess($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $who = $req->args['nick'];
+    $who = $cmdArgs['nick'];
     try {
         $access = yield getUserChanAccess($who, $args->chan, $bot);
     } catch(\Exception $e) {

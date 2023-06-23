@@ -107,7 +107,7 @@ function onchat($args, \Irc\Client $bot)
 
     if(trim($cmd) == '')
         return;
-    if(isset($router->cmds[$cmd])) {
+    if($router->cmdExists($cmd)) {
         try {
             $router->call($cmd, $text, $args, $bot);
         } catch (Exception $e) {

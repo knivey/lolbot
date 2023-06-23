@@ -18,7 +18,7 @@ R::addDatabase($db, "sqlite:{$dbfile}");
 #[Cmd("setlastfm")]
 #[Syntax('<username>')]
 #[CallWrap("Amp\asyncCall")]
-function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config, $db;
     $key = $config['lastfm'] ?? false;
@@ -26,7 +26,7 @@ function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         echo "lastfm key not set on config\n";
         return;
     }
-    $user = urlencode($req->args['username']);
+    $user = urlencode($cmdArgs['username']);
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
     try {
         $body = yield async_get_contents($url);
@@ -37,7 +37,7 @@ function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
     R::selectDatabase($db);
     $ent = R::findOneOrDispense("lastfm", " `host` = ? ", [$args->identhost]);
-    $ent->username = $req->args['username'];
+    $ent->username = $cmdArgs['username'];
     $ent->host = $args->identhost;
     R::store($ent);
     $bot->pm($args->chan, "\2setlastfm:\2 username saved for your host");
@@ -45,7 +45,7 @@ function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
 #[Cmd("np")]
 #[CallWrap("Amp\asyncCall")]
-function np($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config, $db;
     $key = $config['lastfm'] ?? false;
@@ -54,8 +54,8 @@ function np($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
 
-    if (isset($req->args['user'])) {
-        $user = $req->args['user'];
+    if (isset($cmdArgs['user'])) {
+        $user = $cmdArgs['user'];
     } else {
         R::selectDatabase($db);
         $user = R::findOne("lastfm", " `host` = ? ", [$args->identhost]);
@@ -98,7 +98,7 @@ function np($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 #[Syntax('[user]')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--info")]
-function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config, $db;
     $key = $config['lastfm'] ?? false;
@@ -107,8 +107,8 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         return;
     }
 
-    if (isset($req->args['user'])) {
-        $user = $req->args['user'];
+    if (isset($cmdArgs['user'])) {
+        $user = $cmdArgs['user'];
     } else {
         R::selectDatabase($db);
         $user = R::findOne("lastfm", " `host` = ? ", [$args->identhost]);
@@ -135,7 +135,7 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     $res = json_decode($body, true);
     if(!isset($res['recenttracks']['track'][0])) {
         $bot->pm($args->chan, "Failed to find any recent tracks.");
-        if($req->args->getOpt("--info")) {
+        if($cmdArgs->getOpt("--info")) {
             goto findinfo;
         }
         return;
@@ -155,7 +155,7 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
     }
     $bot->pm($args->chan, "\2last.fm:\2 $user $time: $title - $album - $artist");
 
-    if(!$req->args->getOpt("--info")) {
+    if(!$cmdArgs->getOpt("--info")) {
         return;
     }
 

@@ -17,7 +17,7 @@ $markov = new SimpleMarkovGenerator(2);
 $markov->parseText(file_get_contents($config['markov_quotefile']));
 
 #[Cmd("mquote")]
-function mquote($args, \Irc\Client $bot, cmdr\Request $req)
+function mquote($args, \Irc\Client $bot, cmdr\Args $cmdArgs)
 {
     global $markov, $config;
     if(!isset($config['markov_quotefile']) || !is_file($config['markov_quotefile']))

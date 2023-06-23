@@ -64,15 +64,15 @@ class bomb_game
 
     #[Cmd("bomb")]
     #[Syntax("<target>")]
-    function bomb(object $args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
+    function bomb(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $nicks;
-        $target = $req->args["target"];
+        $target = $cmdArgs["target"];
         if(empty($nicks->getChanNickKey($target, $args->chan))) {
             $bot->msg($args->chan, self::randReply(self::NOT_ON_CHAN, compact("target")));
             return;
         }
-        \Amp\asyncCall(function () use ($args, $bot, $req, $target) {
+        \Amp\asyncCall(function () use ($args, $bot, $cmdArgs, $target) {
             if (array_key_exists(strtolower($target), $this->bombs)) {
                 $bot->msg($args->chan, self::randReply(self::ALREADY_BOMBING, compact("target")));
                 return;
@@ -94,14 +94,14 @@ class bomb_game
 
     #[Cmd("cutwire")]
     #[Syntax("<color>")]
-    function cutwire(object $args, \Irc\Client $bot, \knivey\cmdr\Request $req): void
+    function cutwire(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!array_key_exists(strtolower($args->nick), $this->bombs)) {
             return;
         }
         $target = $this->bombs[strtolower($args->nick)]['target'];
         $color = $this->bombs[strtolower($target)]['color'];
-        if(strtolower($req->args['color']) == strtolower($color)) {
+        if(strtolower($cmdArgs['color']) == strtolower($color)) {
             $bot->msg($args->chan, self::randReply(self::DEFUSED, compact("target")));
             $this->bombs[strtolower($target)]['def']->resolve(1);
             return;

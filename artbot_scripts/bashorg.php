@@ -9,7 +9,7 @@ $bashdb = [];
 
 #[Cmd("bash")]
 #[CallWrap("Amp\asyncCall")]
-function bash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function bash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $bashdb;
     try {
         yield populateBash();

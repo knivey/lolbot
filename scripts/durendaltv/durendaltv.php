@@ -7,7 +7,7 @@ use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("live")]
 #[CallWrap("Amp\asyncCall")]
-function durendaltv($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function durendaltv($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     try {
         yield async_get_contents("https://live.internetrelaychat.net/live/stream.m3u8");

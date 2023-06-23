@@ -7,7 +7,7 @@ use knivey\cmdr\attributes\Cmd;
 
 
 #[Cmd("insult")]
-function insult($args, \Irc\Client $bot, $req)
+function insult($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $insults = [
         "roasted",

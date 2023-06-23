@@ -241,7 +241,7 @@ function makeUrl(string $route): Promise {
 
 #[Cmd("getpumper")]
 #[CallWrap("\Amp\asyncCall")]
-function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config, $allowedPumps;
     $key = bin2hex(random_bytes(5));
@@ -270,11 +270,11 @@ $limitWarns = [];
 #[Option(["--post", "--url"], "Get a URL to post the art data to")]
 #[Syntax('<filename>')]
 #[CallWrap('\Amp\asyncCall')]
-function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
     $host = $args->host;
-    $file = $req->args['filename'];
+    $file = $cmdArgs['filename'];
     global $recordings, $config, $recordLimit, $limitWarns;
     if(isset($recordings[$nick])) {
         return;
@@ -324,7 +324,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($chan, "Warning: That file name has been used by $files, to playback may require a full path or you can @record again to use a new name");
     }
 
-    if($req->args->getOpt('--post') || $req->args->getOpt('--url')) {
+    if($cmdArgs->optEnabled('--post') || $cmdArgs->optEnabled('--url')) {
         try {
             $url = yield requestRecordUrl($nick, $chan, $file, 60);
         } catch (\Exception $e) {
@@ -367,7 +367,7 @@ function timeOut($watcher, $data) {
 }
 
 #[Cmd("end")]
-function endart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function endart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
     global $recordings, $config;
@@ -399,7 +399,7 @@ function endart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 #[Cmd("cancel")]
-function cancel($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function cancel($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
     global $recordings;
@@ -480,7 +480,7 @@ $trashLimit = [];
 $trashLimitWarns = [];
 #[Cmd("trash")]
 #[Syntax("<file>")]
-function trash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function trash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config, $trashLimit, $trashLimitWarns;
     $host = $args->host;
     if(isset($trashLimit[$host]) && $trashLimit[$host] > time()) {
@@ -512,7 +512,7 @@ function trash($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($args->chan, "Your host isn't authorized");
         return;
     }
-    $file = $req->args['file'];
+    $file = $cmdArgs['file'];
     if(!str_starts_with($file, 'h4x/')) {
         $bot->pm($args->chan, "You can only trash files in h4x/ give the full art path/name (no .txt)");
         return;
@@ -565,14 +565,14 @@ function getFinder() : \Symfony\Component\Finder\Finder {
 //#[Option("--details", "show more details about results")]
 //#[Option("--dates", "show dates instead of diffs")]
 #[Syntax('<query>')]
-function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
-    $file = $req->args['query'];
+    $file = $cmdArgs['query'];
     global $config;
     $max = $config['art_search_max'] ?? 100;
-    if($req->args->getOpt("--max")) {
-        $max = $req->args->getOptVal("--max");
+    if($cmdArgs->optEnabled("--max")) {
+        $max = $cmdArgs->getOpt("--max");
         if (!is_numeric($max)) {
             $bot->msg($args->chan, "--max must be numeric");
             return;
@@ -586,7 +586,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
     }
-    \Amp\asyncCall(function () use ($bot, $chan, $file, $max, $req) {
+    \Amp\asyncCall(function () use ($bot, $chan, $file, $max, $cmdArgs) {
         global $playing;
         if (isset($playing[$chan])) {
             return;
@@ -595,8 +595,8 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $finder->path(tools\globToRegex("*$file*.txt") . 'i');
         $finder->sortByModifiedTime();
         $out = [];
-        if($req->args->getOpt("--play")) {
-            $maxlines = $req->args->getOptVal("--maxlines");
+        if($cmdArgs->optEnabled("--play")) {
+            $maxlines = $cmdArgs->getOpt("--maxlines");
             if($maxlines === false)
                 $maxlines = 100;
             if($maxlines <= 0) {
@@ -627,11 +627,11 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 
         foreach($finder as $f) {
             /** @var $f Symfony\Component\Finder\SplFileInfo */
-            if(!$req->args->getOpt("--details")) {
+            if(!$cmdArgs->optEnabled("--details")) {
                 $out[] = substr($f->getRelativePathname(), 0, -4);
             } else {
                 $lines = mb_substr_count($f->getContents(), "\n")+1;
-                if($req->args->getOpt("--dates"))
+                if($cmdArgs->optEnabled("--dates"))
                     $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
                 else
                     $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
@@ -643,7 +643,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
             return;
         }
 
-        if($req->args->getOpt("--details")) {
+        if($cmdArgs->optEnabled("--details")) {
             $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
         }
 
@@ -662,9 +662,9 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 #[Option(["--play"], "Play each art")]
 #[Options("--maxlines")]
 #[Syntax('[since]...')]
-function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
-    $since = $req->args['since'] ?? '8 days ago';
+    $since = $cmdArgs['since'] ?? '8 days ago';
     $time = strtotime($since);
     //sometimes people just put "5 hours" when they mean "5 hours ago";
     if(time() <= $time) {
@@ -686,12 +686,12 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     $out = ["Found {$finder->count()} arts recorded since $since:"];
 
     //Play the full arts
-    if($req->args->getOpt("--play")) {
+    if($cmdArgs->optEnabled("--play")) {
         if($finder->count() > 500) {
             $bot->pm($args->chan, "thats too many arts to play :(");
             return;
         }
-        $maxlines = $req->args->getOptVal("--maxlines");
+        $maxlines = $cmdArgs->getOpt("--maxlines");
         if($maxlines === false)
             $maxlines = 100;
         if($maxlines <= 0) {
@@ -742,7 +742,7 @@ function selectRandFile($search = null) : String|false {
 #[Cmd("random")]
 #[Options("--flip", "--speed")]
 #[Syntax('[search]')]
-function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $chan = $args->chan;
     global $playing;
     if(isset($playing[$chan])) {
@@ -750,18 +750,18 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
     }
 
     $speed = null;
-    if($req->args->getOpt("--speed")) {
-        $speed = $req->args->getOptVal("--speed");
+    if($cmdArgs->optEnabled("--speed")) {
+        $speed = $cmdArgs->getOpt("--speed");
         if(!is_numeric($speed) || $speed < 20 || $speed > 500) {
             $bot->pm($chan, "--speed must be between 20 and 500 (milliseconds between lines)");
             return;
         }
     }
-    $opts = $req->args->getOpts();
+    $opts = $cmdArgs->getOpts();
 
     $search = '';
-    if(isset($req->args['search'])) {
-        $search = strtolower($req->args['search']);
+    if(isset($cmdArgs['search'])) {
+        $search = strtolower($cmdArgs['search']);
     }
     $art = selectRandFile($search);
 
@@ -772,7 +772,7 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
 }
 
 #[Cmd("stop")]
-function stop($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function stop($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
     global $recordings, $playing;
@@ -781,7 +781,7 @@ function stop($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
         $bot->pm($chan, 'stopped');
     } else {
         if(isset($recordings[$nick])) {
-            endart($args, $bot, $req);
+            endart($args, $bot, $cmdArgs);
             return;
         }
         $bot->pm($chan, 'not playing');
@@ -869,7 +869,7 @@ function quietExec($cmd)
 #[Cmd("a2m", "ans")]
 #[Syntax('<url>')]
 #[Options('--width')]
-function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
     $chan = $args->chan;
@@ -877,11 +877,11 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
         $bot->pm($chan, "a2m not setup in config");
         return;
     }
-    \Amp\asyncCall(function () use ($bot, $chan, $req) {
+    \Amp\asyncCall(function () use ($bot, $chan, $cmdArgs) {
         global $playing, $config;
         try {
             $a2m = $config['a2m'];
-            $url = $req->args['url'];
+            $url = $cmdArgs['url'];
             /*
              * restricting the allowed URL for this to try to only do ansi arts otherwise anything would run through
              *
@@ -921,7 +921,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
             $file = "ans/" . uniqid() . ".ans";
             file_put_contents($file, $body);
             if(!isset($width))
-                $width = intval($req->args->getOptVal("--width"));
+                $width = intval($cmdArgs->getOpt("--width"));
             if(!$width)
                 $width = 80;
             list($rc, $out, $err) = quietExec("$a2m -w $width $file");

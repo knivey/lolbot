@@ -13,7 +13,7 @@ $warned = false;
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--amt", "--result")]
-function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function bing($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config, $warned, $ratelimit;
     if(!isset($config['bingKey'])) {
@@ -40,22 +40,22 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
 
     $start = 1;
     $end = 1;
-    if($req->args->getOpt("--amt")) {
-        $end = $req->args->getOptVal("--amt");
+    if($cmdArgs->optEnabled("--amt")) {
+        $end = $cmdArgs->getOpt("--amt");
         if($end < 1 || $end > 4) {
             $bot->pm($args->chan, "\2Bing:\2 --amt should be from 1 to 4");
             return;
         }
     }
-    if($req->args->getOpt("--result")) {
-        $start = $req->args->getOptVal("--result");
+    if($cmdArgs->optEnabled("--result")) {
+        $start = $cmdArgs->getOpt("--result");
         if($start < 1 || $start > 11) { //default 10 returned
             $bot->pm($args->chan, "\2Bing:\2 --result should be from 1 to 10");
             return;
         }
         $end = $start;
     }
-    $query = urlencode($req->args['query']);
+    $query = urlencode($cmdArgs['query']);
     $url = $config['bingEP'] . "search?q=$query&mkt=$config[bingLang]&setLang=$config[bingLang]";
     try {
         $headers = ['Ocp-Apim-Subscription-Key' => $config['bingKey']];

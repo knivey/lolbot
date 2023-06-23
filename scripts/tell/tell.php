@@ -29,51 +29,51 @@ if ($multiNet) {
 
     #[Cmd("gtell", "gask", "ginform")]
     #[Syntax("<nick> <msg>...")]
-    function gtell($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+    function gtell($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         global $disabled, $config;
         if ($disabled) {
             $bot->pm($args->chan, "telldb not configured");
             return;
         }
-        if (strtolower($bot->getNick()) == strtolower($req->args['nick'])) {
+        if (strtolower($bot->getNick()) == strtolower($cmdArgs['nick'])) {
             $bot->pm($args->chan, "Ok I'll pass that off to /dev/null");
             return;
         }
         $max = $config['tell_max_inbox'] ?? 10;
         $net = $bot->getOption('NETWORK', 'UnknownNet');
-        if ((countMsgs($req->args['nick'], $net, true) >= $max) && !strcasecmp($req->args['nick'], 'terps')) {
-            $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
+        if ((countMsgs($cmdArgs['nick'], $net, true) >= $max) && !strcasecmp($cmdArgs['nick'], 'terps')) {
+            $bot->pm($args->chan, "Sorry, {$cmdArgs[0]}'s inbox is stuffed full :( (limit of $max messages)");
             return;
         }
-        addMsg($req->args['nick'], $args->text, $args->nick, $net, $args->chan);
-        $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on any network.");
+        addMsg($cmdArgs['nick'], $args->text, $args->nick, $net, $args->chan);
+        $bot->pm($args->chan, "Ok, I'll tell {$cmdArgs[0]} that next time I see them on any network.");
     }
 }
 
 #[Cmd("tell", "ask", "inform", "pester")]
 #[Syntax("<nick> <msg>...")]
-function tell($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
+function tell($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $disabled, $config, $multiNet;
     if($disabled) {
         $bot->pm($args->chan, "telldb not configured");
         return;
     }
-    if(strtolower($bot->getNick()) == strtolower($req->args['nick'])) {
+    if(strtolower($bot->getNick()) == strtolower($cmdArgs['nick'])) {
         $bot->pm($args->chan, "Ok I'll pass that off to /dev/null");
         return;
     }
     $net = $bot->getOption('NETWORK', 'UnknownNet');
     $max = $config['tell_max_inbox'] ?? 10;
-    if(countMsgs($req->args['nick'], $net) >= $max) {
-        $bot->pm($args->chan, "Sorry, {$req->args[0]}'s inbox is stuffed full :( (limit of $max messages)");
+    if(countMsgs($cmdArgs['nick'], $net) >= $max) {
+        $bot->pm($args->chan, "Sorry, {$cmdArgs[0]}'s inbox is stuffed full :( (limit of $max messages)");
         return;
     }
-    addMsg($req->args['nick'], $args->text, $args->nick, $net, $args->chan, $net);
+    addMsg($cmdArgs['nick'], $args->text, $args->nick, $net, $args->chan, $net);
     if($multiNet)
-        $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them on $net.");
+        $bot->pm($args->chan, "Ok, I'll tell {$cmdArgs[0]} that next time I see them on $net.");
     else
-        $bot->pm($args->chan, "Ok, I'll tell {$req->args[0]} that next time I see them.");
+        $bot->pm($args->chan, "Ok, I'll tell {$cmdArgs[0]} that next time I see them.");
 }
 
 function countMsgs($nick, $net, $global = false) {

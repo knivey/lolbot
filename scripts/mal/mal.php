@@ -9,9 +9,9 @@ use simplehtmldom\HtmlDocument;
 #[Cmd("mal", "myanimelist")]
 #[Syntax("<search>...")]
 #[CallWrap("Amp\asyncCall")]
-function mal($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $url = "https://myanimelist.net/search/all?q=" .  urlencode($req->args["search"]);
+    $url = "https://myanimelist.net/search/all?q=" .  urlencode($cmdArgs["search"]);
     try {
         $body = yield async_get_contents($url);
     } catch (\async_get_exception $e) {

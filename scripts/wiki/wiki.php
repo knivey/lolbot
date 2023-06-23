@@ -10,10 +10,10 @@ use simplehtmldom\HtmlDocument;
 #[Cmd("wiki")]
 #[Syntax('<query>...')]
 #[CallWrap("Amp\asyncCall")]
-function wiki($args, \Irc\Client $bot, \knivey\cmdr\Request $req)
+function wiki($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     list($rpl, $rpln) = makeRepliers($args, $bot, "Wiki");
-    $query = rawurlencode($req->args['query']);
+    $query = rawurlencode($cmdArgs['query']);
     try {
         $body = yield async_get_contents("https://en.wikipedia.org/api/rest_v1/page/summary/$query");
     } catch (async_get_exception $e) {

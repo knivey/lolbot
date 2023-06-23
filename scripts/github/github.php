@@ -57,8 +57,8 @@ $eventProvider->addListener(
 #[Cmd("gh", "github")]
 #[Syntax("<user/repo>")]
 #[CallWrap("Amp\asyncCall")]
-function github_cmd($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    $query = $req->args['user/repo'];
+function github_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $query = $cmdArgs['user/repo'];
     if(!preg_match("@^([^/]+)(?:/([^/]+))?$@", $query, $m)) {
         $bot->pm($args->chan, "\x02[GitHub]\x02 Query wasn't recognized, give me user or user/repo");
         return;

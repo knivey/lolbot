@@ -97,11 +97,6 @@ require_once 'scripts/durendaltv/durendaltv.php';
 require_once 'scripts/bomb_game/bomb_game.php';
 require_once 'scripts/translate/translate.php';
 
-#[\knivey\cmdr\attributes\PrivCmd("dumpnicks")]
-function dumpnicks($args, \Irc\Client $bot, \knivey\cmdr\Request $req) {
-    global $nicks;
-    print_r($nicks->ppl);
-}
 
 $router->loadFuncs();
 
@@ -217,7 +212,7 @@ try {
                 if(trim($cmd) == '')
                     return;
 
-                if(isset($router->cmds[$cmd])) {
+                if($router->cmdExists($cmd)) {
                     try {
                         $router->call($cmd, $text, $args, $bot);
                     } catch (Exception $e) {
