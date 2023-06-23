@@ -26,7 +26,10 @@ trigger: "."
 # Uncomment to start the notification listen server
 # Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
 # echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
-#listen: "0.0.0.0:1337"
+#listen: [
+#  "0.0.0.0:1337",
+#  "[::]:1337"
+#]
 
 
 # key for wolfram alpha

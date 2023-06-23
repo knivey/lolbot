@@ -32,9 +32,15 @@ function startRestServer() {
     } else {
         $context = null;
     }
-    $sockets = [
-        Socket\Server::listen($config['listen'], $context)
-    ];
+    $sockets = [];
+    if(is_array($config['listen'])) {
+        foreach ($config['listen'] as $address) {
+            $sockets[] =  Socket\Server::listen($address, $context);
+        }
+    } else {
+        $sockets[] =  Socket\Server::listen($config['listen'], $context);
+    }
+
     //Probably setup logging from main later
     $logHandler = new StreamHandler(new ResourceOutputStream(STDOUT));
     $logHandler->setFormatter(new ConsoleFormatter);

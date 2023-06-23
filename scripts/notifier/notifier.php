@@ -23,9 +23,15 @@ function notifier($bot) {
     //$context = (new Socket\BindContext)
     //    ->withTlsContext((new Socket\ServerTlsContext)->withDefaultCertificate($cert));
 
-    $servers = [
-        Socket\Server::listen($config['listen'])
-    ];
+    $servers = [];
+    if(is_array($config['listen'])) {
+        foreach ($config['listen'] as $address) {
+            $servers[] =  Socket\Server::listen($address);
+        }
+    } else {
+        $servers[] =  Socket\Server::listen($config['listen']);
+    }
+
     //Probably setup logging from main later
     $logHandler = new StreamHandler(new ResourceOutputStream(STDOUT));
     $logHandler->setFormatter(new ConsoleFormatter);
