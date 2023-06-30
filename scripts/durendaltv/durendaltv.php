@@ -2,10 +2,12 @@
 namespace scripts\durendaltv;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("live")]
+#[Desc("Show status of durendal's live stream")]
 #[CallWrap("Amp\asyncCall")]
 function durendaltv($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {

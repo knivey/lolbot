@@ -3,6 +3,8 @@ namespace scripts\bing;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
@@ -11,8 +13,10 @@ $warned = false;
 
 #[Cmd("bing")]
 #[Syntax('<query>...')]
+#[Desc("Search bing.com")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--amt", "--result")]
+#[Option("--amt", "How many results to show")]
+#[Option("--result", "Show result at this position")]
 function bing($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config, $warned, $ratelimit;

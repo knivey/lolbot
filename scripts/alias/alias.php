@@ -18,7 +18,7 @@ $dbfile = (string)($config['aliasdb'] ?? "alias.db");
 R::addDatabase($aliasdb, "sqlite:{$dbfile}");
 
 #[Cmd("alias")]
-#[Desc("Add a new alias")]
+#[Desc("Add a new alias for the channel (like a command), available variables: $0 $0- (thru $9) \$nick \$chan \$target")]
 #[Syntax("<name> <value>...")]
 #[Option("--me", "Make the alias reply with /me")]
 #[Option("--act", "same as --me")]
@@ -48,6 +48,7 @@ function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 
 #[Cmd("unalias")]
 #[Syntax("<name>")]
+#[Desc("Remove a channel alias")]
 function unalias($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $aliasdb;
@@ -64,6 +65,7 @@ function unalias($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 }
 
 #[Cmd("aliases")]
+#[Desc("List the channel aliases")]
 function aliases($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $aliasdb;

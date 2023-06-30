@@ -2,6 +2,7 @@
 namespace scripts\bomb_game;
 
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use RedBeanPHP\OODBBean;
@@ -63,6 +64,7 @@ class bomb_game
     }
 
     #[Cmd("bomb")]
+    #[Desc("plant a bomb on target")]
     #[Syntax("<target>")]
     function bomb(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
@@ -93,6 +95,7 @@ class bomb_game
     }
 
     #[Cmd("cutwire")]
+    #[Desc("try to defuse your bomb")]
     #[Syntax("<color>")]
     function cutwire(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {

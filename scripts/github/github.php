@@ -7,6 +7,7 @@ use Amp\Http\Client\Response;
 use Irc\Exception;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use League\Uri\Uri;
 use scripts\linktitles\UrlEvent;
@@ -56,6 +57,7 @@ $eventProvider->addListener(
 
 #[Cmd("gh", "github")]
 #[Syntax("<user/repo>")]
+#[Desc("Lookup info on a github user or user/repo")]
 #[CallWrap("Amp\asyncCall")]
 function github_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $query = $cmdArgs['user/repo'];
