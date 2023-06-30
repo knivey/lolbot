@@ -3,11 +3,13 @@ namespace scripts\mal;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use simplehtmldom\HtmlDocument;
 
 #[Cmd("mal", "myanimelist")]
 #[Syntax("<search>...")]
+#[Desc("lookup a anime on myanimelist")]
 #[CallWrap("Amp\asyncCall")]
 function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {

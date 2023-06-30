@@ -4,9 +4,11 @@ namespace scripts\insult;
  * return some hilarious insults
  */
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 
 
 #[Cmd("insult")]
+#[Desc("generate an insult")]
 function insult($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $insults = [

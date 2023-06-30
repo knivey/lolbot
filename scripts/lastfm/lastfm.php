@@ -5,6 +5,7 @@ require_once 'library/Duration.inc';
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use \RedBeanPHP\R as R;
@@ -17,6 +18,7 @@ R::addDatabase($db, "sqlite:{$dbfile}");
 
 #[Cmd("setlastfm")]
 #[Syntax('<username>')]
+#[Desc("Set your last.fm name for the bot to remember for np")]
 #[CallWrap("Amp\asyncCall")]
 function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -44,6 +46,7 @@ function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 }
 
 #[Cmd("np")]
+#[Desc("Show your nowplaying status from last.fm")]
 #[CallWrap("Amp\asyncCall")]
 function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -96,6 +99,7 @@ function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("lastfm")]
 #[Syntax('[user]')]
+#[Desc("Lookup a user on last.fm")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--info")]
 function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)

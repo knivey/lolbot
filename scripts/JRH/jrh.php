@@ -4,6 +4,7 @@ namespace scripts\JRH;
 use Carbon\Carbon;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use function scripts\youtube\getLiveVideos;
 
@@ -62,6 +63,7 @@ function getChanUsers($chan, $bot): \Amp\Promise {
 }
 
 #[Cmd("jrh", "birdnest")]
+#[Desc("Check birdnest stream status")]
 #[CallWrap("Amp\asyncCall")]
 function jrh($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;

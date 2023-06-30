@@ -10,10 +10,10 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $bot->notice($args->nick, "Here is a list of my commands, there is no further help");
     $first = 0;
     foreach ($router->cmds as $cmd) {
-        if(!$first++)
-            $bot->notice($args->nick, '---');
+        if(!($first++))
+            $bot->msg($args->chan, '---');
         foreach(explode("\n", (string)$cmd) as $line) {
-            $bot->notice($args->nick, $line);
+            $bot->msg($args->chan, $line);
         }
     }
 }
