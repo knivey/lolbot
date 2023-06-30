@@ -8,6 +8,8 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
@@ -267,8 +269,10 @@ function fmtRow($row) {
 
 #[Cmd("urlignore")]
 #[Syntax('[regex_or_id]')]
+#[Desc("manage the channel url ignore rules")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--list", "--del")]
+#[Option("--list", "list rules")]
+#[Option("--del", "delete a rule by id")]
 function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $url_pdo;
 

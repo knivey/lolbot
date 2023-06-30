@@ -11,12 +11,14 @@ if(!isset($config['markov_quotefile']) || !is_file($config['markov_quotefile']))
 use \Decidedly\TextGenerators\SimpleMarkovGenerator;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr;
+use knivey\cmdr\attributes\Desc;
 
 $markov = new SimpleMarkovGenerator(2);
 
 $markov->parseText(file_get_contents($config['markov_quotefile']));
 
 #[Cmd("mquote")]
+#[Desc("generate a quote using markov chains (requires setup of special quote file)")]
 function mquote($args, \Irc\Client $bot, cmdr\Args $cmdArgs)
 {
     global $markov, $config;

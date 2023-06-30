@@ -6,6 +6,7 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use League\Uri\UriString;
 use Symfony\Component\Yaml\Yaml;
@@ -154,6 +155,7 @@ function runFish($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 #[Cmd("ruby")]
 #[Syntax("<code>...")]
+#[Desc("Run ruby code")]
 #[CallWrap("\Amp\asyncCall")]
 function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(!canRun($args)) {
@@ -164,6 +166,7 @@ function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 #[Cmd("c", "tcc")]
+#[Desc("Run C code using tcc compiler")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
@@ -175,6 +178,7 @@ function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 #[Cmd("gcc")]
+#[Desc("Run ruby code using gcc compiler")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
@@ -216,6 +220,7 @@ function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 #[Cmd("tcl")]
+#[Desc("Run tcl code")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
@@ -227,6 +232,7 @@ function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 #[Cmd("cpp", "g++")]
+#[Desc("Run C++ code using g++")]
 #[Syntax("<code>...")]
 #[CallWrap("\Amp\asyncCall")]
 function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {

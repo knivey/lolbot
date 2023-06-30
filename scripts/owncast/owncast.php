@@ -3,6 +3,7 @@ namespace scripts\owncast;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use Symfony\Component\Yaml\Yaml;
 
 //For now just using a config file channel: casturl
@@ -10,6 +11,7 @@ use Symfony\Component\Yaml\Yaml;
 //cast url should be normal url to click (https://owncast.local/)
 
 #[Cmd("owncast", "popcorn", "🍿")]
+#[Desc("Lookup status of a configured owncast server")]
 #[CallWrap("Amp\asyncCall")]
 function owncast($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
