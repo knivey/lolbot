@@ -5,6 +5,7 @@ require_once "library/Duration.inc";
 
 use Carbon\Carbon;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 
 use \RedBeanPHP\R as R;
@@ -20,6 +21,7 @@ $limitWarns = [];
 
 #[Cmd("in", "remindme")]
 #[Syntax("<time> <msg>...")]
+#[Desc("sets a reminder for your after time. time is formatted like 5m30s supports: 1y2M3d4h5m6s")]
 function in($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     \Amp\asyncCall(function () use ($args, $bot, $cmdArgs) {
         global $cmdLimit, $limitWarns;
@@ -68,6 +70,7 @@ function in($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 // TODO let users save a timezone so they dont have always include it here
 #[Cmd("at", "on")]
 #[Syntax("<timemsg>...")]
+#[Desc("Remind you at a certain date time, the date time must be in quotes")]
 function at($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $r = makeArgs($cmdArgs['timemsg']);
     if(!is_array($r) || count($r) < 2) {

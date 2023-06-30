@@ -8,6 +8,7 @@ namespace scripts\seen;
 
 use Carbon\CarbonInterface;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use Carbon\Carbon;
 use \RedBeanPHP\R as R;
@@ -19,6 +20,7 @@ $dbfile = $config['seendb'] ?? "seen.db";
 R::addDatabase($seendb, "sqlite:{$dbfile}");
 
 #[Cmd("seen")]
+#[Desc("check when bo lastt saw someone chat")]
 #[Syntax("<nick>")]
 function seen($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $seendb;
