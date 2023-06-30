@@ -6,6 +6,7 @@ namespace scripts\tell;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 
 use Khill\Duration\Duration;
@@ -52,6 +53,7 @@ if ($multiNet) {
 }
 
 #[Cmd("tell", "ask", "inform", "pester")]
+#[Desc("pass nick a message when they chat next")]
 #[Syntax("<nick> <msg>...")]
 function tell($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $disabled, $config, $multiNet;

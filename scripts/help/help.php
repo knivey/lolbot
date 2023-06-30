@@ -31,6 +31,7 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         foreach(explode("\n", $help) as $line) {
             $bot->msg($args->chan, $line);
         }
+        return;
     }
     $first = 0;
     if($cmdArgs->optEnabled("--priv"))

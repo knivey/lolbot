@@ -7,6 +7,7 @@ use Amp\Http\Client\Response;
 use Irc\Exception;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
@@ -14,6 +15,7 @@ use knivey\irctools;
 
 #[Cmd("define", "dictionary")]
 #[Syntax('<query>...')]
+#[Desc("lookup definitions from api.dictionaryapi.dev")]
 #[CallWrap("Amp\asyncCall")]
 function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -61,6 +63,7 @@ function getDnsType($type) {
 
 #[Cmd("dns", "resolve")]
 #[Syntax('<query> [type]')]
+#[Desc("lookup dns records default is A, AAAA")]
 #[CallWrap("Amp\asyncCall")]
 function dns($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -95,12 +98,14 @@ function dns($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("whois")]
 #[Syntax('<nick>')]
+#[Desc("does nothing")]
 function whois($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 }
 
 #[Cmd("choice", "choose")]
 #[Syntax('<stuff>...')]
+#[Desc("let tthe bot make the hard desicions, choices separated by eiher: or , |")]
 function choice($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $opts = preg_split("/[,|]| +or( +|$)/", $cmdArgs['stuff']);
     if($opts === false) {
@@ -117,6 +122,7 @@ function choice($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 #[Cmd("domaincheck", "dc")]
 #[Syntax('<domain>')]
+#[Desc("check namecheap to see if a domain can be registered")]
 #[CallWrap("Amp\asyncCall")]
 function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
