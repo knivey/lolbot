@@ -45,9 +45,9 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     showHelp($args->chan, $bot, $out);
 }
 
-function showHelp($chan, $bot, $lines) {
+function showHelp(string $chan, $bot, string $lines) {
     if(function_exists('pumpToChan')) {
-        pumpToChan($chan, $lines);
+        pumpToChan($chan, explode("\n", $lines));
         return;
     }
     //TODO add check if its too big then use a pastebin
