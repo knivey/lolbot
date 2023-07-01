@@ -42,6 +42,7 @@ require_once 'artbot_scripts/urlimg.php';
 require_once 'artbot_scripts/drawing.php';
 require_once 'artbot_scripts/bashorg.php';
 require_once 'artbot_scripts/artfart.php';
+require_once 'scripts/help/help.php';
 $router->loadFuncs();
 
 

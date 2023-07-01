@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
@@ -240,6 +241,7 @@ function makeUrl(string $route): Promise {
 }
 
 #[Cmd("getpumper")]
+#[Desc("Gets a URL you can send a HTTP POST to play art in the channel")]
 #[CallWrap("\Amp\asyncCall")]
 function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -267,7 +269,8 @@ $recordLimit = [];
 $limitWarns = [];
 
 #[Cmd("record")]
-#[Option(["--post", "--url"], "Get a URL to post the art data to")]
+#[Desc("Record a new art, use this, paste the art to the chat then type @end when finished")]
+#[Option(["--post", "--url"], "Get a URL to POST the art data to instead of pasting it to the channel")]
 #[Syntax('<filename>')]
 #[CallWrap('\Amp\asyncCall')]
 function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
@@ -367,6 +370,7 @@ function timeOut($watcher, $data) {
 }
 
 #[Cmd("end")]
+#[Desc("Finish recording art")]
 function endart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
@@ -399,6 +403,7 @@ function endart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 #[Cmd("cancel")]
+#[Desc("Cancel recording art")]
 function cancel($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
@@ -479,6 +484,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
 $trashLimit = [];
 $trashLimitWarns = [];
 #[Cmd("trash")]
+#[Desc("Move a recorded art to trash, requires special access.")]
 #[Syntax("<file>")]
 function trash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config, $trashLimit, $trashLimitWarns;
@@ -559,11 +565,12 @@ function getFinder() : \Symfony\Component\Finder\Finder {
 }
 
 #[Cmd("search", "find")]
+#[Desc("Search for art by mathcing against directorys/names")]
 #[Option(["--max"], "Max results to show")]
-#[Options("--details", "--dates", "--play", "--maxlines")]
-//gotta update Cmdr
-//#[Option("--details", "show more details about results")]
-//#[Option("--dates", "show dates instead of diffs")]
+#[Option(["--details"], "Show more details in the results")]
+#[Option(["--dates"], "Show dates instead of relative times")]
+#[Option(["--play"], "Play all the files found")]
+#[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('<query>')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
@@ -659,8 +666,9 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 #[Cmd("recent")]
+#[Desc("Show arts recently recorded defaults to since 8 days ago")]
 #[Option(["--play"], "Play each art")]
-#[Options("--maxlines")]
+#[Options("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('[since]...')]
 function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
@@ -740,7 +748,9 @@ function selectRandFile($search = null) : String|false {
 }
 
 #[Cmd("random")]
-#[Options("--flip", "--speed")]
+#[Desc("Play a random art, if given a search it will pick at random from the results")]
+#[Option("--flip", "play the art upside down")]
+#[Option("--speed", "set the playback speed, delay between lines in ms")]
 #[Syntax('[search]')]
 function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $chan = $args->chan;
@@ -772,6 +782,7 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 #[Cmd("stop")]
+#[Desc("Stops art playback")]
 function stop($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
@@ -867,8 +878,9 @@ function quietExec($cmd)
 }
 
 #[Cmd("a2m", "ans")]
+#[Desc("Convert ansi from 16colo.rs to mirc art")]
 #[Syntax('<url>')]
-#[Options('--width')]
+#[Option('--width', "force a width to convert at, otherwise we try to detect it from the website")]
 function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;

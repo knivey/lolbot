@@ -3,11 +3,13 @@ namespace artbot_scripts;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use simplehtmldom\HtmlDocument;
 
 $bashdb = [];
 
 #[Cmd("bash")]
+#[Desc("Play a random bash.org quote")]
 #[CallWrap("Amp\asyncCall")]
 function bash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $bashdb;

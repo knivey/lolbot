@@ -3,9 +3,11 @@ namespace artbot_scripts;
 
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 
 #[Cmd("artfart")]
+#[Desc("play a random artfart")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb")]
 function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Args $cmdArgs): \Generator

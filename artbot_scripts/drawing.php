@@ -2,6 +2,7 @@
 namespace artbot_scripts;
 
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 
 class Pixel {
@@ -260,6 +261,7 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 
 #[Cmd("lines")]
+#[Desc("Draw some random lines")]
 function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 24);
@@ -278,6 +280,7 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 
 #[Cmd("circles")]
+#[Desc("Draw some random circles")]
 function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 24);

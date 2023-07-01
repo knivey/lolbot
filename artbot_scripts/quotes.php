@@ -5,6 +5,7 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
@@ -18,8 +19,9 @@ $quote_recordings = [];
 
 
 #[Cmd("addquote", "quoteadd")]
+#[Desc("add a quote, used this then paste the quotes to the chat and type @endquote, OR if its one line you can @addquote quoteline")]
 #[Syntax("[quote]...")]
-#[Options('--keeptimes')]
+#[Option('--keeptimes', "We try to strip timestamps by default, use this to keep them")]
 function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
@@ -57,6 +59,7 @@ function quoteTimeOut($watcher, $data): void {
 }
 
 #[Cmd("endquote", "stopquote")]
+#[Desc("Finish quote recording")]
 function endquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $host = $args->host;
@@ -107,6 +110,7 @@ function stripTimestamp($line) {
 }
 
 #[Cmd("cancelquote")]
+#[Desc("cancel and discard a quote recording")]
 function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
@@ -120,8 +124,9 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     unset($quote_recordings[$nick]);
 }
 
-#[Cmd("searchquote", "searchquotes", "quotesearch", "querch", "findquote", "quotefind")]
+#[Cmd("querch", "findquote")]
 #[Syntax("<query>...")]
+#[Desc("Search for any quotes that match using * for wildcard")]
 #[Option("--play", "Play the results up to limit")]
 function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     R::selectDatabase('quotes');
@@ -173,6 +178,7 @@ function initQuotes($bot) {
 }
 
 #[Cmd("quote")]
+#[Desc("Play a random quote or quote by id")]
 #[Syntax("[id]")]
 function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     R::selectDatabase('quotes');
