@@ -668,7 +668,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 #[Cmd("recent")]
 #[Desc("Show arts recently recorded defaults to since 8 days ago")]
 #[Option(["--play"], "Play each art")]
-#[Options("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
+#[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('[since]...')]
 function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
