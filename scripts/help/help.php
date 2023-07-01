@@ -28,9 +28,7 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             }
             $help = (string)$router->privCmds[$cmdArgs['command']];
         }
-        foreach(explode("\n", $help) as $line) {
-            $bot->msg($args->chan, $line);
-        }
+        showHelp($args->chan, $bot, $help);
         return;
     }
     $first = 0;
@@ -38,11 +36,22 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $cmds = $router->privCmds;
     else
         $cmds = $router->cmds;
+    $out = "";
     foreach ($cmds as $cmd) {
         if($first++)
-            $bot->msg($args->chan, '---');
-        foreach(explode("\n", (string)$cmd) as $line) {
-            $bot->msg($args->chan, $line);
-        }
+            $out .= "---\n";
+        $out .= (string)$cmd . "\n";
+    }
+    showHelp($args->chan, $bot, $out);
+}
+
+function showHelp($chan, $bot, $lines) {
+    if(function_exists('pumpToChan')) {
+        pumpToChan($chan, $lines);
+        return;
+    }
+    //TODO add check if its too big then use a pastebin
+    foreach(explode("\n", $lines) as $line) {
+        $bot->msg($chan, $line);
     }
 }
