@@ -246,7 +246,7 @@ static $palette = [
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2", "--edit")]
+#[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
     $url = $cmdArgs[0];
