@@ -811,7 +811,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         $pump = array_reverse($pump);
         //could be some dupes
         $find    = [
-            "/", "\\",
+            "/", "\\", "╱", "╲",
             "╮", "╯", "╰", "╭", "┴", "┬",
             "┬", "╨",
             "┴", "╥",
@@ -823,7 +823,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
             "▀", "▄", "¯", "_"
         ];
         $replace = [
-            "\\", "/",
+            "\\", "/", "╲", "╱",
             "╯", "╮", "╭", "╰", "┬", "┴",
             "┴", "╥",
             "┬", "╨",
