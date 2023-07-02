@@ -58,7 +58,7 @@ function showHelp(string $chan, $bot, string $lines) {
                     ->withConnectTimeout(15);
                 $sock = yield \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
                 $sock->write($lines);
-                $url = yield $sock->buffer();
+                $url = yield \Amp\ByteStream\buffer($sock);
                 $sock->end();
                 $bot->msg($chan, "help: $url");
             } catch (Exception $e) {
