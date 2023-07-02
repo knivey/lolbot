@@ -6,6 +6,7 @@ use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use PHPUnit\Exception;
 
 #[Cmd("help")]
 #[Syntax("[command]")]
@@ -50,7 +51,22 @@ function showHelp(string $chan, $bot, string $lines) {
         pumpToChan($chan, explode("\n", $lines));
         return;
     }
-    //TODO add check if its too big then use a pastebin
+    if(strlen($lines) > 1000) {
+        \Amp\asyncCall(function () use ($chan, $bot, $lines) {
+            try {
+                $connectContext = (new \Amp\Socket\ConnectContext)
+                    ->withConnectTimeout(15);
+                $sock = yield \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
+                $sock->write($lines);
+                $url = yield $sock->buffer();
+                $sock->end();
+                $bot->msg($chan, "help: $url");
+            } catch (Exception $e) {
+                $bot->msg($chan, "trouble uploading help :(");
+            }
+        });
+        return;
+    }
     foreach(explode("\n", $lines) as $line) {
         $bot->msg($chan, $line);
     }
