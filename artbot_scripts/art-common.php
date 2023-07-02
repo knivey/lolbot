@@ -807,7 +807,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
     }
     $pump = irctools\loadartfile($file);
     //var_dump($opts);
-    if(array_key_exists('--flip', $opts)) {
+    if(isset($opts['--flip'])) {
         $pump = array_reverse($pump);
         //could be some dupes
         $find    = [
