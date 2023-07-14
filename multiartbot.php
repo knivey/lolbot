@@ -144,6 +144,15 @@ Loop::run(function () {
         //all bots have same set of chans
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;
+            if(isset($config['onconnect'])) {
+                if(!is_array($config['onconnect'])) {
+                    die("config['onconnect'] must be an array, found: " . get_debug_type($config['onconnect']));
+                }
+                foreach ($config["onconnect"] as $line) {
+                    str_replace('$me', $bot->getNick(), $line);
+                    $bot->send($line);
+                }
+            }
             $bot->join(implode(',', $config['channels']));
         });
 

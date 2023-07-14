@@ -14,6 +14,11 @@ ssl: true
 throttle: true
 channels: ['#bots','#h4x']
 
+# send commands after receiving welcome message $me replaced with current nick
+onconnect:
+  - "as auth blah blah"
+  - "mode $me +x"
+
 # Use one or the other here
 # This is what precedes bot commands like -bing
 trigger: "."
