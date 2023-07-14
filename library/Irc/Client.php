@@ -53,6 +53,9 @@ class Client extends EventEmitter
      */
     protected bool $ircEstablished = false;
 
+    protected string $saslUser = "";
+    protected string $saslPass = "";
+
     private ?string $nickHost = null;
 
     private int $ErrDelay = 0;
@@ -115,7 +118,7 @@ class Client extends EventEmitter
                 $this->isConnected = true;
                 //Yay connected, try CAP and login
                 $this->send('CAP LS');
-                $this->sendLogin();
+                $this->sendLogin(); //TODO we might need to WAIT if we are doing sasl auth
                 while ($this->isConnected) {
                     yield $this->doRead();
                 }
@@ -655,6 +658,12 @@ class Client extends EventEmitter
         $this->send(CMD_NICK, $nick);
     }
 
+    public function setSasl(string $user, string $pass): void {
+        $this->saslUser = $user;
+        $this->saslPass = $pass;
+    }
+
+
     /**
      * @var ?object{nick: string, channelType: string, channel: string, names: list<string>}
      */
@@ -701,13 +710,31 @@ class Client extends EventEmitter
             case "CAP":
                 if($message->getArg(1) == "LS") {
                     $caps = explode(" ", $message->getArg(2));
+                    $this->waitOnSasl = false;
+                    $req = false;
                     if(in_array('multi-prefix', $caps)) {
                         $this->send("CAP REQ :multi-prefix");
+                        $req = true;
+                    }
+                    if($this->saslPass != "" && in_array('sasl', $caps)) {
+                        $this->send("CAP REQ :sasl");
+                        $this->waitOnSasl = true;
+                    }
+                    if($req && !$this->waitOnSasl) {
                         $this->send("CAP END");
                     }
                 }
                 if($message->getArg(1) == "ACK") {
                     $this->caps = explode(" ", $message->getArg(2));
+                    if(in_array('sasl', $this->caps)) {
+                        $this->send("AUTHENTICATE PLAIN");
+                        //$this->send("AUTHENTICATE +");
+                        $this->send("AUTHENTICATE " . base64_encode("{$this->saslUser}\x00{$this->saslUser}\x00{$this->saslPass}"));
+                        if($this->waitOnSasl) {
+                            $this->send("CAP END");
+                            $this->waitOnSasl = false;
+                        }
+                    }
                 }
                 break;
             case CMD_JOIN:

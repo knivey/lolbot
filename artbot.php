@@ -76,6 +76,9 @@ Loop::run(function () {
     $bot = new \Irc\Client($config['name'], $config['server'], $log, $config['port'], $config['bindIp'], $config['ssl']);
     $bot->setThrottle($config['throttle'] ?? true);
     $bot->setServerPassword($config['pass'] ?? '');
+    if(isset($config['sasl_user']) && isset($config['sasl_pass'])) {
+        $bot->setSasl($config['sasl_user'], $config['sasl_pass']);
+    }
 
     /***** Init scripts with hooks ******
      * definately will do this in a better way later via registering or whatever

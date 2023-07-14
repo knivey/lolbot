@@ -133,6 +133,9 @@ try {
         $bot = new \Irc\Client($config['name'], $config['server'], $log, $config['port'], ($config['bindIp'] ?? '0'), $config['ssl']);
         $bot->setThrottle($config['throttle'] ?? true);
         $bot->setServerPassword($config['pass'] ?? '');
+        if(isset($config['sasl_user']) && isset($config['sasl_pass'])) {
+            $bot->setSasl($config['sasl_user'], $config['sasl_pass']);
+        }
         \scripts\tell\initTell($bot);
         \scripts\seen\initSeen($bot);
         \scripts\remindme\initRemindme($bot);

@@ -140,6 +140,9 @@ Loop::run(function () {
         $bots[] = $bot;
         $bot->setThrottle($bcfg['throttle'] ?? true);
         $bot->setServerPassword($bcfg['pass'] ?? '');
+        if(isset($config['sasl_user']) && isset($config['sasl_pass'])) {
+            $bot->setSasl($config['sasl_user'], $config['sasl_pass']);
+        }
 
         //all bots have same set of chans
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
