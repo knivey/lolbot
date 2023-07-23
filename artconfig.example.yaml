@@ -21,6 +21,9 @@ listen: "0.0.0.0:1212"
 rest_url: "https://arts.h4x.life/pn"
 #listen_cert: "cert.pem"
 
+#used for --link option so people may downlaod art file
+link_url: "https://art.h4x.life/"
+
 # for the @url and @img commands when used with an image (does p2u)
 url_default_width: 80
 

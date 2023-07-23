@@ -417,7 +417,7 @@ function cancel($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     unset($recordings[$nick]);
 }
 
-$reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed'];
+$reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed', '--link', '--download'];
 function reqart($bot, $chan, $file, $opts = [], $args = []) {
     \Amp\asyncCall(function() use ($bot, $chan, $file, $opts, $args) {
         global $config, $playing;
@@ -437,6 +437,16 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
             if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
                 $relPath = substr($ent, strlen($config['artdir']));
                 $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=$relPath");
+                return true;
+            }
+            return false;
+        };
+
+        $tryLink = function ($ent) use ($bot, $chan, $opts) {
+            global $config;
+            if(array_key_exists('--link', $opts) || array_key_exists('--download', $opts)) {
+                $relPath = substr($ent, strlen($config['artdir']));
+                $bot->pm($chan, "{$config['link_url']}$relPath");
                 return true;
             }
             return false;
@@ -463,7 +473,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
         //try fullpath first
         foreach($tree as $ent) {
             if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
-                if($tryEdit($ent))
+                if($tryEdit($ent) || $tryLink($ent))
                     return;
                 playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
                 return;
@@ -471,7 +481,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
         }
         foreach($tree as $ent) {
             if($file == strtolower(basename($ent, '.txt'))) {
-                if($tryEdit($ent))
+                if($tryEdit($ent) || $tryLink($ent))
                     return;
                 playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
                 return;
