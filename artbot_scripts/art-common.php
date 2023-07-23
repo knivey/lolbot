@@ -622,7 +622,18 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                 $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
                 $out[] = "\x02\x0300,12||||| $ago $pads $name |||||";
                 $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
-                $out = array_merge($out, irctools\loadartfile($file->getRealPath()));
+                $pump = irctools\loadartfile($file->getRealPath());
+                foreach (($config['wordwrap_dirs']??[]) as $lwdir) {
+                    if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
+                        $npump = [];
+                        foreach($pump as $line) {
+                            $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen($bot->getNickHost()), "\n", true)));
+                        }
+                        $pump = $npump;
+                        break;
+                    }
+                }
+                $out = array_merge($out, $pump);
             }
             if(empty($out)) {
                 $bot->pm($chan, "no matching art found");
@@ -718,7 +729,18 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
             $out[] = "\x02\x0300,12||||| $ago $pads $name |||||";
             $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
-            $out = array_merge($out, irctools\loadartfile($file->getRealPath()));
+            $pump = irctools\loadartfile($file->getRealPath());
+            foreach (($config['wordwrap_dirs']??[]) as $lwdir) {
+                if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
+                    $npump = [];
+                    foreach($pump as $line) {
+                        $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen($bot->getNickHost()), "\n", true)));
+                    }
+                    $pump = $npump;
+                    break;
+                }
+            }
+            $out = array_merge($out, $pump);
         }
         pumpToChan($args->chan, $out);
         return;
@@ -806,6 +828,17 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         return;
     }
     $pump = irctools\loadartfile($file);
+    foreach (($config['wordwrap_dirs']??[]) as $lwdir) {
+        if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
+            $npump = [];
+            foreach($pump as $line) {
+                $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen($bot->getNickHost()), "\n", true)));
+            }
+            $pump = $npump;
+            break;
+        }
+    }
+
     //var_dump($opts);
     if(isset($opts['--flip'])) {
         $pump = array_reverse($pump);

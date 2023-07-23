@@ -27,3 +27,7 @@ url_default_width: 80
 # For the trash command to delete art
 trustedNetwork: false
 trashDir: "/home/knivey/trashed"
+
+#artfiles played back from these dirs will be word wrapped instead of the default (cut off)
+wordwrap_dirs:
+  - "h4x/aibird"

@@ -65,6 +65,10 @@ class Client extends EventEmitter
      */
     protected array $caps = [];
 
+    public function getNickHost(): ?string {
+        return $this->nickHost;
+    }
+
     public function __construct(
         protected string $nick,
         protected string $server,
