@@ -637,7 +637,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                     if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
                         $npump = [];
                         foreach($pump as $line) {
-                            $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen($bot->getNickHost()), "\n", true)));
+                            $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen(":{$bot->getNickHost()} privmsg $chan :"), "\n", true)));
                         }
                         $pump = $npump;
                         break;
@@ -744,7 +744,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                 if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
                     $npump = [];
                     foreach($pump as $line) {
-                        $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen($bot->getNickHost()), "\n", true)));
+                        $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen(":{$bot->getNickHost()} privmsg $args->chan :"), "\n", true)));
                     }
                     $pump = $npump;
                     break;
@@ -842,7 +842,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
             $npump = [];
             foreach($pump as $line) {
-                $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen($bot->getNickHost()), "\n", true)));
+                $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen(":{$bot->getNickHost()} privmsg $chan :"), "\n", true)));
             }
             $pump = $npump;
             break;
