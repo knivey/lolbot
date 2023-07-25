@@ -56,7 +56,7 @@ function parseOpts(string &$msg, array $validOpts = []): array {
             list($lhs, $rhs) = explode("=", $w, 2);
         } else {
             $lhs = $w;
-            $rhs = null;
+            $rhs = true;
         }
         if(in_array($lhs, $validOpts))
             $opts[$lhs] = $rhs;
