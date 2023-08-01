@@ -101,7 +101,8 @@ Loop::run(function () {
     });
 
     $bot->on('kick', function ($args, \Irc\Client $bot) {
-        $bot->join($args->channel);
+        if($args->nick == $bot->getNick())
+            $bot->join($args->channel);
     });
 
     //Stop abuse from an IRCOP called sylar

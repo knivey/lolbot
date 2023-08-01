@@ -160,7 +160,8 @@ Loop::run(function () {
         });
 
         $bot->on('kick', function ($args, \Irc\Client $bot) {
-            $bot->join($args->channel);
+            if($args->nick == $bot->getNick())
+                $bot->join($args->channel);
         });
 
         $bot->on(ERR_CANNOTSENDTOCHAN, function ($args, \Irc\Client $bot) {
