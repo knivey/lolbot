@@ -3,9 +3,7 @@ namespace scripts\twitter;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
 use Carbon\Carbon;
-use Irc\Exception;
 use scripts\linktitles\UrlEvent;
 use simplehtmldom\HtmlDocument;
 
@@ -44,7 +42,7 @@ $eventProvider->addListener(
                 $reply_count = $html->find('div.icon-container span.icon-comment', 0)->parent()->plaintext;
 
                 $event->reply("[Twitter] $ago $user tweeted: $text | {$like_count} likes, {$reply_count} replies");
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 echo "twitter exception {$e->getMessage()}\n";
                 return;
             }
