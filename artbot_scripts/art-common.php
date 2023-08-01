@@ -240,6 +240,19 @@ function makeUrl(string $route): Promise {
     });
 }
 
+function getWrapLength($bot, $chan) {
+    global $bots;
+    $size = 0;
+    if(isset($bots) && is_array($bots)) {
+        foreach($bots as $b)
+            $size = max($size, strlen($b->getNickHost()));
+    } else {
+        $size = strlen($bot->getNickHost());
+    }
+    //could use 509 but rather give a little extra
+    return 500 - $size - strlen(" PRIVMSG $chan :");
+}
+
 #[Cmd("getpumper")]
 #[Desc("Gets a URL you can send a HTTP POST to play art in the channel")]
 #[CallWrap("\Amp\asyncCall")]
@@ -637,7 +650,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                     if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
                         $npump = [];
                         foreach($pump as $line) {
-                            $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen(":{$bot->getNickHost()} privmsg $chan :"), "\n", true)));
+                            $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $chan), "\n", true)));
                         }
                         $pump = $npump;
                         break;
@@ -744,7 +757,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                 if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
                     $npump = [];
                     foreach($pump as $line) {
-                        $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen(":{$bot->getNickHost()} privmsg $args->chan :"), "\n", true)));
+                        $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $args->chan), "\n", true)));
                     }
                     $pump = $npump;
                     break;
@@ -842,7 +855,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
             $npump = [];
             foreach($pump as $line) {
-                $npump = array_merge($npump, explode("\n", wordwrap($line, 505 - strlen(":{$bot->getNickHost()} privmsg $chan :"), "\n", true)));
+                $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $chan), "\n", true)));
             }
             $pump = $npump;
             break;
