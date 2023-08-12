@@ -593,12 +593,13 @@ function getFinder() : \Symfony\Component\Finder\Finder {
 #[Option(["--details"], "Show more details in the results")]
 #[Option(["--dates"], "Show dates instead of relative times")]
 #[Option(["--play"], "Play all the files found")]
+#[Option(["--contains"], "Search for files containing text")]
 #[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
-#[Syntax('<query>')]
+#[Syntax('<query>...')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
-    $file = $cmdArgs['query'];
+    $query = $cmdArgs['query'];
     global $config;
     $max = $config['art_search_max'] ?? 100;
     if($cmdArgs->optEnabled("--max")) {
@@ -616,13 +617,17 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             return;
         }
     }
-    \Amp\asyncCall(function () use ($bot, $chan, $file, $max, $cmdArgs) {
+    \Amp\asyncCall(function () use ($bot, $chan, $query, $max, $cmdArgs) {
         global $playing;
         if (isset($playing[$chan])) {
             return;
         }
         $finder = getFinder();
-        $finder->path(tools\globToRegex("*$file*.txt") . 'i');
+        if($cmdArgs->optEnabled("--contains")) {
+            $finder->contains($query);
+        } else {
+            $finder->path(tools\globToRegex("*$query*.txt") . 'i');
+        }
         $finder->sortByModifiedTime();
         $out = [];
         if($cmdArgs->optEnabled("--play")) {
@@ -633,21 +638,21 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                 $bot->msg($chan, "--maxlines must be positive number");
                 return;
             }
-            foreach($finder as $file) {
-                if($maxlines && mb_substr_count($file->getContents(), "\n")+1 > $maxlines) {
+            foreach($finder as $query) {
+                if($maxlines && mb_substr_count($query->getContents(), "\n")+1 > $maxlines) {
                     continue;
                 }
-                $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
-                $name = substr($file->getRelativePathname(), 0, -4);
+                $ago = (new Carbon($query->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+                $name = substr($query->getRelativePathname(), 0, -4);
                 $len = strlen("-----------------------------------------------------------------------------------");
                 if(strlen("||||| $ago  $name |||||") < $len)
                     $pads = str_repeat("|", $len - strlen("||||| $ago  $name |||||"));
                 $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
                 $out[] = "\x02\x0300,12||||| $ago $pads $name |||||";
                 $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
-                $pump = irctools\loadartfile($file->getRealPath());
+                $pump = irctools\loadartfile($query->getRealPath());
                 foreach (($config['wordwrap_dirs']??[]) as $lwdir) {
-                    if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
+                    if(substr_compare(substr($query, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
                         $npump = [];
                         foreach($pump as $line) {
                             $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $chan), "\n", true)));
@@ -688,7 +693,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
         }
 
-        $out = preg_replace(tools\globToRegex($file, '/', false) . 'i', "\x0306\$0\x0F", $out);
+        $out = preg_replace(tools\globToRegex($query, '/', false) . 'i', "\x0306\$0\x0F", $out);
 
         if(($cnt = count($out)) > $max) {
             $out = array_slice($out, 0, $max);
