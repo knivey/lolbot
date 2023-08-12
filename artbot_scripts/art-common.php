@@ -617,91 +617,90 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             return;
         }
     }
-    \Amp\asyncCall(function () use ($bot, $chan, $query, $max, $cmdArgs) {
-        global $playing;
-        if (isset($playing[$chan])) {
-            return;
-        }
-        $finder = getFinder();
-        if($cmdArgs->optEnabled("--contains")) {
-            $finder->contains($query);
-        } else {
-            $finder->path(tools\globToRegex("*$query*.txt") . 'i');
-        }
-        $finder->sortByModifiedTime();
-        $out = [];
-        if($cmdArgs->optEnabled("--play")) {
-            $maxlines = $cmdArgs->getOpt("--maxlines");
-            if($maxlines === false)
-                $maxlines = 100;
-            if($maxlines <= 0) {
-                $bot->msg($chan, "--maxlines must be positive number");
-                return;
-            }
-            foreach($finder as $query) {
-                if($maxlines && mb_substr_count($query->getContents(), "\n")+1 > $maxlines) {
-                    continue;
-                }
-                $ago = (new Carbon($query->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
-                $name = substr($query->getRelativePathname(), 0, -4);
-                $len = strlen("-----------------------------------------------------------------------------------");
-                if(strlen("||||| $ago  $name |||||") < $len)
-                    $pads = str_repeat("|", $len - strlen("||||| $ago  $name |||||"));
-                $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
-                $out[] = "\x02\x0300,12||||| $ago $pads $name |||||";
-                $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
-                $pump = irctools\loadartfile($query->getRealPath());
-                foreach (($config['wordwrap_dirs']??[]) as $lwdir) {
-                    if(substr_compare(substr($query, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
-                        $npump = [];
-                        foreach($pump as $line) {
-                            $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $chan), "\n", true)));
-                        }
-                        $pump = $npump;
-                        break;
-                    }
-                }
-                $out = array_merge($out, $pump);
-            }
-            if(empty($out)) {
-                $bot->pm($chan, "no matching art found");
-                return;
-            }
-            pumpToChan($chan, $out);
-            return;
-        }
 
-        foreach($finder as $f) {
-            /** @var $f Symfony\Component\Finder\SplFileInfo */
-            if(!$cmdArgs->optEnabled("--details")) {
-                $out[] = substr($f->getRelativePathname(), 0, -4);
-            } else {
-                $lines = mb_substr_count($f->getContents(), "\n")+1;
-                if($cmdArgs->optEnabled("--dates"))
-                    $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
-                else
-                    $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
-                $out[] = ["$lines lines ", $ago, substr($f->getRelativePathname(), 0, -4)];
+    global $playing;
+    if (isset($playing[$chan])) {
+        return;
+    }
+    $finder = getFinder();
+    if($cmdArgs->optEnabled("--contains")) {
+        $finder->contains($query);
+    } else {
+        $finder->path(tools\globToRegex("*$query*.txt") . 'i');
+    }
+    $finder->sortByModifiedTime();
+    $out = [];
+    if($cmdArgs->optEnabled("--play")) {
+        $maxlines = $cmdArgs->getOpt("--maxlines");
+        if($maxlines === false)
+            $maxlines = 100;
+        if($maxlines <= 0) {
+            $bot->msg($chan, "--maxlines must be positive number");
+            return;
+        }
+        foreach($finder as $query) {
+            if($maxlines && mb_substr_count($query->getContents(), "\n")+1 > $maxlines) {
+                continue;
             }
+            $ago = (new Carbon($query->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+            $name = substr($query->getRelativePathname(), 0, -4);
+            $len = strlen("-----------------------------------------------------------------------------------");
+            if(strlen("||||| $ago  $name |||||") < $len)
+                $pads = str_repeat("|", $len - strlen("||||| $ago  $name |||||"));
+            $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
+            $out[] = "\x02\x0300,12||||| $ago $pads $name |||||";
+            $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
+            $pump = irctools\loadartfile($query->getRealPath());
+            foreach (($config['wordwrap_dirs']??[]) as $lwdir) {
+                if(substr_compare(substr($query, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
+                    $npump = [];
+                    foreach($pump as $line) {
+                        $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $chan), "\n", true)));
+                    }
+                    $pump = $npump;
+                    break;
+                }
+            }
+            $out = array_merge($out, $pump);
         }
         if(empty($out)) {
             $bot->pm($chan, "no matching art found");
             return;
         }
-
-        if($cmdArgs->optEnabled("--details")) {
-            $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
-        }
-
-        $out = preg_replace(tools\globToRegex($query, '/', false) . 'i', "\x0306\$0\x0F", $out);
-
-        if(($cnt = count($out)) > $max) {
-            $out = array_slice($out, 0, $max);
-            $out[] = "$cnt total matches, only showing $max";
-        }
-
         pumpToChan($chan, $out);
-    });
+        return;
+    }
+
+    foreach($finder as $f) {
+        /** @var $f Symfony\Component\Finder\SplFileInfo */
+        if(!$cmdArgs->optEnabled("--details")) {
+            $out[] = substr($f->getRelativePathname(), 0, -4);
+        } else {
+            $lines = mb_substr_count($f->getContents(), "\n")+1;
+            if($cmdArgs->optEnabled("--dates"))
+                $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
+            else
+                $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+            $out[] = ["$lines lines ", $ago, substr($f->getRelativePathname(), 0, -4)];
+        }
+    }
+    if(empty($out)) {
+        $bot->pm($chan, "no matching art found");
+        return;
+    }
+
+    if($cmdArgs->optEnabled("--details")) {
+        $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
+    }
+
+    $out = preg_replace(tools\globToRegex($query, '/', false) . 'i', "\x0306\$0\x0F", $out);
+
+    if(($cnt = count($out)) > $max) {
+        $out = array_slice($out, 0, $max);
+        $out[] = "$cnt total matches, only showing $max";
+    }
+
+    pumpToChan($chan, $out);
 }
 
 #[Cmd("recent")]
