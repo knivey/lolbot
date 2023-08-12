@@ -624,7 +624,12 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     }
     $finder = getFinder();
     if($cmdArgs->optEnabled("--contains")) {
-        $finder->contains($query);
+        //$finder->contains($query);
+        $glob = tools\globToRegex("*$query*", anchor: false) . 'i';
+        $finder->filter(function (\SplFileInfo $file) use ($glob) {
+            $art = irctools\stripcodes(file_get_contents($file->getRealPath()));
+            return (bool) preg_match($glob, $art);
+        });
     } else {
         $finder->path(tools\globToRegex("*$query*.txt") . 'i');
     }
