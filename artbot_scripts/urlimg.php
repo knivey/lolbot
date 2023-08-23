@@ -5,6 +5,7 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use Itwmw\ColorDifference\Color;
@@ -247,6 +248,8 @@ static $palette = [
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
 #[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2")]
+#[Option("--saturation", "change saturation value as percent, 100 is default")]
+#[Option("--brightness", "change brightness value as percent, 100 is default")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
     $url = $cmdArgs[0];
@@ -277,6 +280,9 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             $width = 80;
         else
             $width = 120;
+        $brightness = 100;
+        $saturation = 100;
+        $hue = 100;
         if($cmdArgs->optEnabled("--width")) {
             $width = intval($cmdArgs->getOpt("--width"));
             if($width < 10 || $width > 200) {
@@ -287,6 +293,21 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
         $img = new Imagick();
         $img->readImageBlob($body);
+        if($cmdArgs->optEnabled("--saturation")) {
+            $saturation = intval($cmdArgs->getOpt("--saturation"));
+            if($width < 0 || $width > 10000) {
+                $bot->pm($args->chan, "--saturation should be between 0 and 10000");
+                return;
+            }
+        }
+        if($cmdArgs->optEnabled("--brightness")) {
+            $brightness = intval($cmdArgs->getOpt("--brightness"));
+            if($width < 0 || $width > 10000) {
+                $bot->pm($args->chan, "--brightness should be between 0 and 10000");
+                return;
+            }
+        }
+        $img->modulateImage($brightness, $saturation, $hue);
         $size = $img->getImageGeometry();
         $factor = $width / $size['width'];
         if($cmdArgs->optEnabled("--halfblock"))
