@@ -261,7 +261,7 @@ function sendOut($bot, $chan, $data): \Amp\Promise {
                 $line = substr($line, strlen("OUT: "));
             if(str_starts_with($line, "ERR: "))
                 $line = "\x0304". substr($line, strlen("OUT: "));
-            return $line;
+            return "\2\2$line";
         }, $data);
         if(isset($config['pump_host']) && isset($config['pump_key'])) {
             try {
