@@ -981,41 +981,46 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
                 $bot->pm($chan, "\2a2m Error:\2 url seems wrong");
                 return;
             }
-            $pack = $m[1];
-            $pfile = $m[2];
-            try {
-                $data = yield async_get_contents("https://16colo.rs/pack/$pack/data/$pfile");
-                $json = json_decode($data);
-                if (isset($json->sauce->tinfo1)) {
-                    $width = $json->sauce->tinfo1;
-                }
-            } catch (\Exception $e) {
-            }
-
-            $body = yield async_get_contents("https://16colo.rs/pack/$pack/raw/$pfile");
             if(!isset($config['artdir'])) {
                 $bot->pm($chan, "artdir not configured");
                 return;
             }
-            if(!is_dir("{$config['artdir']}/ans"))
-                mkdir("{$config['artdir']}/ans");
-            if(!is_dir("{$config['artdir']}/ans/$pack"))
-                mkdir("{$config['artdir']}/ans/$pack");
-            // perhaps in future we try to find proper names and keep files around.
+            $pack = urldecode($m[1]);
+            $pfile = urldecode($m[2]);
             $saveFile = "{$config['artdir']}/ans/$pack/$pfile";
-            file_put_contents($saveFile, $body);
-            if(!isset($width))
-                $width = intval($cmdArgs->getOpt("--width"));
-            if(!$width)
-                $width = 80;
-            list($rc, $out, $err) = quietExec("$a2m -w $width " . escapeshellarg($saveFile));
-            if($rc != 0) {
-                $bot->pm($chan, "\2a2m Error:\2 " . trim($err));
-                return;
+            if(!file_exists("$saveFile.txt")) {
+                try {
+                    $data = yield async_get_contents("https://16colo.rs/pack/$pack/data/$pfile");
+                    $json = json_decode($data);
+                    if (isset($json->sauce->tinfo1)) {
+                        $width = $json->sauce->tinfo1;
+                    }
+                } catch (\Exception $e) {
+                }
+
+                $body = yield async_get_contents("https://16colo.rs/pack/$pack/raw/$pfile");
+
+                if (!is_dir("{$config['artdir']}/ans"))
+                    mkdir("{$config['artdir']}/ans");
+                if (!is_dir("{$config['artdir']}/ans/$pack"))
+                    mkdir("{$config['artdir']}/ans/$pack");
+
+                file_put_contents($saveFile, $body);
+                if (!isset($width))
+                    $width = intval($cmdArgs->getOpt("--width"));
+                if (!$width)
+                    $width = 80;
+                list($rc, $out, $err) = quietExec("$a2m -w $width " . escapeshellarg($saveFile));
+                if ($rc != 0) {
+                    $bot->pm($chan, "\2a2m Error:\2 " . trim($err));
+                    return;
+                }
+                file_put_contents("$saveFile.txt", $out);
+            } else {
+                $out = file_get_contents("$saveFile.txt");
             }
-            file_put_contents("$saveFile.txt", $out);
             if($cmdArgs->optEnabled('--edit')) {
-                $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=ans/$pack/$pfile.txt");
+                $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=ans/" .urlencode($pack) . "/" . urlencode($pfile) . ".txt");
                 return;
             } else {
                 pumpToChan($chan, explode("\n", rtrim($out)));
