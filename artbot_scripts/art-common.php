@@ -946,6 +946,7 @@ function quietExec($cmd)
 #[Desc("Convert ansi from 16colo.rs to mirc art")]
 #[Syntax('<url>')]
 #[Option('--width', "force a width to convert at, otherwise we try to detect it from the website")]
+#[Option("--edit", "make a link to open in asciibird")]
 function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
@@ -971,44 +972,54 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
                 $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ urls (ans|asc) (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
                 return;
             }
-            //try to change to raw url here
+            //try to parse url here
             // https://16colo.rs/pack/croyale01/raw/sp-coc.asc
             // https://16colo.rs/pack/ane-0696/DA-MASK.ANS
             // https://16colo.rs/pack/ane-0696/data/DA-MASK.ANS
             // https://16colo.rs/pack/ciapak12/raw/DA-NXS.CIA
-            if(!preg_match("@https?://16colo\.rs/pack/[^/]+/raw/.+\.(?:ans|asc|cia)@i", $url)) {
-                if(!preg_match("@https?://16colo\.rs/pack/([^/]+)/(.+\.(?:ans|asc|cia))@i", $url, $m)) {
-                    $bot->pm($chan, "\2a2m Error:\2 url seems wrong");
-                    return;
-                }
-                try {
-                    $data = yield async_get_contents("https://16colo.rs/pack/$m[1]/data/$m[2]");
-                    $json = json_decode($data);
-                    if (isset($json->sauce->tinfo1)) {
-                        $width = $json->sauce->tinfo1;
-                    }
-                } catch (\Exception $e) {
-                }
-                $url = "https://16colo.rs/pack/$m[1]/raw/$m[2]";
+            if(!preg_match("@^https?://16colo\.rs/pack/([^/]+)/(?:raw/)?([^/]+\.(?:ans|asc|cia))$@i", $url, $m)) {
+                $bot->pm($chan, "\2a2m Error:\2 url seems wrong");
+                return;
             }
-            $body = yield async_get_contents($url);
-            if(!is_dir('ans'))
-                mkdir('ans');
+            $pack = $m[1];
+            $pfile = $m[2];
+            try {
+                $data = yield async_get_contents("https://16colo.rs/pack/$pack/data/$pfile");
+                $json = json_decode($data);
+                if (isset($json->sauce->tinfo1)) {
+                    $width = $json->sauce->tinfo1;
+                }
+            } catch (\Exception $e) {
+            }
+
+            $body = yield async_get_contents("https://16colo.rs/pack/$pack/raw/$pfile");
+            if(!isset($config['artdir'])) {
+                $bot->pm($chan, "artdir not configured");
+                return;
+            }
+            if(!is_dir("{$config['artdir']}/ans"))
+                mkdir("{$config['artdir']}/ans");
+            if(!is_dir("{$config['artdir']}/ans/$pack"))
+                mkdir("{$config['artdir']}/ans/$pack");
             // perhaps in future we try to find proper names and keep files around.
-            $file = "ans/" . uniqid() . ".ans";
-            file_put_contents($file, $body);
+            $saveFile = "{$config['artdir']}/ans/$pack/$pfile";
+            file_put_contents($saveFile, $body);
             if(!isset($width))
                 $width = intval($cmdArgs->getOpt("--width"));
             if(!$width)
                 $width = 80;
-            list($rc, $out, $err) = quietExec("$a2m -w $width $file");
+            list($rc, $out, $err) = quietExec("$a2m -w $width " . escapeshellarg($saveFile));
             if($rc != 0) {
                 $bot->pm($chan, "\2a2m Error:\2 " . trim($err));
-                unlink($file);
                 return;
             }
-            pumpToChan($chan, explode("\n", rtrim($out)));
-            unlink($file);
+            file_put_contents("$saveFile.txt", $out);
+            if($cmdArgs->optEnabled('--edit')) {
+                $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=ans/$pack/$pfile.txt");
+                return;
+            } else {
+                pumpToChan($chan, explode("\n", rtrim($out)));
+            }
         } catch (\async_get_exception $error) {
             $bot->pm($chan, "\a2m:\2 {$error->getIRCMsg()}");
         } catch (\Exception $error) {
