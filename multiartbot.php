@@ -247,6 +247,7 @@ function botsOnChan($chan)
 
 function pumpToChan(string $chan, array $data, $speed = null) {
     global $playing;
+    $chan = strtolower($chan);
     if(isset($playing[$chan])) {
         array_push($playing[$chan], ...$data);
     } else {
