@@ -19,8 +19,8 @@ use Amp\Loop;
 use knivey\irctools;
 
 use const Irc\ERR_CANNOTSENDTOCHAN;
-use \Ayesh\CaseInsensitiveArray\Strict as CIArray;
-$playing = new CIArray();
+
+$playing = [];
 
 if(isset($argv[1])) {
     if(!file_exists($argv[1]) || !is_file($argv[1]))
@@ -34,10 +34,6 @@ $config = Yaml::parseFile($configFile);
 if(!is_array($config))
     die("bad config file");
 
-// Workaround with CIArray to have php pass reference
-class Playing {
-    public array $data = [];
-}
 use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
@@ -252,11 +248,9 @@ function botsOnChan($chan)
 function pumpToChan(string $chan, array $data, $speed = null) {
     global $playing;
     if(isset($playing[$chan])) {
-        array_push($playing[$chan]->data, ...$data);
+        array_push($playing[$chan], ...$data);
     } else {
-        $playing[$chan] = new Playing();
-        $playing[$chan]->data = $data;
-        var_dump($playing);
+        $playing[$chan] = $data;
         startPump($chan, $speed);
     }
 }
@@ -264,18 +258,20 @@ function pumpToChan(string $chan, array $data, $speed = null) {
 function startPump($chan, $speed = null) {
     \Amp\asyncCall(function() use($chan, $speed) {
         global $playing;
+        $chan = strtolower($chan);
         if(!isset($playing[$chan])) {
             echo "startPump but chan not in array?\n";
             return;
         }
         //we cant send empty lines
-        $playing[$chan]->data = array_filter($playing[$chan]->data);
-        if (count($playing[$chan]->data) > 6001) {
-            $playing[$chan]->data = [$playing[$chan]->data[0], "that arts too big for this network"];
+        $playing[$chan] = array_filter($playing[$chan]);
+        if (count($playing[$chan]) > 6001) {
+            $playing[$chan] = [$playing[$chan][0], "that arts too big for this network"];
+            return;
         }
         $bot = null;
         $nextbot = null;
-        while (!empty($playing[$chan]->data)) {
+        while (!empty($playing[$chan])) {
             $botson = botsOnChan($chan);
             if($botson < 2) {
                 unset($playing[$chan]);
@@ -308,13 +304,13 @@ function startPump($chan, $speed = null) {
             $def = new \Amp\Deferred();
             $botNick = $bot->getNick();
             $sendAmount = 4;
-            if(count($playing[$chan]->data) < $sendAmount)
-                $sendAmount = count($playing[$chan]->data);
+            if(count($playing[$chan]) < $sendAmount)
+                $sendAmount = count($playing[$chan]);
             $cnt = 0;
             $nextbot->on('chat', function($args, $bot) use ($chan, &$eventIdx, &$def, &$cnt, $botNick, $sendAmount) {
                 if ($args->from != $botNick)
                     return;
-                if($args->chan != $chan)
+                if(strtolower($args->chan) != $chan)
                     return;
                 $cnt++;
                 if($cnt == $sendAmount) {
@@ -324,8 +320,8 @@ function startPump($chan, $speed = null) {
             }, $eventIdx);
 
             foreach (range(0,$sendAmount - 1) as $x) {
-                if(isset($playing[$chan]) && !empty($playing[$chan]->data)) {
-                    $line = array_shift($playing[$chan]->data);
+                if(isset($playing[$chan]) && !empty($playing[$chan])) {
+                    $line = array_shift($playing[$chan]);
                     $bot->pm($chan, irctools\fixColors($line));
                     $delay = 550 / $botson;
                     if($delay < 85)

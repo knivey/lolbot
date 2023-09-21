@@ -219,6 +219,7 @@ $playing = [];
 function pumpToChan(string $chan, array $data, $speed = null) {
     \Amp\asyncCall(function () use ($chan, $data, $speed) {
         global $playing, $bot, $config;
+        $chan = strtolower($chan);
         if (isset($playing[$chan])) {
             array_push($playing[$chan], ...$data);
         } else {
