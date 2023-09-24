@@ -52,7 +52,7 @@ if ($multiNet) {
         $action = str_replace(".", "", $action);
 
         addMsg($cmdArgs['nick'], $args->text, $args->nick, $net, $args->chan);
-        $bot->pm($args->chan, "Ok, I'll {$action} {$cmdArgs[0]} about that next time I see them on any network.");
+        $bot->pm($args->chan, actionMsg($action, $cmdArgs['nick']));
     }
 }
 
@@ -81,9 +81,60 @@ function tell($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
     addMsg($cmdArgs['nick'], $args->text, $args->nick, $net, $args->chan, $net);
     if($multiNet)
-        $bot->pm($args->chan, "Ok, I'll {$action} {$cmdArgs[0]} about that next time I see them on $net.");
+        $bot->pm($args->chan, actionMsg($action, $cmdArgs['nick']));
     else
-        $bot->pm($args->chan, "Ok, I'll {$action} {$cmdArgs[0]} about that next time I see them.");
+        $bot->pm($args->chan, actionMsg($action, $cmdArgs['nick']));
+}
+
+function actionMsg($action, $nick) {
+
+    $messages = [
+       "tell" => [
+           "I'll definitely tell $nick about that",
+           "I'll make sure to let $nick know about that",
+           "I'll be sure to relay that message to $nick",
+           "U dare tell me to tell $nick about that? Ok I will",
+           "Telling me to tell $nick? Aite",
+           "Yeah OK, I'll 'totally tell' $nick about that",
+
+       ],
+       "inform" => [
+           "$nick will be informed of dat next time they chat",
+           "$nick will be kept in the loop regarding that",
+           "$nick will be made aware of that information",
+           "I will inform the shit outta $nick regarding this very important thing",
+           "I am informed to inform $nick and I will carry out this duty",
+           "How dare u inform me to inform $nick? Fine! I will!",
+       ],
+       "ask" => [
+           "I'll be sure to ask $nick about that!",
+           "I'll make sure to get that information from $nick",
+           "I'll be sure to find out the answer to that question from $nick",
+           "U dare ask me to ask $nick about that? Ok I will",
+           "I will not enjoy asking, but I will ask $nick about that",
+       ],
+       "pester" => [
+           "Leave it to me, I'll pester the crap out of $nick regarding that",
+           "I'll be sure to annoy $nick until they give me the information I need",
+           "I'll be relentless in my pursuit of information from $nick",
+           "I will not rest until $nick is pestered about that",
+           "U pester me to pester $nick? Ok I will",
+           "I accept this burden of pestering $nick",
+       ],
+    ];
+
+    switch ($action) {
+    case "tell":
+        return $messages['tell'][array_rand($messages['tell'])];
+    case "inform":
+        return $messages['inform'][array_rand($messages['inform'])];
+    case "ask":
+        return $messages['ask'][array_rand($messages['ask'])];
+    case "pester":
+        return $messages['pester'][array_rand($messages['pester'])];
+    default:
+        return "uhhh";
+    }
 }
 
 function countMsgs($nick, $net, $global = false) {
