@@ -47,8 +47,12 @@ if ($multiNet) {
             $bot->pm($args->chan, "Sorry, {$cmdArgs[0]}'s inbox is stuffed full :( (limit of $max messages)");
             return;
         }
+
+        $action = explode(" ", $args->text)[0];
+        $action = str_replace(".", "", $action);
+
         addMsg($cmdArgs['nick'], $args->text, $args->nick, $net, $args->chan);
-        $bot->pm($args->chan, "Ok, I'll tell {$cmdArgs[0]} that next time I see them on any network.");
+        $bot->pm($args->chan, "Ok, I'll {$action} {$cmdArgs[0]} about that next time I see them on any network.");
     }
 }
 
@@ -71,11 +75,15 @@ function tell($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $bot->pm($args->chan, "Sorry, {$cmdArgs[0]}'s inbox is stuffed full :( (limit of $max messages)");
         return;
     }
+
+    $action = explode(" ", $args->text)[0];
+    $action = str_replace(".", "", $action);
+
     addMsg($cmdArgs['nick'], $args->text, $args->nick, $net, $args->chan, $net);
     if($multiNet)
-        $bot->pm($args->chan, "Ok, I'll tell {$cmdArgs[0]} that next time I see them on $net.");
+        $bot->pm($args->chan, "Ok, I'll {$action} {$cmdArgs[0]} about that next time I see them on $net.");
     else
-        $bot->pm($args->chan, "Ok, I'll tell {$cmdArgs[0]} that next time I see them.");
+        $bot->pm($args->chan, "Ok, I'll {$action} {$cmdArgs[0]} about that next time I see them.");
 }
 
 function countMsgs($nick, $net, $global = false) {
