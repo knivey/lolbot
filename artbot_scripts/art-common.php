@@ -478,7 +478,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
                 $bot->pm($chan, "no matching art found");
             return;
         }
-        $finder->sortByModifiedTime();
+        $finder->sortByModifiedTime()->reverseSorting();
         //try fullpath first
         foreach($finder as $f) {
             $ent = $f->getRealPath();
