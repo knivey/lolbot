@@ -437,13 +437,8 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
         if(isset($playing[strtolower($chan)])) {
             return;
         }
-        $base = $config['artdir'];
-        try {
-            $tree = knivey\tools\dirtree($base);
-        } catch (Exception $e) {
-            echo "{$e}\n";
-            return;
-        }
+
+        $finder = getFinder([]);
 
         $tryEdit = function ($ent) use ($bot, $chan, $opts) {
             global $config;
@@ -483,8 +478,10 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
                 $bot->pm($chan, "no matching art found");
             return;
         }
+        $finder->sortByModifiedTime();
         //try fullpath first
-        foreach($tree as $ent) {
+        foreach($finder as $f) {
+            $ent = $f->getRealPath();
             if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
                 if($tryEdit($ent) || $tryLink($ent))
                     return;
@@ -492,7 +489,8 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
                 return;
             }
         }
-        foreach($tree as $ent) {
+        foreach($finder as $f) {
+            $ent = $f->getRealPath();
             if($file == strtolower(basename($ent, '.txt'))) {
                 if($tryEdit($ent) || $tryLink($ent))
                     return;
@@ -579,11 +577,11 @@ function trash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 /**
  * Gets Finder for art dir, excluding p2u
  */
-function getFinder() : \Symfony\Component\Finder\Finder {
+function getFinder(array $exclude = ['p2u']) : \Symfony\Component\Finder\Finder {
     global $config;
     $finder = new Symfony\Component\Finder\Finder();
     $finder->files();
-    $finder->in($config['artdir'])->exclude("p2u");
+    $finder->in($config['artdir'])->exclude($exclude);
     return $finder;
 }
 
