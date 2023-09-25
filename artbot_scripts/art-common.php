@@ -588,7 +588,6 @@ function getFinder(array $exclude = ['p2u']) : \Symfony\Component\Finder\Finder 
 #[Cmd("search", "find")]
 #[Desc("Search for art by mathcing against directorys/names")]
 #[Option(["--max"], "Max results to show")]
-#[Option(["--details"], "Show more details in the results")]
 #[Option(["--dates"], "Show dates instead of relative times")]
 #[Option(["--play"], "Play all the files found")]
 #[Option(["--contains"], "Search for files containing text")]
@@ -676,25 +675,19 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
     foreach($finder as $f) {
         /** @var $f Symfony\Component\Finder\SplFileInfo */
-        if(!$cmdArgs->optEnabled("--details")) {
-            $out[] = substr($f->getRelativePathname(), 0, -4);
-        } else {
-            $lines = mb_substr_count($f->getContents(), "\n")+1;
-            if($cmdArgs->optEnabled("--dates"))
-                $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
-            else
-                $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
-            $out[] = ["$lines lines ", $ago, substr($f->getRelativePathname(), 0, -4)];
-        }
+        $lines = mb_substr_count($f->getContents(), "\n")+1;
+        if($cmdArgs->optEnabled("--dates"))
+            $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
+        else
+            $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+        $out[] = ["$lines lines ", $ago, substr($f->getRelativePathname(), 0, -4)];
     }
     if(empty($out)) {
         $bot->pm($chan, "no matching art found");
         return;
     }
 
-    if($cmdArgs->optEnabled("--details")) {
-        $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
-    }
+    $out = array_map(fn($it) => trim(implode(' ', $it)), tools\multi_array_padding($out));
 
     $out = preg_replace(tools\globToRegex($query, '/', false) . 'i', "\x0306\$0\x0F", $out);
 
