@@ -434,7 +434,7 @@ $reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed', '--link', '--downlo
 function reqart($bot, $chan, $file, $opts = [], $args = []) {
     \Amp\asyncCall(function() use ($bot, $chan, $file, $opts, $args) {
         global $config, $playing;
-        if(isset($playing[$chan])) {
+        if(isset($playing[strtolower($chan)])) {
             return;
         }
         $base = $config['artdir'];
@@ -619,7 +619,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     }
 
     global $playing;
-    if (isset($playing[$chan])) {
+    if (isset($playing[strtolower($chan)])) {
         return;
     }
     $finder = getFinder();
@@ -807,7 +807,7 @@ function selectRandFile($search = null) : String|false {
 #[Option("--speed", "set the playback speed, delay between lines in ms")]
 #[Syntax('[search]')]
 function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    $chan = $args->chan;
+    $chan = strtolower($args->chan);
     global $playing;
     if(isset($playing[$chan])) {
         return;
@@ -839,7 +839,7 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 #[Desc("Stops art playback")]
 function stop($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
-    $chan = $args->chan;
+    $chan = strtolower($args->chan);
     global $recordings, $playing;
     if(isset($playing[$chan])) {
         $playing[$chan] = [];
@@ -856,7 +856,7 @@ function stop($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], $speed = null)
 {
     global $playing, $config;
-    if (isset($playing[$chan])) {
+    if (isset($playing[strtolower($chan)])) {
         return;
     }
     $pump = irctools\loadartfile($file);
@@ -956,7 +956,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         return;
     }
     \Amp\asyncCall(function () use ($bot, $chan, $cmdArgs) {
-        global $playing, $config;
+        global $config;
         try {
             $a2m = $config['a2m'];
             $url = $cmdArgs['url'];
