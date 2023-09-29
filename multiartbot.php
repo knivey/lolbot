@@ -266,9 +266,8 @@ function startPump($chan, $speed = null) {
         }
         //we cant send empty lines
         $playing[$chan] = array_filter($playing[$chan]);
-        if (count($playing[$chan]) > 6001) {
+        if (count($playing[$chan]) > 9001) {
             $playing[$chan] = [$playing[$chan][0], "that arts too big for this network"];
-            return;
         }
         $bot = null;
         $nextbot = null;
