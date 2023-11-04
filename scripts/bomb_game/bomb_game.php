@@ -48,7 +48,17 @@ class bomb_game
         "No! No, that's the wrong one. Aww, you've gone and killed yourself. Oh, that's... that's not good. No good at all, really. You should have picked the %color% wire."
     ];
     const TIMESUP = [
-        "Oh, come on, %target%! You could've at least picked one! Now you're dead. Guts, all over the place. You see that? Guts, all over YourPants. You should have picked the %color% wire."
+        "Oh, come on, %target%! You could've at least picked one! Now you're dead. Guts, all over the place. You see that? Guts, all over YourPants. You should have picked the %color% wire.",
+        "Game over, %target%! You waited too long so the bomb blew up in your face. Now you're nothing more than a pile of rubble and smoke!",
+        "Out of time, %target%! You failed the challenge and now you are paying the price. Welcome to the world of oblivion!",
+        "You had a chance, %target%, but you blew it. The bomb just exploded and now you're history. Too bad..",
+        "You failed, %target%, the bomb won't wait forever! Now you are nothing more than a pile of ash and debris.",
+        "Oh no, %target%, you ran out of time! The bomb has exploded and now you're gone.",
+        "Goodbye %target%, you should have acted faster. The bomb detonated and now your head is a mess.",
+        "Time's up, %target%. You had your chance, but now you're dead. No more second chances, this time the bomb got you.",
+        "Boom, %target%! You waited too long. The bomb exploded and now your guts are all over the place.",
+        "Sorry %target%, but time ran out. The bomb detonated and you're gone..",
+        "Too bad, %target%, you waited too long! Now your body is scattered in pieces and the bomb got you!"
     ];
     const NOT_ON_CHAN = [
         "I don't know where, %target% is!"
