@@ -36,7 +36,7 @@ class bomb_game
         "Hey, %target%! Don't look but, I think there's a bomb in your pants.\x02 %time% minute\x02 timer, \x025 wires\x02: %colors%. Which wire should I cut? Don't worry, I know what I'm doing! (respond with .cutwire color)",
         "Hey, %target%! it's me again! Don't worry, but I think you're sitting on top of a ticking time bomb. \x02%time% minute\x02 timer, 5 wires: %colors%. Which wire should I snip? I can handle the pressure! (respond with .cutwire color)",
         "Hi %target%! Don't freak out, but I think there's a detonating device attached to your chair. %time% minute timer, 5 wires: %colors%. Which wire should I break? I'm sure I know what I'm doing! (respond with .cutwire color) ",
-        "Hey %target, once more! Don't be alarmed, but I think there's a dangerous explosive wrapped around your waist. %time% minute timer, 5 wires: %colors%. Which wire should I sever? I'm confident I can do this! (respond with .cutwire color)"
+        "Hey %target%, once more! Don't be alarmed, but I think there's a dangerous explosive wrapped around your waist. %time% minute timer, 5 wires: %colors%. Which wire should I sever? I'm confident I can do this! (respond with .cutwire color)"
     ];
     const BOMBING = [
         "Hey, don't tell %target%, but the %color% wire? Yeah, that's the one. But shh! Don't say anything!"
