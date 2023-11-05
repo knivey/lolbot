@@ -138,7 +138,7 @@ class bomb_game
                 $color = $bomb->color;
                 $bot->msg($args->chan, self::randReply(self::TIMESUP, compact("target", "color")));
             }
-            unset($this->bombs[strtolower($target)]);
+            unset($this->bombs[strtolower($bomb->target)]);
         });
     }
 
