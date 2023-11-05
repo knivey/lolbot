@@ -141,6 +141,7 @@ try {
         \scripts\seen\initSeen($bot);
         \scripts\remindme\initRemindme($bot);
         $bomb_game = new \scripts\bomb_game\bomb_game();
+        $bomb_game->initIrcHooks($bot);
         $router->loadMethods($bomb_game);
 
         $nicks = new Nicks($bot);

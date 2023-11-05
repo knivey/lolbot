@@ -1,6 +1,7 @@
 <?php
 namespace scripts\bomb_game;
 
+use Amp\Deferred;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
@@ -17,6 +18,16 @@ use \RedBeanPHP\R as R;
 /**
  * @var \Nicks $nicks
  */
+
+class bomb {
+    public function __construct(
+        public string $target,
+        public string $color,
+        public Deferred $def
+    )
+    {
+    }
+}
 
 class bomb_game
 {
@@ -74,6 +85,18 @@ class bomb_game
         R::addDatabase($this->db, "sqlite:{$dbfile}");
     }
 
+    //TODO use db for bomb stats
+
+    public function initIrcHooks(\Irc\Client $bot) {
+        $bot->on('nick', function ($args, \Irc\Client $bot) {
+            if(array_key_exists(strtolower($args->old), $this->bombs)) {
+                $this->bombs[strtolower($args->new)] =& $this->bombs[strtolower($args->old)];
+                $this->bombs[strtolower($args->new)]->target = $args->new;
+                unset($this->bombs[strtolower($args->old)]);
+            }
+        });
+    }
+
     static function randReply(array $templates, array $values) : string {
         $t = $templates[array_rand($templates)];
         $newVals = [];
@@ -105,10 +128,14 @@ class bomb_game
             $bot->msg($args->chan, self::randReply(self::BOMB, compact("target", "time", "colors")));
             $bot->notice($args->nick, self::randReply(self::BOMBING, compact("target", "color")));
             $def = new \Amp\Deferred();
-            $this->bombs[strtolower($target)] = compact("target", "color", "def");
+            $this->bombs[strtolower($target)] = new bomb($target, $color, $def);
+            $bomb =& $this->bombs[strtolower($target)];
             $result = yield \Amp\Promise\timeoutWithDefault($def->promise(), self::TIME * 60 * 1000, 0);
             if($result == 0) {
                 //times up
+                //data could have changed during wait
+                $target = $bomb->target;
+                $color = $bomb->color;
                 $bot->msg($args->chan, self::randReply(self::TIMESUP, compact("target", "color")));
             }
             unset($this->bombs[strtolower($target)]);
@@ -123,14 +150,14 @@ class bomb_game
         if (!array_key_exists(strtolower($args->nick), $this->bombs)) {
             return;
         }
-        $target = $this->bombs[strtolower($args->nick)]['target'];
-        $color = $this->bombs[strtolower($target)]['color'];
+        $target = $this->bombs[strtolower($args->nick)]->target;
+        $color = $this->bombs[strtolower($target)]->color;
         if(strtolower($cmdArgs['color']) == strtolower($color)) {
             $bot->msg($args->chan, self::randReply(self::DEFUSED, compact("target")));
-            $this->bombs[strtolower($target)]['def']->resolve(1);
+            $this->bombs[strtolower($target)]->def->resolve(1);
             return;
         }
         $bot->msg($args->chan, self::randReply(self::WRONG, compact("target", "color")));
-        $this->bombs[strtolower($target)]['def']->resolve(2);
+        $this->bombs[strtolower($target)]->def->resolve(2);
     }
 }
