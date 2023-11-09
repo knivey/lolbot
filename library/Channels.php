@@ -111,7 +111,8 @@ class Channels
         });
         //RPL_CHANNELMODES
         $bot->on('324', function($args, $bot) {
-
+            // clear modes
+            // send modes to parse functino
         });
         $bot->on('nick', function($args, $bot) {
             unset($this->channels[strtolower($args->channel)]->nicks[strtolower($args->old)]);

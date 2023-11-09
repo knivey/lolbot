@@ -72,7 +72,12 @@ class bomb_game
         "Too bad, %target%, you waited too long! Now your body is scattered in pieces and the bomb got you!"
     ];
     const NOT_ON_CHAN = [
-        "I don't know where, %target% is!"
+        "I don't know where, %target% is!",
+        "Ask around, I think %target% is hiding.",
+        "Maybe %target% is taking an extra long holiday.",
+        "%target% must be working hard on something...somewhere.",
+        "Don't worry, %target% will show up eventually.",
+        "Well, who knows - %target% could be anywhere!"
     ];
 
     protected string $db;
