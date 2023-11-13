@@ -61,6 +61,8 @@ function brave($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             }
             $res = $j->web->results[$i];
             $desc = str_replace(["<strong>", "</strong>"], "\2", $res->description);
+            $desc = html_entity_decode($desc, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $desc = htmlspecialchars_decode($desc);
             $bot->pm($args->chan, "\2Brave web search:\2 $res->url $res->title -- $desc");
         }
     } catch (\async_get_exception $error) {
