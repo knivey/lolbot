@@ -69,7 +69,8 @@ function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
 require_once 'scripts/notifier/notifier.php';
 
 require_once 'scripts/weather/weather.php';
-require_once 'scripts/bing/bing.php';
+//require_once 'scripts/bing/bing.php';
+require_once 'scripts/brave/brave.php';
 require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/lastfm/lastfm.php';
