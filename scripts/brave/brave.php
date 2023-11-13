@@ -60,7 +60,8 @@ function brave($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
                 break;
             }
             $res = $j->web->results[$i];
-            $bot->pm($args->chan, "\2Brave web search:\2 $res->url $res->title -- $res->description");
+            $desc = str_replace(["<strong>", "</strong>"], "\2", $res->description);
+            $bot->pm($args->chan, "\2Brave web search:\2 $res->url $res->title -- $desc");
         }
     } catch (\async_get_exception $error) {
         echo $error;
