@@ -813,6 +813,17 @@ class Client extends EventEmitter
                     'args' => array_splice($message->args, 1)
                 ]);
                 break;
+            case RPL_CHANNELMODEIS:
+                $this->emit(RPL_CHANNELMODEIS, [
+                    'from' => $message->nick,
+                    'nick' => $message->nick,
+                    'ident' => $message->name,
+                    'host' => $message->host,
+                    'fullhost' => $message->getHostString(),
+                    'channel' => $message->getArg(1),
+                    'args' => array_splice($message->args, 2)
+                ]);
+                break;
             case CMD_PRIVMSG:
                 //Handle private messages (Normal chat messages)
                 $from = $message->nick;

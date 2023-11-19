@@ -124,11 +124,13 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 }
 
 require_once 'library/Nicks.php';
+require_once 'library/Channels.php';
 $bot = null;
 $nicks = null;
+$chans = null;
 try {
     Loop::run(function () {
-        global $bot, $config, $logHandler, $nicks, $router;
+        global $bot, $config, $logHandler, $nicks, $chans, $router;
 
         $log = new Logger($config['name']);
         $log->pushHandler($logHandler);
@@ -146,6 +148,7 @@ try {
         $router->loadMethods($bomb_game);
 
         $nicks = new Nicks($bot);
+        $chans = new Channels($bot);
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;
             if(isset($config['onconnect'])) {
@@ -188,7 +191,7 @@ try {
 
         $bot->on('chat', function ($args, \Irc\Client $bot) {
             try {
-                global $config, $router;
+                global $config, $router, $chans;
 
                 if(isIgnored($args->fullhost))
                     return;
@@ -218,6 +221,14 @@ try {
                 if (array_shift($ar) == 'ping') {
                     $bot->msg($args->channel, "Pong");
                 }
+                /*
+                $ar = explode(' ', $text);
+                if (array_shift($ar) == 'test') {
+                    $lines = $chans->dump();
+                    foreach($lines as $line)
+                        $bot->msg($args->nick, $line);
+                    return;
+                }*/
 
 
                 $text = explode(' ', $text);
