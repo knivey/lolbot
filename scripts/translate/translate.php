@@ -45,11 +45,17 @@ function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             throw new \Exception("gTranslate returned {$response->getStatus()}");
         }
         $respBody = yield $response->getBody()->buffer();
+        $responseArray = json_decode($respBody, true);
 
-        $translation = explode(",", $respBody)[0];
-        $translation = substr($translation, strpos($translation, '"') + 1);
-        $translation = substr($translation, 0, strpos($translation, '"'));
-        $translation = urldecode($translation);
+        if (is_array($responseArray)) {
+            $translatedSentences = [];
+            foreach ($responseArray[0] as $translation) {
+                $translatedSentence = urldecode($translation[0]);
+                $translatedSentences[] = $translatedSentence;
+            }
+        }
+
+        $translation = implode("", $translatedSentences);
 
         $bot->pm($args->chan, $translation);
     } catch (Exception $e) {
