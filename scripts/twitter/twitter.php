@@ -22,7 +22,8 @@ $eventProvider->addListener(
             global $config;
             try {
                 $client = HttpClientBuilder::buildDefault();
-                $req = new Request("https://nitter.net/$user/status/$id");
+                //$req = new Request("https://nitter.net/$user/status/$id");
+                $req = new Request("https://nitter.ktachibana.party/$user/status/$id");
                 $response = yield $client->request($req);
                 $body = yield $response->getBody()->buffer();
                 if ($response->getStatus() != 200) {
