@@ -22,6 +22,7 @@ R::addDatabase($aliasdb, "sqlite:{$dbfile}");
 #[Syntax("<name> <value>...")]
 #[Option("--me", "Make the alias reply with /me")]
 #[Option("--act", "same as --me")]
+#[Option("--cmd", "make this an alias for calling bot commands ex: --cmd=ruby (cannot use with --act)")]
 function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     global $aliasdb;
     [$rpl] = \makeRepliers($args, $bot, "alias");
@@ -42,6 +43,9 @@ function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     $alias->chan_lowered = strtolower($args->chan);
     $alias->fullhost = $args->fullhost;
     $alias->act = ($cmdArgs->optEnabled('--act') || $cmdArgs->optEnabled('--me'));
+    if($cmdArgs->optEnabled('--cmd')) {
+        $alias->cmd = $cmdArgs->getOpt('--cmd');
+    }
     R::store($alias);
     $rpl("{$msg}alias saved");
 }
@@ -91,7 +95,7 @@ function aliases($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
  * @throws \RedBeanPHP\RedException
  */
 function handleCmd(object $args, \Irc\Client $bot, string $cmd, array $cmdArgs): bool {
-    global $aliasdb;
+    global $aliasdb, $router;
     R::selectDatabase($aliasdb);
     $alias = R::findOne("alias", " `name_lowered` = ? AND `chan_lowered` = ? ",
         [strtolower($cmd), strtolower($args->chan)]);
@@ -129,6 +133,19 @@ function handleCmd(object $args, \Irc\Client $bot, string $cmd, array $cmdArgs):
     ];
     $value = str_replace(array_keys($vars), $vars, $value);
     //var_dump($alias);
+    if(isset($alias->cmd)) {
+        if(!$router->cmdExists($alias->cmd)) {
+            $bot->msg($args->chan, "Error with alias, bot command {$alias->cmd} not found");
+            return true;
+        }
+        try {
+            $router->call($alias->cmd, $value, $args, $bot);
+        } catch (\Exception $e) {
+            $bot->notice($args->from, $e->getMessage());
+        }
+        return true;
+    }
+
     if($alias->act) {
         $bot->msg($args->chan, "\x01ACTION $value\x01");
     } else {
