@@ -439,6 +439,8 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
         }
 
         $finder = getFinder([]);
+        //in the future support other extensions run through appropriate handlers
+        $finder->name("/\.txt$/i");
 
         $tryEdit = function ($ent) use ($bot, $chan, $opts) {
             global $config;
