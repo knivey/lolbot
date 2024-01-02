@@ -593,6 +593,7 @@ function getFinder(array $exclude = ['p2u']) : \Symfony\Component\Finder\Finder 
 #[Option(["--dates"], "Show dates instead of relative times")]
 #[Option(["--play"], "Play all the files found")]
 #[Option(["--contains"], "Search for files containing text")]
+#[Option(["--newest"], "Display newest results first")]
 #[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('<query>...')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
@@ -633,6 +634,9 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $finder->path(tools\globToRegex("*$query*.txt") . 'i');
     }
     $finder->sortByModifiedTime();
+    if($cmdArgs->optEnabled("--newest")) {
+        $finder->reverseSorting();
+    }
     $out = [];
     if($cmdArgs->optEnabled("--play")) {
         $maxlines = $cmdArgs->getOpt("--maxlines");
