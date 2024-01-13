@@ -1,7 +1,8 @@
 <?php
 require_once "vendor/autoload.php";
 
-use Doctrine\ORM\Tools\Setup;
+use Doctrine\DBAL\DriverManager;
+use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\EntityManager;
 use Doctrine\Migrations\Configuration\EntityManager\ExistingEntityManager;
 use Doctrine\Migrations\Configuration\Migration\YamlFile;
@@ -9,8 +10,16 @@ use Doctrine\Migrations\DependencyFactory;
 
 $isDevMode = true;
 
+$paths = [
+    __DIR__ . "/entities",
+//    __DIR__ . "/scripts/*/entities"
+];
+
+$ORMconfig = ORMSetup::createAttributeMetadataConfiguration($paths, $isDevMode);
+
 // database configuration parameters
-$conn = array(
+
+$conn = DriverManager::getConnection(array(
     'driver' => 'pdo_pgsql',
     'user' => 'lolbot',
     'dbname' => 'lolbot',
@@ -18,22 +27,23 @@ $conn = array(
     'host' => 'localhost',
     'port' => 5432,
     'charset' => 'utf-8'
-);
+), $ORMconfig);
 
 
-$paths = [
-    __DIR__ . "/entities",
-//    __DIR__ . "/scripts/*/entities"
-];
+/*
+$conn = DriverManager::getConnection([
+    'driver' => 'pdo_sqlite',
+    'path' => __DIR__ . '/db.sqlite',
+], $ORMconfig);
+*/
 
-$ORMconfig = Setup::createAttributeMetadataConfiguration($paths, $isDevMode);
-
-
+if($conn->getDatabasePlatform()::class == \Doctrine\DBAL\Platforms\SqlitePlatform::class)
+    $conn->executeStatement("PRAGMA foreign_keys=ON");
 /**
  * @psalm-suppress InvalidGlobal
  */
 global $entityManager;
-$entityManager = EntityManager::create($conn, $ORMconfig);
+$entityManager = new EntityManager($conn, $ORMconfig);
 
 
 $migrationConfig = new YamlFile('migrations.yml');

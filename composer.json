@@ -32,8 +32,8 @@
         "decidedly/decidedly-markov": "^1.1",
         "itwmw/color-difference": "^1.2",
         "knivey/reddit": "^0.1.0",
-        "doctrine/migrations": "^3.4",
-        "doctrine/orm": "^2.11",
+        "doctrine/migrations": "^3.7",
+        "doctrine/orm": "^2.17",
         "symfony/cache": "^6.0",
         "ulrichsg/getopt-php": "^4.0"
     },

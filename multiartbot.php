@@ -74,11 +74,26 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     return $opts;
 }
 
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+global $ORMconfig;
+$ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
+
+
 function onchat($args, \Irc\Client $bot)
 {
-    global $config, $router, $reqArtOpts, $entityManager;
+    global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
 
-    if(count($entityManager->getRepository(Ignore::class)->findByHost($args->fullhost)) > 0)
+    $ignored = $ignoreCache->getItem($args->fullhost);
+    if(!$ignored->isHit()) {
+        $ignoreRepository = $entityManager->getRepository(Ignore::class);
+        //todo add network to query when ready
+        if (count($ignoreRepository->findMatching($args->fullhost)) > 0)
+            $ignored->set(true);
+        else
+            $ignored->set(false);
+        $ignoreCache->save($ignored);
+    }
+    if($ignored->get())
         return;
 
     tryRec($bot, $args->from, $args->channel, $args->text);

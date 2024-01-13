@@ -130,6 +130,11 @@ require_once 'library/Channels.php';
 $bot = null;
 $nicks = null;
 $chans = null;
+
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+global $ORMconfig;
+$ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
+
 try {
     Loop::run(function () {
         global $bot, $config, $logHandler, $nicks, $chans, $router;
@@ -193,10 +198,21 @@ try {
 
         $bot->on('chat', function ($args, \Irc\Client $bot) {
             try {
-                global $config, $router, $chans, $entityManager;
+                global $config, $router, $chans, $entityManager, $ignoreCache;
 
-                if(count($entityManager->getRepository(Ignore::class)->findByHost($args->fullhost)) > 0)
+                $ignored = $ignoreCache->getItem($args->fullhost);
+                if(!$ignored->isHit()) {
+                    $ignoreRepository = $entityManager->getRepository(Ignore::class);
+                    //todo add network to query when ready
+                    if (count($ignoreRepository->findMatching($args->fullhost)) > 0)
+                        $ignored->set(true);
+                    else
+                        $ignored->set(false);
+                    $ignoreCache->save($ignored);
+                }
+                if($ignored->get())
                     return;
+
 
                 if ($config['linktitles'] ?? false) {
                     \Amp\asyncCall(scripts\linktitles\linktitles(...), $bot, $args->nick, $args->channel, $args->identhost, $args->text);
@@ -418,27 +434,4 @@ function hostmaskToRegex($mask) {
     return "@{$out}@i";
 }
 
-//TODO replace this with something that doesnt check mtime, probably use rpc to manage admin things off irc
-function getIgnores($file = "ignores.txt") {
-    static $ignores;
-    static $mtime;
-    if(!file_exists($file))
-        return [];
-    // Retarded that i had to figure out to do this otherwise php caches mtime..
-    clearstatcache();
-    $newmtime = filemtime($file);
-    if($newmtime <= ($mtime ?? 0))
-        return ($ignores ?? []);
-    $mtime = $newmtime;
-    return $ignores = file($file, FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
-}
 
-function isIgnored($fullhost) {
-    $ignores = getIgnores();
-    foreach ($ignores as $i) {
-        if (preg_match(hostmaskToRegex($i), $fullhost)) {
-            return true;
-        }
-    }
-    return false;
-}
