@@ -228,10 +228,15 @@ function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
     $lines = [];
     foreach($urls as $url) {
-        $result = yield async_get_contents($url, $headers);
+        try {
+            $result = yield async_get_contents($url, $headers);
+        } catch (\Exception $e) {
+            echo $e->getMessage();
+        }
         $results = explode("\n", $result);
         $lines = array_merge($lines, $results);
     }
+
 
     // funky handling of ndjson response - https://www.pragmanotdogma.com/26-handling-ndjson-with-javascript-and-php
     $json = array_map('json_decode', $lines);

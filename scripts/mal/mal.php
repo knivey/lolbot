@@ -19,6 +19,8 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     } catch (\async_get_exception $e) {
         $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
         return;
+    } catch (\Exception $e) {
+        $bot->pm($args->chan, "MAL: {$e->getMessage()}");
     }
     $doc = new HtmlDocument($body);
     $result = $doc->find('div.title', 0)?->find('a', 0)?->getAttribute('href');
@@ -31,6 +33,8 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     } catch (\async_get_exception $e) {
         $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
         return;
+    } catch (\Exception $e) {
+        $bot->pm($args->chan, "MAL: {$e->getMessage()}");
     }
     $p = new HtmlDocument($body);
     $name = $p->find('.title-name',0)?->text();
