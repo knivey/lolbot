@@ -30,7 +30,7 @@ class Network
     /**
      * @var Collection<int, Bot>
      */
-    #[ORM\ManyToMany(targetEntity: Ignore::class, inversedBy: 'networks')]
+    #[ORM\ManyToMany(targetEntity: Ignore::class, mappedBy: 'networks')]
     #[ORM\JoinTable(name: "Ignore_Network")]
     private Collection $ignores;
 

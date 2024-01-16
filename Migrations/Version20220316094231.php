@@ -51,11 +51,7 @@ final class Version20220316094231 extends AbstractMigration
         $Ignore_Network = $newSchema->createTable("Ignore_Network");
         $Ignore_Network->addColumn("ignore_id", Types::INTEGER)->setNotnull(true);
         $Ignore_Network->addColumn("network_id", Types::INTEGER)->setNotnull(true);
-        //works with sqlite but not pgsql
-        //PHP Fatal error:  Uncaught PDOException: SQLSTATE[23505]: Unique violation: 7 ERROR:  duplicate key value violates unique constraint "uniq_158061e2f826a87834128b91"
-        //DETAIL:  Key (ignore_id, network_id)=(1, 1) already exists.
-        //$Ignore_Network->setPrimaryKey(["ignore_id", "network_id"]);
-        //$Ignore_Network->addUniqueConstraint(["ignore_id", "network_id"]);
+        $Ignore_Network->setPrimaryKey(["ignore_id", "network_id"]);
 
         $Ignore_Network->addForeignKeyConstraint($Networks, ["network_id"], ["id"], ["onDelete" => "CASCADE"]);
         $Ignore_Network->addForeignKeyConstraint($Ignores, ["ignore_id"], ["id"], ["onDelete" => "CASCADE"]);
