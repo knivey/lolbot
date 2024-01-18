@@ -7,7 +7,6 @@ table_storage:
 
 migrations_paths:
   'lolbot\Migrations': ./Migrations
-  'lolbot\scripts\alias\Migrations': ./scripts/alias/Migrations
 
 all_or_nothing: true
 transactional: true

@@ -23,10 +23,10 @@ $conn = DriverManager::getConnection(array(
     'driver' => 'pdo_pgsql',
     'user' => 'lolbot',
     'dbname' => 'lolbot',
-    'password' => 'lolpass',
-    'host' => 'localhost',
-    'port' => 5432,
-    'charset' => 'utf-8'
+//    'password' => 'lolpass',
+//    'host' => 'localhost',
+//    'port' => 5432,
+//    'charset' => 'utf-8'
 ), $ORMconfig);
 
 
