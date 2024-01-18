@@ -5,26 +5,25 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
-use GetOpt\Command;
-use GetOpt\GetOpt;
-use GetOpt\Operand;
-use GetOpt\Option;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use lolbot\entities\Bot;
 use lolbot\entities\Network;
 
+#[AsCommand("network:list")]
 class network_list extends Command
 {
-    public function __construct()
-    {
-        parent::__construct('network:list', $this->handle(...));
-    }
-
-    public function handle(GetOpt $getOpt) {
+    protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
         $repo = $entityManager->getRepository(Network::class);
         $networks = $repo->findAll();
         foreach ($networks as $network) {
-            echo $network . "\n";
+            $output->writeln($network);
         }
+        return Command::SUCCESS;
     }
 }

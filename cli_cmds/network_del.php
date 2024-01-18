@@ -5,30 +5,35 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
-use GetOpt\Command;
-use GetOpt\GetOpt;
-use GetOpt\Operand;
-use GetOpt\Option;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use lolbot\entities\Network;
 
+#[AsCommand("network:del")]
 class network_del extends Command
 {
-    public function __construct()
+    protected function configure(): void
     {
-        parent::__construct('network:del', $this->handle(...));
-        $this->addOperand(Operand::create('network_id', Operand::REQUIRED)->setValidation(fn ($it) => $it != ''));
+        $this->addArgument("network", InputArgument::REQUIRED, "ID of the network");
     }
 
-    public function handle(GetOpt $getOpt): void {
+    protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
         $repo = $entityManager->getRepository(Network::class);
-        $network = $repo->find($getOpt->getOperand('network_id'));
-        if($network == null)
-            die("couldn't find that network id\n");
+        $network = $repo->find($input->getArgument('network'));
+        if($network == null) {
+            throw new \InvalidArgumentException("Couldn't find that network ID");
+        }
 
         $entityManager->remove($network);
         $entityManager->flush();
 
         showdb::showdb();
+
+        return Command::SUCCESS;
     }
 }

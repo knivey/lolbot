@@ -7,23 +7,23 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
-use GetOpt\Command;
-use GetOpt\GetOpt;
-use GetOpt\Operand;
-use GetOpt\Option;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use lolbot\entities\Bot;
 use lolbot\entities\Ignore;
 use lolbot\entities\Network;
+use function scripts\codesand\runTcc;
 
+#[AsCommand("showdb")]
 class showdb extends Command
 {
-    public function __construct()
-    {
-        parent::__construct('showdb', $this->handle(...));
-    }
-
-    public function handle(GetOpt $getOpt): void {
+    protected function execute(InputInterface $input, OutputInterface $output): int {
         self::showdb();
+        return Command::SUCCESS;
     }
 
     static public function showdb()

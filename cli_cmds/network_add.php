@@ -5,31 +5,36 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
-use GetOpt\Command;
-use GetOpt\GetOpt;
-use GetOpt\Operand;
-use GetOpt\Option;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use lolbot\entities\Network;
 
+#[AsCommand("network:add")]
 class network_add extends Command
 {
-    public function __construct()
+    protected function configure(): void
     {
-        parent::__construct('network:add', $this->handle(...));
-        $this->addOperand(Operand::create('name', Operand::REQUIRED)->setValidation(fn ($it) => $it != ''));
+        $this->addArgument("name", InputArgument::REQUIRED, "Name for the network");
     }
 
-    public function handle(GetOpt $getOpt): void {
+    protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $network = $entityManager->getRepository(Network::class)->findOneBy(["name" => $getOpt->getOperand("name")]);
-        if($network !== null)
-            die("Network already exists with that name\n");
+        $network = $entityManager->getRepository(Network::class)->findOneBy(["name" => $input->getArgument("name")]);
+        if($network !== null) {
+            throw new \InvalidArgumentException("Network already exists with that name");
+        }
 
         $network = new Network();
-        $network->setName($getOpt->getOperand("name"));
+        $network->setName($input->getArgument("name"));
         $entityManager->persist($network);
         $entityManager->flush();
 
         showdb::showdb();
+
+        return Command::SUCCESS;
     }
 }

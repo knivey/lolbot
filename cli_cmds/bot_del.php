@@ -5,30 +5,35 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
-use GetOpt\Command;
-use GetOpt\GetOpt;
-use GetOpt\Operand;
-use GetOpt\Option;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use lolbot\entities\Bot;
 
+#[AsCommand("bot:del")]
 class bot_del extends Command
 {
-    public function __construct()
+    protected function configure(): void
     {
-        parent::__construct('bot:del', $this->handle(...));
-        $this->addOperand(Operand::create('bot_id', Operand::REQUIRED)->setValidation(fn ($it) => $it != ''));
+        $this->addArgument("bot", InputArgument::REQUIRED, "ID of the bot to delete");
     }
 
-    public function handle(GetOpt $getOpt): void {
+    protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
         $repo = $entityManager->getRepository(Bot::class);
-        $bot = $repo->find($getOpt->getOperand('bot_id'));
-        if($bot == null)
-            die("couldn't find that bot id\n");
+        $bot = $repo->find($input->getArgument('bot'));
+        if($bot == null) {
+            throw new \InvalidArgumentException("Couldn't find a bot with that ID");
+        }
 
         $entityManager->remove($bot);
         $entityManager->flush();
 
         showdb::showdb();
+
+        return Command::SUCCESS;
     }
 }

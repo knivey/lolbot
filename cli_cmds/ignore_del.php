@@ -5,29 +5,34 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
-use GetOpt\Command;
-use GetOpt\GetOpt;
-use GetOpt\Operand;
-use GetOpt\Option;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use lolbot\entities\Ignore;
 
+#[AsCommand("ignore:del")]
 class ignore_del extends Command
 {
-    public function __construct()
+    protected function configure(): void
     {
-        parent::__construct('ignore:del', $this->handle(...));
-        //$this->addOption(Option::create('b', 'bot', GetOpt::MULTIPLE_ARGUMENT));
-        //$this->addOption(Option::create('n', 'network', GetOpt::MULTIPLE_ARGUMENT));
-        $this->addOperand(Operand::create('id', Operand::REQUIRED)->setValidation(is_numeric(...)));
+        $this->addArgument("ignore", InputArgument::REQUIRED, "ID of the ignore");
     }
 
-    public function handle(GetOpt $getOpt) {
+    protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
         $repo = $entityManager->getRepository(Ignore::class);
-        $ignore = $repo->find($getOpt->getOperand('id'));
-        if($ignore == null)
-            die("couldn't find that id\n");
+        $ignore = $repo->find($input->getArgument('ignore'));
+        if($ignore == null) {
+            throw new \InvalidArgumentException("Couldn't find and ignore by that ID");
+        }
         $entityManager->remove($ignore);
         $entityManager->flush();
+
+        showdb::showdb();
+
+        return Command::SUCCESS;
     }
 }

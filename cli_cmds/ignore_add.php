@@ -5,40 +5,48 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+
 use Doctrine\ORM\EntityRepository;
-use GetOpt\Command;
-use GetOpt\GetOpt;
-use GetOpt\Operand;
-use GetOpt\Option;
 use lolbot\entities\Network;
 use lolbot\entities\Ignore;
 
+#[AsCommand("ignore:add")]
 class ignore_add extends Command
 {
-    public function __construct()
+
+    protected function configure(): void
     {
-        parent::__construct('ignore:add', $this->handle(...));
-        $this->addOption(Option::create('n', 'network', GetOpt::MULTIPLE_ARGUMENT));
-        $this->addOperand(Operand::create('hostmask', Operand::REQUIRED)->setValidation(fn ($it) => $it != ''));
-        $this->addOperand(Operand::create('reason', Operand::OPTIONAL));
+        $this->addOption('network', "N", InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Network ID')
+            ->addArgument("hostmask", InputArgument::REQUIRED)
+            ->addArgument("reason", InputArgument::OPTIONAL)
+        ;
     }
 
-    public function handle(GetOpt $getOpt): void {
+    protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        if(count($getOpt->getOption("network")) == 0)
-            die("Must specify a network\n");
+
+        if(count($input->getOption("network")) == 0) {
+            throw new \InvalidArgumentException("Must specify a network");
+        }
 
         $ignore = new Ignore();
-        $ignore->setHostmask($getOpt->getOperand('hostmask'));
-        if($getOpt->getOperand('reason') !== null)
-            $ignore->setReason($getOpt->getOperand('reason'));
+        $ignore->setHostmask($input->getArgument('hostmask'));
+        if($input->getArgument('reason') !== null)
+            $ignore->setReason($input->getArgument('reason'));
 
         /** @var EntityRepository<Network> $repo */
         $repo = $entityManager->getRepository(Network::class);
-        foreach($getOpt->getOption("network") as $net) {
+        foreach($input->getOption("network") as $net) {
             $network = $repo->find($net);
-            if ($network === null)
-                die("couldn't find that network id ($net)\n");
+            if ($network === null) {
+                throw new \InvalidArgumentException("Couldn't find that network ID ($net)");
+            }
             $ignore->addToNetwork($network);
         }
 
@@ -46,5 +54,7 @@ class ignore_add extends Command
         $entityManager->flush();
 
         showdb::showdb();
+
+        return Command::SUCCESS;
     }
 }
