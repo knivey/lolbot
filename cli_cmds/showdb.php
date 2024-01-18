@@ -15,8 +15,17 @@ use lolbot\entities\Bot;
 use lolbot\entities\Ignore;
 use lolbot\entities\Network;
 
-class showdb
+class showdb extends Command
 {
+    public function __construct()
+    {
+        parent::__construct('showdb', $this->handle(...));
+    }
+
+    public function handle(GetOpt $getOpt): void {
+        self::showdb();
+    }
+
     static public function showdb()
     {
         global $entityManager;

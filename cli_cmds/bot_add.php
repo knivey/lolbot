@@ -18,15 +18,15 @@ class bot_add extends Command
     {
         parent::__construct('bot:add', $this->handle(...));
         $this->addOperand(Operand::create('name', Operand::REQUIRED)->setValidation(fn ($it) => $it != ''));
-        $this->addOption(Option::create('n', 'network', GetOpt::REQUIRED_ARGUMENT));
+        $this->addOption(Option::create('n', 'network_id', GetOpt::REQUIRED_ARGUMENT));
     }
 
     public function handle(GetOpt $getOpt): void {
         global $entityManager;
-        if(count($getOpt->getOption("network")) == 0)
+        if($getOpt->getOption("network_id") === null)
             die("must specify a network\n");
 
-        $network = $entityManager->getRepository(Network::class)->findOneBy(["name" => $getOpt->getOption("network")]);
+        $network = $entityManager->getRepository(Network::class)->find($getOpt->getOption("network_id"));
         if($network === null)
             die("couldn't find that network\n");
 

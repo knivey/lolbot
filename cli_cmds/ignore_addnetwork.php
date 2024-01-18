@@ -18,13 +18,13 @@ class ignore_addnetwork extends Command
     public function __construct()
     {
         parent::__construct('ignore:addnetwork', $this->handle(...));
-        $this->addOption(Option::create('n', 'network', GetOpt::MULTIPLE_ARGUMENT));
+        $this->addOption(Option::create('n', 'network_id', GetOpt::MULTIPLE_ARGUMENT));
         $this->addOperand(Operand::create('ignore_id', Operand::REQUIRED)->setValidation(fn ($it) => $it != ''));
     }
 
     public function handle(GetOpt $getOpt): void {
         global $entityManager;
-        if(count($getOpt->getOption("network")) == 0)
+        if(count($getOpt->getOption("network_id")) == 0)
             die("Must specify a network\n");
 
         $ignore = $entityManager->getRepository(Ignore::class)->find($getOpt->getOperand("ignore_id"));
@@ -33,7 +33,7 @@ class ignore_addnetwork extends Command
 
         /** @var EntityRepository<Network> $repo */
         $repo = $entityManager->getRepository(Network::class);
-        foreach($getOpt->getOption("network") as $net) {
+        foreach($getOpt->getOption("network_id") as $net) {
             $network = $repo->find($net);
             if ($network === null)
                 die("couldn't find that network id ($net)\n");

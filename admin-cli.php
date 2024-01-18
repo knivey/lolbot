@@ -1,5 +1,7 @@
 <?php
 require_once 'bootstrap.php';
+global $autoloader;
+
 /**
  * @psalm-suppress InvalidGlobal
  */
@@ -15,8 +17,6 @@ $getOpt = new GetOpt();
 
 $getOpt->addOption(Option::create('?', 'help', GetOpt::NO_ARGUMENT)->setDescription('Show this help and quit'));
 
-//can probably use reflection here
-
 $getOpt->addCommand(new cli_cmds\ignore_add());
 $getOpt->addCommand(new cli_cmds\ignore_del());
 $getOpt->addCommand(new cli_cmds\ignore_list());
@@ -25,7 +25,9 @@ $getOpt->addCommand(new cli_cmds\bot_add());
 $getOpt->addCommand(new cli_cmds\bot_del());
 $getOpt->addCommand(new cli_cmds\bot_list());
 $getOpt->addCommand(new cli_cmds\network_add());
+$getOpt->addCommand(new cli_cmds\network_del());
 $getOpt->addCommand(new cli_cmds\network_list());
+$getOpt->addCommand(new cli_cmds\showdb());
 
 try {
     try {

@@ -1,5 +1,5 @@
 <?php
-require_once "vendor/autoload.php";
+$autoloader = require_once "vendor/autoload.php";
 
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\ORMSetup;

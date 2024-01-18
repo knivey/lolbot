@@ -7,6 +7,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use JetBrains\PhpStorm\Pure;
 use lolbot\entities\Ignore;
+use lolbot\entities\Network;
 use Symfony\Component\Yaml\Yaml;
 
 use Amp\ByteStream\ResourceOutputStream;
@@ -35,6 +36,9 @@ if(isset($argv[1])) {
 $config = Yaml::parseFile($configFile);
 if(!is_array($config))
     die("bad config file");
+
+if(!isset($config['network_id']))
+    die("config must have a network_id set\n");
 
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
@@ -137,9 +141,9 @@ Loop::run(function () {
 
         $ignored = $ignoreCache->getItem($args->fullhost);
         if(!$ignored->isHit()) {
+            $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
             $ignoreRepository = $entityManager->getRepository(Ignore::class);
-            //todo add network to query when ready
-            if (count($ignoreRepository->findMatching($args->fullhost)) > 0)
+            if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
                 $ignored->set(true);
             else
                 $ignored->set(false);
