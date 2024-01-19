@@ -69,9 +69,10 @@ final class Version20220316094231 extends AbstractMigration
         $comp = $newSchemaManager->createComparator();
         $newSchema = clone $schema;
 
+        $newSchema->dropTable("Ignore_Network");
         $newSchema->dropTable("Ignores");
         $newSchema->dropTable("Bots");
-        $newSchema->dropTable("Ignore_Bot");
+        $newSchema->dropTable("Networks");
 
         $diff = $comp->compareSchemas($schema, $newSchema);
         echo implode("\n", $this->platform->getAlterSchemaSQL($diff));
