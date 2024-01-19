@@ -38,8 +38,8 @@ class bot_add extends Command
         }
 
         $bot = new Bot();
-        $bot->setName($input->getArgument("name"));
-        $bot->setNetwork($network);
+        $bot->name = $input->getArgument("name");
+        $bot->network = $network;
         $entityManager->persist($bot);
         $entityManager->flush();
 

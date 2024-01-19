@@ -17,39 +17,23 @@ class Ignore
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    protected int $id;
+    public readonly int $id;
 
     #[ORM\Column]
-    protected string $hostmask;
+    public string $hostmask;
 
     #[ORM\Column(nullable: true)]
-    protected ?string $reason = null;
+    public ?string $reason = null;
 
     #[ORM\Column]
-    protected \DateTime $created;
+    public \DateTime $created;
 
     #[ORM\ManyToMany(targetEntity: Network::class, inversedBy: 'ignores')]
     #[ORM\JoinTable(name: "Ignore_Network")]
-    private Collection $networks;
-
-    public function getId() {
-        return $this->id;
-    }
+    protected Collection $networks;
 
     public function matches(string $nickHost): bool {
         return (bool)preg_match(tools\globToRegex($this->hostmask) . 'i', $nickHost);
-    }
-
-    public function setReason(?string $reason): void {
-        $this->reason = $reason;
-    }
-
-    /**
-     * @param string $hostmask
-     */
-    public function setHostmask(string $hostmask): void
-    {
-        $this->hostmask = $hostmask;
     }
 
     public function assignedToNetwork(Network $network): bool {

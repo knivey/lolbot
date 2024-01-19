@@ -36,7 +36,7 @@ class ignore_add extends Command
         }
 
         $ignore = new Ignore();
-        $ignore->setHostmask($input->getArgument('hostmask'));
+        $ignore->hostmask = $input->getArgument('hostmask');
         if($input->getArgument('reason') !== null)
             $ignore->setReason($input->getArgument('reason'));
 

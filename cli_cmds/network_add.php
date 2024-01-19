@@ -29,7 +29,7 @@ class network_add extends Command
         }
 
         $network = new Network();
-        $network->setName($input->getArgument("name"));
+        $network->name = $input->getArgument("name");
         $entityManager->persist($network);
         $entityManager->flush();
 
