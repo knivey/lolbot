@@ -47,7 +47,7 @@ class showdb extends Command
         $bots = $entityManager->getRepository(Bot::class)->findAll();
         foreach ($bots as $bot) {
             echo "  " . $bot . "\n";
-            echo "    network: " . $bot->getNetwork()->getName() . "\n";
+            echo "    network: " . $bot->network->name . "\n";
         }
 
         echo "\nignores:\n";
@@ -56,7 +56,7 @@ class showdb extends Command
             echo "  " . $ignore . "\n";
             echo "    networks: ";
             foreach ($ignore->getNetworks() as $network)
-                echo $network->getId() . ", ";
+                echo $network->id . ", ";
             echo "\n";
         }
     }
