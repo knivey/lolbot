@@ -11,6 +11,8 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Options;
+use lolbot\entities\Network;
+use scripts\weather\entities\location;
 
 function kToF($temp) {
     return (1.8 * ($temp - 273)) + 32;
@@ -73,7 +75,7 @@ function getLocation($query): \Amp\Promise
 #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
 function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $config;
+    global $config, $entityManager;
     if(!isset($config['bingMapsKey'])) {
         echo "bingMapsKey not set in config\n";
         return;
@@ -106,18 +108,17 @@ function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         return;
     }
 
+    $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+
     try {
         if ($query == '') {
             $nick = strtolower($args->nick);
-            $locs = unserialize(file_get_contents("weather.db"));
-            if (!array_key_exists($nick, $locs)) {
+            $location = $entityManager->getRepository(location::class)->findOneBy(["nick" => $nick, "network" => $network]);
+            if (!$location) {
                 $bot->msg($args->chan, "You don't have a location set use .setlocation");
                 return;
             }
-            $location = $locs[$nick]['location'];
-            $lat = $locs[$nick]['lat'];
-            $lon = $locs[$nick]['lon'];
-            $si = ($locs[$nick]['si'] or $si);
+            $si = $location->si;
             if ($imp) {
                 $si = false;
             }
@@ -125,15 +126,12 @@ function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             if ($query[0] == '@') {
                 //lookup for another person's setlocation
                 $query = substr(strtolower(explode(" ", $query)[0]), 1);
-                $locs = unserialize(file_get_contents("weather.db"));
-                if (!array_key_exists($query, $locs)) {
+                $location = $entityManager->getRepository(location::class)->findOneBy(["nick" => $query, "network" => $network]);
+                if (!$location) {
                     $bot->msg($args->chan, "$query does't have a location set");
                     return;
                 }
-                $location = $locs[$query]['location'];
-                $lat = $locs[$query]['lat'];
-                $lon = $locs[$query]['lon'];
-                $si = ($locs[$query]['si'] or $si);
+                $si = $location->si;
                 if ($imp) {
                     $si = false;
                 }
@@ -149,14 +147,15 @@ function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
                     $bot->pm($args->chan, $loc);
                     return;
                 }
-                $location = $loc['location'];
-                $lat = $loc['lat'];
-                $lon = $loc['lon'];
+                $location = new location();
+                $location->name = $loc['location'];
+                $location->lat = $loc['lat'];
+                $location->long = $loc['lon'];
             }
         }
         //Now use lat lon to get weather
 
-        $url = "https://api.openweathermap.org/data/2.5/onecall?lat=$lat&lon=$lon&appid=$config[openweatherKey]&exclude=minutely,hourly";
+        $url = "https://api.openweathermap.org/data/2.5/onecall?lat={$location->lat}&lon={$location->long}&appid=$config[openweatherKey]&exclude=minutely,hourly";
         $body = yield async_get_contents($url);
 
         $j = json_decode($body, true);
@@ -177,7 +176,7 @@ function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $temp = displayTemp($cur['temp'], $si);
         $windSpeed = displayWindspeed($cur['wind_speed'], $si);
         if (!$fc) {
-            $bot->pm($args->chan, "\2$location:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind " . windDir($cur['wind_deg']) . " at $windSpeed Sun: $sunrise - $sunset");
+            $bot->pm($args->chan, "\2{$location->name}:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind " . windDir($cur['wind_deg']) . " at $windSpeed Sun: $sunrise - $sunset");
         } else {
             $out = '';
             $cnt = 0;
@@ -194,21 +193,20 @@ function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
                 $w = $d['weather'][0]['main'];
                 $out .= "\2$day:\2 $w $tempMin/$tempMax $d[humidity]% humidity ";
             }
-            $bot->pm($args->chan, "\2$location:\2 Forecast: $out");
+            $bot->pm($args->chan, "\2{$location->name}:\2 Forecast: $out");
         }
+        unset($location);
     } catch (\async_get_exception $error) {
+        unset($location);
         echo $error->getMessage();
         $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
     } catch (\Exception $error) {
+        unset($location);
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
         echo $error->getMessage();
         $bot->pm($args->chan, "\2wz:\2 {$error->getMessage()}");
     }
-}
-
-if(!file_exists("weather.db")) {
-    file_put_contents("weather.db", serialize([]));
 }
 
 #[Cmd("setlocation")]
@@ -217,6 +215,7 @@ if(!file_exists("weather.db")) {
 #[Options("--si", "--metric")]
 function setlocation($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
+    global $entityManager;
     $si = false;
     if($cmdArgs->optEnabled("--si") || $cmdArgs->optEnabled("--metric")) {
         $si = true;
@@ -239,10 +238,14 @@ function setlocation($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     }
 
     $nick = strtolower($args->nick);
-    $locs = unserialize(file_get_contents("weather.db"));
-    $locs[$nick] = $loc;
-    $locs[$nick]['si'] = $si;
-    file_put_contents("weather.db", serialize($locs));
+
+    $location = new location();
+    $location->name = $loc["location"];
+    $location->lat = $loc["lat"];
+    $location->long = $loc["lon"];
+    $location->nick = $nick;
+    $entityManager->persist($location);
+    $entityManager->flush();
 
     $bot->msg($args->chan, "$nick your location is now set to $loc[location]");
 }
