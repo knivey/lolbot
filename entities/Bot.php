@@ -19,8 +19,8 @@ class Bot
     #[ORM\Column(length: 512, unique: true)]
     public string $name;
 
-    #[ORM\Column]
-    public readonly \DateTimeImmutable $created;
+    #[ORM\Column(updatable: false)]
+    public \DateTimeImmutable $created;
 
     #[ORM\ManyToOne(targetEntity: Network::class, inversedBy: "bots")]
     #[ORM\JoinColumn(name: 'network_id', referencedColumnName: 'id')]

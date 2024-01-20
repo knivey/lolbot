@@ -26,8 +26,8 @@ class Ignore
     #[ORM\Column(nullable: true)]
     public ?string $reason = null;
 
-    #[ORM\Column]
-    public readonly \DateTimeImmutable $created;
+    #[ORM\Column(updatable: false)]
+    public \DateTimeImmutable $created;
 
     #[ORM\ManyToMany(targetEntity: Network::class, inversedBy: 'ignores')]
     #[ORM\JoinTable(name: "Ignore_Network")]

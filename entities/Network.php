@@ -19,8 +19,8 @@ class Network
     #[ORM\Column]
     public string $name;
 
-    #[ORM\Column]
-    public readonly \DateTimeImmutable $created;
+    #[ORM\Column(updatable: false)]
+    public \DateTimeImmutable $created;
 
     /**
      * @var Collection<int, Bot>
