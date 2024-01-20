@@ -6,42 +6,11 @@ use Amp\Http\Client\Cookie\InMemoryCookieJar;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
-use knivey\cmdr\attributes\CallWrap;
-use knivey\cmdr\attributes\Cmd;
-use knivey\cmdr\attributes\Desc;
-use knivey\cmdr\attributes\Option;
-use knivey\cmdr\attributes\Options;
-use knivey\cmdr\attributes\Syntax;
-
-
-
-// db is used for ignoring urls from userhosts or per channel URL regex ignores
-$dbfile = "linktitles.db";
-/*
- * Just keeping things relatively simple, no migration tool
- */
-if(!file_exists($dbfile)) {
-    $url_pdo = new \PDO("sqlite:$dbfile", null, null,
-        [\PDO::ATTR_PERSISTENT => true, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
-    $url_pdo->query("CREATE table chan_re(
-        id integer primary key autoincrement,
-        regex text unique not null,
-        chan text not null collate nocase,
-        nick text not null collate nocase,
-        host text not null,
-        auth text collate nocase
-        );");
-    $url_pdo->query("CREATE table userhosts(
-        id integer primary key autoincrement,
-        ignore_re text not null,
-        nick text not null collate nocase,
-        host text not null,
-        auth text collate nocase
-        );");
-} else {
-    $url_pdo = new \PDO("sqlite:$dbfile", null, null, [\PDO::ATTR_PERSISTENT => true]);
-}
-/** @var $url_pdo \PDO */
+use Doctrine\Common\Collections\Criteria;
+use lolbot\entities\Network;
+use scripts\linktitles\entities\hostignore;
+use scripts\linktitles\entities\ignore_type;
+use scripts\linktitles\entities\ignore;
 
 //feature requested by terps
 //sends all urls into a log channel for easier viewing url history
@@ -71,14 +40,14 @@ function logUrl($bot, $nick, $chan, $line, string|array $title) {
 
 $link_history = [];
 $link_ratelimit = 0;
-function linktitles(\Irc\Client $bot, $nick, $chan, $host, $text)
+function linktitles(\Irc\Client $bot, $nick, $chan, $identhost, $text)
 {
     global $link_history, $link_ratelimit, $eventDispatcher;
     foreach (explode(' ', $text) as $word) {
         if (filter_var($word, FILTER_VALIDATE_URL) === false) {
             continue;
         }
-        if (urlIsIgnored($chan, $nick, $host, $word))
+        if (urlIsIgnored($chan, "$nick!$identhost", $word))
             continue;
 
         if (($link_history[$chan] ?? "") == $word) {
@@ -223,130 +192,31 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $host, $text)
 }
 
 
+//TODO can add cache for this
+function urlIsIgnored($chan, $fullhost, $url): bool {
+    global $entityManager, $config;
+    $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+    $criteria = Criteria::create();
+    $criteria->where(Criteria::expr()->eq("type", ignore_type::global));
+    $criteria->orWhere(Criteria::expr()->eq("network", $network));
+    //todo bot would go here, and channel
+    //$criteria->orWhere(Criteria::expr()->eq());
 
-
-
-function urlIsIgnored($chan, $nick, $host, $url): bool {
-    /** @var \PDO $url_pdo */
-    global $url_pdo;
-    $stmt = $url_pdo->prepare("select regex from chan_re where chan = :chan;");
-    if(!$stmt->execute([":chan" => $chan])) {
-        echo "URL chan ignore list fetch FAILED\n";
-    } else {
-        $iggys = $stmt->fetchAll();
-        foreach ($iggys as $iggy) {
-            if (preg_match($iggy['regex'], $url)) {
-                return true;
-            }
+    /** @var ignore[] $ignores */
+    $ignores = $entityManager->getRepository(ignore::class)->matching($criteria);
+    foreach ($ignores as $ignore) {
+        if (preg_match($ignore->regex, $url)) {
+            return true;
         }
     }
-    $stmt = $url_pdo->prepare("select * from userhosts;");
-    if(!$stmt->execute()) {
-        echo "URL userhost ignore list fetch FAILED\n";
-        return false;
-    }
-    $iggys = $stmt->fetchAll();
-    foreach ($iggys as $iggy) {
-        $n = \knivey\tools\globToRegex($iggy['nick']) . 'i';
-        $h = \knivey\tools\globToRegex($iggy['host']) . 'i';
-        //$a = \knivey\tools\globToRegex($iggy['auth']) . 'i';
-        if(preg_match($iggy['ignore_re'], $url) && preg_match($n, $nick) && preg_match($h, $host) /* && preg_match($auth, $a) */) {
+
+    $hostignores = $entityManager->getRepository(hostignore::class)->matching($criteria);
+    foreach ($hostignores as $hostignore) {
+        $hostmask_re = \knivey\tools\globToRegex($hostignore->hostmask) . 'i';
+        if(preg_match($hostmask_re, $fullhost)) {
             return true;
         }
     }
     return false;
-}
-
-function fmtRow($row) {
-    $out = '';
-    foreach ($row as $k => $v) {
-        if(is_integer($k))
-            continue;
-        $out .= "\x02$k:\x02 $v ";
-    }
-    return substr($out, 0, -1);
-}
-
-#[Cmd("urlignore")]
-#[Syntax('[regex_or_id]')]
-#[Desc("manage the channel url ignore rules")]
-#[CallWrap("Amp\asyncCall")]
-#[Option("--list", "list rules")]
-#[Option("--del", "delete a rule by id")]
-function urlignore($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    global $url_pdo;
-
-    try {
-        $access = yield getUserChanAccess($args->nick, $args->chan, $bot);
-        if ($access < 200) {
-            $bot->notice($args->nick, "you need at least 200 chanserv access");
-            return;
-        }
-    } catch (\Exception $e) {
-        $bot->notice($args->nick, "couldn't get your chanserv access, try later");
-    }
-
-    /** @var $url_pdo \PDO */
-    if($cmdArgs->optEnabled("--list") || ! isset($cmdArgs[0])) {
-        try {
-            $stmt = $url_pdo->prepare("select * from chan_re where chan = :chan;");
-            $stmt->execute([":chan" => $args->chan]);
-            if(!$stmt->execute([":chan" => $args->chan])) {
-                $bot->notice($args->nick, "Failed getting ignore list");
-                return;
-            }
-            $iggys = $stmt->fetchAll();
-            $bot->notice($args->nick, "Showing " . count($iggys) . " ignores for {$args->chan}");
-            foreach ($iggys as $row) {
-                $bot->notice($args->nick, fmtRow($row));
-            }
-        } catch (\Exception $e) {
-            $bot->notice($args->nick, "Encountered an exception: {$e->getMessage()}");
-        }
-        return;
-    }
-    if($cmdArgs->optEnabled("--del")) {
-        try {
-            $stmt = $url_pdo->prepare("select id from chan_re where id = :id and chan = :chan;");
-            $stmt->execute([":id" => $cmdArgs[0], ":chan" => $args->chan]);
-            if(count($stmt->fetchAll()) == 0) {
-                $bot->notice($args->nick, "No ignores removed, check the provided ID is correct and is from this chan.");
-                return;
-            }
-            $stmt = $url_pdo->prepare("delete from chan_re where id = :id and chan = :chan;");
-            if($stmt->execute([":id" => $cmdArgs[0], ":chan" => $args->chan])) {
-                $bot->notice($args->nick, "Ignore ID {$cmdArgs[0]} removed");
-            } else {
-                $bot->notice($args->nick, "No ignores removed, check the provided ID is correct and is from this chan.");
-            }
-        } catch (\Exception $e) {
-            $bot->notice($args->nick, "Encountered an exception: {$e->getMessage()}");
-        }
-        return;
-    }
-    $re = "@{$cmdArgs[0]}@i";
-    if(preg_match($re, "") === false) {
-        $bot->notice($args->nick, "You haven't provided a valid regex, note delimiters are added for you and its @");
-        return;
-    }
-    try {
-        $auth = null;
-        try {
-            $auth = yield getUserAuthServ($args->nick, $bot);
-        } catch (\Exception $e) {
-        }
-        $stmt = $url_pdo->prepare("insert into chan_re (regex,chan,nick,host,auth) values(:regex,:chan,:nick,:host,:auth);");
-        if($stmt->execute([
-            ":regex" => $re,
-            ":chan" => $args->chan,
-            ":nick" => $args->nick,
-            ":host" => $args->fullhost,
-            ":auth" => $auth,
-            ])) {
-            $bot->notice($args->nick, "Ignore added.");
-        }
-    } catch (\Exception $e) {
-        $bot->notice($args->nick, "Encountered an exception: {$e->getMessage()}");
-    }
 }
 

@@ -41,4 +41,14 @@ $application->add(new cli_cmds\network_list());
 
 $application->add(new cli_cmds\showdb());
 
+$application->add(new scripts\linktitles\cli_cmds\ignore_add());
+$application->add(new scripts\linktitles\cli_cmds\ignore_list());
+$application->add(new scripts\linktitles\cli_cmds\ignore_del());
+$application->add(new scripts\linktitles\cli_cmds\ignore_test());
+$application->add(new scripts\linktitles\cli_cmds\hostignore_add());
+$application->add(new scripts\linktitles\cli_cmds\hostignore_list());
+$application->add(new scripts\linktitles\cli_cmds\hostignore_del());
+$application->add(new scripts\linktitles\cli_cmds\hostignore_test());
+
+
 $application->run();
