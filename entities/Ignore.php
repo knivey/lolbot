@@ -14,10 +14,11 @@ use lolbot\entities\IgnoreRepository;
 #[ORM\Table("Ignores")]
 class Ignore
 {
+    //Cant be readonly due to doctrine bug on remove
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
-    public readonly int $id;
+    #[ORM\Column(updatable: false)]
+    public int $id;
 
     #[ORM\Column]
     public string $hostmask;
@@ -26,7 +27,7 @@ class Ignore
     public ?string $reason = null;
 
     #[ORM\Column]
-    public \DateTime $created;
+    public readonly \DateTimeImmutable $created;
 
     #[ORM\ManyToMany(targetEntity: Network::class, inversedBy: 'ignores')]
     #[ORM\JoinTable(name: "Ignore_Network")]
@@ -51,7 +52,7 @@ class Ignore
 
     public function __construct()
     {
-        $this->created = new \DateTime();
+        $this->created = new \DateTimeImmutable();
         $this->networks = new ArrayCollection();
     }
 

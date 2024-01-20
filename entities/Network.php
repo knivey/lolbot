@@ -10,16 +10,17 @@ use Doctrine\Common\Collections\Collection;
 #[ORM\Table("Networks")]
 class Network
 {
+    //Cant be readonly due to doctrine bug on remove
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
-    public readonly int $id;
+    #[ORM\Column(updatable: false)]
+    public int $id;
 
     #[ORM\Column]
     public string $name;
 
     #[ORM\Column]
-    public \DateTime $created;
+    public readonly \DateTimeImmutable $created;
 
     /**
      * @var Collection<int, Bot>
@@ -36,7 +37,7 @@ class Network
 
     public function __construct()
     {
-        $this->created = new \DateTime();
+        $this->created = new \DateTimeImmutable();
         $this->bots = new ArrayCollection();
         $this->ignores = new ArrayCollection();
     }
