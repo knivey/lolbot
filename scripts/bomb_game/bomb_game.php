@@ -6,8 +6,6 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-use RedBeanPHP\OODBBean;
-use \RedBeanPHP\R as R;
 
 // Clone of the sopel bomb game
 
@@ -80,17 +78,7 @@ class bomb_game
         "Well, who knows - %target% could be anywhere!"
     ];
 
-    protected string $db;
     protected array $bombs = [];
-
-    function __construct()
-    {
-        $this->db = 'bomb-' . uniqid();
-        $dbfile = (string)($config['bombdb'] ?? "bomb.db");
-        R::addDatabase($this->db, "sqlite:{$dbfile}");
-    }
-
-    //TODO use db for bomb stats
 
     public function initIrcHooks(\Irc\Client $bot) {
         $bot->on('nick', function ($args, \Irc\Client $bot) {
