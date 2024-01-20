@@ -30,12 +30,8 @@ namespace scripts\user;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\PrivCmd;
 use knivey\cmdr\attributes\Options;
-use \RedBeanPHP\R as R;
 
 global $config;
-$USERDB = uniqid();
-$dbfile = $config["userdb"] ?? "user.db";
-R::addDatabase($USERDB, "sqlite:{$dbfile}");
 
 class User {
 
