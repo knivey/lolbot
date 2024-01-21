@@ -6,6 +6,7 @@ use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
 use scripts\script_base;
+use function Symfony\Component\String\u;
 
 class alias extends script_base
 {
@@ -27,32 +28,37 @@ class alias extends script_base
         global $entityManager;
         [$rpl] = \makeRepliers($args, $bot, "alias");
 
-        $alias = $this->repo->findOneBy([
-            "nameLowered" => strtolower($cmdArgs['name']),
-            "chanLowered" => strtolower($args->chan),
-            "network" => $this->network
-        ]);
+        try {
+            $alias = $this->repo->findOneBy([
+                "nameLowered" => u($cmdArgs['name'])->lower(),
+                "chanLowered" => u($args->chan)->lower(),
+                "network" => $this->network
+            ]);
 
-        $msg = '';
-        if ($alias != null) {
-            $msg = "That alias already exists, updating it... ";
-        } else {
-            $alias = new entities\alias();
+            $msg = '';
+            if ($alias != null) {
+                $msg = "That alias already exists, updating it... ";
+            } else {
+                $alias = new entities\alias();
+            }
+            $alias->name = $cmdArgs['name'];
+            $alias->nameLowered = u($cmdArgs['name'])->lower();
+            $alias->value = $cmdArgs['value'];
+            $alias->chan = $args->chan;
+            $alias->chanLowered = u($args->chan)->lower();
+            $alias->fullhost = $args->fullhost;
+            $alias->act = ($cmdArgs->optEnabled('--act') || $cmdArgs->optEnabled('--me'));
+            $alias->network = $this->network;
+            if ($cmdArgs->optEnabled('--cmd')) {
+                $alias->cmd = $cmdArgs->getOpt('--cmd');
+            }
+            $entityManager->persist($alias);
+            $entityManager->flush();
+            $rpl("{$msg}alias saved");
+        } catch (\Exception $e) {
+            $rpl("Error while creating alias");
+            $this->logger->error($e);
         }
-        $alias->name = $cmdArgs['name'];
-        $alias->nameLowered = strtolower($cmdArgs['name']);
-        $alias->value = $cmdArgs['value'];
-        $alias->chan = $args->chan;
-        $alias->chanLowered = strtolower($args->chan);
-        $alias->fullhost = $args->fullhost;
-        $alias->act = ($cmdArgs->optEnabled('--act') || $cmdArgs->optEnabled('--me'));
-        $alias->network = $this->network;
-        if ($cmdArgs->optEnabled('--cmd')) {
-            $alias->cmd = $cmdArgs->getOpt('--cmd');
-        }
-        $entityManager->persist($alias);
-        $entityManager->flush();
-        $rpl("{$msg}alias saved");
     }
 
     #[Cmd("unalias")]
@@ -60,22 +66,27 @@ class alias extends script_base
     #[Desc("Remove a channel alias")]
     function unalias($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
+
         global $entityManager;
         list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
+        try {
+            $alias = $this->repo->findOneBy([
+                "nameLowered" => u($cmdArgs['name'])->lower(),
+                "chanLowered" => u($args->chan)->lower(),
+                "network" => $this->network
+            ]);
 
-        $alias = $this->repo->findOneBy([
-            "nameLowered" => strtolower($cmdArgs['name']),
-            "chanLowered" => strtolower($args->chan),
-            "network" => $this->network
-        ]);
-
-        if (!$alias) {
-            $rpl("That alias not found");
-            return;
+            if (!$alias) {
+                $rpl("That alias not found");
+                return;
+            }
+            $entityManager->remove($alias);
+            $entityManager->flush();
+            $rpl("Alias removed");
+        } catch (\Exception $e) {
+            $rpl("Error while removing alias");
+            $this->logger->error($e);
         }
-        $entityManager->remove($alias);
-        $entityManager->flush();
-        $rpl("Alias removed");
     }
 
     #[Cmd("aliases")]
@@ -83,10 +94,16 @@ class alias extends script_base
     function aliases($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
-        $aliases = $this->repo->findBy([
-            "network" => $this->network,
-            "chanLowered" => strtolower($args->chan)
-        ]);
+        try {
+            $aliases = $this->repo->findBy([
+                "network" => $this->network,
+                "chanLowered" => u($args->chan)->lower()
+            ]);
+        } catch (\Exception $e) {
+            $rpl("Error while retrieving aliases");
+            $this->logger->error($e);
+            return;
+        }
         if (count($aliases) == 0) {
             $rpl("No aliases set for {$args->chan}");
             return;
@@ -105,14 +122,20 @@ class alias extends script_base
      */
     function handleCmd(object $args, \Irc\Client $bot, string $cmd, array $cmdArgs): bool
     {
-        global $router;
-        $alias = $this->repo->findOneBy([
-            "nameLowered" => strtolower($cmd),
-            "chanLowered" => strtolower($args->chan),
-            "network" => $this->network
-        ]);
-        if (!$alias)
+        global $router, $entityManager;
+        try {
+            $alias = $this->repo->findOneBy([
+                "nameLowered" => u($cmd)->lower(),
+                "chanLowered" => u($args->chan)->lower(),
+                "network" => $this->network
+            ]);
+            if (!$alias)
+                return false;
+            $entityManager->refresh($alias);
+        } catch (\Exception $e) {
+            $this->logger->error($e);
             return false;
+        }
         $value = $alias->value;
         // Just keeping this very simple atm, may build a proper parser later
         // using str_replace the order is important
@@ -144,7 +167,7 @@ class alias extends script_base
             '$target' => count($cmdArgs) > 0 ? implode(' ', $cmdArgs) : $args->nick,
         ];
         $value = str_replace(array_keys($vars), $vars, $value);
-        //var_dump($alias);
+
         if (isset($alias->cmd)) {
             if (!$router->cmdExists($alias->cmd)) {
                 $bot->msg($args->chan, "Error with alias, bot command {$alias->cmd} not found");

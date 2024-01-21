@@ -6,6 +6,7 @@ global $entityManager;
 use lolbot\entities\Network;
 use scripts\alias\entities\alias;
 use \RedBeanPHP\R as R;
+use Symfony\Component\String\UnicodeString as U;
 
 if(isset($argv[2])) {
     if(!file_exists($argv[1]) || !is_file($argv[1]))
@@ -26,10 +27,10 @@ $aliases = R::findAll("alias");
 foreach($aliases as $a) {
     $alias = new alias();
     $alias->name = $a->name;
-    $alias->nameLowered = $a->name_lowered;
+    $alias->nameLowered = (new U($a->name))->lower();
     $alias->value = $a->value;
     $alias->chan = $a->chan;
-    $alias->chanLowered = $a->chan_lowered;
+    $alias->chanLowered = (new U($a->chan))->lower();
     $alias->fullhost = $a->fullhost;
     $alias->act = $a->act;
     $alias->cmd = $a->cmd;
