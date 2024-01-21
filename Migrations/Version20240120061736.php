@@ -28,7 +28,7 @@ final class Version20240120061736 extends AbstractMigration
         $location->addColumn("id", Types::INTEGER)->setNotnull(true)->setAutoincrement(true);
         $location->setPrimaryKey(["id"]);
         $location->addColumn("si", Types::BOOLEAN)->setNotnull(true);
-        $location->addColumn("name", Types::STRING);
+        $location->addColumn("name", Types::TEXT);
         $location->addColumn("lat", Types::STRING);
         $location->addColumn("long", Types::STRING);
         $location->addColumn("nick", Types::STRING);

@@ -27,8 +27,8 @@ final class Version20240121020050 extends AbstractMigration
         $location = $newSchema->createTable("lastfm_users");
         $location->addColumn("id", Types::INTEGER)->setNotnull(true)->setAutoincrement(true);
         $location->setPrimaryKey(["id"]);
-        $location->addColumn("lastfmUser", Types::STRING);
-        $location->addColumn("nick", Types::STRING);;
+        $location->addColumn("lastfmUser", Types::TEXT);
+        $location->addColumn("nick", Types::TEXT);;
         $location->addColumn("network_id", Types::INTEGER)->setNotnull(false);
         $location->addForeignKeyConstraint("Networks", ["network_id"], ["id"], ["onDelete" => "CASCADE"]);
 
