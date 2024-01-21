@@ -29,7 +29,7 @@ final class Version20240121020050 extends AbstractMigration
         $location->setPrimaryKey(["id"]);
         $location->addColumn("lastfmUser", Types::TEXT);
         $location->addColumn("nick", Types::TEXT);;
-        $location->addColumn("network_id", Types::INTEGER)->setNotnull(false);
+        $location->addColumn("network_id", Types::INTEGER);
         $location->addForeignKeyConstraint("Networks", ["network_id"], ["id"], ["onDelete" => "CASCADE"]);
 
         $diff = $comp->compareSchemas($schema, $newSchema);
