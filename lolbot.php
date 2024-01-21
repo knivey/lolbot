@@ -6,6 +6,7 @@ dieIfPendingMigration();
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
+use lolbot\entities\Bot;
 use lolbot\entities\Network;
 use monolog\Logger;
 use Symfony\Component\Yaml\Yaml;
@@ -38,9 +39,6 @@ if(isset($argv[1])) {
 $config = Yaml::parseFile($configFile);
 if(!is_array($config))
     die("bad config file");
-
-if(!isset($config['network_id']))
-    die("config must have a network_id set\n");
 
 if($config['codesand'] ?? false) {
     require_once 'scripts/codesand/common.php';
@@ -89,7 +87,8 @@ require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
 require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
-require_once 'scripts/alias/alias.php';
+//require_once 'scripts/alias/alias.php';
+use scripts\alias\alias;
 require_once 'scripts/markov_quotes/markov_quotes.php';
 require_once 'scripts/insult/insult.php';
 require_once "scripts/JRH/jrh.php";
@@ -141,7 +140,7 @@ $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxL
 
 try {
     Loop::run(function () {
-        global $bot, $config, $logHandler, $nicks, $chans, $router;
+        global $bot, $config, $logHandler, $nicks, $chans, $router, $entityManager;
 
         $log = new Logger($config['name']);
         $log->pushHandler($logHandler);
@@ -151,12 +150,23 @@ try {
         if(isset($config['sasl_user']) && isset($config['sasl_pass'])) {
             $bot->setSasl($config['sasl_user'], $config['sasl_pass']);
         }
+
+
         \scripts\tell\initTell($bot);
         \scripts\seen\initSeen($bot);
         \scripts\remindme\initRemindme($bot);
         $bomb_game = new \scripts\bomb_game\bomb_game();
         $bomb_game->initIrcHooks($bot);
         $router->loadMethods($bomb_game);
+
+        $alias = new alias(
+                $entityManager->getRepository(Network::class)->find($config['network_id']),
+                $entityManager->getRepository(Bot::class)->find($config['bot_id']),
+                $config, $bot,
+                new Logger("{$config['name']}:alias", [$logHandler])
+        );
+        $router->loadMethods($alias);
+
 
         $nicks = new Nicks($bot);
         $chans = new Channels($bot);
@@ -200,7 +210,7 @@ try {
             }
         });
 
-        $bot->on('chat', function ($args, \Irc\Client $bot) {
+        $bot->on('chat', function ($args, \Irc\Client $bot) use ($alias) {
             try {
                 global $config, $router, $chans, $entityManager, $ignoreCache;
 
@@ -274,7 +284,7 @@ try {
                         $cmdArgs = [];
                     if(count($cmdArgs) == 1 && $cmdArgs[0] == "")
                         $cmdArgs = [];
-                    \scripts\alias\handleCmd($args, $bot, $cmd, $cmdArgs);
+                    $alias->handleCmd($args, $bot, $cmd, $cmdArgs);
                 }
             } catch (Exception $e) {
                 echo "UNCAUGHT EXCEPTION $e\n";
@@ -420,7 +430,7 @@ function getUserChanAccess($nick, $chan, $bot): \Amp\Promise {
     });
 }
 
-//TODO move this to irctools package
+//TODO remove this with JRH
 function hostmaskToRegex($mask) {
     $out = '';
     $i = 0;
