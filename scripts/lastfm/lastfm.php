@@ -36,6 +36,8 @@ function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $lastfm->lastfmUser = $cmdArgs['username'];
     $lastfm->nick = strtolower($args->nick);
     $lastfm->network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+    $entityManager->persist($lastfm);
+    $entityManager->flush();
 
     $bot->pm($args->chan, "\2setlastfm:\2 username saved for your nick");
 }
@@ -58,7 +60,7 @@ function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $nick = strtolower($cmdArgs['nick']);
     }
     $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
-    $lastfm = $entityManager->getRepository(lastfm::class)->findOneBy(["network"=>$network,"nick", $nick]);
+    $lastfm = $entityManager->getRepository(lastfm::class)->findOneBy(["network"=>$network,"nick"=>$nick]);
     if(!$lastfm) {
         $user = $args->nick;
     } else {
@@ -112,13 +114,14 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $user = $cmdArgs['user'];
     } else {
         $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
-        $lastfm = $entityManager->getRepository(lastfm::class)->findOneBy(["network"=>$network,"nick", strtolower($args->nick)]);
+        $lastfm = $entityManager->getRepository(lastfm::class)->findOneBy(["network"=>$network,"nick"=>strtolower($args->nick)]);
         if(!$lastfm) {
             $user = $args->nick;
         } else {
             $user = $lastfm->lastfmUser;
         }
     }
+    var_dump($user);
 
     $user = urlencode($user);
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
