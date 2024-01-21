@@ -8,13 +8,8 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-use \RedBeanPHP\R as R;
-
-
-global $config;
-$db = 'lastfm-' . uniqid();
-$dbfile = $config['lastfmdb'] ?? "lastfm.db";
-R::addDatabase($db, "sqlite:{$dbfile}");
+use lolbot\entities\Network;
+use scripts\lastfm\entities\lastfm;
 
 #[Cmd("setlastfm")]
 #[Syntax('<username>')]
@@ -22,7 +17,7 @@ R::addDatabase($db, "sqlite:{$dbfile}");
 #[CallWrap("Amp\asyncCall")]
 function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $config, $db;
+    global $config, $entityManager;
     $key = $config['lastfm'] ?? false;
     if(!$key) {
         echo "lastfm key not set on config\n";
@@ -37,37 +32,39 @@ function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $bot->pm($args->chan, "\2setlastfm:\2 couldn't lookup that username");
         return;
     }
-    R::selectDatabase($db);
-    $ent = R::findOneOrDispense("lastfm", " `host` = ? ", [$args->identhost]);
-    $ent->username = $cmdArgs['username'];
-    $ent->host = $args->identhost;
-    R::store($ent);
-    $bot->pm($args->chan, "\2setlastfm:\2 username saved for your host");
+    $lastfm = new lastfm();
+    $lastfm->lastfmUser = $cmdArgs['username'];
+    $lastfm->nick = strtolower($args->nick);
+    $lastfm->network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+
+    $bot->pm($args->chan, "\2setlastfm:\2 username saved for your nick");
 }
 
 #[Cmd("np")]
+#[Syntax('[nick]')]
 #[Desc("Show your nowplaying status from last.fm")]
 #[CallWrap("Amp\asyncCall")]
 function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $config, $db;
+    global $config, $entityManager;
     $key = $config['lastfm'] ?? false;
     if(!$key) {
         echo "lastfm key not set on config\n";
         return;
     }
 
-    if (isset($cmdArgs['user'])) {
-        $user = $cmdArgs['user'];
-    } else {
-        R::selectDatabase($db);
-        $user = R::findOne("lastfm", " `host` = ? ", [$args->identhost]);
-        if($user) {
-            $user = $user->username;
-        } else {
-            $user = $args->nick;
-        }
+    $nick = strtolower($args->nick);
+    if (isset($cmdArgs['nick'])) {
+        $nick = strtolower($cmdArgs['nick']);
     }
+    $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+    $lastfm = $entityManager->getRepository(lastfm::class)->findOneBy(["network"=>$network,"nick", $nick]);
+    if(!$lastfm) {
+        $user = $args->nick;
+    } else {
+        $user = $lastfm->lastfmUser;
+    }
+
     $user = urlencode($user);
     $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
     try {
@@ -104,7 +101,7 @@ function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 #[Options("--info")]
 function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $config, $db;
+    global $config, $entityManager;
     $key = $config['lastfm'] ?? false;
     if(!$key) {
         echo "lastfm key not set on config\n";
@@ -114,12 +111,12 @@ function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     if (isset($cmdArgs['user'])) {
         $user = $cmdArgs['user'];
     } else {
-        R::selectDatabase($db);
-        $user = R::findOne("lastfm", " `host` = ? ", [$args->identhost]);
-        if($user) {
-            $user = $user->username;
-        } else {
+        $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+        $lastfm = $entityManager->getRepository(lastfm::class)->findOneBy(["network"=>$network,"nick", strtolower($args->nick)]);
+        if(!$lastfm) {
             $user = $args->nick;
+        } else {
+            $user = $lastfm->lastfmUser;
         }
     }
 

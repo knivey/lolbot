@@ -13,7 +13,9 @@ $isDevMode = true;
 // keeping scripts entities in separate dirs so the script files are not autoloaded at the wrong time
 $paths = [
     __DIR__ . "/entities",
-    __DIR__ . "/scripts/linktitles/entities"
+    __DIR__ . "/scripts/linktitles/entities",
+    __DIR__ . "/scripts/weather/entities",
+    __DIR__ . "/scripts/lastfm/entities"
 ];
 
 $ORMconfig = ORMSetup::createAttributeMetadataConfiguration($paths, $isDevMode);
