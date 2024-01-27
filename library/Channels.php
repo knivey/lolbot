@@ -58,9 +58,9 @@ class Channels
             if($bot->isCurrentNick($args->nick))
                 $this->channels = [];
             else {
-                if (!isset($this->channels[strtolower($args->channel)]))
-                    return;
-                unset($this->channels[strtolower($args->channel)]->nicks[strtolower($args->nick)]);
+                foreach($this->channels as &$channel) {
+                    unset($channel->nicks[strtolower($args->nick)]);
+                }
             }
         });
         $bot->on('kick', function($args, $bot) {
