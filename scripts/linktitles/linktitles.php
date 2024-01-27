@@ -106,6 +106,8 @@ function linktitles(\Irc\Client $bot, $nick, $chan, $host, $text)
             continue;
         }
 
+        $word = preg_replace("@^https?://(www\.)?reddit.com@i", "https://old.reddit.com", $word);
+
         try {
             $cookieJar = new InMemoryCookieJar;
             $client = (new HttpClientBuilder)
