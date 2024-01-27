@@ -29,17 +29,27 @@ class Network
     protected Collection $bots;
 
     /**
-     * @var Collection<int, Bot>
+     * @var Collection<int, Ignore>
      */
     #[ORM\ManyToMany(targetEntity: Ignore::class, mappedBy: 'networks')]
     #[ORM\JoinTable(name: "Ignore_Network")]
     protected Collection $ignores;
+
+    /**
+     * @var Collection<int, Server>
+     */
+    #[ORM\OneToMany(targetEntity: Server::class, mappedBy: "network")]
+    protected Collection $servers;
 
     public function __construct()
     {
         $this->created = new \DateTimeImmutable();
         $this->bots = new ArrayCollection();
         $this->ignores = new ArrayCollection();
+    }
+
+    public function addServer(Server $server) {
+        $this->servers[] = $server;
     }
 
     public function addBot(Bot $bot) {
