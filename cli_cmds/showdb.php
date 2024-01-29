@@ -41,6 +41,10 @@ class showdb extends Command
             foreach ($network->getIgnores() as $ignore) {
                 echo "      " . $ignore . "\n";
             }
+            echo "    servers:\n";
+            foreach ($network->getServers() as $server) {
+                echo "      " . $server . "\n";
+            }
         }
 
         echo "\nbots:\n";
@@ -48,6 +52,7 @@ class showdb extends Command
         foreach ($bots as $bot) {
             echo "  " . $bot . "\n";
             echo "    network: " . $bot->network->name . "\n";
+            echo "    channels: " . implode(", ", $bot->getChannels()->toArray()) . "\n";
         }
 
         echo "\nignores:\n";

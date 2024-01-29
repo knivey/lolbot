@@ -47,6 +47,16 @@ class Bot
     public function __construct()
     {
         $this->created = new \DateTimeImmutable();
+        $this->channels = new ArrayCollection();
+    }
+
+    public function addChannel(Channel $channel) {
+        $channel->bot = $this;
+        $this->channels[] = $channel;
+    }
+
+    public function getChannels() {
+        return $this->channels;
     }
 
     public function __toString(): string

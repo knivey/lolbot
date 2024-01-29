@@ -34,4 +34,11 @@ class Server
         $this->network = $network;
         $network->addServer($this);
     }
+
+    public function __toString(): string
+    {
+        $ssl = "SSL: " . ($this->ssl ? "true" : "false");
+        $throttle = "Throttle: " . ($this->throttle ? "true" : "false");
+        return "ID: {$this->id} {$this->address}:{$this->port} $ssl $throttle";
+    }
 }

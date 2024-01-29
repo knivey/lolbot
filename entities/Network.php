@@ -52,6 +52,9 @@ class Network
         $this->servers[] = $server;
     }
 
+    public function getServers() {
+        return $this->servers;
+    }
     public function addBot(Bot $bot) {
         $this->bots[] = $bot;
     }

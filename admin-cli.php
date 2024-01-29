@@ -34,10 +34,17 @@ $application->add(new cli_cmds\ignore_test());
 $application->add(new cli_cmds\bot_add());
 $application->add(new cli_cmds\bot_del());
 $application->add(new cli_cmds\bot_list());
+$application->add(new cli_cmds\bot_addchannel());
+$application->add(new cli_cmds\bot_delchannel());
 
 $application->add(new cli_cmds\network_add());
 $application->add(new cli_cmds\network_del());
 $application->add(new cli_cmds\network_list());
+$application->add(new cli_cmds\network_set());
+
+$application->add(new cli_cmds\server_add());
+$application->add(new cli_cmds\server_del());
+$application->add(new cli_cmds\server_set());
 
 $application->add(new cli_cmds\showdb());
 

@@ -11,17 +11,20 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use lolbot\entities\Network;
+use lolbot\entities\Server;
 
 #[AsCommand("server:set")]
 class server_set extends Command
 {
     public array $settings = [
-        "name"
+        "address",
+        "port",
+        "ssl",
+        "throttle"
     ];
     protected function configure(): void
     {
-        $this->addArgument("network", InputArgument::REQUIRED, "Network ID");
+        $this->addArgument("server", InputArgument::REQUIRED, "Server ID");
         $this->addArgument("setting", InputArgument::OPTIONAL, "setting name");
         $this->addArgument("value", InputArgument::OPTIONAL, "New value");
     }
@@ -30,9 +33,9 @@ class server_set extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $network = $entityManager->getRepository(Network::class)->find($input->getArgument("network"));
-        if(!$network) {
-            throw new \InvalidArgumentException("Network by that ID not found");
+        $server = $entityManager->getRepository(Server::class)->find($input->getArgument("server"));
+        if(!$server) {
+            throw new \InvalidArgumentException("Server by that ID not found");
         }
 
         if($input->getArgument("setting") === null) {
@@ -40,17 +43,17 @@ class server_set extends Command
         }
 
         if(!in_array($input->getArgument("setting"), $this->settings)) {
-            throw new \InvalidArgumentException("No network setting by that name");
+            throw new \InvalidArgumentException("No setting by that name");
         }
 
         if($input->getArgument("value") === null) {
             //show current setting and value;
         }
 
-        $network->{$input->getArgument("setting")} = $input->getArgument("value");
+        $server->{$input->getArgument("setting")} = $input->getArgument("value");
 
 
-        $entityManager->persist($network);
+        $entityManager->persist($server);
         $entityManager->flush();
 
         showdb::showdb();

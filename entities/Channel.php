@@ -19,4 +19,9 @@ class Channel
     #[ORM\ManyToOne(targetEntity: Bot::class, inversedBy: "channels")]
     #[ORM\JoinColumn(name: 'bot_id', referencedColumnName: 'id')]
     public Bot $bot;
+
+    public function __toString()
+    {
+        return "{$this->id}:{$this->name}";
+    }
 }
