@@ -29,6 +29,9 @@ class location
     #[ORM\JoinColumn(name: 'network_id', referencedColumnName: 'id')]
     public ?Network $network = null;
 
+    /**
+     * lowered with UnicodeString::lower()
+     */
     #[ORM\Column]
     public string $nick;
 }

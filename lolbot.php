@@ -72,7 +72,6 @@ function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
 
 require_once 'scripts/notifier/notifier.php';
 
-require_once 'scripts/weather/weather.php';
 //require_once 'scripts/bing/bing.php';
 require_once 'scripts/brave/brave.php';
 require_once 'scripts/stocks/stocks.php';
@@ -87,12 +86,13 @@ require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
 require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
-//require_once 'scripts/alias/alias.php';
-use scripts\alias\alias;
 require_once 'scripts/markov_quotes/markov_quotes.php';
 require_once 'scripts/insult/insult.php';
 require_once "scripts/JRH/jrh.php";
 require_once "scripts/mal/mal.php";
+
+use scripts\alias\alias;
+use scripts\weather\weather;
 
 require_once 'scripts/linktitles/linktitles.php';
 require_once 'scripts/youtube/youtube.php';
@@ -159,14 +159,12 @@ try {
         $bomb_game->initIrcHooks($bot);
         $router->loadMethods($bomb_game);
 
-        $alias = new alias(
-                $entityManager->getRepository(Network::class)->find($config['network_id']),
-                $entityManager->getRepository(Bot::class)->find($config['bot_id']),
-                $config, $bot,
-                new Logger("{$config['name']}:alias", [$logHandler])
-        );
+        $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+        $dbBot = $entityManager->getRepository(Bot::class)->find($config['bot_id']);
+        $alias = new alias($network, $dbBot, $config, $bot, new Logger("{$config['name']}:alias", [$logHandler]));
         $router->loadMethods($alias);
-
+        $weather = new weather($network, $dbBot, $config, $bot, new Logger("{$config['name']}:weather", [$logHandler]));
+        $router->loadMethods($weather);
 
         $nicks = new Nicks($bot);
         $chans = new Channels($bot);
