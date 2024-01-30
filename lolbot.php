@@ -23,10 +23,6 @@ $logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
 $logHandler->setFormatter(new ConsoleFormatter);
 $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
-$eventLogger = new Logger("Events");
-$eventProvider = new OrderedListenerProvider();
-$eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
-
 
 if(isset($argv[1])) {
     if(!file_exists($argv[1]) || !is_file($argv[1]))
@@ -86,19 +82,19 @@ require_once 'scripts/seen/seen.php';
 require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
 require_once 'scripts/insult/insult.php';
-require_once "scripts/JRH/jrh.php";
 require_once "scripts/mal/mal.php";
 
 use scripts\lastfm\lastfm;
 use scripts\alias\alias;
 use scripts\weather\weather;
 
-require_once 'scripts/linktitles/linktitles.php';
-require_once 'scripts/youtube/youtube.php';
-require_once 'scripts/twitter/twitter.php';
-require_once 'scripts/invidious/invidious.php';
-require_once 'scripts/github/github.php';
-require_once 'scripts/reddit/reddit.php';
+use scripts\linktitles\linktitles;
+use scripts\youtube\youtube;
+use scripts\twitter\twitter;
+use scripts\invidious\invidious;
+use scripts\github\github;
+use scripts\reddit\reddit;
+
 require_once 'scripts/durendaltv/durendaltv.php';
 require_once 'scripts/bomb_game/bomb_game.php';
 require_once 'scripts/translate/translate.php';
@@ -168,6 +164,33 @@ try {
         $lastfm = new lastfm($network, $dbBot, $config, $bot, new Logger("{$config['name']}:lastfm", [$logHandler]));
         $router->loadMethods($lastfm);
 
+        $eventLogger = new Logger("Events");
+        $eventProvider = new OrderedListenerProvider();
+        $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
+        $linktitles = new linktitles($network, $dbBot, $config, $bot, new Logger("{$config['name']}:linktitles", [$logHandler]));
+        $linktitles->eventDispatcher = $eventDispatcher;
+        $router->loadMethods($linktitles);
+
+        $youtube = new youtube($network, $dbBot, $config, $bot, new Logger("{$config['name']}:youtube", [$logHandler]));
+        $youtube->setEventProvider($eventProvider);
+        $router->loadMethods($youtube);
+
+        $twitter = new twitter($network, $dbBot, $config, $bot, new Logger("{$config['name']}:twitter", [$logHandler]));
+        $twitter->setEventProvider($eventProvider);
+        $router->loadMethods($twitter);
+
+        $invidious = new invidious($network, $dbBot, $config, $bot, new Logger("{$config['name']}:invidious", [$logHandler]));
+        $invidious->setEventProvider($eventProvider);
+        $router->loadMethods($invidious);
+
+        $github = new github($network, $dbBot, $config, $bot, new Logger("{$config['name']}:github", [$logHandler]));
+        $github->setEventProvider($eventProvider);
+        $router->loadMethods($github);
+
+        $reddit = new reddit($network, $dbBot, $config, $bot, new Logger("{$config['name']}:reddit", [$logHandler]));
+        $reddit->setEventProvider($eventProvider);
+        $router->loadMethods($reddit);
+
         $nicks = new Nicks($bot);
         $chans = new Channels($bot);
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
@@ -210,7 +233,7 @@ try {
             }
         });
 
-        $bot->on('chat', function ($args, \Irc\Client $bot) use ($alias) {
+        $bot->on('chat', function ($args, \Irc\Client $bot) use ($alias, $linktitles) {
             try {
                 global $config, $router, $chans, $entityManager, $ignoreCache;
 
@@ -229,7 +252,7 @@ try {
 
 
                 if ($config['linktitles'] ?? false) {
-                    \Amp\asyncCall(scripts\linktitles\linktitles(...), $bot, $args->nick, $args->channel, $args->identhost, $args->text);
+                    \Amp\asyncCall($linktitles->linktitles(...), $bot, $args->nick, $args->channel, $args->identhost, $args->text);
                 }
 
                 if (isset($config['trigger'])) {

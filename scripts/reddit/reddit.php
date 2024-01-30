@@ -3,22 +3,34 @@ namespace scripts\reddit;
 
 global $config;
 
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
 use Carbon\Carbon;
 use Irc\Exception;
+use Psr\EventDispatcher\ListenerProviderInterface;
 use scripts\linktitles\UrlEvent;
+use scripts\script_base;
 
-if(!isset($config['reddit']))
-    return; // neat we can do this and it stops the rest of the file from executing
+class reddit extends script_base
+{
+    public \knivey\reddit\reddit $reddit;
+    public function init(): void
+    {
+        global $config;
+        if(!isset($config['reddit']))
+            return;
+        $this->reddit = new \knivey\reddit\reddit($config['reddit'], "linux:lolbot:v1 (by /u/lolb0tlol)");
+    }
 
-$reddit = new \knivey\reddit\reddit($config['reddit'], "linux:lolbot:v1 (by /u/lolb0tlol)");
+    public function setEventProvider(ListenerProviderInterface $eventProvider): void
+    {
+        $eventProvider->addListener($this->handleEvents(...));
+    }
 
-global $eventProvider;
-$eventProvider->addListener(
-    function (UrlEvent $event) {
+    function handleEvents(UrlEvent $event)
+    {
+        global $config;
         if ($event->handled)
+            return;
+        if(!isset($config['reddit']))
             return;
 
         // in the future we can probably handle all types from the info call and switch based on kind
@@ -43,18 +55,18 @@ $eventProvider->addListener(
                 break;
             }
         }
-        if(!$matched)
+        if (!$matched)
             return;
 
-        $event->promises[] = \Amp\call(function() use ($event) {
+        $event->promises[] = \Amp\call(function () use ($event) {
             global $reddit;
             try {
                 $info = yield $reddit->info($event->url);
-                if($info->kind != 'Listing') {
+                if ($info->kind != 'Listing') {
                     echo "reddit->info return was not kind: Listing\n";
                     return;
                 }
-                if(!isset($info->data->children) || !is_array($info->data->children)) {
+                if (!isset($info->data->children) || !is_array($info->data->children)) {
                     echo "reddit->info return didnt have data->children array\n";
                     return;
                 }
@@ -67,13 +79,13 @@ $eventProvider->addListener(
                     t6_	Award
                  */
                 $post = null;
-                foreach($info->data->children as $child) {
-                    if($child->kind == "t3") {
+                foreach ($info->data->children as $child) {
+                    if ($child->kind == "t3") {
                         $post = $child->data ?? null;
                         break;
                     }
                 }
-                if($post === null) {
+                if ($post === null) {
                     echo "reddit: no link kinds found in children\n";
                     return;
                 }
@@ -83,7 +95,7 @@ $eventProvider->addListener(
                 $downs = number_format($post->downs);
                 $reply = "[Reddit $post->subreddit_name_prefixed] $post->title (Posted $ago [+]{$ups} [-]$downs)";
                 $reply = html_entity_decode($reply, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $event->reply(str_replace(["\r","\n"], "  ", $reply));
+                $event->reply(str_replace(["\r", "\n"], "  ", $reply));
 
 
             } catch (Exception $e) {
@@ -92,9 +104,7 @@ $eventProvider->addListener(
             }
         });
     }
-);
-
-
+}
 
 
 

@@ -3,25 +3,30 @@ namespace scripts\invidious;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
-use Carbon\Carbon;
+use Psr\EventDispatcher\ListenerProviderInterface;
 use scripts\linktitles\UrlEvent;
+use scripts\script_base;
 use simplehtmldom\HtmlDocument;
 
-global $config;
+class invidious extends script_base
+{
+    public function setEventProvider(ListenerProviderInterface $eventProvider): void
+    {
+        $eventProvider->addListener($this->handleEvents(...));
+    }
 
-global $eventProvider;
-$eventProvider->addListener(
-    function (UrlEvent $event) {
+    function handleEvents(UrlEvent $event): void
+    {
         if ($event->handled)
             return;
-        if(!preg_match("@^https?://[^/]+/watch\?v=.*$@i", $event->url, $m))
+        if (!preg_match("@^https?://[^/]+/watch\?v=.*$@i", $event->url, $m))
             return;
         $URL = '@^((?:https?:)?//)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(/(?:[\w\-]+\?v=|shorts/|embed/|v/)?)([\w\-]+)(\S+)?$@i';
         if (preg_match($URL, $event->url, $m)) {
             return;
         }
 
-        $event->promises[] = \Amp\call(function() use ($event) {
+        $event->promises[] = \Amp\call(function () use ($event) {
             global $config;
             try {
                 $client = HttpClientBuilder::buildDefault();
@@ -37,7 +42,7 @@ $eventProvider->addListener(
                 $html = new HtmlDocument();
                 $html->load($body);
                 $check = $html->find("meta [property=\"og:site_name\"]", 0)?->attr['content'] ?? "";
-                if(!preg_match("/^.* \| Invidious$/", $check)) {
+                if (!preg_match("/^.* \| Invidious$/", $check)) {
                     echo "url didnt pass invidious check\n";
                     return;
                 }
@@ -46,7 +51,7 @@ $eventProvider->addListener(
                 $channel = $html->find("span#channel-name", 0)?->plaintext ?? "?";
                 $date = $html->find("p#published-date", 0)?->plaintext ?? "?";
                 $vd = $html->find("script#video_data", 0)?->innertext;
-                if(!is_string($vd)) {
+                if (!is_string($vd)) {
                     echo "invidious didnt get video data json, aborting\n";
                     return;
                 }
@@ -60,4 +65,4 @@ $eventProvider->addListener(
             }
         });
     }
-);
+}
