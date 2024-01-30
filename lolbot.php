@@ -76,7 +76,6 @@ require_once 'scripts/notifier/notifier.php';
 require_once 'scripts/brave/brave.php';
 require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
-require_once 'scripts/lastfm/lastfm.php';
 require_once 'scripts/help/help.php';
 require_once 'scripts/tools/tools.php';
 require_once 'scripts/tell/tell.php';
@@ -90,6 +89,7 @@ require_once 'scripts/insult/insult.php';
 require_once "scripts/JRH/jrh.php";
 require_once "scripts/mal/mal.php";
 
+use scripts\lastfm\lastfm;
 use scripts\alias\alias;
 use scripts\weather\weather;
 
@@ -160,10 +160,13 @@ try {
 
         $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
         $dbBot = $entityManager->getRepository(Bot::class)->find($config['bot_id']);
+
         $alias = new alias($network, $dbBot, $config, $bot, new Logger("{$config['name']}:alias", [$logHandler]));
         $router->loadMethods($alias);
         $weather = new weather($network, $dbBot, $config, $bot, new Logger("{$config['name']}:weather", [$logHandler]));
         $router->loadMethods($weather);
+        $lastfm = new lastfm($network, $dbBot, $config, $bot, new Logger("{$config['name']}:lastfm", [$logHandler]));
+        $router->loadMethods($lastfm);
 
         $nicks = new Nicks($bot);
         $chans = new Channels($bot);
