@@ -66,6 +66,9 @@ function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
     ];
 }
 
+//TODO replace this with autoloaded class or better library
+require_once 'library/Duration.inc';
+
 require_once 'scripts/notifier/notifier.php';
 
 //require_once 'scripts/bing/bing.php';
@@ -75,7 +78,6 @@ require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/help/help.php';
 require_once 'scripts/tools/tools.php';
 require_once 'scripts/tell/tell.php';
-require_once 'scripts/remindme/remindme.php';
 require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
@@ -87,6 +89,7 @@ require_once "scripts/mal/mal.php";
 use scripts\lastfm\lastfm;
 use scripts\alias\alias;
 use scripts\weather\weather;
+use scripts\remindme\remindme;
 
 use scripts\linktitles\linktitles;
 use scripts\youtube\youtube;
@@ -149,7 +152,6 @@ try {
 
         \scripts\tell\initTell($bot);
         \scripts\seen\initSeen($bot);
-        \scripts\remindme\initRemindme($bot);
         $bomb_game = new \scripts\bomb_game\bomb_game();
         $bomb_game->initIrcHooks($bot);
         $router->loadMethods($bomb_game);
@@ -163,6 +165,8 @@ try {
         $router->loadMethods($weather);
         $lastfm = new lastfm($network, $dbBot, $config, $bot, new Logger("{$config['name']}:lastfm", [$logHandler]));
         $router->loadMethods($lastfm);
+        $remindme = new remindme($network, $dbBot, $config, $bot, new Logger("{$config['name']}:remindme", [$logHandler]));
+        $router->loadMethods($remindme);
 
         $eventLogger = new Logger("Events");
         $eventProvider = new OrderedListenerProvider();
