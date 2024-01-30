@@ -86,7 +86,6 @@ require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
 require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
-require_once 'scripts/markov_quotes/markov_quotes.php';
 require_once 'scripts/insult/insult.php';
 require_once "scripts/JRH/jrh.php";
 require_once "scripts/mal/mal.php";
