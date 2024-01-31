@@ -77,7 +77,6 @@ require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/help/help.php';
 require_once 'scripts/tools/tools.php';
-require_once 'scripts/tell/tell.php';
 require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/urbandict/urbandict.php';
 require_once 'scripts/seen/seen.php';
@@ -90,6 +89,7 @@ use scripts\lastfm\lastfm;
 use scripts\alias\alias;
 use scripts\weather\weather;
 use scripts\remindme\remindme;
+use scripts\tell\tell;
 
 use scripts\linktitles\linktitles;
 use scripts\youtube\youtube;
@@ -150,7 +150,6 @@ try {
         }
 
 
-        \scripts\tell\initTell($bot);
         \scripts\seen\initSeen($bot);
         $bomb_game = new \scripts\bomb_game\bomb_game();
         $bomb_game->initIrcHooks($bot);
@@ -167,6 +166,8 @@ try {
         $router->loadMethods($lastfm);
         $remindme = new remindme($network, $dbBot, $config, $bot, new Logger("{$config['name']}:remindme", [$logHandler]));
         $router->loadMethods($remindme);
+        $tell = new tell($network, $dbBot, $config, $bot, new Logger("{$config['name']}:tell", [$logHandler]));
+        $router->loadMethods($tell);
 
         $eventLogger = new Logger("Events");
         $eventProvider = new OrderedListenerProvider();
