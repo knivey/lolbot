@@ -29,5 +29,5 @@ class reminder
 
     #[ORM\ManyToOne(targetEntity: Network::class)]
     #[ORM\JoinColumn(name: 'network_id', referencedColumnName: 'id')]
-    public ?Network $network = null;
+    public Network $network;
 }
