@@ -8,24 +8,26 @@ global $entityManager;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use lolbot\entities\Server;
+use lolbot\entities\Bot;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand("server:set")]
-class server_set extends Command
+#[AsCommand("bot:set")]
+class bot_set extends Command
 {
     public array $settings = [
-        "address",
-        "port",
-        "ssl",
-        "throttle",
-        "password"
+        "name",
+        "trigger",
+        "trigger_re",
+        "onConnect",
+        "sasl_user",
+        "sasl_pass",
+        "bindIp"
     ];
     protected function configure(): void
     {
-        $this->addArgument("server", InputArgument::REQUIRED, "Server ID");
+        $this->addArgument("bot", InputArgument::REQUIRED, "Bot ID");
         $this->addArgument("setting", InputArgument::OPTIONAL, "setting name");
         $this->addArgument("value", InputArgument::OPTIONAL, "New value");
     }
@@ -34,13 +36,13 @@ class server_set extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $server = $entityManager->getRepository(Server::class)->find($input->getArgument("server"));
-        if(!$server) {
+        $bot = $entityManager->getRepository(Bot::class)->find($input->getArgument("bot"));
+        if(!$bot) {
             throw new \InvalidArgumentException("Server by that ID not found");
         }
 
         if($input->getArgument("setting") === null) {
-            $output->writeln($server);
+            $this->showsets($input, $output, $bot);
             return Command::SUCCESS;
         }
 
@@ -49,18 +51,30 @@ class server_set extends Command
         }
 
         if($input->getArgument("value") === null) {
-            $output->writeln($server);
+            $this->showsets($input, $output, $bot);
             return Command::SUCCESS;
         }
 
-        $server->{$input->getArgument("setting")} = $input->getArgument("value");
+        $bot->{$input->getArgument("setting")} = $input->getArgument("value");
 
 
-        $entityManager->persist($server);
+        $entityManager->persist($bot);
         $entityManager->flush();
 
-        showdb::showdb();
+        $this->showsets($input, $output, $bot);
 
         return Command::SUCCESS;
+    }
+
+    function showsets(InputInterface $input, OutputInterface $output, $bot) {
+        $io = new SymfonyStyle($input, $output);
+        $rows = [];
+        foreach ($this->settings as $setting) {
+            $rows[] = [$setting, $bot->$setting];
+        }
+        $io->table(
+            ["Setting", "Value"],
+            $rows
+        );
     }
 }

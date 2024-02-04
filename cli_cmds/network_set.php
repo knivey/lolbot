@@ -36,7 +36,7 @@ class network_set extends Command
         }
 
         if($input->getArgument("setting") === null) {
-            //show current settings and values;
+            $output->writeln($network);
         }
 
         if(!in_array($input->getArgument("setting"), $this->settings)) {
@@ -44,7 +44,7 @@ class network_set extends Command
         }
 
         if($input->getArgument("value") === null) {
-            //show current setting and value;
+            $output->writeln($network);
         }
 
         $network->{$input->getArgument("setting")} = $input->getArgument("value");

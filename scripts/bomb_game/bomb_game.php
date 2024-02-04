@@ -1,33 +1,15 @@
 <?php
 namespace scripts\bomb_game;
 
-use Amp\Deferred;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
+use scripts\script_base;
 
 // Clone of the sopel bomb game
 
-/**
- * @var array $config
- */
 
-/**
- * @var \Nicks $nicks
- */
-
-class bomb {
-    public function __construct(
-        public string $target,
-        public string $color,
-        public Deferred $def
-    )
-    {
-    }
-}
-
-class bomb_game
+class bomb_game extends script_base
 {
     const COLORS = [
         "\x034Red\x03" => "Red",
@@ -80,8 +62,8 @@ class bomb_game
 
     protected array $bombs = [];
 
-    public function initIrcHooks(\Irc\Client $bot) {
-        $bot->on('nick', function ($args, \Irc\Client $bot) {
+    public function init():void {
+        $this->client->on('nick', function ($args, \Irc\Client $bot) {
             if(array_key_exists(strtolower($args->old), $this->bombs)) {
                 $this->bombs[strtolower($args->new)] =& $this->bombs[strtolower($args->old)];
                 $this->bombs[strtolower($args->new)]->target = $args->new;
@@ -104,9 +86,8 @@ class bomb_game
     #[Syntax("<target>")]
     function bomb(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
-        global $nicks;
         $target = $cmdArgs["target"];
-        if(empty($nicks->getChanNickKey($target, $args->chan))) {
+        if(empty($this->nicks->getChanNickKey($target, $args->chan))) {
             $bot->msg($args->chan, self::randReply(self::NOT_ON_CHAN, compact("target")));
             return;
         }

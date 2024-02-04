@@ -31,9 +31,9 @@ class linktitles extends script_base
     function logUrl($bot, $nick, $chan, $line, string|array $title)
     {
         global $config;
-        if (!isset($config['url_log_chan']))
+        if (!isset($config['bots'][$this->bot->id]['url_log_chan']))
             return;
-        $logChan = $config['url_log_chan'];
+        $logChan = $config['bots'][$this->bot->id]['url_log_chan'];
         static $max = 0;
         $max = max(strlen($chan), $max);
         $chan = str_pad($chan, $max);

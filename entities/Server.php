@@ -26,6 +26,9 @@ class Server
     #[ORM\Column]
     public bool $throttle = true;
 
+    #[ORM\Column]
+    public ?string $password;
+
     #[ORM\ManyToOne(targetEntity: Network::class, inversedBy: "servers")]
     #[ORM\JoinColumn(name: 'network_id', referencedColumnName: 'id')]
     public Network $network;
@@ -37,8 +40,9 @@ class Server
 
     public function __toString(): string
     {
+        $password = "Password: " . (($this->password!==null) ? $this->password : "");
         $ssl = "SSL: " . ($this->ssl ? "true" : "false");
         $throttle = "Throttle: " . ($this->throttle ? "true" : "false");
-        return "ID: {$this->id} {$this->address}:{$this->port} $ssl $throttle";
+        return "ID: {$this->id} {$this->address}:{$this->port} $password $ssl $throttle";
     }
 }

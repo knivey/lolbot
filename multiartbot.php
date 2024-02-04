@@ -146,7 +146,7 @@ function onchat($args, \Irc\Client $bot)
 $bots = [];
 
 Loop::run(function () {
-    global $bots, $config, $logHandler;
+    global $clients, $config, $logHandler;
     var_dump($config);
 
     $cnt = 0;
@@ -154,7 +154,7 @@ Loop::run(function () {
         $log = new Logger($bcfg['name']);
         $log->pushHandler($logHandler);
         $bot = new \Irc\Client($bcfg['name'], $bcfg['server'], $log, $bcfg['port'], $bcfg['bindIp'], $bcfg['ssl']);
-        $bots[] = $bot;
+        $clients[] = $bot;
         $bot->setThrottle($bcfg['throttle'] ?? true);
         $bot->setServerPassword($bcfg['pass'] ?? '');
         if(isset($config['sasl_user']) && isset($config['sasl_pass'])) {
@@ -206,11 +206,11 @@ Loop::run(function () {
     $server = yield from startRestServer();
 
     $botExit = function ($watcherId) use ($server) {
-        global $bots;
+        global $clients;
         Amp\Loop::cancel($watcherId);
         echo "Caught SIGINT! exiting ...\n";
         $promises = [];
-        foreach ($bots as $bot) {
+        foreach ($clients as $bot) {
             $promises[] = $bot->sendNow("quit :Going for a smoke break\r\n");
         }
         try {
@@ -218,7 +218,7 @@ Loop::run(function () {
         } catch (Exception $e) {
             echo "Exception when sending quit\n $e\n";
         }
-        foreach ($bots as $bot) {
+        foreach ($clients as $bot) {
             $bot->exit();
         }
         if ($server != null) {
@@ -231,24 +231,24 @@ Loop::run(function () {
     Loop::onSignal(SIGINT, $botExit);
     Loop::onSignal(SIGTERM, $botExit);
 
-    foreach ($bots as $bot) {
+    foreach ($clients as $bot) {
         $bot->go();
     }
 
 });
 
 function selectBot($chan) : \Irc\Client | false {
-    global $bots;
+    global $clients;
     static $current = 0;
     $tries = 0;
     $i = $current;
-    while($tries <= count($bots)) {
+    while($tries <= count($clients)) {
         $i++;
-        if ($i == count($bots))
+        if ($i == count($clients))
             $i = 0;
-        if ($bots[$i]->onChannel($chan)) {
+        if ($clients[$i]->onChannel($chan)) {
             $current = $i;
-            return $bots[$i];
+            return $clients[$i];
         }
         $tries++;
     }
@@ -257,9 +257,9 @@ function selectBot($chan) : \Irc\Client | false {
 
 function botsOnChan($chan)
 {
-    global $bots;
+    global $clients;
     $cnt = 0;
-    foreach ($bots as $bot) {
+    foreach ($clients as $bot) {
         if ($bot->onChannel($chan))
             $cnt++;
     }

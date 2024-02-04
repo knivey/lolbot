@@ -34,6 +34,7 @@ $application->add(new cli_cmds\ignore_test());
 $application->add(new cli_cmds\bot_add());
 $application->add(new cli_cmds\bot_del());
 $application->add(new cli_cmds\bot_list());
+$application->add(new cli_cmds\bot_set());
 $application->add(new cli_cmds\bot_addchannel());
 $application->add(new cli_cmds\bot_delchannel());
 

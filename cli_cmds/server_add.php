@@ -24,6 +24,7 @@ class server_add extends Command
         $this->addOption("port", "p", InputOption::VALUE_REQUIRED);
         $this->addOption("ssl", "s", InputOption::VALUE_NONE);
         $this->addOption("no-throttle", "", InputOption::VALUE_NONE, "Should the messages to the server not be rate limited");
+        $this->addOption("password", "", InputOption::VALUE_REQUIRED);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
@@ -50,6 +51,10 @@ class server_add extends Command
 
         if($input->getOption("no-throttle")) {
             $server->throttle = false;
+        }
+
+        if($input->getOption("password")) {
+            $server->password = $input->getOption("password");
         }
 
         $entityManager->persist($server);

@@ -27,7 +27,6 @@ class invidious extends script_base
         }
 
         $event->promises[] = \Amp\call(function () use ($event) {
-            global $config;
             try {
                 $client = HttpClientBuilder::buildDefault();
                 $req = new Request($event->url);

@@ -55,6 +55,19 @@ class Network
     public function getServers() {
         return $this->servers;
     }
+
+    private $serverIdx = 0;
+    public function selectServer(): ?Server {
+        if(count($this->servers) == 0)
+            return null;
+
+        $server = $this->servers[$this->serverIdx];
+        $this->serverIdx++;
+        if(!isset($this->servers[$this->serverIdx]))
+            $this->serverIdx = 0;
+        return $server;
+    }
+
     public function addBot(Bot $bot) {
         $this->bots[] = $bot;
     }

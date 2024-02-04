@@ -13,23 +13,19 @@ use Amp\Log\StreamHandler;
 use Amp\Socket;
 use Monolog\Logger;
 
-function notifier($bot) {
-    global $config;
-    if(!isset($config['listen'])) {
-        return null;
-    }
+function notifier($bot, $addresses) {
     //$cert = new Socket\Certificate(__DIR__ . '/../test/server.pem');
 
     //$context = (new Socket\BindContext)
     //    ->withTlsContext((new Socket\ServerTlsContext)->withDefaultCertificate($cert));
 
     $servers = [];
-    if(is_array($config['listen'])) {
-        foreach ($config['listen'] as $address) {
+    if(is_array($addresses)) {
+        foreach ($addresses as $address) {
             $servers[] =  Socket\Server::listen($address);
         }
     } else {
-        $servers[] =  Socket\Server::listen($config['listen']);
+        $servers[] =  Socket\Server::listen($addresses);
     }
 
     //Probably setup logging from main later

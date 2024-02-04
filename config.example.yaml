@@ -1,40 +1,28 @@
-name: lolbot
-server: localhost
-#server: "[::1]"
-# server password
-#pass: password
-#port: 6667
-port: 6697
-# Which IP we should use to connect from, 0 binds to any that will work
-bindIp: 0
-# Note that currently SSL certificates are not verified so the bot will still connect if they are "invalid"
-#ssl: false
-ssl: true
-# Slows down the rate we send lines for networks that disconnect you for flooding
-throttle: true
-channels: ['#bots','#h4x']
 
-# send commands after receiving welcome message $me replaced with current nick
-onconnect:
-  - "as auth blah blah"
-  - "mode $me +x"
+#per bot config items
+bots:
+  2: #bot id from database
+    # Should the bot fetch urls and display the title of the page
+    linktitles: true
+    # Uncomment to start the notification listen server
+    # Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
+    # echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
+    #listen: [
+    #  "0.0.0.0:1337",
+    #  "[::]:1337"
+    #]
+    # Set to true to enable codesand (configure server in scripts/codesand/config.yaml)
+    codesand: false
+    codesand_maxlines: 30
+    #pump_host
+    #pump_key
+    url_log_chan: "#urls"
+    #youtube_pump_host:
+    #youtube_pump_key:
+    # If the bot should use p2u to send a thumbnail to channel
+    #youtube_thumb: true
+    #youtube_thumbwidth: 60
 
-# Use one or the other here
-# This is what precedes bot commands like -bing
-trigger: "."
-#trigger_re: "\\.|lolbot.? "
-
-# Alternate location for tell.db (from when bots shared tells)
-#telldb: "tell.db"
-
-
-# Uncomment to start the notification listen server
-# Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
-# echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
-#listen: [
-#  "0.0.0.0:1337",
-#  "[::]:1337"
-#]
 
 
 # key for wolfram alpha
@@ -61,10 +49,6 @@ trigger: "."
 #bingMapsKey: "key"
 
 
-# Should the bot fetch urls and display the title of the page
-linktitles: true
-
-
 # Twitter API (for link info)
 #twitter_bearer: "key"
 
@@ -72,11 +56,7 @@ linktitles: true
 # Youtube api key
 # https://support.google.com/googleapi/answer/6158862?hl=en
 #gkey: "key"
-# Enable or disable youtube URL responses
-#youtube: true
-# If the bot should use p2u to send a thumbnail to channel
-#youtube_thumb: true
-#youtube_thumbwidth: 60
+
 
 # If enabled are set then you need to have yt-dlp
 youtube_download_shorts: false
@@ -100,9 +80,6 @@ youtube_download_shorts: false
 # namecheap API user/key
 #namecheap_key: key
 #namecheap_user: user
-
-# Set to true to enable codesand (configure server in scripts/codesand/config.yaml)
-codesand: false
 
 
 # username:password on a github account, not strictly required but will greatly increase api limits

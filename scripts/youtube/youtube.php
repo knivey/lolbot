@@ -262,7 +262,7 @@ class youtube extends script_base
                 $sent = false;
                 $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $ago | $dur $shorts";
                 $thumbnail = $v?->snippet?->thumbnails?->high?->url;
-                if ($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
+                if ($thumbnail != null && ($config['bots'][$this->bot->id]['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                     $ext = explode('.', $thumbnail);
                     $ext = array_pop($ext);
                     try {
@@ -271,7 +271,7 @@ class youtube extends script_base
                         $filename = "thumb_$id.$ext";
                         echo "saving to $filename\n";
                         file_put_contents($filename, $body);
-                        $width = $config['youtube_thumbwidth'] ?? 40;
+                        $width = $config['bots'][$this->bot->id]['youtube_thumbwidth'] ?? 40;
                         $filename_safe = escapeshellarg($filename);
                         $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
                         unlink($filename);
@@ -286,10 +286,10 @@ class youtube extends script_base
                                 unset($thumbnail[$i]);
                             }
                         }
-                        if (isset($config['youtube_pump_host']) && isset($config['youtube_pump_key'])) {
+                        if (isset($config['bots'][$this->bot->id]['youtube_pump_host']) && isset($config['bots'][$this->bot->id]['youtube_pump_key'])) {
                             try {
                                 $client = HttpClientBuilder::buildDefault();
-                                $host = $config['youtube_pump_host'];
+                                $host = $config['bots'][$this->bot->id]['youtube_pump_host'];
                                 $pumpchan = urlencode(substr($event->chan, 1));
                                 $pumpUrl = UriString::parse($host);
                                 $pumpUrl['path'] .= "/privmsg/$pumpchan";
@@ -300,7 +300,7 @@ class youtube extends script_base
                                 $sendBody = implode("\n", $thumbnail);
                                 $sendBody .= "\n$msg";
                                 $request->setBody($sendBody);
-                                $request->setHeader('key', $config['youtube_pump_key']);
+                                $request->setHeader('key', $config['bots'][$this->bot->id]['youtube_pump_key']);
                                 /** @var Response $response */
                                 $response = yield $client->request($request);
                                 //$body = yield $response->getBody()->buffer();
