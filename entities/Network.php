@@ -46,6 +46,7 @@ class Network
         $this->created = new \DateTimeImmutable();
         $this->bots = new ArrayCollection();
         $this->ignores = new ArrayCollection();
+        $this->servers = new ArrayCollection();
     }
 
     public function addServer(Server $server) {
