@@ -32,8 +32,8 @@ final class Version20240120061736 extends AbstractMigration
         $location->addColumn("lat", Types::STRING);
         $location->addColumn("long", Types::STRING);
         $location->addColumn("nick", Types::STRING);
-        $location->addUniqueConstraint(["nick", "network_id"]);
         $location->addColumn("network_id", Types::INTEGER);
+        $location->addUniqueConstraint(["nick", "network_id"]);
         $location->addForeignKeyConstraint("Networks", ["network_id"], ["id"], ["onDelete" => "CASCADE"]);
 
         $diff = $comp->compareSchemas($schema, $newSchema);
