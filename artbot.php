@@ -6,6 +6,8 @@
 require_once __DIR__ . '/vendor/autoload.php';
 
 use JetBrains\PhpStorm\Pure;
+use lolbot\entities\Ignore;
+use lolbot\entities\Network;
 use Symfony\Component\Yaml\Yaml;
 
 use Amp\ByteStream\ResourceOutputStream;
@@ -34,6 +36,9 @@ if(isset($argv[1])) {
 $config = Yaml::parseFile($configFile);
 if(!is_array($config))
     die("bad config file");
+
+if(!isset($config['network_id']))
+    die("config must have a network_id set\n");
 
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
@@ -66,6 +71,11 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     $msg = implode(' ', $msgb);
     return $opts;
 }
+
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+global $ORMconfig;
+$ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
+
 
 $bot = null;
 Loop::run(function () {
@@ -127,9 +137,19 @@ Loop::run(function () {
     });
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $config, $router, $reqArtOpts;
+        global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
 
-        if(isIgnored($args->fullhost))
+        $ignored = $ignoreCache->getItem($args->fullhost);
+        if(!$ignored->isHit()) {
+            $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+            $ignoreRepository = $entityManager->getRepository(Ignore::class);
+            if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
+                $ignored->set(true);
+            else
+                $ignored->set(false);
+            $ignoreCache->save($ignored);
+        }
+        if($ignored->get())
             return;
 
         tryRec($bot, $args->from, $args->channel, $args->text);
@@ -234,47 +254,4 @@ function pumpToChan(string $chan, array $data, $speed = null) {
             unset($playing[$chan]);
         }
     });
-}
-
-
-//TODO move this to irctools package
-#[Pure] function hostmaskToRegex($mask) {
-    $out = '';
-    $i = 0;
-    while($i < strlen($mask)) {
-        $nextc = strcspn($mask, '*?', $i);
-        $out .= preg_quote(substr($mask, $i, $nextc), '@');
-        if($nextc + $i == strlen($mask))
-            break;
-        if($mask[$nextc + $i] == '?')
-            $out .= '.';
-        if($mask[$nextc + $i] == '*')
-            $out .= '.*';
-        $i += $nextc + 1;
-    }
-    return "@{$out}@i";
-}
-
-function getIgnores($file = "ignores.txt") {
-    static $ignores;
-    static $mtime;
-    if(!file_exists($file))
-        return [];
-    // Retarded that i had to figure out to do this otherwise php caches mtime..
-    clearstatcache();
-    $newmtime = filemtime($file);
-    if($newmtime <= ($mtime ?? 0))
-        return ($ignores ?? []);
-    $mtime = $newmtime;
-    return $ignores = file($file, FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
-}
-
-function isIgnored($fullhost) {
-    $ignores = getIgnores();
-    foreach ($ignores as $i) {
-        if (preg_match(hostmaskToRegex($i), $fullhost)) {
-            return true;
-        }
-    }
-    return false;
 }

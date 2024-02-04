@@ -241,10 +241,10 @@ function makeUrl(string $route): Promise {
 }
 
 function getWrapLength($bot, $chan) {
-    global $bots;
+    global $clients;
     $size = 0;
-    if(isset($bots) && is_array($bots)) {
-        foreach($bots as $b)
+    if(isset($clients) && is_array($clients)) {
+        foreach($clients as $b)
             $size = max($size, strlen($b->getNickHost()));
     } else {
         $size = strlen($bot->getNickHost());

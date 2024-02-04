@@ -13,150 +13,155 @@ use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use League\Uri\UriString;
 use Carbon\Carbon;
+use Psr\EventDispatcher\ListenerProviderInterface;
 use scripts\linktitles\UrlEvent;
-use function Amp\File\move;
+use scripts\script_base;
 
 require_once 'library/async_get_contents.php';
 
-function ytDuration($input): string {
-    try {
-        $di = new \DateInterval($input);
-        $dur = '';
-        if ($di->s > 0) {
-            $dur = "{$di->s}s";
-        }
-        if ($di->i > 0) {
-            $dur = "{$di->i}m $dur";
-        }
-        if ($di->h > 0) {
-            $dur = "{$di->h}h $dur";
-        }
-        if ($di->d > 0) {
-            $dur = "{$di->d}d $dur";
-        }
-        //Seems unlikely, months and years
-        if ($di->m > 0) {
-            $dur = "{$di->m}M $dur";
-        }
-        if ($di->y > 0) {
-            $dur = "{$di->y}y $dur";
-        }
-        $dur = trim($dur);
-        if ($dur == '') {
-            $dur = "\x02\x0304🔴 LIVE";
-        }
-    } catch (\Exception $e) {
-        return '???';
-    }
-    return $dur;
-}
-
-function getLiveVideos($channelId): Promise {
-    return \Amp\call(function () use ($channelId) {
-        global $config;
-        if(!isset($config['gkey'])) {
-            echo "No gkey set for youtube lookup\n";
-            return null;
-        }
-        $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key={$config['gkey']}");
-        $data = json_decode($body, false);
-
-        if (!is_object($data)) {
-            echo "Youtube getLiveVideos for $channelId, bad or no data\n";
-            var_dump($data);
-            return null;
-        }
-        if(!is_array($data->items) || count($data->items) < 1)
-            return null;
-        return $data->items;
-    });
-}
-
-/**
- * @param $id
- * @return Promise
- */
-function getVideoInfo($id): Promise {
-    return \Amp\call(function () use ($id) {
-        global $config;
-        if(!isset($config['gkey'])) {
-            echo "No gkey set for youtube lookup\n";
-            return null;
-        }
-        $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key={$config['gkey']}");
-        $data = json_decode($body, false);
-
-        if (!is_object($data)) {
-            echo "Youtube $id bad or no data\n";
-            var_dump($data);
-            return null;
-        }
-        if(!is_array($data->items) || count($data->items) < 1)
-            return null;
-         return $data->items[0];
-    });
-}
-
-function hostToFilehole(string $filename): Promise
+class youtube extends script_base
 {
-    return \Amp\call(function () use ($filename) {
-        if(!file_exists($filename))
-            throw new \Exception("hostToFilehole called with non existant filename: $filename");
-        $client = HttpClientBuilder::buildDefault();
-        $request = new Request("https://filehole.org", "POST");
-        $body = new FormBody();
-        $body->addField('url_len', '5');
-        $body->addField('expiry', '86400');
-        $body->addFile('file', $filename);
-        $request->setBody($body);
-        //var_dump($request);
-        /** @var Response $response */
-        $response = yield $client->request($request);
-        //var_dump($response);
-        if ($response->getStatus() != 200) {
-            throw new \Exception("filehole.org returned {$response->getStatus()}");
+    function ytDuration($input): string
+    {
+        try {
+            $di = new \DateInterval($input);
+            $dur = '';
+            if ($di->s > 0) {
+                $dur = "{$di->s}s";
+            }
+            if ($di->i > 0) {
+                $dur = "{$di->i}m $dur";
+            }
+            if ($di->h > 0) {
+                $dur = "{$di->h}h $dur";
+            }
+            if ($di->d > 0) {
+                $dur = "{$di->d}d $dur";
+            }
+            //Seems unlikely, months and years
+            if ($di->m > 0) {
+                $dur = "{$di->m}M $dur";
+            }
+            if ($di->y > 0) {
+                $dur = "{$di->y}y $dur";
+            }
+            $dur = trim($dur);
+            if ($dur == '') {
+                $dur = "\x02\x0304🔴 LIVE";
+            }
+        } catch (\Exception $e) {
+            return '???';
         }
-        $respBody = yield $response->getBody()->buffer();
-        return $respBody;
-    });
-}
+        return $dur;
+    }
 
-function isShort($duration) {
-    try {
-        $di = new \DateInterval($duration);
-        if ($di->y > 0 || $di->m > 0 || $di->h > 0 || $di->d > 0) {
+    function getLiveVideos($channelId): Promise
+    {
+        return \Amp\call(function () use ($channelId) {
+            global $config;
+            if (!isset($config['gkey'])) {
+                echo "No gkey set for youtube lookup\n";
+                return null;
+            }
+            $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key={$config['gkey']}");
+            $data = json_decode($body, false);
+
+            if (!is_object($data)) {
+                echo "Youtube getLiveVideos for $channelId, bad or no data\n";
+                var_dump($data);
+                return null;
+            }
+            if (!is_array($data->items) || count($data->items) < 1)
+                return null;
+            return $data->items;
+        });
+    }
+
+    /**
+     * @param $id
+     * @return Promise
+     */
+    function getVideoInfo($id): Promise
+    {
+        return \Amp\call(function () use ($id) {
+            global $config;
+            if (!isset($config['gkey'])) {
+                echo "No gkey set for youtube lookup\n";
+                return null;
+            }
+            $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key={$config['gkey']}");
+            $data = json_decode($body, false);
+
+            if (!is_object($data)) {
+                echo "Youtube $id bad or no data\n";
+                var_dump($data);
+                return null;
+            }
+            if (!is_array($data->items) || count($data->items) < 1)
+                return null;
+            return $data->items[0];
+        });
+    }
+
+    function hostToFilehole(string $filename): Promise
+    {
+        return \Amp\call(function () use ($filename) {
+            if (!file_exists($filename))
+                throw new \Exception("hostToFilehole called with non existant filename: $filename");
+            $client = HttpClientBuilder::buildDefault();
+            $request = new Request("https://filehole.org", "POST");
+            $body = new FormBody();
+            $body->addField('url_len', '5');
+            $body->addField('expiry', '86400');
+            $body->addFile('file', $filename);
+            $request->setBody($body);
+            //var_dump($request);
+            /** @var Response $response */
+            $response = yield $client->request($request);
+            //var_dump($response);
+            if ($response->getStatus() != 200) {
+                throw new \Exception("filehole.org returned {$response->getStatus()}");
+            }
+            $respBody = yield $response->getBody()->buffer();
+            return $respBody;
+        });
+    }
+
+    function isShort($duration)
+    {
+        try {
+            $di = new \DateInterval($duration);
+            if ($di->y > 0 || $di->m > 0 || $di->h > 0 || $di->d > 0) {
+                return false;
+            }
+            $s = 0;
+            if ($di->s > 0) {
+                $s += $di->s;
+            }
+            if ($di->i > 0) {
+                $s += $di->i * 60;
+            }
+            if ($s < 90 && $s > 0)
+                return true;
+        } catch (\Throwable $e) {
+            var_dump($e);
             return false;
         }
-        $s = 0;
-        if ($di->s > 0) {
-            $s += $di->s;
-        }
-        if ($di->i > 0) {
-            $s += $di->i * 60;
-        }
-        if($s < 90 && $s > 0)
-            return true;
-    } catch (\Throwable $e) {
-        var_dump($e);
         return false;
     }
-    return false;
-}
 
 
-$youtube_history = [];
-/**
- * @psalm-suppress InvalidGlobal
- */
-global $eventProvider;
-$eventProvider->addListener(
-    function (UrlEvent $event) {
+    private $youtube_history = [];
+    public ListenerProviderInterface $eventProvider;
+    function setEventProvider(ListenerProviderInterface $eventProvider): void
+    {
+        $this->eventProvider = $eventProvider;
+        $this->eventProvider->addListener($this->eventHandler(...));
+    }
+
+    function eventHandler (UrlEvent $event): void
+    {
         global $config;
-
-        //Avoiding clobber of jewbirds radio adverts
-        if (str_contains($event->text, "                     https://twitch.tv/hughbord")) {
-            return;
-        }
 
         if (!isset($config['gkey'])) {
             echo "No gkey set for youtube lookup\n";
@@ -193,7 +198,7 @@ $eventProvider->addListener(
             echo "Looking up youtube video $id\n";
 
             try {
-                $v = yield getVideoInfo($id);
+                $v = yield $this->getVideoInfo($id);
             } catch (\async_get_exception $error) {
                 echo $error->getMessage();
                 $event->reply("\2YouTube:\2 {$error->getIRCMsg()}");
@@ -208,8 +213,8 @@ $eventProvider->addListener(
                 return;
 
             $shorts = "";
-            if(($config['youtube_download_shorts'] ?? false)) {
-                if (isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') &&
+            if (($config['youtube_download_shorts'] ?? false)) {
+                if ($this->isShort($v->contentDetails->duration) && str_contains($event->url, '/shorts/') &&
                     (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
                     try {
                         //TODO check if file was already downloaded
@@ -225,7 +230,7 @@ $eventProvider->addListener(
                                 rename($ytjson->filename, $config['youtube_host_shorts'] . '/' . $ytjson->filename);
                                 $shorts = " | " . ($config['youtube_host_shorts_url'] ?? "https://localhost/") . $ytjson->filename;
                             } else {
-                                $shorts = " | " . yield hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
+                                $shorts = " | " . yield $this->hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
                                 unlink($ytjson->filename);
                             }
                             echo "shorts: $shorts\n";
@@ -243,7 +248,7 @@ $eventProvider->addListener(
 
             try {
                 $title = $v->snippet->title;
-                $dur = ytDuration($v->contentDetails->duration);
+                $dur = $this->ytDuration($v->contentDetails->duration);
                 $chanTitle = $v->snippet->channelTitle;
                 //$datef = 'M j, Y';
                 //$date = date($datef, strtotime($v->snippet->publishedAt));
@@ -257,7 +262,7 @@ $eventProvider->addListener(
                 $sent = false;
                 $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $ago | $dur $shorts";
                 $thumbnail = $v?->snippet?->thumbnails?->high?->url;
-                if ($thumbnail != null && ($config['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
+                if ($thumbnail != null && ($config['bots'][$this->bot->id]['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                     $ext = explode('.', $thumbnail);
                     $ext = array_pop($ext);
                     try {
@@ -266,7 +271,7 @@ $eventProvider->addListener(
                         $filename = "thumb_$id.$ext";
                         echo "saving to $filename\n";
                         file_put_contents($filename, $body);
-                        $width = $config['youtube_thumbwidth'] ?? 40;
+                        $width = $config['bots'][$this->bot->id]['youtube_thumbwidth'] ?? 40;
                         $filename_safe = escapeshellarg($filename);
                         $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
                         unlink($filename);
@@ -281,10 +286,10 @@ $eventProvider->addListener(
                                 unset($thumbnail[$i]);
                             }
                         }
-                        if (isset($config['youtube_pump_host']) && isset($config['youtube_pump_key'])) {
+                        if (isset($config['bots'][$this->bot->id]['youtube_pump_host']) && isset($config['bots'][$this->bot->id]['youtube_pump_key'])) {
                             try {
                                 $client = HttpClientBuilder::buildDefault();
-                                $host = $config['youtube_pump_host'];
+                                $host = $config['bots'][$this->bot->id]['youtube_pump_host'];
                                 $pumpchan = urlencode(substr($event->chan, 1));
                                 $pumpUrl = UriString::parse($host);
                                 $pumpUrl['path'] .= "/privmsg/$pumpchan";
@@ -295,7 +300,7 @@ $eventProvider->addListener(
                                 $sendBody = implode("\n", $thumbnail);
                                 $sendBody .= "\n$msg";
                                 $request->setBody($sendBody);
-                                $request->setHeader('key', $config['youtube_pump_key']);
+                                $request->setHeader('key', $config['bots'][$this->bot->id]['youtube_pump_key']);
                                 /** @var Response $response */
                                 $response = yield $client->request($request);
                                 //$body = yield $response->getBody()->buffer();
@@ -331,81 +336,81 @@ $eventProvider->addListener(
             }
         }));
     }
-);
 
-
-#[Cmd("yt", "ytsearch", "youtube")]
-#[Syntax('<query>...')]
-#[CallWrap("Amp\asyncCall")]
-#[Options("--amt")]
-function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
-{
-    global $config;
-    $reply = function($msg) use($bot, $args) {$bot->pm($args->chan, "\2ytsearch:\2 $msg");};
-    $key = $config['gkey'] ?? false;
-    if(!$key) {
-        $reply("youtube key not set on config");
-        return;
-    }
-    $amt = 1;
-    if($cmdArgs->optEnabled("--amt")) {
-        $amt = $cmdArgs->getOpt("--amt");
-        if($amt < 1 || $amt > 5) { //If greater than 5 should increase maxResults in api call
-            $reply("Result --amt should be from 1 to 5");
+    #[Cmd("yt", "ytsearch", "youtube")]
+    #[Syntax('<query>...')]
+    #[CallWrap("Amp\asyncCall")]
+    #[Options("--amt")]
+    function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    {
+        global $config;
+        $reply = function ($msg) use ($bot, $args) {
+            $bot->pm($args->chan, "\2ytsearch:\2 $msg");
+        };
+        $key = $config['gkey'] ?? false;
+        if (!$key) {
+            $reply("youtube key not set on config");
             return;
         }
-    }
-    /**
-     * @psalm-suppress NullArgument
-     */
-    $q = urlencode($cmdArgs['query']);
-    // search only supports snippet part :(
-    $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";
-    try {
-        $body = yield async_get_contents($url);
-    }  catch (\async_get_exception $error) {
-        echo $error;
-        $reply($error->getIRCMsg());
-        return;
-    } catch (\Exception $error) {
-        echo $error->getMessage();
-        $reply($error->getMessage());
-        return;
-    }
-    $res = json_decode($body, true);
-    if(!isset($res['items']) || count($res['items']) == 0) {
-        $reply("no results");
-        return;
-    }
-    $cnt = 0;
-    foreach ($res['items'] as $i) {
-        if($cnt++ >=$amt)
-            break;
-        $s = $i['snippet'];
-        $url = "https://youtu.be/{$i['id']['videoId']}";
-        $title = html_entity_decode($s['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $title = htmlspecialchars_decode($title);
-        $channel = html_entity_decode($s['channelTitle'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $channel = htmlspecialchars_decode($channel);
-        //$desc = html_entity_decode($s['description'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        //$desc = htmlspecialchars_decode($desc);
-        $dur = null;
-        try {
-            $v = yield getVideoInfo($i['id']['videoId']);
-            if($v != null) {
-                $dur = ytDuration($v->contentDetails->duration);
-                //if for some reason duration fails format it so it wont look bad missing
-                $dur = " | $dur";
+        $amt = 1;
+        if ($cmdArgs->optEnabled("--amt")) {
+            $amt = $cmdArgs->getOpt("--amt");
+            if ($amt < 1 || $amt > 5) { //If greater than 5 should increase maxResults in api call
+                $reply("Result --amt should be from 1 to 5");
+                return;
             }
-        } catch (\Exception $e) {
         }
-        $reply("$url - $title | $channel{$dur}");
-    }
-    if($cnt < $amt) {
-        $reply("No more results :(");
+        /**
+         * @psalm-suppress NullArgument
+         */
+        $q = urlencode($cmdArgs['query']);
+        // search only supports snippet part :(
+        $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";
+        try {
+            $body = yield async_get_contents($url);
+        } catch (\async_get_exception $error) {
+            echo $error;
+            $reply($error->getIRCMsg());
+            return;
+        } catch (\Exception $error) {
+            echo $error->getMessage();
+            $reply($error->getMessage());
+            return;
+        }
+        $res = json_decode($body, true);
+        if (!isset($res['items']) || count($res['items']) == 0) {
+            $reply("no results");
+            return;
+        }
+        $cnt = 0;
+        foreach ($res['items'] as $i) {
+            if ($cnt++ >= $amt)
+                break;
+            $s = $i['snippet'];
+            $url = "https://youtu.be/{$i['id']['videoId']}";
+            $title = html_entity_decode($s['title'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $title = htmlspecialchars_decode($title);
+            $channel = html_entity_decode($s['channelTitle'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $channel = htmlspecialchars_decode($channel);
+            //$desc = html_entity_decode($s['description'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            //$desc = htmlspecialchars_decode($desc);
+            $dur = null;
+            try {
+                $v = yield $this->getVideoInfo($i['id']['videoId']);
+                if ($v != null) {
+                    $dur = $this->ytDuration($v->contentDetails->duration);
+                    //if for some reason duration fails format it so it wont look bad missing
+                    $dur = " | $dur";
+                }
+            } catch (\Exception $e) {
+            }
+            $reply("$url - $title | $channel{$dur}");
+        }
+        if ($cnt < $amt) {
+            $reply("No more results :(");
+        }
     }
 }
-
 
 
 

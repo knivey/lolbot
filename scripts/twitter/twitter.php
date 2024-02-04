@@ -4,14 +4,19 @@ namespace scripts\twitter;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Carbon\Carbon;
+use Psr\EventDispatcher\ListenerProviderInterface;
 use scripts\linktitles\UrlEvent;
+use scripts\script_base;
 use simplehtmldom\HtmlDocument;
 
-global $config;
+class twitter extends script_base {
+    public function setEventProvider(ListenerProviderInterface $eventProvider): void
+    {
+        $eventProvider->addListener($this->handleEvents(...));
+    }
 
-global $eventProvider;
-$eventProvider->addListener(
-    function (UrlEvent $event) {
+    function handleEvents(UrlEvent $event): void
+    {
         if ($event->handled)
             return;
         if(!preg_match("@^https?://(?:mobile\.)?twitter\.com/([^/]+)/status/(\d+).*$@i", $event->url, $m))
@@ -49,4 +54,4 @@ $eventProvider->addListener(
             }
         });
     }
-);
+}

@@ -8,6 +8,8 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+use lolbot\entities\Ignore;
+use lolbot\entities\Network;
 use Symfony\Component\Yaml\Yaml;
 
 use Amp\ByteStream\ResourceOutputStream;
@@ -33,6 +35,9 @@ if(isset($argv[1])) {
 $config = Yaml::parseFile($configFile);
 if(!is_array($config))
     die("bad config file");
+
+if(!isset($config['network_id']))
+    die("config must have a network_id set\n");
 
 use knivey\cmdr\Cmdr;
 
@@ -73,10 +78,26 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     return $opts;
 }
 
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+global $ORMconfig;
+$ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
+
+
 function onchat($args, \Irc\Client $bot)
 {
-    global $config, $router, $reqArtOpts;
-    if(isIgnored($args->fullhost))
+    global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
+
+    $ignored = $ignoreCache->getItem($args->fullhost);
+    if(!$ignored->isHit()) {
+        $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+        $ignoreRepository = $entityManager->getRepository(Ignore::class);
+        if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
+            $ignored->set(true);
+        else
+            $ignored->set(false);
+        $ignoreCache->save($ignored);
+    }
+    if($ignored->get())
         return;
 
     tryRec($bot, $args->from, $args->channel, $args->text);
@@ -125,7 +146,7 @@ function onchat($args, \Irc\Client $bot)
 $bots = [];
 
 Loop::run(function () {
-    global $bots, $config, $logHandler;
+    global $clients, $config, $logHandler;
     var_dump($config);
 
     $cnt = 0;
@@ -133,7 +154,7 @@ Loop::run(function () {
         $log = new Logger($bcfg['name']);
         $log->pushHandler($logHandler);
         $bot = new \Irc\Client($bcfg['name'], $bcfg['server'], $log, $bcfg['port'], $bcfg['bindIp'], $bcfg['ssl']);
-        $bots[] = $bot;
+        $clients[] = $bot;
         $bot->setThrottle($bcfg['throttle'] ?? true);
         $bot->setServerPassword($bcfg['pass'] ?? '');
         if(isset($config['sasl_user']) && isset($config['sasl_pass'])) {
@@ -185,11 +206,11 @@ Loop::run(function () {
     $server = yield from startRestServer();
 
     $botExit = function ($watcherId) use ($server) {
-        global $bots;
+        global $clients;
         Amp\Loop::cancel($watcherId);
         echo "Caught SIGINT! exiting ...\n";
         $promises = [];
-        foreach ($bots as $bot) {
+        foreach ($clients as $bot) {
             $promises[] = $bot->sendNow("quit :Going for a smoke break\r\n");
         }
         try {
@@ -197,7 +218,7 @@ Loop::run(function () {
         } catch (Exception $e) {
             echo "Exception when sending quit\n $e\n";
         }
-        foreach ($bots as $bot) {
+        foreach ($clients as $bot) {
             $bot->exit();
         }
         if ($server != null) {
@@ -210,24 +231,24 @@ Loop::run(function () {
     Loop::onSignal(SIGINT, $botExit);
     Loop::onSignal(SIGTERM, $botExit);
 
-    foreach ($bots as $bot) {
+    foreach ($clients as $bot) {
         $bot->go();
     }
 
 });
 
 function selectBot($chan) : \Irc\Client | false {
-    global $bots;
+    global $clients;
     static $current = 0;
     $tries = 0;
     $i = $current;
-    while($tries <= count($bots)) {
+    while($tries <= count($clients)) {
         $i++;
-        if ($i == count($bots))
+        if ($i == count($clients))
             $i = 0;
-        if ($bots[$i]->onChannel($chan)) {
+        if ($clients[$i]->onChannel($chan)) {
             $current = $i;
-            return $bots[$i];
+            return $clients[$i];
         }
         $tries++;
     }
@@ -236,9 +257,9 @@ function selectBot($chan) : \Irc\Client | false {
 
 function botsOnChan($chan)
 {
-    global $bots;
+    global $clients;
     $cnt = 0;
-    foreach ($bots as $bot) {
+    foreach ($clients as $bot) {
         if ($bot->onChannel($chan))
             $cnt++;
     }
@@ -342,47 +363,4 @@ function startPump($chan, $speed = null) {
         }
         unset($playing[$chan]);
     });
-}
-
-//TODO move this to irctools package
-function hostmaskToRegex($mask) {
-    $out = '';
-    $i = 0;
-    while($i < strlen($mask)) {
-        $nextc = strcspn($mask, '*?', $i);
-        $out .= preg_quote(substr($mask, $i, $nextc), '@');
-        if($nextc + $i == strlen($mask))
-            break;
-        if($mask[$nextc + $i] == '?')
-            $out .= '.';
-        if($mask[$nextc + $i] == '*')
-            $out .= '.*';
-        $i += $nextc + 1;
-    }
-    return "@{$out}@i";
-}
-
-//TODO replace this with something that doesnt check mtime, probably use rpc to manage admin things off irc
-function getIgnores($file = "ignores.txt") {
-    static $ignores;
-    static $mtime;
-    if(!file_exists($file))
-        return [];
-    // Retarded that i had to figure out to do this otherwise php caches mtime..
-    clearstatcache();
-    $newmtime = filemtime($file);
-    if($newmtime <= ($mtime ?? 0))
-        return ($ignores ?? []);
-    $mtime = $newmtime;
-    return $ignores = file($file, FILE_SKIP_EMPTY_LINES | FILE_IGNORE_NEW_LINES);
-}
-
-function isIgnored($fullhost) {
-    $ignores = getIgnores();
-    foreach ($ignores as $i) {
-        if (preg_match(hostmaskToRegex($i), $fullhost)) {
-            return true;
-        }
-    }
-    return false;
 }

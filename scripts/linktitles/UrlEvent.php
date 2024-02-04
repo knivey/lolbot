@@ -31,7 +31,7 @@ class UrlEvent
             $bot->pm($chan, "  $msg");
     }
 
-    public function doLog($bot) {
-        logUrl($bot, $this->nick, $this->chan, $this->text, $this->replies);
+    public function doLog($linktitles, $bot) {
+        $linktitles->logUrl($bot, $this->nick, $this->chan, $this->text, $this->replies);
     }
 }
