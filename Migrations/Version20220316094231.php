@@ -57,7 +57,6 @@ final class Version20220316094231 extends AbstractMigration
         $Ignore_Network->addForeignKeyConstraint($Ignores, ["ignore_id"], ["id"], ["onDelete" => "CASCADE"]);
 
         $diff = $comp->compareSchemas($schema, $newSchema);
-        echo implode("\n", $this->platform->getAlterSchemaSQL($diff));
 
         foreach ($this->platform->getAlterSchemaSQL($diff) as $sql)
             $this->addSql($sql);
@@ -75,7 +74,6 @@ final class Version20220316094231 extends AbstractMigration
         $newSchema->dropTable("Networks");
 
         $diff = $comp->compareSchemas($schema, $newSchema);
-        echo implode("\n", $this->platform->getAlterSchemaSQL($diff));
 
         foreach ($this->platform->getAlterSchemaSQL($diff) as $sql)
             $this->addSql($sql);
