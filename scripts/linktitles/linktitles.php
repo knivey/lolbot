@@ -80,26 +80,8 @@ class linktitles extends script_base
                 continue;
             }
 
-        $word = preg_replace("@^https?://(www\.)?reddit.com@i", "https://old.reddit.com", $word);
+            $word = preg_replace("@^https?://(www\.)?reddit.com@i", "https://old.reddit.com", $word);
 
-        try {
-            $cookieJar = new InMemoryCookieJar;
-            $client = (new HttpClientBuilder)
-                ->interceptNetwork(new CookieInterceptor($cookieJar))
-                ->build();
-            $req = new Request($word);
-            $req->setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36");
-            $req->setHeader("Accept", "text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8");
-            $req->setHeader("Accept-Language", "en-US, en;q=0.9");
-            $req->setTransferTimeout(4000);
-            $req->setBodySizeLimit(1024 * 1024 * 8);
-            /** @var Response $response */
-            $response = yield $client->request($req);
-            $body = yield $response->getBody()->buffer();
-            if ($response->getStatus() != 200) {
-                logUrl($bot, $nick, $chan, $text, "Err: {$response->getStatus()} {$response->getReason()}");
-                continue;
-            }
             try {
                 $cookieJar = new InMemoryCookieJar;
                 $client = (new HttpClientBuilder)
