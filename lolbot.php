@@ -9,7 +9,6 @@ use Amp\Log\StreamHandler;
 use lolbot\entities\Bot;
 use lolbot\entities\Network;
 use monolog\Logger;
-use Symfony\Component\Yaml\Yaml;
 use Amp\Loop;
 use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
@@ -23,18 +22,6 @@ $logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
 $logHandler->setFormatter(new ConsoleFormatter);
 $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
-
-if(isset($argv[1])) {
-    if(!file_exists($argv[1]) || !is_file($argv[1]))
-        die("Usage: ".__FILE__." [config.yaml]\n  ({$argv[1]} does not exist or is not a file)\n");
-    $configFile = $argv[1];
-} else {
-    $configFile = __DIR__."/config.yaml";
-}
-
-$config = Yaml::parseFile($configFile);
-if(!is_array($config))
-    die("bad config file");
 
 
 /**

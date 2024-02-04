@@ -7,6 +7,15 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\Migrations\Configuration\EntityManager\ExistingEntityManager;
 use Doctrine\Migrations\Configuration\Migration\YamlFile;
 use Doctrine\Migrations\DependencyFactory;
+use Symfony\Component\Yaml\Yaml;
+
+
+$configFile = __DIR__."/config.yaml";
+if(!file_exists($configFile) || !is_file($configFile))
+    die("config.yaml does not exist or is not a file)\n");
+$config = Yaml::parseFile($configFile);
+if(!is_array($config))
+    die("bad config file\n");
 
 $isDevMode = true;
 
@@ -21,16 +30,16 @@ $paths = [
 $ORMconfig = ORMSetup::createAttributeMetadataConfiguration($paths, $isDevMode);
 
 // database configuration parameters
-
-$conn = DriverManager::getConnection(array(
-    'driver' => 'pdo_pgsql',
-    'user' => 'lolbot',
-    'dbname' => 'lolbot',
+$conn = DriverManager::getConnection($config['database'], $ORMconfig);
+//$conn = DriverManager::getConnection(array(
+//    'driver' => 'pdo_pgsql',
+//    'user' => 'lolbot',
+//    'dbname' => 'lolbot',
 //    'password' => 'lolpass',
 //    'host' => 'localhost',
 //    'port' => 5432,
 //    'charset' => 'utf-8'
-), $ORMconfig);
+//), $ORMconfig);
 
 
 /*

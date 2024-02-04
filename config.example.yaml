@@ -24,6 +24,14 @@ bots:
     #youtube_thumbwidth: 60
 
 
+#configure the database (follows doctrine config)
+database:
+  driver: "pdo_pgsql"
+  user: lolbot
+  dbname: lolbot
+#database:
+#  driver: "pdo_sqlite"
+#  path: "db.sqlite"
 
 # key for wolfram alpha
 # https://products.wolframalpha.com/api/
