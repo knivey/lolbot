@@ -1,5 +1,6 @@
 <?php
 namespace scripts\seen\entities;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use lolbot\entities\Network;
 #[ORM\Entity]
@@ -20,8 +21,8 @@ class seen
     #[ORM\Column]
     public string $chan;
 
-    #[ORM\Column]
-    public string $text;
+    #[ORM\Column(type: Types::BINARY)]
+    public $text;
 
     #[ORM\Column]
     public string $action;
