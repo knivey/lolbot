@@ -30,7 +30,7 @@ final class Version20240201012155 extends AbstractMigration
         $tells->addColumn("nick", Types::TEXT);
         $tells->addColumn("orig_nick", Types::TEXT);
         $tells->addColumn("chan", Types::TEXT);
-        $tells->addColumn("text", Types::TEXT);
+        $tells->addColumn("text", Types::BINARY);
         $tells->addColumn("action", Types::TEXT);
         $tells->addColumn("time", Types::DATETIME_MUTABLE);
         $tells->addColumn("network_id", Types::INTEGER);
