@@ -54,7 +54,8 @@ class seen extends script_base
         if ($seen->action == "notice") {
             $n = "[{$seen->orig_nick}]";
         }
-        $bot->pm($args->chan, "seen {$ago}: $n {$seen->text}");
+        $text = stream_get_contents($seen->text);
+        $bot->pm($args->chan, "seen {$ago}: $n {$text}");
     }
 
 
