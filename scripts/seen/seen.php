@@ -17,7 +17,7 @@ use function Symfony\Component\String\u;
 class seen extends script_base
 {
     #[Cmd("seen")]
-    #[Desc("check when bo lastt saw someone chat")]
+    #[Desc("check when bot last saw someone chat")]
     #[Syntax("<nick>")]
     function seen($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {

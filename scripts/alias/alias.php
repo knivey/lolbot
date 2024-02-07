@@ -122,7 +122,7 @@ class alias extends script_base
      */
     function handleCmd(object $args, \Irc\Client $bot, string $cmd, array $cmdArgs): bool
     {
-        global $router, $entityManager;
+        global $entityManager;
         try {
             $alias = $this->repo->findOneBy([
                 "nameLowered" => u($cmd)->lower(),
@@ -169,12 +169,12 @@ class alias extends script_base
         $value = str_replace(array_keys($vars), $vars, $value);
 
         if (isset($alias->cmd)) {
-            if (!$router->cmdExists($alias->cmd)) {
+            if (!$this->router->cmdExists($alias->cmd)) {
                 $bot->msg($args->chan, "Error with alias, bot command {$alias->cmd} not found");
                 return true;
             }
             try {
-                $router->call($alias->cmd, $value, $args, $bot);
+                $this->router->call($alias->cmd, $value, $args, $bot);
             } catch (\Exception $e) {
                 $bot->notice($args->from, $e->getMessage());
             }

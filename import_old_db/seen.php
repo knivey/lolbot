@@ -5,7 +5,8 @@ global $entityManager;
 
 use lolbot\entities\Network;
 use \RedBeanPHP\R as R;
-use Symfony\Component\String\UnicodeString as U;
+use function Symfony\Component\String\u;
+
 
 if(isset($argv[2])) {
     if(!file_exists($argv[1]) || !is_file($argv[1]))
@@ -26,7 +27,7 @@ $ss = R::findAll("seen");
 $c = 0;
 foreach($ss as $s) {
     $seen = new \scripts\seen\entities\seen();
-    $seen->nick = $s->nick;
+    $seen->nick = u($s->orig_nick)->lower();
     $seen->orig_nick = $s->orig_nick;
     $seen->chan = $s->chan;
     $seen->text = $s->text;

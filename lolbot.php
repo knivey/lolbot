@@ -16,8 +16,6 @@ use Crell\Tukio\OrderedListenerProvider;
 
 use lolbot\entities\Ignore;
 
-$router = new Cmdr();
-
 $logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
 $logHandler->setFormatter(new ConsoleFormatter);
 $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
@@ -59,7 +57,6 @@ require_once 'scripts/notifier/notifier.php';
 require_once 'scripts/brave/brave.php';
 require_once 'scripts/stocks/stocks.php';
 require_once 'scripts/wolfram/wolfram.php';
-require_once 'scripts/help/help.php';
 require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/zyzz/zyzz.php';
 require_once 'scripts/wiki/wiki.php';
@@ -77,6 +74,7 @@ use scripts\seen\seen;
 use scripts\codesand\codesand;
 use scripts\tools\tools;
 use scripts\urbandict\urbandict;
+use scripts\help\help;
 
 use scripts\linktitles\linktitles;
 use scripts\youtube\youtube;
@@ -90,7 +88,7 @@ require_once 'scripts/bomb_game/bomb_game.php';
 require_once 'scripts/translate/translate.php';
 
 
-$router->loadFuncs();
+
 
 //copied from Cmdr should give it its own function in there later
 function parseOpts(string &$msg, array $validOpts = []): array {
@@ -129,7 +127,7 @@ $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxL
 
 function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot): \Irc\Client
 {
-    global $config, $logHandler, $router;
+    global $config, $logHandler;
     //TODO add support and check for per bot servers first
     $server = $network->selectServer();
     $log = new Logger($dbBot->name);
@@ -143,52 +141,57 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $nicks = new Nicks($client);
     $chans = new Channels($client);
 
-    $bomb_game = new bomb_game($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:bomb_game", [$logHandler]), $nicks, $chans);
+    $router = new Cmdr();
+    $router->loadFuncs();
+
+    $bomb_game = new bomb_game($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:bomb_game", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($bomb_game);
 
-    $alias = new alias($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:alias", [$logHandler]), $nicks, $chans);
+    $alias = new alias($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:alias", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($alias);
-    $weather = new weather($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:weather", [$logHandler]), $nicks, $chans);
+    $weather = new weather($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:weather", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($weather);
-    $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans);
+    $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($lastfm);
-    $remindme = new remindme($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:remindme", [$logHandler]), $nicks, $chans);
+    $remindme = new remindme($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:remindme", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($remindme);
-    $tell = new tell($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tell", [$logHandler]), $nicks, $chans);
+    $tell = new tell($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tell", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($tell);
-    $seen = new seen($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:seen", [$logHandler]), $nicks, $chans);
+    $seen = new seen($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:seen", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($seen);
-    $codesand = new codesand($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:codesand", [$logHandler]), $nicks, $chans);
+    $codesand = new codesand($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:codesand", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($codesand);
-    $tools = new tools($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tools", [$logHandler]), $nicks, $chans);
+    $tools = new tools($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tools", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($tools);
-    $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans);
+    $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($urbandict);
+    $help = new help($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:help", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($help);
 
     $eventLogger = new Logger("Events");
     $eventProvider = new OrderedListenerProvider();
     $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
-    $linktitles = new linktitles($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:linktitles", [$logHandler]), $nicks, $chans);
+    $linktitles = new linktitles($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:linktitles", [$logHandler]), $nicks, $chans, $router);
     $linktitles->eventDispatcher = $eventDispatcher;
     $router->loadMethods($linktitles);
 
-    $youtube = new youtube($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:youtube", [$logHandler]), $nicks, $chans);
+    $youtube = new youtube($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:youtube", [$logHandler]), $nicks, $chans, $router);
     $youtube->setEventProvider($eventProvider);
     $router->loadMethods($youtube);
 
-    $twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans);
+    $twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans, $router);
     $twitter->setEventProvider($eventProvider);
     $router->loadMethods($twitter);
 
-    $invidious = new invidious($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:invidious", [$logHandler]), $nicks, $chans);
+    $invidious = new invidious($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:invidious", [$logHandler]), $nicks, $chans, $router);
     $invidious->setEventProvider($eventProvider);
     $router->loadMethods($invidious);
 
-    $github = new github($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:github", [$logHandler]), $nicks, $chans);
+    $github = new github($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:github", [$logHandler]), $nicks, $chans, $router);
     $github->setEventProvider($eventProvider);
     $router->loadMethods($github);
 
-    $reddit = new reddit($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:reddit", [$logHandler]), $nicks, $chans);
+    $reddit = new reddit($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:reddit", [$logHandler]), $nicks, $chans, $router);
     $reddit->setEventProvider($eventProvider);
     $router->loadMethods($reddit);
 
@@ -231,9 +234,9 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         }
     });
 
-    $client->on('chat', function ($args, \Irc\Client $bot) use ($alias, $linktitles, $network, $dbBot) {
+    $client->on('chat', function ($args, \Irc\Client $bot) use ($alias, $linktitles, $network, $dbBot, $router) {
         try {
-            global $config, $router, $entityManager, $ignoreCache;
+            global $config, $entityManager, $ignoreCache;
 
             $ignored = $ignoreCache->getItem($args->fullhost);
             if (!$ignored->isHit()) {
@@ -310,8 +313,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
             echo "UNCAUGHT EXCEPTION $e\n";
         }
     });
-    $client->on('pm', function ($args, \Irc\Client $bot) {
-        global $router;
+    $client->on('pm', function ($args, \Irc\Client $bot) use ($router) {
         $text = explode(' ', $args->text);
         $cmd = array_shift($text);
         $text = implode(' ', $text);

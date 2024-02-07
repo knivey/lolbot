@@ -2,6 +2,7 @@
 
 namespace scripts;
 
+use knivey\cmdr\Cmdr;
 use lolbot\entities\Bot;
 use lolbot\entities\Network;
 use lolbot\entities\Server;
@@ -17,6 +18,7 @@ class script_base
      public readonly \Psr\Log\LoggerInterface $logger,
      public readonly \Nicks $nicks,
      public readonly \Channels $chans,
+     public readonly Cmdr $router,
     )
     {
         $this->init();
