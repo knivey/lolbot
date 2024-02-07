@@ -13,7 +13,7 @@ use Amp\Log\StreamHandler;
 use Amp\Socket;
 use Monolog\Logger;
 
-function notifier($bot, $addresses) {
+function notifier(\Irc\Client $bot, $addresses) {
     //$cert = new Socket\Certificate(__DIR__ . '/../test/server.pem');
 
     //$context = (new Socket\BindContext)

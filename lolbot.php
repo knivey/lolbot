@@ -341,7 +341,7 @@ try {
             foreach ($network->getBots() as $bot) {
                 $clients[$bot->id] = startBot($network, $bot);
                 if(isset($config['bots'][$bot->id]['listen'])) {
-                    $servers[$bot->id] = yield from \scripts\notifier\notifier($bot, $config['bots'][$bot->id]['listen']);
+                    $servers[$bot->id] = yield from \scripts\notifier\notifier($clients[$bot->id], $config['bots'][$bot->id]['listen']);
                 }
             }
         }
