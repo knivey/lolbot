@@ -59,9 +59,8 @@ class reddit extends script_base
             return;
 
         $event->promises[] = \Amp\call(function () use ($event) {
-            global $reddit;
             try {
-                $info = yield $reddit->info($event->url);
+                $info = yield $this->reddit->info($event->url);
                 if ($info->kind != 'Listing') {
                     echo "reddit->info return was not kind: Listing\n";
                     return;
