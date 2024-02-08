@@ -98,7 +98,7 @@ class reddit extends script_base
                 $event->reply(str_replace(["\r", "\n"], "  ", $reply));
 
 
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 echo "reddit exception {$e->getMessage()}\n";
                 return;
             }
