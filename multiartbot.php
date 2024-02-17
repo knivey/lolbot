@@ -6,7 +6,7 @@
  * for faster pumps of moderate size arts
  */
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once 'bootstrap.php';
 
 use lolbot\entities\Ignore;
 use lolbot\entities\Network;
@@ -47,6 +47,7 @@ $logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
 $logHandler->setFormatter(new ConsoleFormatter);
 $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
+require_once 'library/Nicks.php';
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
@@ -78,11 +79,39 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     return $opts;
 }
 
+function canRun($args): bool
+{
+    global $nicks, $config;
+
+    if (isset($config['artMinAccess'])) {
+        if (!is_string($config['artMinAccess']) ||
+            strlen($config['artMinAccess']) > 1 ||
+            !str_contains('~&@%+', $config['artMinAccess'])
+        ) {
+            echo "artMinAccess configured incorrectly, must be one of ~&@%+\n";
+            return false;
+        }
+        switch ($config['artMinAccess']) {
+            case '~':
+                return $nicks->isOwner($args->nick, $args->channel);
+            case '&':
+                return $nicks->isAdminOrHigher($args->nick, $args->channel);
+            case '@':
+                return $nicks->isOpOrHigher($args->nick, $args->channel);
+            case '%':
+                return $nicks->isHalfOpOrHigher($args->nick, $args->channel);
+            case '+':
+                return $nicks->isVoiceOrHigher($args->nick, $args->channel);
+        }
+    }
+    return true;
+}
+
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 global $ORMconfig;
 $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
 
-
+$nicks = null;
 function onchat($args, \Irc\Client $bot)
 {
     global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
@@ -98,6 +127,9 @@ function onchat($args, \Irc\Client $bot)
         $ignoreCache->save($ignored);
     }
     if($ignored->get())
+        return;
+
+    if(!canRun($args))
         return;
 
     tryRec($bot, $args->from, $args->channel, $args->text);
@@ -146,7 +178,7 @@ function onchat($args, \Irc\Client $bot)
 $bots = [];
 
 Loop::run(function () {
-    global $clients, $config, $logHandler;
+    global $clients, $config, $logHandler, $nicks;
     var_dump($config);
 
     $cnt = 0;
@@ -203,6 +235,7 @@ Loop::run(function () {
 
         //Only first bot handles seeing commands, recording arts, etc
         if($cnt == 0) {
+            $nicks = new Nicks($bot);
             /***** Init scripts with hooks ******
              * definately will do this in a better way later via registering or whatever
              */

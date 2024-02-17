@@ -2,8 +2,7 @@
 <?php
 // Another bot just used for playing ascii arts
 
-
-require_once __DIR__ . '/vendor/autoload.php';
+require_once 'bootstrap.php';
 
 use JetBrains\PhpStorm\Pure;
 use lolbot\entities\Ignore;
@@ -40,6 +39,7 @@ if(!is_array($config))
 if(!isset($config['network_id']))
     die("config must have a network_id set\n");
 
+require_once 'library/Nicks.php';
 require_once 'artbot_rest_server.php';
 require_once 'artbot_scripts/art-common.php';
 require_once 'artbot_scripts/quotes.php';
@@ -72,14 +72,42 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     return $opts;
 }
 
+function canRun($args): bool
+{
+    global $nicks, $config;
+
+    if (isset($config['artMinAccess'])) {
+        if (!is_string($config['artMinAccess']) ||
+            strlen($config['artMinAccess']) > 1 ||
+            !str_contains('~&@%+', $config['artMinAccess'])
+        ) {
+            echo "artMinAccess configured incorrectly, must be one of ~&@%+\n";
+            return false;
+        }
+        switch ($config['artMinAccess']) {
+            case '~':
+                return $nicks->isOwner($args->nick, $args->channel);
+            case '&':
+                return $nicks->isAdminOrHigher($args->nick, $args->channel);
+            case '@':
+                return $nicks->isOpOrHigher($args->nick, $args->channel);
+            case '%':
+                return $nicks->isHalfOpOrHigher($args->nick, $args->channel);
+            case '+':
+                return $nicks->isVoiceOrHigher($args->nick, $args->channel);
+        }
+    }
+    return true;
+}
+
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 global $ORMconfig;
 $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
 
-
+$nick = null;
 $bot = null;
 Loop::run(function () {
-    global $bot, $config, $logHandler;
+    global $bot, $config, $logHandler, $nicks;
 
     $log = new Logger($config['name']);
     $log->pushHandler($logHandler);
@@ -89,6 +117,8 @@ Loop::run(function () {
     if(isset($config['sasl_user']) && isset($config['sasl_pass'])) {
         $bot->setSasl($config['sasl_user'], $config['sasl_pass']);
     }
+
+    $nicks = new Nicks($bot);
 
     /***** Init scripts with hooks ******
      * definately will do this in a better way later via registering or whatever
@@ -149,6 +179,9 @@ Loop::run(function () {
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
         global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
+
+        if(!canRun($args))
+            return;
 
         $ignored = $ignoreCache->getItem($args->fullhost);
         if(!$ignored->isHit()) {
