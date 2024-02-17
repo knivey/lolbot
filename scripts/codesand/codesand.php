@@ -51,7 +51,7 @@ class codesand extends script_base
 
     function canRun($args): bool
     {
-        global $nicks, $config;
+        global $config;
         if (!($config['bots'][$this->bot->id]['codesand'] ?? false)) {
             return false;
         }
@@ -65,15 +65,15 @@ class codesand extends script_base
             }
             switch ($config['bots'][$this->bot->id]['codesandMinAccess']) {
                 case '~':
-                    return $nicks->isOwner($args->nick, $args->channel);
+                    return $this->nicks->isOwner($args->nick, $args->channel);
                 case '&':
-                    return $nicks->isAdminOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isAdminOrHigher($args->nick, $args->channel);
                 case '@':
-                    return $nicks->isOpOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isOpOrHigher($args->nick, $args->channel);
                 case '%':
-                    return $nicks->isHalfOpOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isHalfOpOrHigher($args->nick, $args->channel);
                 case '+':
-                    return $nicks->isVoiceOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isVoiceOrHigher($args->nick, $args->channel);
             }
         }
         return true;
