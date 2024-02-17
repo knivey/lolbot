@@ -55,7 +55,7 @@ require_once 'artbot_scripts/urlimg.php';
 require_once 'artbot_scripts/drawing.php';
 require_once 'artbot_scripts/bashorg.php';
 require_once 'artbot_scripts/artfart.php';
-require_once 'scripts/help/help.php';
+require_once 'artbot_scripts/help.php';
 $router->loadFuncs();
 
 //copied from Cmdr should give it its own function in there later
