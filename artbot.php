@@ -110,6 +110,17 @@ Loop::run(function () {
         $bot->join(implode(',', $config['channels']));
     });
 
+    \Amp\Loop::repeat(10*1000, function() use ($bot, $config) {
+        if(!$bot->isEstablished()) {
+            return;
+        }
+        if($bot->isCurrentNick($config['name'])) {
+            return;
+        }
+        $bot->nick($config['name']);
+    });
+
+
     $bot->on('kick', function ($args, \Irc\Client $bot) {
         if($args->nick == $bot->getNick())
             $bot->join($args->channel);

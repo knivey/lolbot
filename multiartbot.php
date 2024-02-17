@@ -161,6 +161,16 @@ Loop::run(function () {
             $bot->setSasl($config['sasl_user'], $config['sasl_pass']);
         }
 
+        \Amp\Loop::repeat(10*1000, function() use ($bot, $bcfg) {
+            if(!$bot->isEstablished()) {
+                return;
+            }
+            if($bot->isCurrentNick($bcfg['name'])) {
+                return;
+            }
+            $bot->nick($bcfg['name']);
+        });
+
         //all bots have same set of chans
         $bot->on('welcome', function ($e, \Irc\Client $bot) {
             global $config;

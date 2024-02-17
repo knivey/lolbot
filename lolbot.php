@@ -208,6 +208,16 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         $bot->join(implode(',', $join));
     });
 
+    \Amp\Loop::repeat(10*1000, function() use ($client, $dbBot) {
+        if(!$client->isEstablished()) {
+            return;
+        }
+        if($client->isCurrentNick($dbBot->name)) {
+            return;
+        }
+        $client->nick($dbBot->name);
+    });
+
     $client->on('kick', function ($args, \Irc\Client $bot) {
         if ($args->nick == $bot->getNick())
             $bot->join($args->channel);

@@ -962,7 +962,8 @@ class Client extends EventEmitter
                 $this->emit('options', array('options' => $this->options));
                 break;
             case ERR_NICKNAMEINUSE:
-                $this->setNick(str_shuffle($this->nick));
+                if(!$this->isEstablished())
+                    $this->setNick(str_shuffle($this->nick));
                 break;
                 //sometimes connecting to znc or a server will change our nick like so
                 //:knivey!~knivy@2001:bc8:182c:a4e::1 NICK :sludg
