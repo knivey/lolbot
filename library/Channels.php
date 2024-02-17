@@ -95,10 +95,12 @@ class Channels
             $this->channels[strtolower($args[1])]->topicTime = $args[3];
         });
         $bot->on('nick', function($args, $bot) {
-            if(!isset($this->channels[strtolower($args->channel)]))
-                return;
-            unset($this->channels[strtolower($args->channel)]->nicks[strtolower($args->old)]);
-            $this->channels[strtolower($args->channel)]->nicks[strtolower($args->new)] = $args->new;
+            foreach($this->channels as &$channel) {
+                if(isset($channel->nicks[strtolower($args->old)])) {
+                    $channel->nicks[strtolower($args->new)] = $channel->nicks[strtolower($args->old)];
+                    unset($channel->nicks[strtolower($args->old)]);
+                }
+            }
         });
     }
 
