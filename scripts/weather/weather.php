@@ -93,23 +93,17 @@ class weather extends script_base
             return;
         }
         $si = false;
-        $imp = false;
         $fc = false;
 
-        $query = $cmdArgs['query'] ?? '';
-        if ($cmdArgs->optEnabled("--si") || $cmdArgs->optEnabled("--metric")) {
-            $si = true;
-        }
-        if ($cmdArgs->optEnabled("--us") || $cmdArgs->optEnabled("--imperial")) {
-            $imp = true;
-        }
-        if ($cmdArgs->optEnabled("--fc") || $cmdArgs->optEnabled("--forecast")) {
-            $fc = true;
-        }
-
-        if ($imp && $si) {
+        if (($cmdArgs->optEnabled("--si") || $cmdArgs->optEnabled("--metric")) &&
+            ($cmdArgs->optEnabled("--us") || $cmdArgs->optEnabled("--imperial"))) {
             $bot->msg($args->chan, "Choose either si or imperial not both");
             return;
+        }
+
+        $query = $cmdArgs['query'] ?? '';
+        if ($cmdArgs->optEnabled("--fc") || $cmdArgs->optEnabled("--forecast")) {
+            $fc = true;
         }
 
         try {
@@ -121,9 +115,6 @@ class weather extends script_base
                     return;
                 }
                 $si = $location->si;
-                if ($imp) {
-                    $si = false;
-                }
             } else {
                 if ($query[0] == '@') {
                     //lookup for another person's setlocation
@@ -134,9 +125,6 @@ class weather extends script_base
                         return;
                     }
                     $si = $location->si;
-                    if ($imp) {
-                        $si = false;
-                    }
                 } else {
                     try {
                         $loc = yield self::getLocation($query);
@@ -155,6 +143,13 @@ class weather extends script_base
                     $location->long = $loc['lon'];
                 }
             }
+            if ($cmdArgs->optEnabled("--si") || $cmdArgs->optEnabled("--metric")) {
+                $si = true;
+            }
+            if ($cmdArgs->optEnabled("--us") || $cmdArgs->optEnabled("--imperial")) {
+                $si = false;
+            }
+
             //Now use lat lon to get weather
 
             $url = "https://api.openweathermap.org/data/2.5/onecall?lat={$location->lat}&lon={$location->long}&appid=$config[openweatherKey]&exclude=minutely,hourly";
