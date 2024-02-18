@@ -6,14 +6,17 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use simplehtmldom\HtmlDocument;
+use function knivey\tools\multi_array_padding;
 
-#[Cmd("mal", "myanimelist")]
+
+#[Cmd("mals", "myanimelistsearch")]
 #[Syntax("<search>...")]
-#[Desc("lookup a anime on myanimelist")]
+#[Desc("search a anime on myanimelist")]
 #[CallWrap("Amp\asyncCall")]
-function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $url = "https://myanimelist.net/search/all?q=" .  urlencode($cmdArgs["search"] ."&cat=anime");
+    var_dump(urlencode($cmdArgs["search"]));
+    $url = "https://myanimelist.net/anime.php?cat=anime&q=" .  urlencode($cmdArgs["search"]);
     try {
         $body = yield async_get_contents($url);
     } catch (\async_get_exception $e) {
@@ -23,20 +26,66 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $bot->pm($args->chan, "MAL: {$e->getMessage()}");
     }
     $doc = new HtmlDocument($body);
-    $result = $doc->find('div.title', 0)?->find('a', 0)?->getAttribute('href');
+
+    $results = [];
     foreach($doc->find('div.title') as $e) {
-        if(strtolower($e->find('a', 0)?->text()) == strtolower($cmdArgs["search"]))
-            $result = $e->find('a', 0)?->getAttribute('href');
+        $id = $e->find('a', 0)?->getAttribute('href');
+        preg_match("@^https?://myanimelist.net/anime/(\d+)/.*@",$id,$m);
+        $id= $m[1];
+        $results[] = [$id, $e->find('a', 0)?->text()];
     }
 
-    if(!$result) {
+    if(count($results) == 0) {
         $bot->pm($args->chan, "\2MAL:\2 no results found");
-        return;
+    }
+
+    $results = multi_array_padding($results);
+    $out = array_map(fn($v) => rtrim(implode($v)), $results);
+    $cnt = 0;
+    foreach($out as $line) {
+        if($cnt++ >= 10)
+            return;
+        $bot->pm($args->chan, $line);
+    }
+}
+
+#[Cmd("mal", "myanimelist")]
+#[Syntax("<search>...")]
+#[Desc("lookup a anime on myanimelist, search can be an ID to lookup directly")]
+#[CallWrap("Amp\asyncCall")]
+function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+{
+    if(preg_match("/^\d+$/", $cmdArgs["search"])) {
+        $result = "https://myanimelist.net/anime/{$cmdArgs['search']}";
+    } else {
+        $url = "https://myanimelist.net/anime.php?cat=anime&q=" . urlencode($cmdArgs["search"]);
+        try {
+            $body = yield async_get_contents($url);
+        } catch (\async_get_exception $e) {
+            $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
+            return;
+        } catch (\Exception $e) {
+            $bot->pm($args->chan, "MAL: {$e->getMessage()}");
+        }
+        $doc = new HtmlDocument($body);
+        $result = $doc->find('div.title', 0)?->find('a', 0)?->getAttribute('href');
+        foreach ($doc->find('div.title') as $e) {
+            if (strtolower($e->find('a', 0)?->text()) == strtolower($cmdArgs["search"]))
+                $result = $e->find('a', 0)?->getAttribute('href');
+        }
+
+        if (!$result) {
+            $bot->pm($args->chan, "\2MAL:\2 no results found");
+            return;
+        }
     }
     try {
         $body = yield async_get_contents($result);
     } catch (\async_get_exception $e) {
-        $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
+        if($e->getCode() == 404)
+            $bot->pm($args->chan, "\2MAL:\2 404 anime not found");
+        else
+            $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
         return;
     } catch (\Exception $e) {
         $bot->pm($args->chan, "MAL: {$e->getMessage()}");
