@@ -28,12 +28,21 @@ function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     }
     $doc = new HtmlDocument($body);
 
-    $results = [];
-    foreach($doc->find('div.title') as $e) {
-        $id = $e->find('a', 0)?->getAttribute('href');
+    $results[] = ["ID", "Type", "Eps", "Title", "Score"];
+    $cnt = 0;
+    foreach($doc->find('table', 1)->find('tr') as $tr) {
+        $cnt++;
+        if($cnt == 1)
+            continue;
+        $id = $tr->find('td',0)->find('a', 0)?->getAttribute('href');
         preg_match("@^https?://myanimelist.net/anime/(\d+)/.*@",$id,$m);
         $id= $m[1];
-        $results[] = [$id, $e->find('a', 0)?->text()];
+        $title = trim($tr->find('td',1)->find('a', 0)?->text());
+
+        $type =  $tr->find('td',2)->text();
+        $eps =  $tr->find('td',3)->text();
+        $score =  $tr->find('td',4)->text();
+        $results[] = [$id, $type, $eps, $title, $score];
     }
 
     if(count($results) == 0) {
