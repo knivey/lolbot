@@ -24,6 +24,7 @@ function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         return;
     } catch (\Exception $e) {
         $bot->pm($args->chan, "MAL: {$e->getMessage()}");
+        return;
     }
     $doc = new HtmlDocument($body);
 
@@ -66,6 +67,7 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             return;
         } catch (\Exception $e) {
             $bot->pm($args->chan, "MAL: {$e->getMessage()}");
+            return;
         }
         $doc = new HtmlDocument($body);
         $result = $doc->find('div.title', 0)?->find('a', 0)?->getAttribute('href');
@@ -89,6 +91,7 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         return;
     } catch (\Exception $e) {
         $bot->pm($args->chan, "MAL: {$e->getMessage()}");
+        return;
     }
     $p = new HtmlDocument($body);
     $name = $p->find('.title-name',0)?->text();
@@ -124,7 +127,6 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         }
         $info[$i->find('span', 0)?->text()] = substr($i->text(), strlen($i->find('span', 0)?->text())+1);;
     }
-var_dump($info);
 
     if(isset($info["Genre:"]))
         $genres = "\2Genre:\2 {$info['Genre:']}";
