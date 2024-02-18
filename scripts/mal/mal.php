@@ -49,12 +49,11 @@ function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $bot->pm($args->chan, "\2MAL:\2 no results found");
     }
 
+    $results = array_slice($results, 0, 10);
+
     $results = multi_array_padding($results);
     $out = array_map(fn($v) => rtrim(implode($v)), $results);
-    $cnt = 0;
     foreach($out as $line) {
-        if($cnt++ >= 10)
-            return;
         $bot->pm($args->chan, $line);
     }
 }
