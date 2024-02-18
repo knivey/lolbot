@@ -13,7 +13,7 @@ use simplehtmldom\HtmlDocument;
 #[CallWrap("Amp\asyncCall")]
 function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $url = "https://myanimelist.net/search/all?q=" .  urlencode($cmdArgs["search"]);
+    $url = "https://myanimelist.net/search/all?q=" .  urlencode($cmdArgs["search"] ."&cat=anime");
     try {
         $body = yield async_get_contents($url);
     } catch (\async_get_exception $e) {
@@ -24,6 +24,11 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     }
     $doc = new HtmlDocument($body);
     $result = $doc->find('div.title', 0)?->find('a', 0)?->getAttribute('href');
+    foreach($doc->find('div.title') as $e) {
+        if(strtolower($e->find('a', 0)?->text()) == strtolower($cmdArgs["search"]))
+            $result = $e->find('a', 0)?->getAttribute('href');
+    }
+
     if(!$result) {
         $bot->pm($args->chan, "\2MAL:\2 no results found");
         return;
