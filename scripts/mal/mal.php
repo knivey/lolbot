@@ -121,6 +121,12 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             $genres = "\2Genres:\2 " . implode(', ', $gs);
             continue;
         }
+        if($i->find('span', 0)?->text() == "Genre:") {
+            $genres = "\2Genre:\2 " . $i->find('a', 0)?->text();
+        }
+        if($i->find('span', 0)?->text() == "Theme:") {
+            $themes = "\2Theme:\2 " . $i->find('a', 0)?->text();
+        }
         if($i->find('span', 0)?->text() == "Themes:") {
             $ts = [];
             foreach($i->find('a') as $t) {
@@ -135,11 +141,6 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         }
         $info[$i->find('span', 0)?->text()] = substr($i->text(), strlen($i->find('span', 0)?->text())+1);;
     }
-
-    if(isset($info["Genre:"]))
-        $genres = "\2Genre:\2 {$info['Genre:']}";
-    if(isset($info["Theme:"]))
-        $genres = "\2Theme:\2 {$info['Theme:']}";
 
     $bot->pm($args->chan, "\2MAL:\2 $name ($name_eng) \2Score:\2 $score by $score_users");
     $out = "\2Type:\2 {$info['Type:']} ({$info['Status:']}) ";
