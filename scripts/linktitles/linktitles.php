@@ -79,6 +79,7 @@ class linktitles extends script_base
                 $urlEvent->doLog($this, $bot);
                 continue;
             }
+            $this->logger->info("no URL events handled, falling back to normal title extraction");
 
             $word = preg_replace("@^https?://(www\.)?reddit.com@i", "https://old.reddit.com", $word);
 

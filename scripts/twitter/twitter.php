@@ -4,6 +4,7 @@ namespace scripts\twitter;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Carbon\Carbon;
+use Amp\Http\Client\Response;
 use Psr\EventDispatcher\ListenerProviderInterface;
 use scripts\linktitles\UrlEvent;
 use scripts\script_base;
@@ -27,16 +28,44 @@ class twitter extends script_base {
             global $config;
             try {
                 $client = HttpClientBuilder::buildDefault();
-                //$req = new Request("https://nitter.net/$user/status/$id");
-                //$req = new Request("https://nitter.ktachibana.party/$user/status/$id");
-                $req = new Request("https://nitter.kavin.rocks/$user/status/$id");
-                $response = yield $client->request($req);
-                $body = yield $response->getBody()->buffer();
-                if ($response->getStatus() != 200) {
-                    echo "twitter url lookup failed with code {$response->getStatus()}\n";
-                    var_dump($body);
+                $nitters = [
+                    "https://nitter.net/",
+                    "https://nitter.ktachibana.party/",
+                    "https://nitter.kavin.rocks/",
+                    "https://nitter.unixfox.eu/",
+                    "https://nitter.moomoo.me/",
+                    "https://nitter.mint.lgbt/",
+                    "https://nitter.esmailelbob.xyz/",
+                    "https://nitter.bird.froth.zone/",
+                    "https://nitter.privacydev.net/",
+                    "https://nitter.no-logs.com/",
+                ];
+                $nitters = array_map(fn ($it) => "{$it}$user/status/$id", $nitters);
+                $responses = [];
+                foreach ($nitters as $nitter) {
+                    $responses[] = \Amp\Promise\timeout($client->request(new Request($nitter)), 5000);
+                }
+                $this->logger->info("starting requests...");
+                [$fails, $responses] = yield \Amp\Promise\any($responses);
+                $this->logger->info(count($responses) . " requests finished, " . count($fails) . " failed/timedout");
+                $success = [];
+                foreach($responses as $r) {
+                    /** @var Response $r */
+                    if($r->getStatus() == 200) {
+                        $this->logger->info("200 from {$r->getOriginalRequest()->getUri()}");
+                        $success[] = $r;
+                    } else {
+                        $this->logger->info("failure code {$r->getStatus()} from {$r->getOriginalRequest()->getUri()}");
+                    }
+                }
+                if(count($success) == 0) {
+                    $this->logger->notice("no nitters returned 200 OK");
                     return;
                 }
+                /** @var Response $response */
+                $response = array_pop($success);
+                $this->logger->info("processing 200 response from " .  $response->getOriginalRequest()->getUri());
+                $body = yield $response->getBody()->buffer();
                 
                 $html = new HtmlDocument();
                 $html->load($body);
