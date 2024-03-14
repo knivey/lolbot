@@ -37,6 +37,7 @@ class seen extends script_base
             $bot->pm($args->chan, "I've never seen {$cmdArgs['nick']} in my whole life");
             return;
         }
+        $entityManager->refresh($seen);
         try {
             $ago = (new Carbon($seen->time))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 3);
         } catch (\Exception $e) {
