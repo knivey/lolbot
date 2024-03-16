@@ -233,8 +233,10 @@ class weather extends script_base
         }
 
         $nick = u($args->nick)->lower();
-
-        $location = new location();
+        $location = $entityManager->getRepository(location::class)->findOneBy(["nick" => $nick, "network" => $this->network]);
+        if (!$location) {
+            $location = new location();
+        }
         $location->name = $loc["location"];
         $location->lat = $loc["lat"];
         $location->long = $loc["lon"];
