@@ -259,6 +259,7 @@ static $palette = [
 #[Option("--brightness", "change brightness value as percent, 100 is default")]
 #[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
 #[Option("--render2", "alternate text rending for luminocity")]
+#[Option("--16", "limit to only using 16 colors")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
     $url = $cmdArgs[0];
@@ -292,6 +293,10 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $brightness = 100;
         $saturation = 100;
         $hue = 100;
+        $limit = false;
+        if($cmdArgs->optEnabled("--16")) {
+            $limit = true;
+        }
         if($cmdArgs->optEnabled("--width")) {
             $width = intval($cmdArgs->getOpt("--width"));
             if($width < 10 || $width > 200) {
@@ -361,24 +366,24 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 
                 if($cmdArgs->optEnabled("--quality")) {
-                    $match_index = getClosestMatchCIEDE2000($color);
+                    $match_index = getClosestMatchCIEDE2000($color, $limit);
                 } elseif ($cmdArgs->optEnabled("--lab")) {
-                    $match_index = getClosestMatchEuclideanLab($color);
+                    $match_index = getClosestMatchEuclideanLab($color, $limit);
                 } elseif ($cmdArgs->optEnabled("--rgb")) {
-                    $match_index = getClosestMatchEuclideanRGB($color);
+                    $match_index = getClosestMatchEuclideanRGB($color, $limit);
                 } else {
-                    $match_index = getClosestMatchDin99($color);
+                    $match_index = getClosestMatchDin99($color, $limit);
                 }
 
                 if($cmdArgs->optEnabled("--halfblock")) {
                     if($cmdArgs->optEnabled("--quality")) {
-                        $match_index2 = getClosestMatchCIEDE2000($color2);
+                        $match_index2 = getClosestMatchCIEDE2000($color2, $limit);
                     } elseif ($cmdArgs->optEnabled("--lab")) {
-                        $match_index2 = getClosestMatchEuclideanLab($color2);
+                        $match_index2 = getClosestMatchEuclideanLab($color2, $limit);
                     } elseif ($cmdArgs->optEnabled("--rgb")) {
-                        $match_index2 = getClosestMatchEuclideanRGB($color);
+                        $match_index2 = getClosestMatchEuclideanRGB($color2, $limit);
                     } else {
-                        $match_index2 = getClosestMatchDin99($color2);
+                        $match_index2 = getClosestMatchDin99($color2, $limit);
                     }
                     //just keeping this simple to start with
                     if($match_index != $fg || $match_index2 != $bg) {
@@ -481,11 +486,15 @@ function make_even($n) {
     return $n - $n % 2;
 }
 
-function getClosestMatchCIEDE2000(Color $color) {
+function getClosestMatchCIEDE2000(Color $color, $limit = true) {
     global $palette;
+    if($limit)
+        $pal = array_slice($palette, 0, 16);
+    else
+        $pal = $palette;
     $matchIndex = 0;
     $dist = 9999999999999.0;
-    foreach ($palette as $idx => $p) {
+    foreach ($pal as $idx => $p) {
         $d = $color->getDifferenceCIEDE2000($p);
         if($d < $dist) {
             $matchIndex = $idx;
@@ -495,11 +504,15 @@ function getClosestMatchCIEDE2000(Color $color) {
     return $matchIndex;
 }
 
-function getClosestMatchDin99(Color $color) {
+function getClosestMatchDin99(Color $color, $limit = false) {
     global $palette;
+    if($limit)
+        $pal = array_slice($palette, 0, 16);
+    else
+        $pal = $palette;
     $matchIndex = 0;
     $dist = 9999999999999.0;
-    foreach ($palette as $idx => $p) {
+    foreach ($pal as $idx => $p) {
         $d = $color->getDifferenceDin99($p);
         if($d < $dist) {
             $matchIndex = $idx;
@@ -509,11 +522,15 @@ function getClosestMatchDin99(Color $color) {
     return $matchIndex;
 }
 
-function getClosestMatchEuclideanLab(Color $color) {
+function getClosestMatchEuclideanLab(Color $color, $limit = false) {
     global $palette;
+    if($limit)
+        $pal = array_slice($palette, 0, 16);
+    else
+        $pal = $palette;
     $matchIndex = 0;
     $dist = 9999999999999.0;
-    foreach ($palette as $idx => $p) {
+    foreach ($pal as $idx => $p) {
         $d = $color->getDifferenceEuclideanLab($p);
         if($d < $dist) {
             $matchIndex = $idx;
@@ -523,11 +540,15 @@ function getClosestMatchEuclideanLab(Color $color) {
     return $matchIndex;
 }
 
-function getClosestMatchEuclideanRGB(Color $color) {
+function getClosestMatchEuclideanRGB(Color $color, $limit = false) {
     global $palette;
+    if($limit)
+        $pal = array_slice($palette, 0, 16);
+    else
+        $pal = $palette;
     $matchIndex = 0;
     $dist = 9999999999999.0;
-    foreach ($palette as $idx => $p) {
+    foreach ($pal as $idx => $p) {
         $d = $color->getDifferenceEuclideanRGB($p);
         if($d < $dist) {
             $matchIndex = $idx;
