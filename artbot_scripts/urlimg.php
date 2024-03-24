@@ -247,9 +247,18 @@ static $palette = [
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[CallWrap("Amp\asyncCall")]
-#[Options("--width", "--edit", "--block", "--halfblock", "--quality", "--lab", "--render2")]
+#[\knivey\cmdr\attributes\Desc("Generates an ascii from an image url, color matching defaults to Din99")]
+#[Option("--width", "how wide to make the ascii ex --width=80")]
+#[Option("--edit", "Generate a URL to open the ascii in asciibird editor")]
+#[Option("--block", "Render the image with full blocks")]
+#[Option("--halfblock", "Render the image with halfblocks")]
+#[Option("--quality", "calculate colors using CIEDE2000")]
+#[Option("--lab", "calculate colors using euclidian difference in lab colorspace")]
+#[Option("--rgb", "calculate colors using euclidian difference in rgb colorspace")]
 #[Option("--saturation", "change saturation value as percent, 100 is default")]
 #[Option("--brightness", "change brightness value as percent, 100 is default")]
+#[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
+#[Option("--render2", "alternate text rending for luminocity")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
     $url = $cmdArgs[0];
@@ -293,16 +302,21 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
         $img = new Imagick();
         $img->readImageBlob($body);
+        if($cmdArgs->optEnabled("--gamma")) {
+            $gamma = $cmdArgs->getOpt("--gamma");
+
+            $img->gammaImage($gamma);
+        }
         if($cmdArgs->optEnabled("--saturation")) {
             $saturation = intval($cmdArgs->getOpt("--saturation"));
-            if($width < 0 || $width > 10000) {
+            if($saturation < 0 || $saturation > 10000) {
                 $bot->pm($args->chan, "--saturation should be between 0 and 10000");
                 return;
             }
         }
         if($cmdArgs->optEnabled("--brightness")) {
             $brightness = intval($cmdArgs->getOpt("--brightness"));
-            if($width < 0 || $width > 10000) {
+            if($brightness < 0 || $brightness > 10000) {
                 $bot->pm($args->chan, "--brightness should be between 0 and 10000");
                 return;
             }
@@ -310,11 +324,13 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $img->modulateImage($brightness, $saturation, $hue);
         $size = $img->getImageGeometry();
         $factor = $width / $size['width'];
+        $width = $size['width'] * $factor;
         if($cmdArgs->optEnabled("--halfblock"))
-            $img->scaleImage(round($size['width'] * $factor), make_even(round($size['height'] * $factor)));
+            $height = make_even(round($size['height'] * $factor));
         else
-            $img->scaleImage(round($size['width'] * $factor), round($size['height'] * $factor / 2));
+            $height = round($size['height'] * $factor / 2);
 
+        $img->resizeImage($width, $height, Imagick::FILTER_LANCZOS2SHARP, 0);
         $size = $img->getImageGeometry();
 
         $text = $cmdArgs[1];
@@ -348,6 +364,8 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                     $match_index = getClosestMatchCIEDE2000($color);
                 } elseif ($cmdArgs->optEnabled("--lab")) {
                     $match_index = getClosestMatchEuclideanLab($color);
+                } elseif ($cmdArgs->optEnabled("--rgb")) {
+                    $match_index = getClosestMatchEuclideanRGB($color);
                 } else {
                     $match_index = getClosestMatchDin99($color);
                 }
@@ -357,6 +375,8 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                         $match_index2 = getClosestMatchCIEDE2000($color2);
                     } elseif ($cmdArgs->optEnabled("--lab")) {
                         $match_index2 = getClosestMatchEuclideanLab($color2);
+                    } elseif ($cmdArgs->optEnabled("--rgb")) {
+                        $match_index2 = getClosestMatchEuclideanRGB($color);
                     } else {
                         $match_index2 = getClosestMatchDin99($color2);
                     }
@@ -366,7 +386,10 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                             $img_string .= " ";
                             continue;
                         }
-                        $img_string .= "\x03$match_index,$match_index2";
+                        if($bg == $match_index2)
+                            $img_string .= "\x03$match_index";
+                        else
+                            $img_string .= "\x03$match_index,$match_index2";
                         $fg = $match_index;
                         $bg = $match_index2;
                     }
@@ -461,7 +484,7 @@ function make_even($n) {
 function getClosestMatchCIEDE2000(Color $color) {
     global $palette;
     $matchIndex = 0;
-    $dist = 9999999999999;
+    $dist = 9999999999999.0;
     foreach ($palette as $idx => $p) {
         $d = $color->getDifferenceCIEDE2000($p);
         if($d < $dist) {
@@ -475,7 +498,7 @@ function getClosestMatchCIEDE2000(Color $color) {
 function getClosestMatchDin99(Color $color) {
     global $palette;
     $matchIndex = 0;
-    $dist = 9999999999999;
+    $dist = 9999999999999.0;
     foreach ($palette as $idx => $p) {
         $d = $color->getDifferenceDin99($p);
         if($d < $dist) {
@@ -489,7 +512,7 @@ function getClosestMatchDin99(Color $color) {
 function getClosestMatchEuclideanLab(Color $color) {
     global $palette;
     $matchIndex = 0;
-    $dist = 9999999999999;
+    $dist = 9999999999999.0;
     foreach ($palette as $idx => $p) {
         $d = $color->getDifferenceEuclideanLab($p);
         if($d < $dist) {
@@ -500,6 +523,19 @@ function getClosestMatchEuclideanLab(Color $color) {
     return $matchIndex;
 }
 
+function getClosestMatchEuclideanRGB(Color $color) {
+    global $palette;
+    $matchIndex = 0;
+    $dist = 9999999999999.0;
+    foreach ($palette as $idx => $p) {
+        $d = $color->getDifferenceEuclideanRGB($p);
+        if($d < $dist) {
+            $matchIndex = $idx;
+            $dist = $d;
+        }
+    }
+    return $matchIndex;
+}
 
 function render($lum)
 {
