@@ -169,11 +169,18 @@ function initQuotes($bot) {
         $text = $args->text;
         if(!isset($quote_recordings[$nick]))
             return;
+        if($args->chan != $quote_recordings[$nick]['chan'])
+            return;
         Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
-        $quote_recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, quoteTimeOut(...), [$nick, $bot]);
         if(!$quote_recordings[$nick]['keeptimes'])
             $text = stripTimestamp($text);
         $quote_recordings[$nick]['lines'][] = $text;
+        if(count($quote_recordings[$nick]['lines']) > 100) {
+            $bot->msg($quote_recordings[$nick]['chan'], "$nick that quote sucks, keep it short");
+            unset($quote_recordings[$nick]);
+            return;
+        }
+        $quote_recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, quoteTimeOut(...), [$nick, $bot]);
     });
 }
 
