@@ -10,6 +10,7 @@ use Amp\Promise;
 
 #[Cmd("yoda")]
 #[Syntax('<url>...')]
+#[Option("--og", "OG Yoda")]
 #[CallWrap("Amp\asyncCall")]
 function yoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -35,10 +36,23 @@ function yoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         }
 
         $yodaImg = new Imagick();
-        $yodaImg->readImage(__DIR__ . "/yoda.png");
+        $yodaImgFile = $cmdArgs->optEnabled('--og') ? "/yoda-og.png" : "/yoda.png";
+        $yodaImg->readImage(__DIR__ . yodaImgFile);
         $yodaImg->scaleImage($img->getImageWidth(), $img->getImageHeight());
 
-        $img->compositeImage($yodaImg, Imagick::COMPOSITE_BLEND, 0, 0);
+        // original behavior
+        if ($cmdArgs->optEnabled('--og')) {
+            $newWidth = $yodaImg->getImageWidth() + $img->getImageWidth();
+            $newHeight = max($yodaImg->getImageHeight(), $img->getImageHeight());
+            $finalImg = new Imagick();
+            $finalImg->newImage($newWidth, $newHeight, new ImagickPixel('transparent'));
+            $finalImg->compositeImage($yodaImg, Imagick::COMPOSITE_OVER, 0, 0);
+            $finalImg->compositeImage($img, Imagick::COMPOSITE_OVER, $yodaImg->getImageWidth(), 0);
+            $img = $finalImg;
+        } else {
+            // new chunky behavior
+            $img->compositeImage($yodaImg, Imagick::COMPOSITE_BLEND, 0, 0);
+        }
 
         $tmpfile = tempnam(sys_get_temp_dir(), 'yoda');
         $img->writeImage($tmpfile);
