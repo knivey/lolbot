@@ -87,9 +87,6 @@ require_once 'scripts/durendaltv/durendaltv.php';
 require_once 'scripts/bomb_game/bomb_game.php';
 require_once 'scripts/translate/translate.php';
 require_once 'scripts/yoda/yoda.php';
-require_once 'scripts/yoda/yoda-og.php';
-
-
 
 
 //copied from Cmdr should give it its own function in there later
