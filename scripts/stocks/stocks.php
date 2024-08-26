@@ -6,7 +6,7 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
 
-#[Cmd("stock")]
+//#[Cmd("stock")]
 #[Syntax('<query>')]
 #[CallWrap("Amp\asyncCall")]
 function stock($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
