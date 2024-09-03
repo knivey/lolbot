@@ -113,6 +113,33 @@ class alias extends script_base
             $rpl("$line", 'list');
     }
 
+    #[Cmd("showalias", "aliasinfo")]
+    #[Syntax("<name>")]
+    #[Desc("Show info about an alias")]
+    function showaliass($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        global $entityManager;
+        list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
+        try {
+            $alias = $this->repo->findOneBy([
+                "nameLowered" => u($cmdArgs['name'])->lower(),
+                "chanLowered" => u($args->chan)->lower(),
+                "network" => $this->network
+            ]);
+            if (!$alias) {
+                $rpl("That alias not found");
+                return;
+            }
+            $entityManager->refresh($alias);
+        } catch (\Exception $e) {
+            $this->logger->error($e);
+            return;
+        }
+        $act = $alias->act ? "true" : "false";
+        $rpl("\2Name:\2 {$alias->name} \2Last set by:\2 $alias->fullhost \2Action:\2 $act \2Cmd:\2 $alias->cmd");
+        $rpl("\2Value:\2 $alias->value");
+    }
+
     /**
      * @param object $args
      * @param \Irc\Client $bot
