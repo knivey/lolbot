@@ -37,7 +37,7 @@ function yoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
         $yodaImg = new Imagick();
         $yodaImgFile = $cmdArgs->optEnabled('--og') ? "/yoda-og.png" : "/yoda.png";
-        $yodaImg->readImage(__DIR__ . yodaImgFile);
+        $yodaImg->readImage(__DIR__ . $yodaImgFile);
         $yodaImg->scaleImage($img->getImageWidth(), $img->getImageHeight());
 
         // original behavior
