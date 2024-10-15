@@ -152,7 +152,7 @@ class weather extends script_base
 
             //Now use lat lon to get weather
 
-            $url = "https://api.openweathermap.org/data/2.5/onecall?lat={$location->lat}&lon={$location->long}&appid=$config[openweatherKey]&exclude=minutely,hourly";
+            $url = "https://api.openweathermap.org/data/3.0/onecall?lat={$location->lat}&lon={$location->long}&appid=$config[openweatherKey]&exclude=minutely,hourly";
             $body = yield async_get_contents($url);
 
             $j = json_decode($body, true);
