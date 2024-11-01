@@ -190,6 +190,33 @@ class codesand extends script_base
         yield $this->sendOut($bot, $args->chan, $output);
     }
 
+    #[Cmd("go", "golang")]
+    #[Desc("Run go code")]
+    #[Syntax("<code>...")]
+    #[CallWrap("\Amp\asyncCall")]
+    function runGolang($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    {
+        if (!$this->canRun($args)) {
+            return;
+        }
+        $code = "package main\nimport \"fmt\"\n{$cmdArgs['code']}\n";
+        $output = yield from $this->getRun("golang", $code);
+        yield $this->sendOut($bot, $args->chan, $output);
+    }
+
+    #[Cmd("js", "javascript")]
+    #[Desc("Run javascript code")]
+    #[Syntax("<code>...")]
+    #[CallWrap("\Amp\asyncCall")]
+    function runJavascript($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    {
+        if (!$this->canRun($args)) {
+            return;
+        }
+        $output = yield from $this->getRun("javascript", $cmdArgs['code']);
+        yield $this->sendOut($bot, $args->chan, $output);
+    }
+
     #[Cmd("gcc")]
     #[Desc("Run ruby code using gcc compiler")]
     #[Syntax("<code>...")]
