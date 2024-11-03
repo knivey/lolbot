@@ -344,3 +344,40 @@ function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
+
+#[Cmd("stars")]
+#[Desc("Draw some random stars")]
+function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+{
+    $art = Art::createBlank(80, 48, true);
+    $numstars = rand(2,8);
+    for($i=0; $i<$numstars; $i++) {
+        $color = new Color( rand(0,16), null);
+
+        $alpha = (2*3.1415926)/10;
+        $radius = rand(7,35);
+        $x = rand(0, 80);
+        $y = rand(0, 48);
+        $points = [];
+        $rot = rand(0,100);
+        for($p = 11; $p != 0; $p--) {
+            $r = $radius*($p % 2 + 1)/2;
+            $omega = ($alpha * $p) + $rot;
+            $points[] = [$r * sin($omega) + $x, $r * cos($omega) + $y];
+        }
+        $lx = null;
+        $ly = null;
+        foreach($points as $point) {
+            if($lx === null) {
+                $lx = $point[0];
+                $ly = $point[1];
+                continue;
+            }
+            $art->drawLine($lx, $ly, $point[0], $point[1], $color);
+            $lx = $point[0];
+            $ly = $point[1];
+        }
+    }
+
+    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+}
