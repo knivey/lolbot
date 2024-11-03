@@ -116,17 +116,17 @@ class Art {
                         $pixel2 = $this->canvas[$row+1][$col];
                     else
                         $pixel2 = new Pixel();
+                    if(($pixel1->fg === null && $fg !== null) || ($pixel2->fg === null && $bg !== null)) {
+                        $out .= "\x03";
+                        $fg = null;
+                        $bg = null;
+                    }
+                    if($pixel1->fg === null && $pixel2->fg === null) {
+                        $out .= " ";
+                        continue;
+                    }
                     if($pixel1->fg !== $fg || $pixel2->fg !== $bg) {
                         if($pixel1->fg === $pixel2->fg && $pixel2->fg === $bg) {
-                            $out .= " ";
-                            continue;
-                        }
-                        if($pixel1->fg === null || $pixel2->fg === null) {
-                            $out .= "\x03";
-                        }
-                        if($pixel1->fg === null && $pixel2->fg === null) {
-                            $fg = $pixel1->fg;
-                            $bg = $pixel2->fg;
                             $out .= " ";
                             continue;
                         }
