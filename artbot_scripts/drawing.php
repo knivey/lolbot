@@ -68,7 +68,7 @@ class Art {
     public int $w = 0;
     public int $h = 0;
 
-    private function __construct() {
+    private function __construct(readonly public bool $halfblocks = false) {
     }
 
     /**
@@ -77,8 +77,8 @@ class Art {
      * @param int $h height
      * @return Art
      */
-    public static function createBlank(int $w, int $h) : Art {
-        $new = new self();
+    public static function createBlank(int $w, int $h, bool $halfblocks = false) : Art {
+        $new = new self($halfblocks);
         //lol all pixels were same instance
         //$new->canvas = array_fill(0, $h, array_fill(0, $w, new Pixel()));
         for($y=0;$y<$h;$y++) {
@@ -105,50 +105,98 @@ class Art {
     public function __toString(): string
     {
         $out = '';
-        foreach($this->canvas as $y) {
-            $fg = null;
-            $bg = null;
-            foreach ($y as $p) {
-                $code = '';
-                if($p->fg !== $fg) {
-                    $fg = $p->fg;
-                    if($p->fg === null) {
-                        $code = "99";
-                    } else {
-                        if ($fg < 10)
-                            $code = "0$fg";
+        if($this->halfblocks) {
+            for($row = 0; $row < count($this->canvas); $row+=2) {
+                $fg = null;
+                $bg = null;
+                $hb = "▀";
+                for($col = 0; $col < $this->w; $col++) {
+                    $pixel1 = $this->canvas[$row][$col];
+                    if (isset($this->canvas[$row+1]))
+                        $pixel2 = $this->canvas[$row+1][$col];
+                    else
+                        $pixel2 = new Pixel();
+                    if($pixel1->fg !== $fg || $pixel2->fg !== $bg) {
+                        if($pixel1->fg === $pixel2->fg && $pixel2->fg === $bg) {
+                            $out .= " ";
+                            continue;
+                        }
+                        if($pixel1->fg === null || $pixel2->fg === null) {
+                            $out .= "\x03";
+                        }
+                        if($pixel1->fg === null && $pixel2->fg === null) {
+                            $fg = $pixel1->fg;
+                            $bg = $pixel2->fg;
+                            $out .= " ";
+                            continue;
+                        }
+
+                        if($bg === $pixel2->fg)
+                            if($pixel1->fg === null)
+                                $out .= "\x03,$pixel2->fg";
+                            else
+                                $out .= "\x03$pixel1->fg";
+                        else
+                            if($pixel2->fg !== null)
+                                $out .= "\x03$pixel1->fg,$pixel2->fg";
+                            else
+                                $out .= "\x03$pixel1->fg";
+                        $fg = $pixel1->fg;
+                        $bg = $pixel2->fg;
+                    }
+                    if($pixel1->fg !== $pixel2->fg)
+                        $out .= $hb;
+                    else
+                        $out .= " ";
+                }
+                $out .= "\n";
+            }
+        } else {
+            foreach ($this->canvas as $y) {
+                $fg = null;
+                $bg = null;
+                foreach ($y as $p) {
+                    $code = '';
+                    if ($p->fg !== $fg) {
+                        $fg = $p->fg;
+                        if ($p->fg === null) {
+                            $code = "99";
+                        } else {
+                            if ($fg < 10)
+                                $code = "0$fg";
+                            else
+                                $code = $fg;
+                        }
+                    }
+                    // some clients dont like empty fg
+                    if ($code == '' && $p->bg !== $bg) {
+                        if ($fg === null)
+                            $code = "99";
                         else
                             $code = $fg;
                     }
-                }
-                // some clients dont like empty fg
-                if($code == '' && $p->bg !== $bg) {
-                    if($fg === null)
-                        $code = "99";
-                    else
-                        $code = $fg;
-                }
 
-                if($p->bg !== $bg) {
-                    $bg = $p->bg;
-                    if($p->bg === null) {
-                        $code .= ",99";
-                    } else {
-                        if ($bg < 10)
-                            $code .= ",0$bg";
-                        else
-                            $code .= ",$bg";
+                    if ($p->bg !== $bg) {
+                        $bg = $p->bg;
+                        if ($p->bg === null) {
+                            $code .= ",99";
+                        } else {
+                            if ($bg < 10)
+                                $code .= ",0$bg";
+                            else
+                                $code .= ",$bg";
+                        }
                     }
+                    if ($code != "") {
+                        if ($code == "99,99")
+                            $out .= "\x03";
+                        else
+                            $out .= "\x03$code";
+                    }
+                    $out .= $p;
                 }
-                if($code != "") {
-                    if($code == "99,99")
-                        $out .= "\x03";
-                    else
-                        $out .= "\x03$code";
-                }
-                $out .= $p;
+                $out .= "\n";
             }
-            $out .= "\n";
         }
         return $out;
     }
@@ -264,14 +312,14 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 #[Desc("Draw some random lines")]
 function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $art = Art::createBlank(80, 24);
+    $art = Art::createBlank(80, 48, true);
     $numlines = rand(5,20);
     for($i=0; $i<$numlines; $i++) {
-        $color = new Color(null, rand(0,16));
+        $color = new Color(rand(0,16), null);
         $sx = rand(0, 80);
-        $sy = rand(0, 24);
+        $sy = rand(0, 48);
         $ex = rand(0, 80);
-        $ey = rand(0, 24);
+        $ey = rand(0, 48);
         $art->drawLine($sx, $sy, $ex, $ey, $color);
     }
 
@@ -283,10 +331,10 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 #[Desc("Draw some random circles")]
 function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $art = Art::createBlank(80, 24);
+    $art = Art::createBlank(80, 48, true);
     $numlines = rand(5,20);
     for($i=0; $i<$numlines; $i++) {
-        $color = new Color(null, rand(0,16));
+        $color = new Color( rand(0,16), null);
         $w = rand(6, 80);
         $h = rand($w/2-5, $w/2+5);
         $cx = rand(-20, 100);
