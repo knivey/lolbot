@@ -48,6 +48,12 @@ class Color {
         return false;
     }
 
+    public function equals(Color $color): bool {
+        if($this->fg === $color->fg && $this->bg === $color->bg)
+            return true;
+        return false;
+    }
+
     //thinking this can be like an array of colors with a step size?
     public function setGradiant() {
 
@@ -210,6 +216,31 @@ class Art {
         }
     }
 
+    public function fillColor(int $x, int $y, Color $color, string $text = '') {
+        if(!isset($this->canvas[$y][$x]))
+            return;
+        $replaceColor = new Color($this->canvas[$y][$x]->fg, $this->canvas[$y][$x]->bg);
+        if($replaceColor->equals($color))
+            return;
+        $stack = [[$y, $x]];
+        while(count($stack) != 0) {
+            list($curY, $curX) = array_shift($stack);
+            $curColor = new Color($this->canvas[$curY][$curX]->fg, $this->canvas[$curY][$curX]->bg);
+            if($curColor->equals($replaceColor)) {
+                $this->canvas[$curY][$curX]->fg = $color->fg;
+                $this->canvas[$curY][$curX]->bg = $color->bg;
+                if(isset($this->canvas[$curY][$curX-1]))
+                    $stack[] = [$curY, $curX-1];
+                if(isset($this->canvas[$curY][$curX+1]))
+                    $stack[] = [$curY, $curX+1];
+                if(isset($this->canvas[$curY-1][$curX]))
+                    $stack[] = [$curY-1, $curX];
+                if(isset($this->canvas[$curY+1][$curX]))
+                    $stack[] = [$curY+1, $curX];
+            }
+        }
+    }
+
     public function drawLine(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = '') {
         $dx = abs($endX - $startX);
         $dy = abs($endY - $startY);
@@ -332,14 +363,14 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 48, true);
-    $numlines = rand(5,20);
-    for($i=0; $i<$numlines; $i++) {
+    $numcircles = rand(5,20);
+    for($i=0; $i<$numcircles; $i++) {
         $color = new Color( rand(0,16), null);
         $w = rand(6, 80);
-        $h = rand($w/2-5, $w/2+5);
-        $cx = rand(-20, 100);
-        $cy = rand(-20, 34);
-        $art->drawEllipse($w, $h, $cx, $cy, $color);
+        $h = rand($w/2-3, $w/2+3) +5;
+        $cx = rand(-5, 90);
+        $cy = rand(-5, 55);
+        $art->drawEllipse($cx, $cy, $w, $h, $color);
     }
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
