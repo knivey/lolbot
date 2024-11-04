@@ -224,19 +224,21 @@ class Art {
             return;
         $stack = [[$y, $x]];
         while(count($stack) != 0) {
-            list($curY, $curX) = array_shift($stack);
+            [$curY, $curX] = array_shift($stack);
             $curColor = new Color($this->canvas[$curY][$curX]->fg, $this->canvas[$curY][$curX]->bg);
             if($curColor->equals($replaceColor)) {
                 $this->canvas[$curY][$curX]->fg = $color->fg;
                 $this->canvas[$curY][$curX]->bg = $color->bg;
-                if(isset($this->canvas[$curY][$curX-1]))
-                    $stack[] = [$curY, $curX-1];
-                if(isset($this->canvas[$curY][$curX+1]))
-                    $stack[] = [$curY, $curX+1];
-                if(isset($this->canvas[$curY-1][$curX]))
-                    $stack[] = [$curY-1, $curX];
-                if(isset($this->canvas[$curY+1][$curX]))
-                    $stack[] = [$curY+1, $curX];
+                $nexts = [[0,-1],[0,1],[-1,0],[1,0]];
+                foreach($nexts as [$ny, $nx]) {
+                    $nx += $curX;
+                    $ny += $curY;
+                    if(isset($this->canvas[$ny][$nx])) {
+                        $testColor = new Color($this->canvas[$ny][$nx]->fg, $this->canvas[$ny][$nx]->bg);
+                        if($replaceColor->equals($testColor))
+                            $stack[] = [$ny, $nx];
+                    }
+                }
             }
         }
     }
