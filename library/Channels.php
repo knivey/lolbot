@@ -162,6 +162,11 @@ class Channels
         return isset($this->channels[strtolower($channel)]->modes[$mode]);
     }
 
+    public function getChan(string $channel): Channel|false {
+        return isset($this->channels[strtolower($channel)]) ?
+            clone $this->channels[strtolower($channel)] : false;
+    }
+
     public function dump() {
         return explode("\n", json_encode($this->channels, JSON_PRETTY_PRINT));
     }

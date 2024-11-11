@@ -14,12 +14,29 @@ use Symfony\Component\Yaml\Yaml;
 
 class codesand extends script_base
 {
-    function getRun($ep, $code, $extraParam = '')
+    function createStateJson($args, \Irc\Client $bot) {
+        $channel = $this->chans->getChan($args->chan);
+        return json_encode([
+            'caller' => [
+                'chan' => $args->chan,
+                'nick' => $args->nick,
+                'host' => $args->host,
+            ],
+            'chan' => [
+                'nicks' => $channel->nicks,
+            ],
+        ]);
+    }
+
+    function getRun($ep, $code, $extraParam = '', $stateData = '')
     {
         global $config;
         $maxlines = $config['bots'][$this->bot->id]['codesand_maxlines'] ?? 10;
         $csConfig = Yaml::parseFile(__DIR__ . '/config.yaml');
         $ep = "/run/$ep?maxlines=$maxlines{$extraParam}";
+        //for now put it in a query until api change
+        if($stateData != '')
+            $ep .= "&state=" . base64_encode($stateData);
         try {
             $client = HttpClientBuilder::buildDefault();
             /** @var Response $response */
@@ -87,7 +104,7 @@ class codesand extends script_base
         if (!$this->canRun($args)) {
             return;
         }
-        $output = yield from $this->getRun("php", $cmdArgs['code']);
+        $output = yield from $this->getRun("php", $cmdArgs['code'], stateData: $this->createStateJson($args, $bot));
         yield $this->sendOut($bot, $args->chan, $output);
     }
 
