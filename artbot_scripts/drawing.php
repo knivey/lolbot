@@ -291,6 +291,29 @@ class Art {
             $ly = $y;
         }
     }
+
+    //for now force to be same size, can add another function for copying rects later
+    public function overlay(Art $art) {
+        if($art->w != $this->w) {
+            echo "art overlay widths mismatch\n";
+            return;
+        }
+        if($art->h != $this->h) {
+            echo "art overlay heights mismatch\n";
+            return;
+        }
+        $y = 0;
+        foreach($art->canvas as $col) {
+            $x = 0;
+            foreach($col as $p) {
+                if($p->fg != null || $p->bg != null) {
+                    $this->canvas[$y][$x] = $p;
+                }
+                $x++;
+            }
+            $y++;
+        }
+    }
 }
 
 #[Cmd("linetest")]
@@ -387,30 +410,35 @@ function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $art->fillColor(0,0, new Color($bgs[array_rand($bgs)], 0));
     $numstars = rand(2,8);
     for($i=0; $i<$numstars; $i++) {
+        $tart = Art::createBlank(80,48, true);
         $color = new Color( rand(0,16), null);
-        $alpha = (2*3.1415926)/10;
+        $alpha = (2*M_PI)/10;
         $radius = rand(7,35);
         $x = rand(0, 80);
         $y = rand(0, 48);
         $points = [];
-        $rot = rand(0,100);
-        for($p = 11; $p != 0; $p--) {
-            $r = $radius*($p % 2 + 1)/2;
-            $omega = ($alpha * $p) + $rot;
-            $points[] = [$r * sin($omega) + $x, $r * cos($omega) + $y];
-        }
+        $rot = deg2rad(rand(0,intval(360/5)));
         $lx = null;
         $ly = null;
+        for($p = 11; $p != 0; $p--) {
+            $omega = ($alpha * $p) + $rot;
+            $r = $radius*($p % 2 + 1)/2;
+            $points[] = [$r * sin($omega) + $x, $r * cos($omega) + $y];
+        }
+
         foreach($points as $point) {
             if($lx === null) {
                 $lx = $point[0];
                 $ly = $point[1];
                 continue;
             }
-            $art->drawLine($lx, $ly, $point[0], $point[1], $color);
+            $tart->drawLine($lx, $ly, $point[0], $point[1], $color);
             $lx = $point[0];
             $ly = $point[1];
         }
+        if(rand(0,1))
+            $tart->fillColor($x, $y, $color);
+        $art->overlay($tart);
     }
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
