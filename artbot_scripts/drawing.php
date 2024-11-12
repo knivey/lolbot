@@ -3,6 +3,7 @@ namespace artbot_scripts;
 
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
 
 class Pixel {
@@ -403,19 +404,28 @@ function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("stars")]
 #[Desc("Draw some random stars")]
+#[Option("--lines")]
 function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    $art = Art::createBlank(80, 48, true);
+    $lines = 48;
+    if($cmdArgs->optEnabled("--lines")) {
+        $lines = intval($cmdArgs->getOpt("--lines"));
+        if($lines < 48 || $lines > 300) {
+            $bot->pm($args->chan, "--lines should be from 48 to 300");
+            return;
+        }
+    }
+    $art = Art::createBlank(80, $lines, true);
     $bgs = [1,2,3,5,6,10];
     $art->fillColor(0,0, new Color($bgs[array_rand($bgs)], 0));
-    $numstars = rand(2,8);
+    $numstars = rand(2*($lines/48),8*($lines/48));
     for($i=0; $i<$numstars; $i++) {
-        $tart = Art::createBlank(80,48, true);
+        $tart = Art::createBlank(80,$lines, true);
         $color = new Color( rand(0,16), null);
         $alpha = (2*M_PI)/10;
         $radius = rand(7,35);
         $x = rand(0, 80);
-        $y = rand(0, 48);
+        $y = rand(0, $lines);
         $points = [];
         $rot = deg2rad(rand(0,intval(360/5)));
         $lx = null;
