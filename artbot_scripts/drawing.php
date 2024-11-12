@@ -448,7 +448,7 @@ function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             $ly = $point[1];
         }
         if(rand(0,1))
-            $tart->fillColor($x, $y, $color);
+            $tart->fillColor($x, $y, new Color($fgs[array_rand($fgs)], null));
         $art->overlay($tart);
     }
 
