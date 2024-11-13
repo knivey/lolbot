@@ -424,7 +424,7 @@ function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $tart = Art::createBlank(80,$lines, true);
         $color = new Color($fgs[array_rand($fgs)], null);
         $alpha = (2*M_PI)/10;
-        $radius = random_int(7,35);
+        $radius = random_int(7,25);
         $x = random_int(0, 80);
         $y = random_int(0, $lines);
         $points = [];
@@ -447,7 +447,7 @@ function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             $lx = $point[0];
             $ly = $point[1];
         }
-        if(rand(0,1))
+        if(random_int(0,4) > 1)
             $tart->fillColor($x, $y, new Color($fgs[array_rand($fgs)], null));
         $art->overlay($tart);
     }
