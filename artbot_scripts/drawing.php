@@ -419,16 +419,16 @@ function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $bgs = [1,2,3,5,6,10];
     $fgs = [4,7,8,9,11,12,13];
     $art->fillColor(0,0, new Color($bgs[array_rand($bgs)], 0));
-    $numstars = rand(2*($lines/48),8*($lines/48));
+    $numstars = random_int(3*($lines/48),8*($lines/48));
     for($i=0; $i<$numstars; $i++) {
         $tart = Art::createBlank(80,$lines, true);
         $color = new Color($fgs[array_rand($fgs)], null);
         $alpha = (2*M_PI)/10;
-        $radius = rand(7,35);
-        $x = rand(0, 80);
-        $y = rand(0, $lines);
+        $radius = random_int(7,35);
+        $x = random_int(0, 80);
+        $y = random_int(0, $lines);
         $points = [];
-        $rot = deg2rad(rand(0,intval(360/5)));
+        $rot = deg2rad(random_int(0,intval(360/5)));
         $lx = null;
         $ly = null;
         for($p = 11; $p != 0; $p--) {
