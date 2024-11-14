@@ -1,4 +1,5 @@
 <?php
+
 namespace artbot_scripts;
 
 use knivey\cmdr\attributes\Cmd;
@@ -6,7 +7,8 @@ use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
 
-class Pixel {
+class Pixel
+{
     public ?int $fg = null;
     public ?int $bg = null;
     public string $text = ' ';
@@ -20,54 +22,67 @@ class Pixel {
 
 /**
  * Used for drawing ops, useful for gradients
- * @property-read $fg
- * @property-read $bg
+ *
+ * @property-read ?int $fg
+ * @property-read ?int $bg
  */
-class Color {
-
+class Color
+{
     /**
      * Color constructor.
+     *
      * @param int|null $fg
      * @param int|null $bg
      */
     public function __construct(
         private ?int $fg = null,
-        private ?int $bg = null) {
+        private ?int $bg = null
+    ) {
     }
 
     public function __get(string $name): mixed
     {
-        if($name == 'fg')
+        if ($name == 'fg') {
             return $this->fg;
-        if($name == 'bg')
+        }
+        if ($name == 'bg') {
             return $this->bg;
+        }
         $trace = debug_backtrace();
-        trigger_error('Undefined property via __get(): ' . $name .
+        trigger_error(
+            'Undefined property via __get(): ' . $name .
             ' in ' . $trace[0]['file'] .
             ' on line ' . $trace[0]['line'],
-            E_USER_NOTICE);
+            E_USER_NOTICE
+        );
         return false;
     }
 
-    public function equals(Color $color): bool {
-        if($this->fg === $color->fg && $this->bg === $color->bg)
+    public function equals(Color $color): bool
+    {
+        if ($this->fg === $color->fg && $this->bg === $color->bg) {
             return true;
+        }
         return false;
     }
 
     //thinking this can be like an array of colors with a step size?
-    public function setGradiant() {
+    public function setGradiant(array $colors)
+    {
 
     }
 
-    public function advanceGradiant() {
+    public function advanceGradiant()
+    {
 
     }
 }
 
-class Art {
+class Art
+{
     /**
      * Indexed by [Y][X]
+     *
      * @var Pixel[][]
      */
     public array $canvas = [];
@@ -75,21 +90,24 @@ class Art {
     public int $w = 0;
     public int $h = 0;
 
-    private function __construct(readonly public bool $halfblocks = false) {
+    private function __construct(readonly public bool $halfblocks = false)
+    {
     }
 
     /**
      * New blank art
-     * @param int $w width
-     * @param int $h height
+     *
+     * @param  int $w width
+     * @param  int $h height
      * @return Art
      */
-    public static function createBlank(int $w, int $h, bool $halfblocks = false) : Art {
+    public static function createBlank(int $w, int $h, bool $halfblocks = false): Art
+    {
         $new = new self($halfblocks);
         //lol all pixels were same instance
         //$new->canvas = array_fill(0, $h, array_fill(0, $w, new Pixel()));
-        for($y=0;$y<$h;$y++) {
-            for($x=0;$x<$w;$x++) {
+        for ($y = 0;$y < $h;$y++) {
+            for ($x = 0;$x < $w;$x++) {
                 $new->canvas[$y][$x] = new Pixel();
             }
         }
@@ -100,10 +118,12 @@ class Art {
 
     /**
      * Create from existing art
-     * @param string $artText contents of an art file
+     *
+     * @param  string $artText contents of an art file
      * @return Art
      */
-    public static function createFromArt(string $artText) : Art {
+    public static function createFromArt(string $artText): Art
+    {
         //TODO implement
         $new = new self();
         return $new;
@@ -112,49 +132,52 @@ class Art {
     public function __toString(): string
     {
         $out = '';
-        if($this->halfblocks) {
-            for($row = 0; $row < count($this->canvas); $row+=2) {
+        if ($this->halfblocks) {
+            for ($row = 0; $row < count($this->canvas); $row += 2) {
                 $fg = null;
                 $bg = null;
                 $hb = "▀";
-                for($col = 0; $col < $this->w; $col++) {
+                for ($col = 0; $col < $this->w; $col++) {
                     $pixel1 = $this->canvas[$row][$col];
-                    if (isset($this->canvas[$row+1]))
-                        $pixel2 = $this->canvas[$row+1][$col];
-                    else
+                    if (isset($this->canvas[$row + 1])) {
+                        $pixel2 = $this->canvas[$row + 1][$col];
+                    } else {
                         $pixel2 = new Pixel();
-                    if(($pixel1->fg === null && $fg !== null) || ($pixel2->fg === null && $bg !== null)) {
+                    }
+                    if (($pixel1->fg === null && $fg !== null) || ($pixel2->fg === null && $bg !== null)) {
                         $out .= "\x03";
                         $fg = null;
                         $bg = null;
                     }
-                    if($pixel1->fg === null && $pixel2->fg === null) {
+                    if ($pixel1->fg === null && $pixel2->fg === null) {
                         $out .= " ";
                         continue;
                     }
-                    if($pixel1->fg !== $fg || $pixel2->fg !== $bg) {
-                        if($pixel1->fg === $pixel2->fg && $pixel2->fg === $bg) {
+                    if ($pixel1->fg !== $fg || $pixel2->fg !== $bg) {
+                        if ($pixel1->fg === $pixel2->fg && $pixel2->fg === $bg) {
                             $out .= " ";
                             continue;
                         }
 
-                        if($bg === $pixel2->fg)
-                            if($pixel1->fg === null)
+                        if ($bg === $pixel2->fg) {
+                            if ($pixel1->fg === null) {
                                 $out .= "\x03,$pixel2->fg";
-                            else
+                            } else {
                                 $out .= "\x03$pixel1->fg";
-                        else
-                            if($pixel2->fg !== null)
-                                $out .= "\x03$pixel1->fg,$pixel2->fg";
-                            else
-                                $out .= "\x03$pixel1->fg";
+                            }
+                        } elseif ($pixel2->fg !== null) {
+                            $out .= "\x03$pixel1->fg,$pixel2->fg";
+                        } else {
+                            $out .= "\x03$pixel1->fg";
+                        }
                         $fg = $pixel1->fg;
                         $bg = $pixel2->fg;
                     }
-                    if($pixel1->fg !== $pixel2->fg)
+                    if ($pixel1->fg !== $pixel2->fg) {
                         $out .= $hb;
-                    else
+                    } else {
                         $out .= " ";
+                    }
                 }
                 $out .= "\n";
             }
@@ -169,18 +192,20 @@ class Art {
                         if ($p->fg === null) {
                             $code = "99";
                         } else {
-                            if ($fg < 10)
+                            if ($fg < 10) {
                                 $code = "0$fg";
-                            else
+                            } else {
                                 $code = $fg;
+                            }
                         }
                     }
                     // some clients dont like empty fg
                     if ($code == '' && $p->bg !== $bg) {
-                        if ($fg === null)
+                        if ($fg === null) {
                             $code = "99";
-                        else
+                        } else {
                             $code = $fg;
+                        }
                     }
 
                     if ($p->bg !== $bg) {
@@ -188,17 +213,19 @@ class Art {
                         if ($p->bg === null) {
                             $code .= ",99";
                         } else {
-                            if ($bg < 10)
+                            if ($bg < 10) {
                                 $code .= ",0$bg";
-                            else
+                            } else {
                                 $code .= ",$bg";
+                            }
                         }
                     }
                     if ($code != "") {
-                        if ($code == "99,99")
+                        if ($code == "99,99") {
                             $out .= "\x03";
-                        else
+                        } else {
                             $out .= "\x03$code";
+                        }
                     }
                     $out .= $p;
                 }
@@ -208,43 +235,50 @@ class Art {
         return $out;
     }
 
-    public function drawPoint(int $x, int $y, Color $color, string $text = '') {
-        if(isset($this->canvas[$y][$x])) {
+    public function drawPoint(int $x, int $y, Color $color, string $text = '')
+    {
+        if (isset($this->canvas[$y][$x])) {
             $this->canvas[$y][$x]->fg = $color->fg;
             $this->canvas[$y][$x]->bg = $color->bg;
-            if ($text != '')
+            if ($text != '') {
                 $this->canvas[$y][$x]->text = $text;
+            }
         }
     }
 
-    public function fillColor(int $x, int $y, Color $color, string $text = '') {
-        if(!isset($this->canvas[$y][$x]))
+    public function fillColor(int $x, int $y, Color $color, string $text = '')
+    {
+        if (!isset($this->canvas[$y][$x])) {
             return;
+        }
         $replaceColor = new Color($this->canvas[$y][$x]->fg, $this->canvas[$y][$x]->bg);
-        if($replaceColor->equals($color))
+        if ($replaceColor->equals($color)) {
             return;
+        }
         $stack = [[$y, $x]];
-        while(count($stack) != 0) {
+        while (count($stack) != 0) {
             [$curY, $curX] = array_shift($stack);
             $curColor = new Color($this->canvas[$curY][$curX]->fg, $this->canvas[$curY][$curX]->bg);
-            if($curColor->equals($replaceColor)) {
+            if ($curColor->equals($replaceColor)) {
                 $this->canvas[$curY][$curX]->fg = $color->fg;
                 $this->canvas[$curY][$curX]->bg = $color->bg;
                 $nexts = [[0,-1],[0,1],[-1,0],[1,0]];
-                foreach($nexts as [$ny, $nx]) {
+                foreach ($nexts as [$ny, $nx]) {
                     $nx += $curX;
                     $ny += $curY;
-                    if(isset($this->canvas[$ny][$nx])) {
+                    if (isset($this->canvas[$ny][$nx])) {
                         $testColor = new Color($this->canvas[$ny][$nx]->fg, $this->canvas[$ny][$nx]->bg);
-                        if($replaceColor->equals($testColor))
+                        if ($replaceColor->equals($testColor)) {
                             $stack[] = [$ny, $nx];
+                        }
                     }
                 }
             }
         }
     }
 
-    public function drawLine(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = '') {
+    public function drawLine(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = '')
+    {
         $dx = abs($endX - $startX);
         $dy = abs($endY - $startY);
         $sx = ($startX < $endX ? 1 : -1);
@@ -254,39 +288,50 @@ class Art {
         $x = $startX;
         $y = $startY;
         $cnt = 0;
-        while($cnt++ < 1000) {
+        while ($cnt++ < 1000) {
             $this->drawPoint($x, $y, $color, $text);
-            if ($x == $endX && $y == $endY) break;
+            if ($x == $endX && $y == $endY) {
+                break;
+            }
             $e2 = $error;
-            if($e2 >-$dx) { $error -= $dy; $x += $sx; }
-            if($e2 < $dy) { $error += $dx; $y += $sy; }
+            if ($e2 > -$dx) {
+                $error -= $dy;
+                $x += $sx;
+            }
+            if ($e2 < $dy) {
+                $error += $dx;
+                $y += $sy;
+            }
         }
     }
 
-    public function drawFilledEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '') {
-        for($y=-$height; $y<=$height; $y++) {
+    public function drawFilledEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '')
+    {
+        for ($y = -$height; $y <= $height; $y++) {
             for ($x = -$width; $x <= $width; $x++) {
-                if ($x * $x * $height * $height + $y * $y * $width * $width <= $height * $height * $width * $width)
+                if ($x * $x * $height * $height + $y * $y * $width * $width <= $height * $height * $width * $width) {
                     $this->drawPoint($centerX + $x, $centerY + $y, $color, $text);
+                }
             }
         }
     }
 
     //with a low seg number it draws shapes so maybe just add rotation later for shape drawing
-    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100) {
+    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100)
+    {
         //want radius amts
         $width = $width / 2;
         $height = $height / 2;
-        $dtheta = pi()*2 / $segments;
+        $dtheta = pi() * 2 / $segments;
         $theta = 0;
         $lx = 0;
         $ly = 0;
-        for($i = 0; $i <= $segments; $i++) {
+        for ($i = 0; $i <= $segments; $i++) {
             $x = $centerX + $width * sin($theta);
             $y = $centerY + $height * cos($theta);
             $theta += $dtheta;
-            if($i != 0) { // dont want to draw from 0,0
-                $this->drawLine($lx, $ly, $x, $y, $color, $text);
+            if ($i != 0) { // dont want to draw from 0,0
+                $this->drawLine($lx, $ly, (int)round($x), (int)round($y), $color, $text);
             }
             $lx = $x;
             $ly = $y;
@@ -294,20 +339,21 @@ class Art {
     }
 
     //for now force to be same size, can add another function for copying rects later
-    public function overlay(Art $art) {
-        if($art->w != $this->w) {
+    public function overlay(Art $art)
+    {
+        if ($art->w != $this->w) {
             echo "art overlay widths mismatch\n";
             return;
         }
-        if($art->h != $this->h) {
+        if ($art->h != $this->h) {
             echo "art overlay heights mismatch\n";
             return;
         }
         $y = 0;
-        foreach($art->canvas as $col) {
+        foreach ($art->canvas as $col) {
             $x = 0;
-            foreach($col as $p) {
-                if($p->fg != null || $p->bg != null) {
+            foreach ($col as $p) {
+                if ($p->fg != null || $p->bg != null) {
                     $this->canvas[$y][$x] = $p;
                 }
                 $x++;
@@ -327,7 +373,7 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $ex = $cmdArgs['ex'];
     $ey = $cmdArgs['ey'];
 
-    $art->drawLine($sx, $sy, $ex, $ey, new Color(04,0), "x");
+    $art->drawLine($sx, $sy, $ex, $ey, new Color(04, 0), "x");
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
@@ -343,7 +389,7 @@ function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $w = $cmdArgs['w'];
     $h = $cmdArgs['h'];
 
-    $art->drawFilledEllipse($cx, $cy, $w, $h, new Color(04,0), "x");
+    $art->drawFilledEllipse($cx, $cy, $w, $h, new Color(04, 0), "x");
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
@@ -359,7 +405,7 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $h = $cmdArgs['h'];
     $segs = $cmdArgs['segs'];
 
-    $art->drawEllipse($cx, $cy, $w, $h, new Color(04,0), "x", $segs);
+    $art->drawEllipse($cx, $cy, $w, $h, new Color(04, 0), "x", $segs);
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
 }
@@ -370,9 +416,9 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 48, true);
-    $numlines = rand(5,20);
-    for($i=0; $i<$numlines; $i++) {
-        $color = new Color(rand(0,16), null);
+    $numlines = rand(5, 20);
+    for ($i = 0; $i < $numlines; $i++) {
+        $color = new Color(rand(0, 16), null);
         $sx = rand(0, 80);
         $sy = rand(0, 48);
         $ex = rand(0, 80);
@@ -389,11 +435,11 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $art = Art::createBlank(80, 48, true);
-    $numcircles = rand(5,20);
-    for($i=0; $i<$numcircles; $i++) {
-        $color = new Color( rand(0,16), null);
+    $numcircles = rand(5, 20);
+    for ($i = 0; $i < $numcircles; $i++) {
+        $color = new Color(rand(0, 16), null);
         $w = rand(6, 80);
-        $h = rand($w/2-3, $w/2+3) +5;
+        $h = rand($w / 2 - 3, $w / 2 + 3) + 5;
         $cx = rand(-5, 90);
         $cy = rand(-5, 55);
         $art->drawEllipse($cx, $cy, $w, $h, $color);
@@ -408,9 +454,9 @@ function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $lines = 48;
-    if($cmdArgs->optEnabled("--lines")) {
+    if ($cmdArgs->optEnabled("--lines")) {
         $lines = intval($cmdArgs->getOpt("--lines"));
-        if($lines < 48 || $lines > 300) {
+        if ($lines < 48 || $lines > 300) {
             $bot->pm($args->chan, "--lines should be from 48 to 300");
             return;
         }
@@ -418,37 +464,38 @@ function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $art = Art::createBlank(80, $lines, true);
     $bgs = [1,2,3,5,6,10];
     $fgs = [4,7,8,9,11,12,13];
-    $art->fillColor(0,0, new Color($bgs[array_rand($bgs)], 0));
-    $numstars = random_int(3*($lines/48),8*($lines/48));
-    for($i=0; $i<$numstars; $i++) {
-        $tart = Art::createBlank(80,$lines, true);
+    $art->fillColor(0, 0, new Color($bgs[array_rand($bgs)], 0));
+    $numstars = random_int(3 * ($lines / 48), 8 * ($lines / 48));
+    for ($i = 0; $i < $numstars; $i++) {
+        $tart = Art::createBlank(80, $lines, true);
         $color = new Color($fgs[array_rand($fgs)], null);
-        $alpha = (2*M_PI)/10;
-        $radius = random_int(7,25);
+        $alpha = (2 * M_PI) / 10;
+        $radius = random_int(7, 25);
         $x = random_int(0, 80);
         $y = random_int(0, $lines);
         $points = [];
-        $rot = deg2rad(random_int(0,intval(360/5)));
+        $rot = deg2rad(random_int(0, intval(360 / 5)));
         $lx = null;
         $ly = null;
-        for($p = 11; $p != 0; $p--) {
+        for ($p = 11; $p != 0; $p--) {
             $omega = ($alpha * $p) + $rot;
-            $r = $radius*($p % 2 + 1)/2;
+            $r = $radius * ($p % 2 + 1) / 2;
             $points[] = [$r * sin($omega) + $x, $r * cos($omega) + $y];
         }
 
-        foreach($points as $point) {
-            if($lx === null) {
+        foreach ($points as $point) {
+            if ($lx === null) {
                 $lx = $point[0];
                 $ly = $point[1];
                 continue;
             }
-            $tart->drawLine($lx, $ly, $point[0], $point[1], $color);
+            $tart->drawLine((int)round($lx), (int)round($ly), (int)round($point[0]), (int)round($point[1]), $color);
             $lx = $point[0];
             $ly = $point[1];
         }
-        if(random_int(0,4) > 1)
+        if (random_int(0, 4) > 1) {
             $tart->fillColor($x, $y, new Color($fgs[array_rand($fgs)], null));
+        }
         $art->overlay($tart);
     }
 
