@@ -15,7 +15,7 @@ use Symfony\Component\Yaml\Yaml;
 use Amp\ByteStream\ResourceOutputStream;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
-use monolog\Logger;
+use Monolog\Logger;
 
 use Amp\Loop;
 use knivey\irctools;
@@ -61,9 +61,9 @@ $router->loadFuncs();
 //copied from Cmdr should give it its own function in there later
 function parseOpts(string &$msg, array $validOpts = []): array {
     $opts = [];
-    $msg = explode(' ', $msg);
+    $msga = explode(' ', $msg);
     $msgb = [];
-    foreach ($msg as $w) {
+    foreach ($msga as $w) {
         if(str_contains($w, "=")) {
             list($lhs, $rhs) = explode("=", $w, 2);
         } else {
@@ -111,6 +111,9 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 global $ORMconfig;
 $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
 
+/**
+ * @var Nicks|null $nicks
+ */
 $nicks = null;
 function onchat($args, \Irc\Client $bot)
 {

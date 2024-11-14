@@ -59,7 +59,7 @@
     },
     "require-dev": {
         "ramsey/composer-repl": "^1.2",
-        "phpstan/phpstan": "^1.8",
+        "phpstan/phpstan": "^2.0",
         "amphp/file": "^2.0",
         "amphp/process": "^1.1"
     },

@@ -8,7 +8,7 @@ use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
 use lolbot\entities\Bot;
 use lolbot\entities\Network;
-use monolog\Logger;
+use Monolog\Logger;
 use Amp\Loop;
 use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
@@ -27,7 +27,7 @@ $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
  * @param object $args
  * @param \Irc\Client $bot
  * @param string $prefix
- * @return array<Closure(string,string)>
+ * @return array<\Closure(string,string): void>
  */
 function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
     return [
@@ -92,9 +92,9 @@ require_once 'scripts/yoda/yoda.php';
 //copied from Cmdr should give it its own function in there later
 function parseOpts(string &$msg, array $validOpts = []): array {
     $opts = [];
-    $msg = explode(' ', $msg);
+    $msga = explode(' ', $msg);
     $msgb = [];
-    foreach ($msg as $w) {
+    foreach ($msga as $w) {
         if(str_contains($w, "=")) {
             list($lhs, $rhs) = explode("=", $w, 2);
         } else {
@@ -131,7 +131,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $server = $network->selectServer();
     $log = new Logger($dbBot->name);
     $log->pushHandler($logHandler);
-    $client = new \Irc\Client($dbBot->name, $server->address, $log, $server->port, $dbBot->bindIp, $server->ssl);
+    $client = new \Irc\Client($dbBot->name, $server->address, $log, (string)$server->port, $dbBot->bindIp, $server->ssl);
     $client->setThrottle($server->throttle);
     $client->setServerPassword($server->password ?? '');
     if (isset($dbBot->sasl_user) && isset($dbBot->sasl_pass)) {
