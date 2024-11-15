@@ -52,6 +52,9 @@ class linktitles extends script_base
             if (filter_var($word, FILTER_VALIDATE_URL) === false) {
                 continue;
             }
+            if(!preg_match("/^https?:\/\/.+/i", $word)) {
+                continue;
+            }
             if ($this->urlIsIgnored($chan, "$nick!$identhost", $word))
                 continue;
 
