@@ -310,7 +310,7 @@ class Art
         for ($y = -$height; $y <= $height; $y++) {
             for ($x = -$width; $x <= $width; $x++) {
                 if ($x * $x * $height * $height + $y * $y * $width * $width <= $height * $height * $width * $width) {
-                    $this->drawPoint($centerX + $x, $centerY + $y, $color, $text);
+                    $this->drawPoint((int)round($centerX + $x), (int)round($centerY + $y), $color, $text);
                 }
             }
         }
@@ -331,7 +331,7 @@ class Art
             $y = $centerY + $height * cos($theta);
             $theta += $dtheta;
             if ($i != 0) { // dont want to draw from 0,0
-                $this->drawLine($lx, $ly, (int)round($x), (int)round($y), $color, $text);
+                $this->drawLine((int)round($lx), (int)round($ly), (int)round($x), (int)round($y), $color, $text);
             }
             $lx = $x;
             $ly = $y;
