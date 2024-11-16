@@ -240,18 +240,19 @@ class Canvas
     }
 
     //with a low seg number it draws shapes so maybe just add rotation later for shape drawing
-    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100)
+    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100, float $rotate = 0)
     {
         //want radius amts
         $width = $width / 2;
         $height = $height / 2;
         $dtheta = pi() * 2 / $segments;
         $theta = 0;
+        $rotate = deg2rad($rotate);
         $lx = 0;
         $ly = 0;
         for ($i = 0; $i <= $segments; $i++) {
-            $x = $centerX + $width * sin($theta);
-            $y = $centerY + $height * cos($theta);
+            $x = $centerX + $width * sin($theta + $rotate);
+            $y = $centerY + $height * cos($theta + $rotate);
             $theta += $dtheta;
             if ($i != 0) { // dont want to draw from 0,0
                 $this->drawLine((int)round($lx), (int)round($ly), (int)round($x), (int)round($y), $color, $text);

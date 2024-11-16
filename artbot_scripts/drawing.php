@@ -86,10 +86,28 @@ function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     for ($i = 0; $i < $numcircles; $i++) {
         $color = new Color(rand(0, 16), null);
         $w = rand(6, 80);
-        $h = rand($w / 2 - 3, $w / 2 + 3) + 5;
+        $h = rand($w - 3, $w + 3) + 5;
         $cx = rand(-5, 90);
         $cy = rand(-5, 55);
         $art->drawEllipse($cx, $cy, $w, $h, $color);
+    }
+
+    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+}
+
+#[Cmd("pentagons")]
+#[Desc("Draw some random pentagons")]
+function pentagons($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+{
+    $art = Canvas::createBlank(80, 48, true);
+    $numcircles = rand(5, 20);
+    for ($i = 0; $i < $numcircles; $i++) {
+        $color = new Color(rand(0, 16), null);
+        $w = random_int(10, 25);
+        $h = random_int($w - 3, $w + 3) + 5;
+        $cx = random_int(5, 70);
+        $cy = random_int(5, 45);
+        $art->drawEllipse($cx, $cy, $w, $h, $color, '', 5, random_int(0, 36));
     }
 
     \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
