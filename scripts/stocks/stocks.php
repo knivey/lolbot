@@ -152,20 +152,20 @@ class stocks extends \scripts\script_base
         $json = json_decode($data);
 
         $w = 86; // api gives hourly for 7 days cut out half those data points and give room for box
-        $h = 26;
-        $canvas = draw\Canvas::createBlank(86, 26, true);
-
-        $chart = array_fill(0, $h, array_fill(0, $w, ' '));
+        $h = 30;
+        $canvas = draw\Canvas::createBlank($w, $h, true);
 
         //box
-        $canvas->drawLine(0,1,0,24, new draw\Color(14));
-        $canvas->drawLine(85,1,85,24, new draw\Color(14));
-        $canvas->drawLine(1,0,84,0, new draw\Color(14));
-        $canvas->drawLine(1,25,84,25, new draw\Color(14));
-        $canvas->drawPoint(0,0, new draw\Color(15));
-        $canvas->drawPoint(0,25, new draw\Color(15));
-        $canvas->drawPoint(85,25, new draw\Color(15));
-        $canvas->drawPoint(85,0, new draw\Color(15));
+
+        $canvas->drawLine(      0,        0,       0, $h - 1, new draw\Color(14));
+        $canvas->drawLine( $w - 1,        0,  $w - 1, $h - 1, new draw\Color(14));
+        $canvas->drawLine(      0,        0,  $w - 1,      0, new draw\Color(14));
+        $canvas->drawLine(      0,   $h - 1,  $w - 1, $h - 1, new draw\Color(14));
+        $canvas->drawPoint(0, 0, new draw\Color(15));
+        $canvas->drawPoint(0, $h - 1, new draw\Color(15));
+        $canvas->drawPoint($w - 1, $h - 1, new draw\Color(15));
+        $canvas->drawPoint($w - 1, 0, new draw\Color(15));
+
 
 
         $prices = [];
@@ -181,14 +181,27 @@ class stocks extends \scripts\script_base
         $max = max($prices);
         $rng = $max - $min;
 
-        $i = 1;
+        $i = count($prices);
+        echo $i;
+        $prices=array_reverse($prices);
         $ly = 0;
+        $red = new draw\Color(4);
+        $green = new draw\Color(9);
+        $yellow = new draw\Color(8);
+        $color = $yellow;
         foreach ($prices as $p) {
             $y = $h - 2 - (int)round((($p - $min) / $rng) * ($h - 3));
-            if($i != 1)
-                $canvas->drawLine($i-1,$ly,$i,$y, new draw\Color(4));
+            if($i != count($prices)) {
+                if($ly == $y)
+                    $color = $yellow;
+                if($ly > $y)
+                    $color = $red;
+                if($ly < $y)
+                    $color = $green;
+                $canvas->drawLine($i+1,$ly,$i,$y, $color);
+            }
             $ly = $y;
-            $i++;
+            $i--;
         }
 
         $json = json_decode(yield async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
