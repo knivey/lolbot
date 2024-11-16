@@ -6,6 +6,10 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
+use draw;
+use knivey\irctools;
+
+
 class stocks extends \scripts\script_base
 {
     //#[Cmd("stock")]
@@ -149,22 +153,19 @@ class stocks extends \scripts\script_base
 
         $w = 86; // api gives hourly for 7 days cut out half those data points and give room for box
         $h = 26;
+        $canvas = draw\Canvas::createBlank(86, 26, true);
 
         $chart = array_fill(0, $h, array_fill(0, $w, ' '));
 
         //box
-        foreach ($chart as &$l) {
-            $l[0] = "┃";
-            $l[$w - 1] = "┃";
-        }
-        for ($i = 0;$i < $w;$i++) {
-            $chart[0][$i] = "━";
-            $chart[$h - 1][$i] = "━";
-        }
-        $chart[0][0] = "┏";
-        $chart[$h - 1][0] = "┗";
-        $chart[$h - 1][$w - 1] = "┛";
-        $chart[0][$w - 1] = "┓";
+        $canvas->drawLine(0,1,0,24, new draw\Color(14));
+        $canvas->drawLine(85,1,85,24, new draw\Color(14));
+        $canvas->drawLine(1,0,84,0, new draw\Color(14));
+        $canvas->drawLine(1,25,84,25, new draw\Color(14));
+        $canvas->drawPoint(0,0, new draw\Color(15));
+        $canvas->drawPoint(0,25, new draw\Color(15));
+        $canvas->drawPoint(85,25, new draw\Color(15));
+        $canvas->drawPoint(85,0, new draw\Color(15));
 
 
         $prices = [];
@@ -181,18 +182,20 @@ class stocks extends \scripts\script_base
         $rng = $max - $min;
 
         $i = 1;
+        $ly = 0;
         foreach ($prices as $p) {
-            $y = $h - 2 - floor((($p - $min) / $rng) * ($h - 3));
-            $chart[$y][$i] = 'x';
+            $y = $h - 2 - (int)round((($p - $min) / $rng) * ($h - 3));
+            if($i != 1)
+                $canvas->drawLine($i-1,$ly,$i,$y, new draw\Color(4));
+            $ly = $y;
             $i++;
         }
 
-        $out = [];
-        //for some reason a foreach here duplicated second to last line and showed it as the last line, php bug?
-        for ($k = 0; $k < count($chart); $k++) {
-            $out[] = implode('', $chart[$k]);
-        }
         $json = json_decode(yield async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+        $out = explode("\n", (string)$canvas);
+        foreach($out as &$line)
+            $line = irctools\fixColors($line);
+
         //hope this works out lol
         $current = $json->$coin->usd;
         $out[] = "7 day min price: $min USD";
