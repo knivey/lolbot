@@ -161,10 +161,11 @@ class stocks extends \scripts\script_base
         $canvas->drawLine( $w - 1,        0,  $w - 1, $h - 1, new draw\Color(14));
         $canvas->drawLine(      0,        0,  $w - 1,      0, new draw\Color(14));
         $canvas->drawLine(      0,   $h - 1,  $w - 1, $h - 1, new draw\Color(14));
-        $canvas->drawPoint(0, 0, new draw\Color(15));
-        $canvas->drawPoint(0, $h - 1, new draw\Color(15));
-        $canvas->drawPoint($w - 1, $h - 1, new draw\Color(15));
-        $canvas->drawPoint($w - 1, 0, new draw\Color(15));
+        for($x = 0; $x < $w; $x+=12) {
+            $canvas->drawPoint($x, 0, new draw\Color(15));
+            $canvas->drawPoint($x, $h - 1, new draw\Color(15));
+        }
+
 
 
 
