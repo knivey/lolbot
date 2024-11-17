@@ -42,20 +42,20 @@ class urbandict extends \scripts\script_base
         $defs = @$doc->find('div.definition');
 
         // wonder if this would happen after that earlier check?
-        if (!$defs || empty($defs)) {
+        if (!is_array($defs) || count($defs) < 1) {
             $bot->msg($args->chan, "ud: Couldn't find an entry matching {$cmdArgs['query']}");
             return;
         }
 
         $max = 2;
+        if ($this->server->throttle)
+            $max = 1;
         $num = 0;
         for ($i = 0; $i < $max && isset($defs[$i]); $i++) {
-            if ($this->server->throttle && $i > 1)
-                break;
             $def = $defs[$i];
-            //$num = $def->find('div.ribbon', 0)->plaintext;
             $num++;
-            if (str_contains($num, "Word of the Day")) {
+            //Haven't seen this on the pages again, maybe they stopped it
+            if (str_contains($def->find('div.ribbon', 0)->plaintext, "Word of the Day")) {
                 $max++;
                 continue;
             }
