@@ -151,7 +151,7 @@ class github extends script_base
         return \Amp\call(function () use ($user) {
             $page = 1;
             $stars = 0;
-            $url = "https://api.github.com/users/$user/repos?per_page=100&page={${'page'}}";
+            $url = "https://api.github.com/users/$user/repos?per_page=100&page={$page}";
             //var_dump($url);
             do {
                 $body = yield $this->github_get_json($url, true);

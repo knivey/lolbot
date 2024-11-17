@@ -142,7 +142,7 @@ function onchat($args, \Irc\Client $bot)
         }
         $text = substr($args->text, 1);
     } elseif (isset($config['trigger_re'])) {
-        $trig = "/(^${config['trigger_re']}).+$/";
+        $trig = "/(^{$config['trigger_re']}).+$/";
         if (!preg_match($trig, $args->text, $m)) {
             return;
         }
