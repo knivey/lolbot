@@ -9,6 +9,24 @@ namespace draw;
  */
 class Color
 {
+    public const White = 0;
+    public const Black = 2;
+    public const Blue = 3;
+    public const Red = 4;
+    // Really more a dark red than brown
+    public const Brown = 5;
+    public const Magenta = 6;
+    public const Orange = 7;
+    public const Yellow = 8;
+    public const LightGreen = 9;
+    public const Cyan = 10;
+    public const LightCyan = 11;
+    public const LightBlue = 12;
+    public const Pink = 13;
+    public const Grey = 14;
+    public const LightGrey = 15;
+    
+
     /**
      * Color constructor.
      *
