@@ -8,7 +8,7 @@ class Canvas
      *
      * @var Pixel[][]
      */
-    public array $canvas = [];
+    public array $data = [];
 
     public int $w = 0;
     public int $h = 0;
@@ -31,7 +31,7 @@ class Canvas
         //$new->canvas = array_fill(0, $h, array_fill(0, $w, new Pixel()));
         for ($y = 0;$y < $h;$y++) {
             for ($x = 0;$x < $w;$x++) {
-                $new->canvas[$y][$x] = new Pixel();
+                $new->data[$y][$x] = new Pixel();
             }
         }
         $new->w = $w;
@@ -56,14 +56,14 @@ class Canvas
     {
         $out = '';
         if ($this->halfblocks) {
-            for ($row = 0; $row < count($this->canvas); $row += 2) {
+            for ($row = 0; $row < count($this->data); $row += 2) {
                 $fg = null;
                 $bg = null;
                 $hb = "▀";
                 for ($col = 0; $col < $this->w; $col++) {
-                    $pixel1 = $this->canvas[$row][$col];
-                    if (isset($this->canvas[$row + 1])) {
-                        $pixel2 = $this->canvas[$row + 1][$col];
+                    $pixel1 = $this->data[$row][$col];
+                    if (isset($this->data[$row + 1])) {
+                        $pixel2 = $this->data[$row + 1][$col];
                     } else {
                         $pixel2 = new Pixel();
                     }
@@ -105,7 +105,7 @@ class Canvas
                 $out .= "\n";
             }
         } else {
-            foreach ($this->canvas as $y) {
+            foreach ($this->data as $y) {
                 $fg = null;
                 $bg = null;
                 foreach ($y as $p) {
@@ -160,37 +160,37 @@ class Canvas
 
     public function drawPoint(int $x, int $y, Color $color, string $text = '')
     {
-        if (isset($this->canvas[$y][$x])) {
-            $this->canvas[$y][$x]->fg = $color->fg;
-            $this->canvas[$y][$x]->bg = $color->bg;
+        if (isset($this->data[$y][$x])) {
+            $this->data[$y][$x]->fg = $color->fg;
+            $this->data[$y][$x]->bg = $color->bg;
             if ($text != '') {
-                $this->canvas[$y][$x]->text = $text;
+                $this->data[$y][$x]->text = $text;
             }
         }
     }
 
     public function fillColor(int $x, int $y, Color $color, string $text = '')
     {
-        if (!isset($this->canvas[$y][$x])) {
+        if (!isset($this->data[$y][$x])) {
             return;
         }
-        $replaceColor = new Color($this->canvas[$y][$x]->fg, $this->canvas[$y][$x]->bg);
+        $replaceColor = new Color($this->data[$y][$x]->fg, $this->data[$y][$x]->bg);
         if ($replaceColor->equals($color)) {
             return;
         }
         $stack = [[$y, $x]];
         while (count($stack) != 0) {
             [$curY, $curX] = array_shift($stack);
-            $curColor = new Color($this->canvas[$curY][$curX]->fg, $this->canvas[$curY][$curX]->bg);
+            $curColor = new Color($this->data[$curY][$curX]->fg, $this->data[$curY][$curX]->bg);
             if ($curColor->equals($replaceColor)) {
-                $this->canvas[$curY][$curX]->fg = $color->fg;
-                $this->canvas[$curY][$curX]->bg = $color->bg;
+                $this->data[$curY][$curX]->fg = $color->fg;
+                $this->data[$curY][$curX]->bg = $color->bg;
                 $nexts = [[0,-1],[0,1],[-1,0],[1,0]];
                 foreach ($nexts as [$ny, $nx]) {
                     $nx += $curX;
                     $ny += $curY;
-                    if (isset($this->canvas[$ny][$nx])) {
-                        $testColor = new Color($this->canvas[$ny][$nx]->fg, $this->canvas[$ny][$nx]->bg);
+                    if (isset($this->data[$ny][$nx])) {
+                        $testColor = new Color($this->data[$ny][$nx]->fg, $this->data[$ny][$nx]->bg);
                         if ($replaceColor->equals($testColor)) {
                             $stack[] = [$ny, $nx];
                         }
@@ -274,11 +274,11 @@ class Canvas
             return;
         }
         $y = 0;
-        foreach ($art->canvas as $col) {
+        foreach ($art->data as $col) {
             $x = 0;
             foreach ($col as $p) {
                 if ($p->fg != null || $p->bg != null) {
-                    $this->canvas[$y][$x] = $p;
+                    $this->data[$y][$x] = $p;
                 }
                 $x++;
             }
