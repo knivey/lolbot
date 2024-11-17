@@ -79,12 +79,8 @@ class Message
 
     /**
      * @param int $index
-     * @param string|null $defaultValue
-     * @return string|null
-     *
-     * @psalm-template T
-     * @psalm-param T $defaultValue
-     * @psalm-return T|string
+     * @param ?string $defaultValue
+     * @return ($defaultValue is string ? string : ?string)
      */
     public function getArg(int $index, ?string $defaultValue = null): ?string
     {
