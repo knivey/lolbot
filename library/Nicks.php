@@ -111,7 +111,7 @@ class Nicks {
                     $adding = false;
                     continue 2;
             }
-            if(str_contains($CHANMODES[0]??''.$CHANMODES[1]??'', $mode) ||
+            if(str_contains(($CHANMODES[0]??'').($CHANMODES[1]??''), $mode) ||
                 (str_contains($CHANMODES[2]??'', $mode) && $adding)) {
                 array_shift($modeArgs);
                 continue;
