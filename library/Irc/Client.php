@@ -681,6 +681,8 @@ class Client extends EventEmitter
      */
     protected ?array $listReply = null;
 
+    protected bool $waitOnSasl = false;
+
     protected function handleMessage(object $e): void
     {
         /* This one handles basic server responses so that the user
@@ -939,11 +941,13 @@ class Client extends EventEmitter
 
                 foreach ($args as $arg) {
                     @list($key, $val) = explode('=', $arg, 2);
+                    // @phpstan-ignore nullCoalesce.variable
+                    $val = $val ?? '';
 
                     //handle some keys specifically
                     switch (strtolower($key)) {
                         case 'prefix':
-                            list($modes, $prefixes) = explode(')', ltrim($val??'', '('));
+                            list($modes, $prefixes) = explode(')', ltrim($val, '('));
                             $modes = str_split($modes);
                             $prefixes = str_split($prefixes);
                             $val = array();
@@ -953,11 +957,11 @@ class Client extends EventEmitter
                         case 'chantypes':
                         case 'statusmsg':
                         case 'elist':
-                            $val = str_split($val??'');
+                            $val = str_split($val);
                             break;
                         case 'chanmodes':
                         case 'language':
-                            $val = explode(',', $val??'');
+                            $val = explode(',', $val);
                             break;
                     }
                     $this->options[strtoupper($key)] = $val;
