@@ -2,6 +2,10 @@
 
 namespace Irc;
 
+/**
+ * @template T
+ * @package Irc
+ */
 class EventEmitter
 {
     /**
@@ -15,7 +19,7 @@ class EventEmitter
 
     /**
      * @param string $event
-     * @param callable(object $event, EventEmitter $eventEmitter) $callback
+     * @param callable(object $event, T $eventEmitter): void $callback
      * @param int|null $idx
      * @return $this
      */
@@ -36,8 +40,8 @@ class EventEmitter
 
     /**
      * @param string $event
-     * @param ?callable(object $event, EventEmitter $eventEmitter) $callback
-     * @param int|null $idx
+     * @param ?callable(object $event, T $eventEmitter): void $callback
+     * @param ?int $idx
      * @return $this
      */
     public function off(string $event, ?callable $callback, ?int $idx = null): static
@@ -61,7 +65,7 @@ class EventEmitter
 
     /**
      * @param string $event
-     * @param callable(object $event, EventEmitter $eventEmitter) $callback
+     * @param callable(object $event, T $eventEmitter): void $callback
      * @return $this
      */
     public function once(string $event, callable $callback): static

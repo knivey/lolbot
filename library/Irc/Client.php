@@ -16,6 +16,10 @@ function stripForTerminal(string $str): string {
     return $str;
 }
 
+/**
+ * @extends EventEmitter<Client>
+ * @package Irc
+ */
 class Client extends EventEmitter
 {
     const DEFAULT_PORT = '6667';
