@@ -44,7 +44,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         }
 
         $type = explode("/", $response->getHeader('content-type'));
-        if(!isset($type[0])) {
+        if($type[0] == '') {
             $bot->pm($args->chan, "content-type not provided");
             return;
         }
