@@ -2,12 +2,7 @@
 require_once 'library/async_get_contents.php';
 
 use Amp\ByteStream\InputStream;
-use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Router;
-use Amp\Loop;
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
 use Amp\Promise;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -15,7 +10,6 @@ use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
 use knivey\tools;
