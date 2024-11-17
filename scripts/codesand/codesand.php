@@ -39,7 +39,6 @@ class codesand extends script_base
             $ep .= "&state=" . base64_encode($stateData);
         try {
             $client = HttpClientBuilder::buildDefault();
-            /** @var Response $response */
             $request = new Request("{$csConfig['server']}$ep", 'POST');
             $request->setInactivityTimeout(15000);
             $request->setHeader("key", $csConfig["key"]);
