@@ -283,7 +283,7 @@ Loop::run(function () {
 
 });
 
-function selectBot($chan) : \Irc\Client | false {
+function selectBot($chan): \Irc\Client|false {
     global $clients;
     static $current = 0;
     $tries = 0;
@@ -352,6 +352,7 @@ function startPump($chan, $speed = null) {
                     echo "Stopping pump to $chan, no bots left on it\n";
                     return;
                 }
+                // @phpstan-ignore identical.alwaysFalse
                 if (($nextbot = selectBot($chan)) === false) {
                     unset($playing[$chan]);
                     echo "Stopping pump to $chan, not enough bots left on it\n";
@@ -360,6 +361,7 @@ function startPump($chan, $speed = null) {
             } else {
                 if ($nextbot != null) {
                     $bot = $nextbot;
+                    // @phpstan-ignore identical.alwaysFalse
                     if (($nextbot = selectBot($chan)) === false) {
                         unset($playing[$chan]);
                         echo "Stopping pump to $chan, not enough bots left on it\n";
