@@ -199,7 +199,7 @@ Loop::run(function () {
         if($ignored->get())
             return;
 
-        tryRec($bot, $args->from, $args->channel, $args->text);
+        tryRec($bot, $args->from, $args->text);
         if (isset($config['trigger'])) {
             if (substr($args->text, 0, 1) != $config['trigger']) {
                 return;

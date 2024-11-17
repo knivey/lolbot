@@ -107,7 +107,7 @@ $restRouter->addRoute('POST', '/record2/{key}/{filename}', new CallableRequestHa
             "content-type" => "text/plain; charset=utf-8"
         ], "Too many lines\n");
 
-    $dir = "${config['artdir']}h4x/{$user}";
+    $dir = "{$config['artdir']}h4x/{$user}";
     if(file_exists($dir) && !is_dir($dir)) {
         return new HttpResponse(Status::INTERNAL_SERVER_ERROR, [
             "content-type" => "text/plain; charset=utf-8"
@@ -149,7 +149,7 @@ $restRouter->addRoute('POST', '/record/{key}', new CallableRequestHandler(functi
             "content-type" => "text/plain; charset=utf-8"
         ], "Too many lines\n");
 
-    $dir = "${config['artdir']}h4x/{$token->nick}";
+    $dir = "{$config['artdir']}h4x/{$token->nick}";
     if(file_exists($dir) && !is_dir($dir)) {
         return new HttpResponse(Status::INTERNAL_SERVER_ERROR, [
             "content-type" => "text/plain; charset=utf-8"
@@ -172,7 +172,7 @@ class RecordToken {
         public string $token
     ){}
 }
-/** @var RecordToken[String] */
+/** @var array<string, RecordToken> */
 $recordTokens = [];
 
 /**
@@ -252,7 +252,7 @@ function getWrapLength($bot, $chan) {
 #[CallWrap("\Amp\asyncCall")]
 function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $config, $allowedPumps;
+    global $allowedPumps;
     $key = bin2hex(random_bytes(5));
     $url = yield makeUrl("pump/$key");
     if(!$url) {
@@ -285,7 +285,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $chan = $args->chan;
     $host = $args->host;
     $file = $cmdArgs['filename'];
-    global $recordings, $config, $recordLimit, $limitWarns;
+    global $recordings, $recordLimit, $limitWarns;
     if(isset($recordings[$nick])) {
         return;
     }
@@ -355,7 +355,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $bot->pm($chan, 'Recording started type @end when done or discard with @cancel');
 }
 
-function tryRec($bot, $nick, $chan, $text) {
+function tryRec($bot, $nick, $text) {
     global $recordings;
     if(!isset($recordings[$nick]))
         return;
@@ -394,7 +394,7 @@ function endart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         unset($recordings[$nick]);
         return;
     }
-    $dir = "${config['artdir']}h4x/$nick";
+    $dir = "{$config['artdir']}h4x/$nick";
     if(file_exists($dir) && !is_dir($dir)) {
         $bot->pm($recordings[$nick]['chan'], "crazy error occurred panicing atm");
         unset($recordings[$nick]);
@@ -591,7 +591,6 @@ function getFinder(array $exclude = ['p2u']) : \Symfony\Component\Finder\Finder 
 #[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('<query>...')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    $nick = $args->nick;
     $chan = $args->chan;
     $query = $cmdArgs['query'];
     global $config;
@@ -644,9 +643,10 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             if($maxlines && mb_substr_count($query->getContents(), "\n")+1 > $maxlines) {
                 continue;
             }
-            $ago = (new Carbon($query->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+            $ago = (Carbon::createFromTimestamp($query->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
             $name = substr($query->getRelativePathname(), 0, -4);
             $len = strlen("-----------------------------------------------------------------------------------");
+            $pads = '';
             if(strlen("||||| $ago  $name |||||") < $len)
                 $pads = str_repeat("|", $len - strlen("||||| $ago  $name |||||"));
             $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
@@ -674,12 +674,11 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     }
 
     foreach($finder as $f) {
-        /** @var $f Symfony\Component\Finder\SplFileInfo */
         $lines = mb_substr_count($f->getContents(), "\n")+1;
         if($cmdArgs->optEnabled("--dates"))
             $ago = Carbon::createFromTimestamp($f->getMTime())->toRssString();
         else
-            $ago = (new Carbon($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+            $ago = (Carbon::createFromTimestamp($f->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
         $out[] = ["$lines lines ", $ago, substr($f->getRelativePathname(), 0, -4)];
     }
     if(empty($out)) {
@@ -744,9 +743,10 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             if($maxlines && mb_substr_count($file->getContents(), "\n")+1 > $maxlines) {
                 continue;
             }
-            $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+            $ago = (Carbon::createFromTimestamp($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
             $name = substr($file->getRelativePathname(), 0, -4);
             $len = strlen("-----------------------------------------------------------------------------------");
+            $pads = '';
             if(strlen("||||| $ago  $name |||||") < $len)
                 $pads = str_repeat("|", $len - strlen("||||| $ago  $name |||||"));
             $out[] = "\x02\x0300,12-----------------------------------------------------------------------------------";
@@ -773,7 +773,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $table = [];
     foreach($finder as $file) {
         $lines = mb_substr_count($file->getContents(), "\n")+1;
-        $ago = (new Carbon($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
+        $ago = (Carbon::createFromTimestamp($file->getMTime()))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 2);
         $table[] = ["$lines lines ", $ago, substr($file->getRelativePathname(), 0, -4)];
     }
     $table = \knivey\tools\multi_array_padding($table);
