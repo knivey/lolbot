@@ -44,6 +44,10 @@ class stocks extends \scripts\script_base
                 ->build();
             $lastClose = new lastClose();
             $j = json_decode($body);
+            if(!isset($j->{'Global Quote'})) {
+                var_dump($j);
+                throw new \Exception("Symbol $symbol not found or api error");
+            }
             $mapper->mapObject($j->{'Global Quote'}, $lastClose);
             if(!isset($lastClose->symbol))
                 throw new \Exception("Symbol $symbol not found");
