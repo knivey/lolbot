@@ -12,6 +12,8 @@ use knivey\irctools;
 use Amp\Promise;
 use Error;
 
+use function knivey\tools\multi_array_padding;
+
 class stocks extends \scripts\script_base
 {
     private function getKey(): string|false {
@@ -52,7 +54,7 @@ class stocks extends \scripts\script_base
     /**
      * 
      * @param string $keyword 
-     * @return \Amp\Promise<array> 
+     * @return \Amp\Promise<list<ticker>> 
      * @throws async_get_exception 
      */
     public function tickerSearch(string $keyword): Promise {
@@ -96,6 +98,38 @@ class stocks extends \scripts\script_base
             }
 
             $bot->pm($args->chan, "$q->symbol ($t->name) Last Close ($q->date): $q->price $t->currency $change ($q->changeP) High: $q->high Low: $q->low");
+        } catch (\async_get_exception $error) {
+            echo $error;
+            $bot->pm($args->chan, "\2Stocks:\2 {$error->getIRCMsg()}");
+        } catch (\Exception $error) {
+            echo $error->getMessage();
+            $bot->pm($args->chan, "\2Stocks:\2 {$error->getMessage()}");
+        }
+    }
+
+    #[Cmd("findticker")]
+    #[Syntax('<query>')]
+    #[CallWrap("Amp\asyncCall")]
+    public function findticker($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    {
+        if (false === $this->getKey()) {
+            return;
+        }
+
+        try {
+            $tickers = yield $this->tickerSearch($cmdArgs['query']);
+            if(!isset($tickers[0]))
+                throw new \Exception("No results found");
+            
+            $tickers = array_slice($tickers, 0, 10);
+            $out = [["Symbol", "Name", "Type", "Region", "Currency"]];
+            foreach($tickers as $t) {
+                $out[] = [$t->symbol, $t->name, $t->type, $t->region, $t->currency];
+            }
+            $out = multi_array_padding($out);
+            foreach($out as $line) {
+                $bot->pm($args->chan, implode($line));
+            }
         } catch (\async_get_exception $error) {
             echo $error;
             $bot->pm($args->chan, "\2Stocks:\2 {$error->getIRCMsg()}");
