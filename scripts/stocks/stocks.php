@@ -70,6 +70,9 @@ class stocks extends \scripts\script_base
             $url = "https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=$keyword&apikey=$key";
             $body = yield \async_get_contents($url);
             $j = json_decode($body);
+            if(!isset($j->bestMatches)) {
+                throw new \Exception("API error");
+            }
             $j = $j->bestMatches;
             $mapper = JsonMapperBuilder::new()
                 ->withTypedPropertiesMiddleware()
