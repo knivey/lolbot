@@ -2,51 +2,100 @@
 
 namespace scripts\stocks;
 
+use async_get_exception;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
-
+use JsonMapper\JsonMapperBuilder;
 use draw;
 use knivey\irctools;
-
+use Amp\Promise;
+use Error;
 
 class stocks extends \scripts\script_base
 {
-    //#[Cmd("stock")]
-    #[Syntax('<query>')]
+    private function getKey(): string|false {
+        if (!isset($this->config['alphavantage'])) {
+            $this->logger->warning("alphavantage key not set in config");
+            return false;
+        }
+        return $this->config['alphavantage'];
+    }
+
+    /**
+     * 
+     * @param string $symbol 
+     * @return Promise<lastClose> 
+     * @throws Error 
+     */
+    public function lastClose(string $symbol): Promise {
+        return \Amp\call(function () use ($symbol) {
+            if (false === $key = $this->getKey()) {
+                throw new \Exception("alphavantage key not set");
+            }
+            $symbol = rawurlencode($symbol);
+            $url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=$symbol&apikey=$key";
+            $body = yield \async_get_contents($url);
+            $mapper = JsonMapperBuilder::new()
+                ->withTypedPropertiesMiddleware()
+                ->withAttributesMiddleware()
+                ->build();
+            $lastClose = new lastClose();
+            $j = json_decode($body);
+            $mapper->mapObject($j->{'Global Quote'}, $lastClose);
+            if(!isset($lastClose->symbol))
+                throw new \Exception("Symbol $symbol not found");
+            return $lastClose;
+        });
+    }
+
+    /**
+     * 
+     * @param string $keyword 
+     * @return \Amp\Promise<array> 
+     * @throws async_get_exception 
+     */
+    public function tickerSearch(string $keyword): Promise {
+        return \Amp\call(function () use ($keyword) {
+            if (false === $key = $this->getKey()) {
+                throw new \Exception("alphavantage key not set");
+            }
+            $keyword = rawurlencode($keyword);
+            $url = "https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=$keyword&apikey=$key";
+            $body = yield \async_get_contents($url);
+            $j = json_decode($body);
+            $j = $j->bestMatches;
+            $mapper = JsonMapperBuilder::new()
+                ->withTypedPropertiesMiddleware()
+                ->withAttributesMiddleware()
+                ->build();
+            return $mapper->mapToClassArray($j, ticker::class);
+        });
+    }
+
+    #[Cmd("stock")]
+    #[Syntax('<symbol>')]
     #[CallWrap("Amp\asyncCall")]
     public function stock($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
-        global $config;
-        if (!isset($config['iexKey'])) {
-            echo "iexKey not set in config\n";
+        if (false === $this->getKey()) {
             return;
         }
 
-        $query = rawurlencode($cmdArgs['query']);
-        $url = "https://cloud.iexapis.com/stable/stock/$query/quote?token=" . $config['iexKey'] . '&displayPercent=true';
         try {
-            $body = yield \async_get_contents($url);
-            $j = json_decode($body, true);
-
-            $change = $j['change'];
-            if ($change > 0) {
-                $change = "\x0309$change\x0F";
+            $q = yield $this->lastClose($cmdArgs['symbol']);
+            $t = yield $this->tickerSearch($cmdArgs['symbol']);
+            if(!isset($t[0]))
+                throw new \Exception("Error getting ticker info");
+            $t = $t[0];
+            var_dump($t);
+            if ($q->changeP > 0) {
+                $change = "\x0309$q->change\x0F";
             } else {
-                $change = "\x0304$change\x0F";
+                $change = "\x0304$q->change\x0F";
             }
 
-            if ($j['isUSMarketOpen'] || !($j['extendedPrice'] ?? false)) {
-                $bot->pm($args->chan, "$j[symbol] ($j[companyName]) $j[latestPrice] $j[currency] $change ($j[changePercent]%)");
-            } else {
-                $eChange = $j['extendedChange'];
-                if ($eChange > 0) {
-                    $eChange = "\x0309$eChange\x0F";
-                } else {
-                    $eChange = "\x0304$eChange\x0F";
-                }
-                $bot->pm($args->chan, "$j[symbol] ($j[companyName]) [Close: $j[latestPrice] $j[currency] $change ($j[changePercent]%)] [Extended: $j[extendedPrice] $j[currency] $eChange ($j[extendedChangePercent]%)]");
-            }
+            $bot->pm($args->chan, "$q->symbol ($t->name) Last Close ($q->date): $q->price $t->currency $change ($q->changeP) High: $q->high Low: $q->low");
         } catch (\async_get_exception $error) {
             echo $error;
             $bot->pm($args->chan, "\2Stocks:\2 {$error->getIRCMsg()}");
