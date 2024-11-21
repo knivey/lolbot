@@ -23,19 +23,17 @@ class async_get_exception extends Exception {
  * @param $url
  * @param string[] $headers
  * @throws async_get_exception
- * @return \Amp\Promise<string>
+ * @return string
  */
-function async_get_contents(string $url, array $headers = []): \Amp\Promise {
-    return \Amp\call(function () use ($url, $headers) {
-        $client = HttpClientBuilder::buildDefault();
-        $request = new Request($url);
-        $request->setHeaders($headers);
-        /** @var Response $response */
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
-        if ($response->getStatus() != 200) {
-            throw new async_get_exception($body, $response->getStatus());
-        }
-        return $body;
-    });
+function async_get_contents(string $url, array $headers = []): string {
+    $client = HttpClientBuilder::buildDefault();
+    $request = new Request($url);
+    $request->setHeaders($headers);
+    /** @var Response $response */
+    $response = $client->request($request);
+    $body =  $response->getBody()->buffer();
+    if ($response->getStatus() != 200) {
+        throw new async_get_exception($body, $response->getStatus());
+    }
+    return $body;
 }

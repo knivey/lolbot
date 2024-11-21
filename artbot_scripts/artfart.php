@@ -1,20 +1,18 @@
 <?php
 namespace artbot_scripts;
 
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
 
 #[Cmd("artfart")]
 #[Desc("play a random artfart")]
-#[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb")]
-function artfart($args, \Irc\Client $bot, \knivey\Cmdr\Args $cmdArgs): \Generator
+function artfart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $url = "http://www.asciiartfarts.com/random.cgi";
     try {
-        $body = yield async_get_contents($url);
+        $body = async_get_contents($url);
         if(!preg_match('/<table cellpadding=10><tr><td bgcolor="[^"]+"><font color="[^"]+"><pre>([^<]+)<\/pre>/i', $body, $m)) {
             $bot->pm($args->chan, "\2artfart:\2 bad response from server");
             return;

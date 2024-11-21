@@ -9,18 +9,20 @@ use lolbot\entities\Ignore;
 use lolbot\entities\Network;
 use Symfony\Component\Yaml\Yaml;
 
-use Amp\ByteStream\ResourceOutputStream;
+use Amp\ByteStream;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
 use Monolog\Logger;
+use function Amp\async;
+use Amp\Future;
 
-use Amp\Loop;
+use \Revolt\EventLoop;
 use knivey\irctools;
 use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 
-$logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
+$logHandler = new StreamHandler(ByteStream\getStdout());
 $logHandler->setFormatter(new ConsoleFormatter);
 $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
@@ -109,8 +111,8 @@ $nick = null;
  * @var Irc\Client|null
  */
 $bot = null;
-Loop::run(function () {
-    global $bot, $config, $logHandler, $nicks;
+function main() {
+    global $bot, $config, $logHandler, $nicks, $server;
 
     $log = new Logger($config['name']);
     $log->pushHandler($logHandler);
@@ -143,7 +145,7 @@ Loop::run(function () {
         $bot->join(implode(',', $config['channels']));
     });
 
-    \Amp\Loop::repeat(10*1000, function() use ($bot, $config) {
+    EventLoop::repeat(10, function() use ($bot, $config) {
         if(!$bot->isEstablished()) {
             return;
         }
@@ -181,92 +183,92 @@ Loop::run(function () {
     });
 
     $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
+        async(function() use ($args, $bot) {
+            global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
 
-        if(!canRun($args))
-            return;
+            if(!canRun($args))
+                return;
 
-        $ignored = $ignoreCache->getItem($args->fullhost);
-        if(!$ignored->isHit()) {
-            $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
-            $ignoreRepository = $entityManager->getRepository(Ignore::class);
-            if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
-                $ignored->set(true);
-            else
-                $ignored->set(false);
-            $ignoreCache->save($ignored);
-        }
-        if($ignored->get())
-            return;
+            $ignored = $ignoreCache->getItem($args->fullhost);
+            if(!$ignored->isHit()) {
+                $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+                $ignoreRepository = $entityManager->getRepository(Ignore::class);
+                if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
+                    $ignored->set(true);
+                else
+                    $ignored->set(false);
+                $ignoreCache->save($ignored);
+            }
+            if($ignored->get())
+                return;
 
-        tryRec($bot, $args->from, $args->text);
-        if (isset($config['trigger'])) {
-            if (substr($args->text, 0, 1) != $config['trigger']) {
+            artbot_scripts\tryRec($bot, $args->from, $args->text);
+            if (isset($config['trigger'])) {
+                if (substr($args->text, 0, 1) != $config['trigger']) {
+                    return;
+                }
+                $text = substr($args->text, 1);
+            } elseif (isset($config['trigger_re'])) {
+                $trig = "/(^{$config['trigger_re']}).+$/";
+                if (!preg_match($trig, $args->text, $m)) {
+                    return;
+                }
+                $text = substr($args->text, strlen($m[1]));
+            } else {
+                echo "No trigger defined\n";
                 return;
             }
-            $text = substr($args->text, 1);
-        } elseif (isset($config['trigger_re'])) {
-            $trig = "/(^{$config['trigger_re']}).+$/";
-            if (!preg_match($trig, $args->text, $m)) {
+
+            //TODO SOME ART NAMES HAVE SPACES
+            //Bescause we want to handle arguments to the arts later we might convert the spaces to _
+            $text = explode(' ', $text);
+            $cmd = strtolower(array_shift($text));
+            $text = implode(' ', $text);
+        
+            if(trim($cmd) == '')
                 return;
+            if($router->cmdExists($cmd)) {
+                try {
+                    $router->call($cmd, $text, $args, $bot);
+                } catch (Exception $e) {
+                    $bot->notice($args->from, $e->getMessage());
+                }
+            } else {
+                var_dump($text);
+                $opts = parseOpts($text, $reqArtOpts);
+                var_dump($opts);
+                $cmdArgs = \knivey\tools\makeArgs($text);
+                if(!is_array($cmdArgs))
+                    $cmdArgs = [];
+                artbot_scripts\reqart($bot, $args->channel, $cmd, $opts, $cmdArgs);
             }
-            $text = substr($args->text, strlen($m[1]));
-        } else {
-            echo "No trigger defined\n";
-            return;
-        }
-
-        //TODO SOME ART NAMES HAVE SPACES
-        //Bescause we want to handle arguments to the arts later we might convert the spaces to _
-        $text = explode(' ', $text);
-        $cmd = strtolower(array_shift($text));
-        $text = implode(' ', $text);
-
-
-        if(trim($cmd) == '')
-            return;
-        if($router->cmdExists($cmd)) {
-            try {
-                $router->call($cmd, $text, $args, $bot);
-            } catch (Exception $e) {
-                $bot->notice($args->from, $e->getMessage());
-            }
-        } else {
-            var_dump($text);
-            $opts = parseOpts($text, $reqArtOpts);
-            var_dump($opts);
-            $cmdArgs = \knivey\tools\makeArgs($text);
-            if(!is_array($cmdArgs))
-                $cmdArgs = [];
-            reqart($bot, $args->channel, $cmd, $opts, $cmdArgs);
-        }
+        });
     });
-    $server = yield from startRestServer();
+    $server = new artbot_rest_server($logHandler);
+    $server->startRestServer();
+    artbot_scripts\setupRestRoutes($server);
 
-    Loop::onSignal(SIGINT, function ($watcherId) use ($bot, $server) {
-        Amp\Loop::cancel($watcherId);
+    EventLoop::onSignal(SIGINT, function () use ($bot, $server) {
         if (!$bot->isConnected)
             die("Terminating, not connected\n");
         echo "Caught SIGINT! exiting ...\n";
         try {
-            yield $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
-        } catch (Exception $e) {
+            $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
+        } catch (\Exception $e) {
             echo "Exception when sending quit\n $e\n";
         }
         $bot->exit();
         if ($server != null) {
             $server->stop();
         }
-        echo "Stopping Amp\\Loop\n";
-        Amp\Loop::stop();
+        Amp\delay(0.5);
     });
-    Loop::onSignal(SIGTERM, function ($watcherId) use ($bot, $server) {
-        Amp\Loop::cancel($watcherId);
+    EventLoop::onSignal(SIGTERM, function () use ($bot, $server) {
         if (!$bot->isConnected)
             die("Terminating, not connected\n");
         echo "Caught SIGTERM! exiting ...\n";
         try {
-            yield $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
+            $bot->sendNow("quit :Caught SIGTERM GOODBYE!!!!\r\n");
         } catch (Exception $e) {
             echo "Exception when sending quit\n $e\n";
         }
@@ -274,17 +276,25 @@ Loop::run(function () {
         if ($server != null) {
             $server->stop();
         }
-        echo "Stopping Amp\\Loop\n";
-        Amp\Loop::stop();
+        Amp\delay(0.5);
     });
-
     $bot->go();
-});
+}
+
+main();
+EventLoop::run();
 
 $playing = [];
 
-function pumpToChan(string $chan, array $data, $speed = null) {
-    \Amp\asyncCall(function () use ($chan, $data, $speed) {
+/**
+ * launches pumping inside async
+ * @param string $chan 
+ * @param array $data 
+ * @param mixed $speed 
+ * @return Future<void>
+ */
+function pumpToChan(string $chan, array $data, $speed = null): Future {
+    return async(function () use ($chan, $data, $speed) {
         global $playing, $bot, $config;
         $chan = strtolower($chan);
         if (isset($playing[$chan])) {
@@ -293,10 +303,10 @@ function pumpToChan(string $chan, array $data, $speed = null) {
             $playing[$chan] = $data;
             while (!empty($playing[$chan])) {
                 $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
-                $pumpLag = $config['pumplag'] ?? 25;
+                $pumpLag = $config['pumplag'] ?? 0.025;
                 if($speed)
                     $pumpLag = max($pumpLag, $speed);
-                yield \Amp\delay($pumpLag);
+                \Amp\delay($pumpLag);
             }
             unset($playing[$chan]);
         }

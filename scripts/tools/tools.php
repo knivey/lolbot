@@ -1,14 +1,8 @@
 <?php
 namespace scripts\tools;
 require_once 'library/async_get_contents.php';
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
-use Irc\Exception;
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
 use scripts\script_base;
@@ -18,12 +12,11 @@ class tools extends script_base
     #[Cmd("define", "dictionary")]
     #[Syntax('<query>...')]
     #[Desc("lookup definitions from api.dictionaryapi.dev")]
-    #[CallWrap("Amp\asyncCall")]
     function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         $word = rawurlencode($cmdArgs['query']);
         try {
-            $body = yield \async_get_contents("https://api.dictionaryapi.dev/api/v2/entries/en/$word");
+            $body = \async_get_contents("https://api.dictionaryapi.dev/api/v2/entries/en/$word");
         } catch (\async_get_exception $e) {
             if ($e->getCode() == 404)
                 $bot->msg($args->chan, "define: no definitions found");
@@ -52,7 +45,7 @@ class tools extends script_base
 
     function getDnsType($type)
     {
-        $rc = new \ReflectionClass(\Amp\Dns\Record::class);
+        $rc = new \ReflectionClass(\Amp\Dns\DnsRecord::class);
         $ret = false;
         foreach (array_keys($rc->getConstants()) as $t) {
             if (strtolower($t) == strtolower($type))
@@ -67,7 +60,6 @@ class tools extends script_base
     #[Cmd("dns", "resolve")]
     #[Syntax('<query> [type]')]
     #[Desc("lookup dns records default is A, AAAA")]
-    #[CallWrap("Amp\asyncCall")]
     function dns($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         global $config;
@@ -79,11 +71,9 @@ class tools extends script_base
                     return;
                 }
 
-                /** @var \Amp\Dns\Record[] $records */
-                $records = yield \Amp\Dns\query($cmdArgs['query'], $type);
+                $records = \Amp\Dns\query($cmdArgs['query'], $type);
             } else {
-                /** @var \Amp\Dns\Record[] $records */
-                $records = yield \Amp\Dns\resolve($cmdArgs['query']);
+                $records = \Amp\Dns\resolve($cmdArgs['query']);
             }
             $recs = [];
             foreach ($records as $r) {
@@ -120,7 +110,6 @@ class tools extends script_base
     #[Cmd("domaincheck", "dc")]
     #[Syntax('<domain>')]
     #[Desc("check namecheap to see if a domain can be registered")]
-    #[CallWrap("Amp\asyncCall")]
     function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         global $config;
@@ -130,12 +119,13 @@ class tools extends script_base
             $bot->pm($args->chan, "namecheap key or user not set on config");
             return;
         }
+        \Amp\delay(30);
         $domain = $cmdArgs['domain'];
         $domain = urlencode($domain);
         //ClientIP 127.0.0.1 seems to work weird for API to want this..
         $url = "https://api.namecheap.com/xml.response?ApiUser=$user&ApiKey=$key&UserName=$user&Command=namecheap.domains.check&ClientIp=127.0.0.1&DomainList=$domain";
         try {
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
             $xml = simplexml_load_string($body);
             //var_dump($xml);
             if ($xml === false)
@@ -176,7 +166,6 @@ class tools extends script_base
 
     #[Cmd("tldcheck", "tc")]
     #[Syntax('<domain>')]
-    #[CallWrap("Amp\asyncCall")]
     function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         $domain = $cmdArgs['domain'];
@@ -219,7 +208,7 @@ class tools extends script_base
         $lines = [];
         foreach($urls as $url) {
             try {
-                $result = yield async_get_contents($url, $headers);
+                $result = async_get_contents($url, $headers);
             } catch (\Exception $e) {
                 echo $e->getMessage();
             }
@@ -258,11 +247,10 @@ class tools extends script_base
 
     #[Cmd("affirm")]
     #[Syntax('[nick]...')]
-    #[CallWrap("Amp\asyncCall")]
     function affirm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         try {
-            $body = yield async_get_contents("https://www.affirmations.dev");
+            $body = async_get_contents("https://www.affirmations.dev");
             $j = json_decode($body);
             if (!isset($j->affirmation))
                 throw new \Exception("affirmation not set: $body\n");
@@ -286,39 +274,4 @@ class tools extends script_base
             $bot->pm($args->chan, $line);
         }
     }
-
-    #[Cmd("authname")]
-    #[Syntax('<nick>')]
-    #[CallWrap("Amp\asyncCall")]
-    function authname($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
-    {
-        $who = $cmdArgs['nick'];
-        try {
-            $auth = yield getUserAuthServ($who, $bot);
-        } catch (\Exception $e) {
-            $bot->pm($args->chan, "Exception getting authserv account: $e");
-            return;
-        }
-        if ($auth == null) {
-            $bot->pm($args->chan, "$who doesn't appear to be authed");
-            return;
-        }
-        $bot->pm($args->chan, "$who authed to: $auth");
-    }
-
-    #[Cmd("chanaccess")]
-    #[Syntax('<nick>')]
-    #[CallWrap("Amp\asyncCall")]
-    function chanaccess($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
-    {
-        $who = $cmdArgs['nick'];
-        try {
-            $access = yield getUserChanAccess($who, $args->chan, $bot);
-        } catch (\Exception $e) {
-            $bot->pm($args->chan, "Exception getting authserv account: $e");
-            return;
-        }
-        $bot->pm($args->chan, "$who has access $access in {$args->chan}");
-    }
-
 }

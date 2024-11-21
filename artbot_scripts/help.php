@@ -52,19 +52,17 @@ function showHelp(string $chan, $bot, string $lines) {
         return;
     }
     if(strlen($lines) > 1000) {
-        \Amp\asyncCall(function () use ($chan, $bot, $lines) {
-            try {
-                $connectContext = (new \Amp\Socket\ConnectContext)
-                    ->withConnectTimeout(15);
-                $sock = yield \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
-                $sock->write($lines);
-                $url = yield \Amp\ByteStream\buffer($sock);
-                $sock->end();
-                $bot->msg($chan, "help: $url");
-            } catch (Exception $e) {
-                $bot->msg($chan, "trouble uploading help :(");
-            }
-        });
+        try {
+            $connectContext = (new \Amp\Socket\ConnectContext)
+                ->withConnectTimeout(15);
+            $sock = \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
+            $sock->write($lines);
+            $url = \Amp\ByteStream\buffer($sock);
+            $sock->end();
+            $bot->msg($chan, "help: $url");
+        } catch (Exception $e) {
+            $bot->msg($chan, "trouble uploading help :(");
+        }
         return;
     }
     foreach(explode("\n", $lines) as $line) {

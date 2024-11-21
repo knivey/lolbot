@@ -12,12 +12,15 @@ use lolbot\entities\Ignore;
 use lolbot\entities\Network;
 use Symfony\Component\Yaml\Yaml;
 
-use Amp\ByteStream\ResourceOutputStream;
+use Amp\ByteStream;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
+use Amp\TimeoutCancellation;
 use Monolog\Logger;
+use function Amp\async;
+use Amp\Future;
 
-use Amp\Loop;
+use \Revolt\EventLoop;
 use knivey\irctools;
 
 use const Irc\ERR_CANNOTSENDTOCHAN;
@@ -43,7 +46,7 @@ use knivey\cmdr\Cmdr;
 
 $router = new Cmdr();
 
-$logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
+$logHandler = new StreamHandler(ByteStream\getStdout());
 $logHandler->setFormatter(new ConsoleFormatter);
 $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
@@ -117,70 +120,73 @@ $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxL
 $nicks = null;
 function onchat($args, \Irc\Client $bot)
 {
-    global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
+    async(function() use ($args, $bot) {
+        global $config, $router, $reqArtOpts, $entityManager, $ignoreCache;
 
-    $ignored = $ignoreCache->getItem($args->fullhost);
-    if(!$ignored->isHit()) {
-        $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
-        $ignoreRepository = $entityManager->getRepository(Ignore::class);
-        if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
-            $ignored->set(true);
-        else
-            $ignored->set(false);
-        $ignoreCache->save($ignored);
-    }
-    if($ignored->get())
-        return;
+        $ignored = $ignoreCache->getItem($args->fullhost);
+        if(!$ignored->isHit()) {
+            $network = $entityManager->getRepository(Network::class)->find($config['network_id']);
+            $ignoreRepository = $entityManager->getRepository(Ignore::class);
+            if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
+                $ignored->set(true);
+            else
+                $ignored->set(false);
+            $ignoreCache->save($ignored);
+        }
+        if($ignored->get())
+            return;
 
-    if(!canRun($args))
-        return;
+        if(!canRun($args))
+            return;
+        
 
-    tryRec($bot, $args->from, $args->text);
-    if (isset($config['trigger'])) {
-        if (substr($args->text, 0, 1) != $config['trigger']) {
+        artbot_scripts\tryRec($bot, $args->from, $args->text);
+        if (isset($config['trigger'])) {
+            if (substr($args->text, 0, 1) != $config['trigger']) {
+                return;
+            }
+            $text = substr($args->text, 1);
+        } elseif (isset($config['trigger_re'])) {
+            $trig = "/(^{$config['trigger_re']}).+$/";
+            if (!preg_match($trig, $args->text, $m)) {
+                return;
+            }
+            $text = substr($args->text, strlen($m[1]));
+        } else {
+            echo "No trigger defined\n";
             return;
         }
-        $text = substr($args->text, 1);
-    } elseif (isset($config['trigger_re'])) {
-        $trig = "/(^{$config['trigger_re']}).+$/";
-        if (!preg_match($trig, $args->text, $m)) {
+
+        //TODO SOME ART NAMES HAVE SPACES
+        $text = explode(' ', $text);
+        $cmd = strtolower(array_shift($text));
+        $text = implode(' ', $text);
+
+
+        if(trim($cmd) == '')
             return;
+        if($router->cmdExists($cmd)) {
+            try {
+                $router->call($cmd, $text, $args, $bot);
+            } catch (Exception $e) {
+                $bot->notice($args->from, $e->getMessage());
+            }
+        } else {
+            var_dump($text);
+            $opts = parseOpts($text, $reqArtOpts);
+            var_dump($opts);
+            $cmdArgs = \knivey\tools\makeArgs($text);
+            if(!is_array($cmdArgs))
+                $cmdArgs = [];
+            artbot_scripts\reqart($bot, $args->channel, $cmd, $opts, $cmdArgs);
         }
-        $text = substr($args->text, strlen($m[1]));
-    } else {
-        echo "No trigger defined\n";
-        return;
-    }
-
-    //TODO SOME ART NAMES HAVE SPACES
-    $text = explode(' ', $text);
-    $cmd = strtolower(array_shift($text));
-    $text = implode(' ', $text);
-
-
-    if(trim($cmd) == '')
-        return;
-    if($router->cmdExists($cmd)) {
-        try {
-            $router->call($cmd, $text, $args, $bot);
-        } catch (Exception $e) {
-            $bot->notice($args->from, $e->getMessage());
-        }
-    } else {
-        var_dump($text);
-        $opts = parseOpts($text, $reqArtOpts);
-        var_dump($opts);
-        $cmdArgs = \knivey\tools\makeArgs($text);
-        if(!is_array($cmdArgs))
-            $cmdArgs = [];
-        reqart($bot, $args->channel, $cmd, $opts, $cmdArgs);
-    }
+    });
 }
 
 /** @var \Irc\Client[] $bots */
 $bots = [];
 
-Loop::run(function () {
+function main() {
     global $clients, $config, $logHandler, $nicks;
     var_dump($config);
 
@@ -196,7 +202,7 @@ Loop::run(function () {
             $bot->setSasl($config['sasl_user'], $config['sasl_pass']);
         }
 
-        \Amp\Loop::repeat(10*1000, function() use ($bot, $bcfg) {
+        EventLoop::repeat(10, function() use ($bot, $bcfg) {
             if(!$bot->isEstablished()) {
                 return;
             }
@@ -245,23 +251,24 @@ Loop::run(function () {
             if (function_exists("initQuotes"))
                 initQuotes($bot);
 
-            $bot->on('chat', 'onchat');
+            $bot->on('chat', onchat(...));
         }
         $cnt++;
     }
-    $server = yield from startRestServer();
+    $server = new artbot_rest_server($logHandler);
+    $server->startRestServer();
+    artbot_scripts\setupRestRoutes($server);
 
-    $botExit = function ($watcherId) use ($server) {
+    $botExit = function () use ($server) {
         global $clients;
-        Amp\Loop::cancel($watcherId);
         echo "Caught SIGINT! exiting ...\n";
-        $promises = [];
+        $futures = [];
         foreach ($clients as $bot) {
-            $promises[] = $bot->sendNow("quit :Going for a smoke break\r\n");
+            $futures[] = async(fn() => $bot->sendNow("quit :Going for a smoke break\r\n"));
         }
         try {
-            yield \Amp\Promise\some($promises);
-        } catch (Exception $e) {
+            \Amp\Future\awaitAll($futures, new TimeoutCancellation(5));
+        } catch (\Exception $e) {
             echo "Exception when sending quit\n $e\n";
         }
         foreach ($clients as $bot) {
@@ -270,18 +277,22 @@ Loop::run(function () {
         if ($server != null) {
             $server->stop();
         }
-        echo "Stopping Amp\\Loop\n";
-        Amp\Loop::stop();
+        echo "Stopping ...\n";
+        Amp\delay(0.5);
+        //var_dump(EventLoop::getIdentifiers());
+        die("forcing exit\n");
     };
 
-    Loop::onSignal(SIGINT, $botExit);
-    Loop::onSignal(SIGTERM, $botExit);
+    EventLoop::onSignal(SIGINT, $botExit);
+    EventLoop::onSignal(SIGTERM, $botExit);
 
     foreach ($clients as $bot) {
         $bot->go();
     }
 
-});
+}
+main();
+EventLoop::run();
 
 function selectBot($chan): \Irc\Client|false {
     global $clients;
@@ -323,8 +334,8 @@ function pumpToChan(string $chan, array $data, $speed = null) {
     }
 }
 
-function startPump($chan, $speed = null) {
-    \Amp\asyncCall(function() use($chan, $speed) {
+function startPump($chan, $speed = null): Future {
+    return async(function() use($chan, $speed) {
         global $playing;
         $chan = strtolower($chan);
         if(!isset($playing[$chan])) {
@@ -370,7 +381,7 @@ function startPump($chan, $speed = null) {
                 }
             }
             $eventIdx = null;
-            $def = new \Amp\Deferred();
+            $def = new \Amp\DeferredFuture();
             $botNick = $bot->getNick();
             $sendAmount = 4;
             if(count($playing[$chan]) < $sendAmount)
@@ -384,7 +395,7 @@ function startPump($chan, $speed = null) {
                 $cnt++;
                 if($cnt == $sendAmount) {
                     $bot->off('chat', null, $eventIdx);
-                    $def->resolve();
+                    $def->complete();
                 }
             }, $eventIdx);
 
@@ -398,11 +409,11 @@ function startPump($chan, $speed = null) {
                     if($speed) {
                         $delay = max($delay, $speed);
                     }
-                    yield \Amp\delay($delay);
+                    \Amp\delay($delay/1000);
                 }
             }
             try {
-                yield \Amp\Promise\timeout($def->promise(), 8000);
+                $def->getFuture()->await(new \Amp\TimeoutCancellation(8));
             } catch (\Amp\TimeoutException $e) {
                 echo "Something horrible has happened, timeout on looking for pump lines\n";
                 unset($playing[$chan]);

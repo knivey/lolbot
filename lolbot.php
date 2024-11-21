@@ -3,20 +3,20 @@
 require_once 'bootstrap.php';
 dieIfPendingMigration();
 
-use Amp\ByteStream\ResourceOutputStream;
+use \Revolt\EventLoop;
+use Amp\ByteStream;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
-use lolbot\entities\Bot;
+use function Amp\async;
 use lolbot\entities\Network;
 use Monolog\Logger;
-use Amp\Loop;
 use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
 use Crell\Tukio\OrderedListenerProvider;
 
 use lolbot\entities\Ignore;
 
-$logHandler = new StreamHandler(new ResourceOutputStream(\STDOUT));
+$logHandler = new StreamHandler(ByteStream\getStdout());
 $logHandler->setFormatter(new ConsoleFormatter);
 $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
@@ -48,45 +48,48 @@ function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
     ];
 }
 
-//TODO replace this with autoloaded class or better library
 require_once 'library/Duration.inc';
 
 require_once 'scripts/notifier/notifier.php';
 
 //require_once 'scripts/bing/bing.php';
-require_once 'scripts/brave/brave.php';
-require_once 'scripts/wolfram/wolfram.php';
-require_once 'scripts/owncast/owncast.php';
-require_once 'scripts/zyzz/zyzz.php';
-require_once 'scripts/wiki/wiki.php';
-require_once 'scripts/insult/insult.php';
-require_once "scripts/mal/mal.php";
 
-use scripts\bomb_game\bomb_game;
+//require_once 'scripts/brave/brave.php';
+//require_once 'scripts/wolfram/wolfram.php';
+//require_once 'scripts/owncast/owncast.php';
+//require_once 'scripts/zyzz/zyzz.php';
+//require_once 'scripts/wiki/wiki.php';
+//require_once 'scripts/insult/insult.php';
+//require_once "scripts/mal/mal.php";
 
-use scripts\lastfm\lastfm;
+//use scripts\bomb_game\bomb_game;
+
+//use scripts\lastfm\lastfm;
 use scripts\alias\alias;
-use scripts\weather\weather;
-use scripts\remindme\remindme;
-use scripts\tell\tell;
-use scripts\seen\seen;
-use scripts\codesand\codesand;
+//use scripts\weather\weather;
+//use scripts\remindme\remindme;
+//use scripts\tell\tell;
+//use scripts\seen\seen;
+//use scripts\codesand\codesand;
+
 use scripts\tools\tools;
-use scripts\urbandict\urbandict;
-use scripts\help\help;
-use scripts\stocks\stocks;
+
+//use scripts\urbandict\urbandict;
+//use scripts\help\help;
+//use scripts\stocks\stocks;
 
 use scripts\linktitles\linktitles;
-use scripts\youtube\youtube;
-use scripts\twitter\twitter;
-use scripts\invidious\invidious;
-use scripts\github\github;
+//use scripts\youtube\youtube;
+//use scripts\twitter\twitter;
+//use scripts\invidious\invidious;
+//use scripts\github\github;
+
 use scripts\reddit\reddit;
 
-require_once 'scripts/durendaltv/durendaltv.php';
-require_once 'scripts/bomb_game/bomb_game.php';
-require_once 'scripts/translate/translate.php';
-require_once 'scripts/yoda/yoda.php';
+//require_once 'scripts/durendaltv/durendaltv.php';
+//require_once 'scripts/bomb_game/bomb_game.php';
+//require_once 'scripts/translate/translate.php';
+//require_once 'scripts/yoda/yoda.php';
 
 
 //copied from Cmdr should give it its own function in there later
@@ -113,6 +116,9 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 require_once 'library/Nicks.php';
 require_once 'library/Channels.php';
 
+/**
+ * @var \Irc\Client[]
+ */
 $clients = [];
 /**
  * notify servers
@@ -142,12 +148,13 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
 
     $router = new Cmdr();
     $router->loadFuncs();
-
+/*
     $bomb_game = new bomb_game($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:bomb_game", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($bomb_game);
-
+*/
     $alias = new alias($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:alias", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($alias);
+/*
     $weather = new weather($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:weather", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($weather);
     $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans, $router);
@@ -160,22 +167,24 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $router->loadMethods($seen);
     $codesand = new codesand($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:codesand", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($codesand);
+    */
     $tools = new tools($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tools", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($tools);
+    /*
     $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($urbandict);
     $help = new help($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:help", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($help);
     $stocks = new stocks($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:stocks", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($stocks);
-
-    $eventLogger = new Logger("Events");
+*/
+    $eventLogger = new Logger("{$dbBot->name}:linktitles:UrlEvents", [$logHandler]);
     $eventProvider = new OrderedListenerProvider();
     $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
     $linktitles = new linktitles($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:linktitles", [$logHandler]), $nicks, $chans, $router);
     $linktitles->eventDispatcher = $eventDispatcher;
     $router->loadMethods($linktitles);
-
+/*
     $youtube = new youtube($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:youtube", [$logHandler]), $nicks, $chans, $router);
     $youtube->setEventProvider($eventProvider);
     $router->loadMethods($youtube);
@@ -191,7 +200,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $github = new github($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:github", [$logHandler]), $nicks, $chans, $router);
     $github->setEventProvider($eventProvider);
     $router->loadMethods($github);
-
+*/
     $reddit = new reddit($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:reddit", [$logHandler]), $nicks, $chans, $router);
     $reddit->setEventProvider($eventProvider);
     $router->loadMethods($reddit);
@@ -209,7 +218,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         $bot->join(implode(',', $join));
     });
 
-    \Amp\Loop::repeat(10*1000, function() use ($client, $dbBot) {
+    EventLoop::repeat(10, function() use ($client, $dbBot) {
         if(!$client->isEstablished()) {
             return;
         }
@@ -263,7 +272,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
 
 
             if ($config['bots'][$dbBot->id]['linktitles'] ?? false) {
-                \Amp\asyncCall($linktitles->linktitles(...), $bot, $args->nick, $args->channel, $args->identhost, $args->text);
+                async(fn() => $linktitles->linktitles($bot, $args->nick, $args->channel, $args->identhost, $args->text));
             }
 
             if ($dbBot->trigger != "") {
@@ -303,23 +312,25 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
             if (trim($cmd) == '')
                 return;
 
-            if ($router->cmdExists($cmd)) {
-                try {
-                    $router->call($cmd, $text, $args, $bot);
-                } catch (Exception $e) {
-                    $bot->notice($args->from, $e->getMessage());
+            async(function () use ($cmd, $text, $args, $bot, $router, $alias): void {
+                if ($router->cmdExists($cmd)) {
+                    try {
+                        $router->call($cmd, $text, $args, $bot);
+                    } catch (Exception $e) {
+                        $bot->notice($args->from, $e->getMessage());
+                    }
+                } else {
+                    //call other cmd handlers
+                    $tmpText = $text;
+                    $opts = parseOpts($tmpText, []);
+                    $cmdArgs = \knivey\tools\makeArgs($tmpText);
+                    if (!is_array($cmdArgs))
+                        $cmdArgs = [];
+                    if (count($cmdArgs) == 1 && $cmdArgs[0] == "")
+                        $cmdArgs = [];
+                    $alias->handleCmd($args, $bot, $cmd, $cmdArgs);
                 }
-            } else {
-                //call other cmd handlers
-                $tmpText = $text;
-                $opts = parseOpts($tmpText, []);
-                $cmdArgs = \knivey\tools\makeArgs($tmpText);
-                if (!is_array($cmdArgs))
-                    $cmdArgs = [];
-                if (count($cmdArgs) == 1 && $cmdArgs[0] == "")
-                    $cmdArgs = [];
-                $alias->handleCmd($args, $bot, $cmd, $cmdArgs);
-            }
+            });
         } catch (Exception $e) {
             echo "UNCAUGHT EXCEPTION $e\n";
         }
@@ -341,51 +352,38 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     return $client;
 }
 
-//////////////////////////////////////////////////
-/// main loop
-//////////////////////////////////////////////////
-try {
-    Loop::run(function () {
-        global $clients, $entityManager, $config, $servers;
-        $nets = $entityManager->getRepository(Network::class)->findAll();
-        foreach ($nets as $network) {
-            foreach ($network->getBots() as $bot) {
-                $clients[$bot->id] = startBot($network, $bot);
-                if(isset($config['bots'][$bot->id]['listen'])) {
-                    $servers[$bot->id] = yield from \scripts\notifier\notifier($clients[$bot->id], $config['bots'][$bot->id]['listen']);
-                }
+function main() {
+    global $clients, $entityManager, $config, $servers, $logHandler;
+    $nets = $entityManager->getRepository(Network::class)->findAll();
+    foreach ($nets as $network) {
+        foreach ($network->getBots() as $bot) {
+            $clients[$bot->id] = startBot($network, $bot);
+            if(isset($config['bots'][$bot->id]['listen'])) {
+                $logger = new Logger("{$bot->name}:notifier");
+                $logger->pushHandler($logHandler);
+                $servers[$bot->id] = \scripts\notifier\notifier($clients[$bot->id], $config['bots'][$bot->id]['listen'], $logger);
             }
         }
+    }
 
-        Loop::onSignal(SIGINT, function ($watcherId) use ($servers) {
-            global $clients;
-            Amp\Loop::cancel($watcherId);
-            shutdown($clients, $servers, "Caught SIGINT GOODBYE!!!!");
-        });
-
-        Loop::onSignal(SIGTERM, function ($watcherId) use ($servers) {
-            Amp\Loop::cancel($watcherId);
-            global $clients;
-            shutdown($clients, $servers, "Caught SIGTERM GOODBYE!!!!");
-        });
+    //TODO first time attempt gracefull, second catch force it
+    EventLoop::onSignal(SIGINT, function () use ($servers, $clients): void {
+        shutdown($clients, $servers, "Caught SIGINT GOODBYE!!!!");
     });
-} catch (Exception $e) {
-    echo "=================================================\n";
-    echo "Exception throw from Loop::run exiting (I HOPE)..\n";
-    echo "=================================================\n";
-    echo $e . "\n";
-    echo "=================================================\n";
-    exit(1);
+
+    EventLoop::onSignal(SIGTERM, function () use ($servers, $clients): void {
+        shutdown($clients, $servers, "Caught SIGTERM GOODBYE!!!!");
+    });
 }
 
+
 function shutdown($clients, $servers, $msg) {
-    \Amp\asyncCall(function () use ($clients, $servers, $msg) {
         echo "shutdown started: $msg\n";
         foreach ($clients as $bot) {
             if (!$bot->isConnected)
                 continue;
             try {
-                yield $bot->sendNow("quit :$msg\r\n");
+                $bot->sendNow("quit :$msg\r\n");
             } catch (Exception $e) {
                 echo "Exception when sending quit\n $e\n";
             }
@@ -394,85 +392,10 @@ function shutdown($clients, $servers, $msg) {
         foreach ($servers as $server)
             $server->stop();
 
-        echo "Stopping Amp\\Loop\n";
-        Amp\Loop::stop();
-    });
+        \Amp\delay(0.5); // maybe help with sending the quits
+        echo "Stopped?\n";
+        exit(0);
 }
 
-/*
- * will probably move this later to some kinda user auth thing
- */
-
-
-function getUserAuthServ($nick, $bot): \Amp\Promise {
-    return \Amp\call(function () use ($nick, $bot) {
-        $idx = null;
-        $auth = null;
-        $success = false;
-        $def = new \Amp\Deferred();
-        $cb = function ($args, \Irc\Client $bot) use (&$idx, $nick, &$success, &$def) {
-            if ($args->nick != 'AuthServ')
-                return;
-            if (preg_match("/Account information for \x02([^\x02]+)\x02:/", $args->text, $m)) {
-                $bot->off('notice', null, $idx);
-                $success = true;
-                $def->resolve($m[1]);
-            }
-            $rnick = preg_quote($nick, '/');
-            if (preg_match("/User with nick \x02{$rnick}\x02 does not exist\./", $args->text) ||
-                preg_match("/{$rnick} must first authenticate with \x02AuthServ\x02\./", $args->text)
-            ) {
-                $bot->off('notice', null, $idx);
-                $success = true;
-                $def->resolve(null);
-            }
-        };
-        $bot->on('notice', $cb, $idx);
-        $bot->send("as info $nick");
-        $auth = yield \Amp\Promise\timeout($def->promise(), 2000);
-        if (!$success)
-            $bot->off('notice', null, $idx);
-        return $auth;
-    });
-}
-
-function getUserChanAccess($nick, $chan, $bot): \Amp\Promise {
-    return \Amp\call(function () use ($nick, $chan, $bot) {
-        $idx = null;
-        $auth = null;
-        $success = false;
-        $def = new \Amp\Deferred();
-        $cb = function ($args, \Irc\Client $bot) use (&$idx, $nick, $chan, &$success, &$def) {
-            if ($args->nick != 'ChanServ')
-                return;
-            $rnick = preg_quote($nick, '/');
-            $rchan = preg_quote($chan, '/');
-            if (preg_match("/{$rnick} [^ ]+ has access \x02([^\x02]+)\x02 in {$rchan}/", $args->text, $m)) {
-                $bot->off('notice', null, $idx);
-                $success = true;
-                $def->resolve($m[1]);
-            }
-            /*
-             * Won't recognize suspended users due to response being the following:
-             * [ChanServ] knivey (kyte) has access 1 in #california.
-             * [ChanServ] knivey's access to #california has been suspended.
-             */
-            if (preg_match("/User with nick \x02{$rnick}\x02 does not exist\./", $args->text) ||
-                preg_match("/{$rnick} must first authenticate with \x02AuthServ\x02\./", $args->text) ||
-                preg_match("/{$rnick} [^ ]+ lacks access to {$rchan}\./", $args->text) ||
-                preg_match("/{$rchan} has not been registered with ChanServ./", $args->text)
-            ) {
-                $bot->off('notice', null, $idx);
-                $success = true;
-                $def->resolve(0);
-            }
-        };
-        $bot->on('notice', $cb, $idx);
-        $bot->send("cs $chan access $nick");
-        $auth = yield \Amp\Promise\timeout($def->promise(), 2000);
-        if (!$success)
-            $bot->off('notice', null, $idx);
-        return $auth;
-    });
-}
-
+main();
+EventLoop::run();

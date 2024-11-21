@@ -3,8 +3,8 @@
 namespace Irc;
 require_once 'Consts.php';
 
-use Amp\Loop;
-use Amp\Socket\EncryptableSocket;
+use Revolt\EventLoop;
+use Amp\Socket\Socket;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\ClientTlsContext;
 use Monolog\Logger;
@@ -44,7 +44,7 @@ class Client extends EventEmitter
     protected array $onChannels = [];
 
     protected ?ConnectContext $connectContext;
-    protected ?EncryptableSocket $socket = null;
+    protected ?Socket $socket = null;
     public bool $isConnected = false;
 
     protected string $inQ = '';
@@ -100,27 +100,24 @@ class Client extends EventEmitter
         $this->exit = true;
     }
 
-    public function go(): void
+    public function go(): \Amp\Future
     {
-        \Amp\asyncCall(function() {
-            if ($this->exit)
-                return;
+        $this->log->debug("Bot go called");
 
-            $this->log->debug("Bot go called");
-
+        return \Amp\async(function() {
             while ($this->reconnect && !$this->exit) {
-                $this->log->info("connecting...\n");
+                $this->log->info("connecting to $this->server . ':' . $this->port\n");
                 try {
-                    $this->socket = yield connect($this->server . ':' . $this->port, $this->connectContext);
+                    $this->socket = connect($this->server . ':' . $this->port, $this->connectContext);
                     $this->log->info("connected. . .");
                     if ($this->ssl) {
                         $this->log->info("starting tls");
-                        yield $this->socket->setupTLS();
+                        $this->socket->setupTls();
                         $this->log->info("tls setup");
                     }
                 } catch (\Exception $e) {
                     $this->log->info("connect failed " . $e->getMessage() . " reconnecting in 120 seconds.");
-                    yield \Amp\delay(120 * 1000);
+                    \Amp\delay(120);
                     continue;
                 }
                 $this->isConnected = true;
@@ -128,36 +125,38 @@ class Client extends EventEmitter
                 $this->send('CAP LS');
                 $this->sendLogin(); //TODO we might need to WAIT if we are doing sasl auth
                 while ($this->isConnected) {
-                    yield $this->doRead();
+                    $this->doRead();
                 }
                 $delay = $this->ErrDelay+10;
-                $this->log->info("Reconnecting in $delay seconds...");
-                yield \Amp\delay($delay * 1000);
+                if($this->exit) {
+                    $this->log->info("Skipping reconnect, bot asked to exit");
+                }else {
+                    $this->log->info("Reconnecting in $delay seconds...");
+                    \Amp\delay($delay);
+                }  
                 $this->ErrDelay = 0;
             }
         });
     }
 
-    protected function doRead(): \Amp\Promise
+    protected function doRead(): void
     {
-        return \Amp\call(function () {
             if(!isset($this->socket))
                 return;
-            $s = yield $this->socket->read();
+            $s = $this->socket->read();
             if ($s === null) {
                 $this->onDisconnect();
                 return;
             }
             $this->lastRecvTime = time();
             if ($this->timeoutWatcherID != null) {
-                Loop::cancel($this->timeoutWatcherID);
+                EventLoop::cancel($this->timeoutWatcherID);
             }
-            $this->timeoutWatcherID = Loop::delay(160000, $this->pingCheck(...));
+            $this->timeoutWatcherID = EventLoop::delay(160, $this->pingCheck(...));
             $this->inQ .= $s;
             if ($this->hasLine()) {
                 $this->doLine();
             }
-        });
     }
 
     protected function onDisconnect(): void
@@ -165,11 +164,11 @@ class Client extends EventEmitter
         $this->log->info("disconnected");
         $this->sendQ = [];
         if ($this->sendWatcherID != null) {
-            Loop::cancel($this->sendWatcherID);
+            EventLoop::cancel($this->sendWatcherID);
             $this->sendWatcherID = null;
         }
         if ($this->timeoutWatcherID != null) {
-            Loop::cancel($this->timeoutWatcherID);
+            EventLoop::cancel($this->timeoutWatcherID);
         }
         if(isset($this->socket) && !$this->socket->isClosed())
             $this->socket->close();
@@ -193,7 +192,7 @@ class Client extends EventEmitter
         }
         $this->awaitingPong = time();
         $this->send("PING :" . $this->awaitingPong);
-        $this->timeoutWatcherID = Loop::delay(160000, $this->pingCheck(...));
+        $this->timeoutWatcherID = EventLoop::delay(160, $this->pingCheck(...));
     }
 
     /**
@@ -201,14 +200,14 @@ class Client extends EventEmitter
      * @throws \Amp\ByteStream\ClosedException
      * @throws \Amp\ByteStream\StreamException
      */
-    public function sendNow(string $line): \Amp\Promise
+    public function sendNow(string $line): void
     {
         if (!$this->isConnected)
-            return new \Amp\Failure(new Exception("Not connected"));
+            throw new \Exception("Not connected");
         $this->log->info("SENDNOW", ['data' => stripForTerminal($line)]);
         if(!isset($this->socket))
-            return new \Amp\Failure(new \Exception("sendNow called but socket is null"));
-        return $this->socket->write($line);
+            throw new \Exception("sendNow called but socket is null");
+        $this->socket->write($line);
     }
 
     public function hasLine(): bool
@@ -464,69 +463,67 @@ class Client extends EventEmitter
     protected ?string $sendWatcherID = null;
 
     //Should only be called by watcher
-    public function processSendq(): \Amp\Promise
+    public function processSendq(): void
     {
-        return \Amp\call(function () {
-            $this->log->debug("processing sendQ");
-            if (empty($this->sendQ)) {
-                $this->log->debug("sendQ empty");
-                return;
-            }
-            if($this->socket == null) {
-                $this->log->debug("sendQ socket null");
-                return;
-            }
+        $this->log->debug("processing sendQ");
+        if (empty($this->sendQ)) {
+            $this->log->debug("sendQ empty");
+            return;
+        }
+        if($this->socket == null) {
+            $this->log->debug("sendQ socket null");
+            return;
+        }
 
-            if ($this->doThrottle == false) {
-                while (!empty($this->sendQ)) {
-                    $msg = array_shift($this->sendQ);
-                    if (preg_match("/(PING|PONG) .*/i", $msg))
-                        $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
-                    else
-                        $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
-                    try {
-                        yield $this->socket->write($msg);
-                    } catch (\Exception $e) {
-                        $this->log->info("Exception while writing", compact('e'));
-                        $this->onDisconnect();
-                        return;
-                    }
-                }
-                $this->sendWatcherID = null;
-                return;
-            }
-
-            $time = microtime(true);
-            if ($time > $this->msg_since) {
-                $this->msg_since = $time;
-            }
-
-            foreach ($this->sendQ as $key => $msg) {
-                if ($this->msg_since - microtime(true) >= 10) {
-                    break;
-                }
+        if ($this->doThrottle == false) {
+            while (!empty($this->sendQ)) {
+                $msg = array_shift($this->sendQ);
                 if (preg_match("/(PING|PONG) .*/i", $msg))
                     $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
                 else
                     $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
                 try {
-                    yield $this->socket->write($msg);
+                    $this->socket->write($msg);
                 } catch (\Exception $e) {
                     $this->log->info("Exception while writing", compact('e'));
                     $this->onDisconnect();
                     return;
                 }
-                $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
-                unset($this->sendQ[$key]);
             }
             $this->sendWatcherID = null;
+            return;
+        }
 
-            if (!empty($this->sendQ)) {
-                $next = $this->msg_since - 10 - microtime(true) + 0.1;
-                $this->log->debug("delay processing sendq for " . $next * 1000 . "ms");
-                $this->sendWatcherID = Loop::delay((int)round($next * 1000), $this->processSendq(...));
+        $time = microtime(true);
+        if ($time > $this->msg_since) {
+            $this->msg_since = $time;
+        }
+
+        foreach ($this->sendQ as $key => $msg) {
+            if ($this->msg_since - microtime(true) >= 10) {
+                break;
             }
-        });
+            if (preg_match("/(PING|PONG) .*/i", $msg))
+                $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
+            else
+                $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
+            try {
+                $this->socket->write($msg);
+            } catch (\Exception $e) {
+                $this->log->info("Exception while writing", compact('e'));
+                $this->onDisconnect();
+                return;
+            }
+            $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
+            unset($this->sendQ[$key]);
+        }
+        $this->sendWatcherID = null;
+
+        if (!empty($this->sendQ)) {
+            $next = $this->msg_since - 10 - microtime(true) + 0.1;
+            $this->log->debug("delay processing sendq for " . $next . "s");
+            $this->sendWatcherID = EventLoop::delay($next, $this->processSendq(...));
+        }
     }
 
     /**
@@ -555,7 +552,7 @@ class Client extends EventEmitter
         }
 
         if ($this->sendWatcherID == null) {
-            $this->sendWatcherID = Loop::defer($this->processSendq(...));
+            $this->sendWatcherID = EventLoop::defer($this->processSendq(...));
         }
 
         $this->emit("sent, sent:$message->command", array('message' => $message));

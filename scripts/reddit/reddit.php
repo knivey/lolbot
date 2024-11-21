@@ -5,7 +5,7 @@ global $config;
 
 use Carbon\Carbon;
 use Irc\Exception;
-use Psr\EventDispatcher\ListenerProviderInterface;
+use Crell\Tukio\OrderedProviderInterface;
 use scripts\linktitles\UrlEvent;
 use scripts\script_base;
 
@@ -20,7 +20,7 @@ class reddit extends script_base
         $this->reddit = new \knivey\reddit\reddit($config['reddit'], "linux:lolbot:v1 (by /u/lolb0tlol)");
     }
 
-    public function setEventProvider(ListenerProviderInterface $eventProvider): void
+    public function setEventProvider(OrderedProviderInterface $eventProvider): void
     {
         $eventProvider->addListener($this->handleEvents(...));
     }
@@ -58,9 +58,9 @@ class reddit extends script_base
         if (!$matched)
             return;
 
-        $event->promises[] = \Amp\call(function () use ($event) {
+        $event->addFuture(\Amp\async(function () use ($event): void {
             try {
-                $info = yield $this->reddit->info($event->url);
+                $info = $this->reddit->info($event->url)->await();
                 if ($info->kind != 'Listing') {
                     echo "reddit->info return was not kind: Listing\n";
                     return;
@@ -95,13 +95,11 @@ class reddit extends script_base
                 $reply = "[Reddit $post->subreddit_name_prefixed] $post->title (Posted $ago [+]{$ups} [-]$downs)";
                 $reply = html_entity_decode($reply, ENT_QUOTES | ENT_HTML5, 'UTF-8');
                 $event->reply(str_replace(["\r", "\n"], "  ", $reply));
-
-
             } catch (\Exception $e) {
                 echo "reddit exception {$e->getMessage()}\n";
                 return;
             }
-        });
+        }));
     }
 }
 
