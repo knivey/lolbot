@@ -78,7 +78,7 @@ use scripts\tools\tools;
 //use scripts\stocks\stocks;
 
 use scripts\linktitles\linktitles;
-//use scripts\youtube\youtube;
+use scripts\youtube\youtube;
 //use scripts\twitter\twitter;
 //use scripts\invidious\invidious;
 //use scripts\github\github;
@@ -179,9 +179,9 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $linktitles->eventDispatcher = $eventDispatcher;
     $router->loadMethods($linktitles);
 
-//    $youtube = new youtube($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:youtube", [$logHandler]), $nicks, $chans, $router);
-//    $youtube->setEventProvider($eventProvider);
-//    $router->loadMethods($youtube);
+    $youtube = new youtube($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:youtube", [$logHandler]), $nicks, $chans, $router);
+    $youtube->setEventProvider($eventProvider);
+    $router->loadMethods($youtube);
 
     //$twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans, $router);
     //$twitter->setEventProvider($eventProvider);
