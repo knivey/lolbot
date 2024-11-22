@@ -53,8 +53,7 @@ require_once 'library/Duration.inc';
 require_once 'scripts/notifier/notifier.php';
 
 //require_once 'scripts/bing/bing.php';
-
-//require_once 'scripts/brave/brave.php';
+require_once 'scripts/brave/brave.php';
 require_once 'scripts/wolfram/wolfram.php';
 require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/zyzz/zyzz.php';
@@ -86,7 +85,7 @@ use scripts\linktitles\linktitles;
 
 use scripts\reddit\reddit;
 
-//require_once 'scripts/durendaltv/durendaltv.php';
+require_once 'scripts/durendaltv/durendaltv.php';
 //require_once 'scripts/translate/translate.php';
 //require_once 'scripts/yoda/yoda.php';
 
