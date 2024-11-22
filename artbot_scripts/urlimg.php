@@ -127,11 +127,6 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             pumpToChan($args->chan, $out);
         }
 
-    } catch (\Amp\MultiReasonException $errors) {
-        foreach ($errors->getReasons() as $error) {
-            echo $error;
-            $bot->pm($args->chan, "\2URL Error:\2 {$error->getMessage()}");
-        }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
@@ -465,12 +460,6 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         }
 
         pumpToChan($args->chan, $out);
-
-    } catch (\Amp\MultiReasonException $errors) {
-        foreach ($errors->getReasons() as $error) {
-            echo $error;
-            $bot->pm($args->chan, "\2URL Error:\2 {$error->getMessage()}");
-        }
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.
