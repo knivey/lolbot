@@ -185,19 +185,19 @@ class tools extends script_base
         $hash = $this->hash32($domain);
 
         $headers = [
-            'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0',
-            'Accept: application/x-ndjson',
-            'Accept-Language: en-US,en;q=0.5',
-            'Accept-Encoding: gzip, deflate, br',
-            'Referer: https://instantdomainsearch.com/domain/extensions?q=' . $domain,
-            'Alt-Used: instantdomainsearch.com',
-            'Connection: keep-alive',
-            'Sec-Fetch-Dest: empty',
-            'Sec-Fetch-Mode: cors',
-            'Sec-Fetch-Site: same-origin',
-            'Pragma: no-cache',
-            'Cache-Control: no-cache',
-            'Te: trailers',
+            'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0',
+            'Accept' => 'application/x-ndjson',
+            'Accept-Language' => 'en-US,en;q=0.5',
+            'Accept-Encoding' => 'gzip, deflate, br',
+            'Referer' => 'https://instantdomainsearch.com/domain/extensions?q=' . $domain,
+            'Alt-Used' => 'instantdomainsearch.com',
+            'Connection' => 'keep-alive',
+            'Sec-Fetch-Dest' => 'empty',
+            'Sec-Fetch-Mode' => 'cors',
+            'Sec-Fetch-Site' => 'same-origin',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'no-cache',
+            'Te' => 'trailers',
         ];
 
         $urls = [
