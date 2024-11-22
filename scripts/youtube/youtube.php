@@ -179,7 +179,7 @@ class youtube extends script_base
         $id = $m[5];
 
         $event->addPromise(\Amp\call(function () use ($event, $id) {
-            global $config, $youtube_history;
+            global $config;
             // Get this with https://www.youtube.com/watch?time_continue=165&v=Bfdy5a_R4K4
             if ($id == "watch") {
                 parse_str(parse_url($event->url, PHP_URL_QUERY), $params);
@@ -191,10 +191,10 @@ class youtube extends script_base
             }
 
             $repost = '';
-            if (($youtube_history[$event->chan] ?? "") == $id) {
+            if (($this->youtube_history[$event->chan] ?? "") == $id) {
                 $repost = "\x0307,01[\x0304,01REPOST\x0307,01]\x03 ";
             }
-            $youtube_history[$event->chan] = $id;
+            $this->youtube_history[$event->chan] = $id;
             echo "Looking up youtube video $id\n";
 
             try {
