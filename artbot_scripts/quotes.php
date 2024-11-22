@@ -1,15 +1,9 @@
 <?php
-use Amp\Loop;
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
-use knivey\cmdr\attributes\CallWrap;
+
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-use knivey\irctools;
 
 use \RedBeanPHP\R as R;
 global $config;
@@ -35,7 +29,7 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         'chan' => $chan,
         'lines' => [],
         'keeptimes' => $cmdArgs->optEnabled('--keeptimes'),
-        'timeOut' => Amp\Loop::delay(15000, quoteTimeOut(...), [$nick, $bot]),
+        'timeOut' => \Revolt\EventLoop::delay(15, fn() => quoteTimeOut($nick, $bot)),
     ];
     if(isset($cmdArgs['quote'])) {
         $quote_recordings[$nick]['lines'][] = $cmdArgs['quote'];
@@ -54,7 +48,7 @@ function quoteTimeOut($watcher, $data): void {
         return;
     }
     $bot->pm($quote_recordings[$nick]['chan'], "Canceling quote recording for $nick due to no messages for 15 seconds");
-    Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+    \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
     unset($quote_recordings[$nick]);
 }
 
@@ -69,7 +63,7 @@ function endquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $bot->pm($chan, "You aren't doing a recording");
         return;
     }
-    Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+    \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
     //last line will be the command for end, so delete it
     array_pop($quote_recordings[$nick]['lines']);
     if(empty($quote_recordings[$nick]['lines'])) {
@@ -120,7 +114,7 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         return;
     }
     $bot->pm($chan, "Quote recording canceled");
-    Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+    \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
     unset($quote_recordings[$nick]);
 }
 
@@ -171,7 +165,7 @@ function initQuotes($bot) {
             return;
         if($args->chan != $quote_recordings[$nick]['chan'])
             return;
-        Amp\Loop::cancel($quote_recordings[$nick]['timeOut']);
+        \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
         if(!$quote_recordings[$nick]['keeptimes'])
             $text = stripTimestamp($text);
         $quote_recordings[$nick]['lines'][] = $text;
@@ -180,7 +174,7 @@ function initQuotes($bot) {
             unset($quote_recordings[$nick]);
             return;
         }
-        $quote_recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, quoteTimeOut(...), [$nick, $bot]);
+        $quote_recordings[$nick]['timeOut'] = \Revolt\EventLoop::delay(15, fn() => quoteTimeOut($nick, $bot));
     });
 }
 
