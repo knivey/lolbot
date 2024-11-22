@@ -64,7 +64,7 @@ require_once 'scripts/insult/insult.php';
 
 use scripts\bomb_game\bomb_game;
 
-//use scripts\lastfm\lastfm;
+use scripts\lastfm\lastfm;
 use scripts\alias\alias;
 use scripts\weather\weather;
 //use scripts\remindme\remindme;
@@ -154,8 +154,8 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $router->loadMethods($alias);
     $weather = new weather($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:weather", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($weather);
-//    $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans, $router);
-//    $router->loadMethods($lastfm);
+    $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($lastfm);
 //    $remindme = new remindme($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:remindme", [$logHandler]), $nicks, $chans, $router);
 //    $router->loadMethods($remindme);
     $tell = new tell($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tell", [$logHandler]), $nicks, $chans, $router);
