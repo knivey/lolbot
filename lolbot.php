@@ -60,7 +60,7 @@ require_once 'scripts/notifier/notifier.php';
 require_once 'scripts/zyzz/zyzz.php';
 //require_once 'scripts/wiki/wiki.php';
 require_once 'scripts/insult/insult.php';
-//require_once "scripts/mal/mal.php";
+require_once "scripts/mal/mal.php";
 
 use scripts\bomb_game\bomb_game;
 
