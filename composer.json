@@ -9,6 +9,7 @@
         "ext-pdo_sqlite": "*",
         "ext-simplexml": "*",
         "amphp/amp": "^3",
+        "amphp/file": "^3.1",
         "amphp/http-client": "^5",
         "amphp/http-client-cookies": "^2",
         "amphp/http-server": "^3",
