@@ -7,6 +7,8 @@ use lolbot\entities\Bot;
 use lolbot\entities\Network;
 use lolbot\entities\Server;
 
+//TODO add entityManager here
+
 class script_base
 {
     public function __construct(

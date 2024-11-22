@@ -1,12 +1,9 @@
 <?php
-
 namespace scripts\bing;
 
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
 $ratelimit = 0;
@@ -15,7 +12,6 @@ $warned = false;
 #[Cmd("bing", "brave")]
 #[Syntax('<query>...')]
 #[Desc("Search brave.com")]
-#[CallWrap("Amp\asyncCall")]
 #[Option("--amt", "How many results to show")]
 function brave($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -38,7 +34,7 @@ function brave($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $url = "https://api.search.brave.com/res/v1/web/search?q=$query&country=US&safesearch=off&spellcheck=false&result_filter=web";
     try {
         $headers = ['X-Subscription-Token' => $config['braveKey']];
-        $body = yield async_get_contents($url, $headers);
+        $body = async_get_contents($url, $headers);
         $j = json_decode($body);
 
         if (!isset($j->web->results) || count($j->web->results) < 1) {

@@ -5,6 +5,7 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Carbon\Carbon;
 use Amp\Http\Client\Response;
+use Amp\TimeoutCancellation;
 use Psr\EventDispatcher\ListenerProviderInterface;
 use scripts\linktitles\UrlEvent;
 use scripts\script_base;
@@ -24,13 +25,12 @@ class twitter extends script_base {
             return;
         $user = $m[1];
         $id = $m[2];
-        $event->promises[] = \Amp\call(function() use ($event, $id, $user) {
+        $event->addFuture(\Amp\async(function() use ($event, $id, $user) {
             global $config;
             try {
                 $client = HttpClientBuilder::buildDefault();
                 $nitters = [
                     "https://nitter.net/",
-                    "https://nitter.ktachibana.party/",
                     "https://nitter.kavin.rocks/",
                     "https://nitter.unixfox.eu/",
                     "https://nitter.moomoo.me/",
@@ -43,10 +43,12 @@ class twitter extends script_base {
                 $nitters = array_map(fn ($it) => "{$it}$user/status/$id", $nitters);
                 $responses = [];
                 foreach ($nitters as $nitter) {
-                    $responses[] = \Amp\Promise\timeout($client->request(new Request($nitter)), 5000);
+                    $r = new Request($nitter);
+                    $r->setTransferTimeout(5);
+                    $responses[] = \Amp\async(fn() => $client->request($r, new TimeoutCancellation(5)));;
                 }
                 $this->logger->info("starting requests...");
-                [$fails, $responses] = yield \Amp\Promise\any($responses);
+                [$fails, $responses] = \Amp\Future\awaitAll($responses);
                 $this->logger->info(count($responses) . " requests finished, " . count($fails) . " failed/timedout");
                 $success = [];
                 foreach($responses as $r) {
@@ -65,11 +67,15 @@ class twitter extends script_base {
                 /** @var Response $response */
                 $response = array_pop($success);
                 $this->logger->info("processing 200 response from " .  $response->getOriginalRequest()->getUri());
-                $body = yield $response->getBody()->buffer();
+                $body = $response->getBody()->buffer();
                 
                 $html = new HtmlDocument();
                 $html->load($body);
-                $text = $html->find("div.tweet-content", 0)->plaintext;
+                $text = $html->find("div.tweet-content", 0)?->plaintext;
+                if($text === null) {
+                    $this->logger->notice("couldnt understand response");
+                    return;
+                }
                 $date = $html->find("p.tweet-published", 0)->plaintext;
                 $date = str_replace("· ", "", $date);
                 $date = Carbon::createFromTimeString($date, 'utc');
@@ -82,6 +88,6 @@ class twitter extends script_base {
                 echo "twitter exception {$e->getMessage()}\n";
                 return;
             }
-        });
+        }));
     }
 }

@@ -1,44 +1,27 @@
 <?php
+namespace artbot_scripts;
+
 require_once 'library/async_get_contents.php';
 
-use Amp\ByteStream\InputStream;
+use Amp\ByteStream\BufferException;
 use Amp\Http\Server\Router;
-use Amp\Promise;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
 use knivey\irctools;
 use knivey\tools;
-use Amp\Http\Server\RequestHandler\CallableRequestHandler;
+use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
 use Amp\Http\Server\Response as HttpResponse;
 use Amp\Http\Server\Request as HttpRequest;
-use Amp\Http\Status;
+use Amp\Http\HttpStatus;
 use Symfony\Component\Yaml\Yaml;
-use function Amp\call;
+use Amp\Http\Server\ClientException;
+use Revolt\EventLoop;
 
 $recordings = [];
-
-global $restRouter;
-
-class BufferOverFlow extends \Exception {
-}
-
-function buffer(InputStream $stream, int $max): Promise {
-    return call(function () use($stream, $max) {
-        $buffer = '';
-        while (null !== $chunk = yield $stream->read()) {
-            $buffer .= $chunk;
-            if(strlen($buffer) > $max)
-                throw new \BufferOverFlow("Data too large");
-        }
-        return $buffer;
-    });
-}
-
 
 $allowedPumps = [];
 
@@ -48,122 +31,123 @@ function asciipost_to_array(string $msg): array {
     return array_filter($msg);
 }
 
-$restRouter->addRoute('POST', '/pump/{key}', new CallableRequestHandler(function (HttpRequest $request) {
-    global $allowedPumps;
-    $args = $request->getAttribute(Router::class);
-    if(!isset($args['key']) || !array_key_exists($args['key'], $allowedPumps)) {
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "Invalid key\n");
-    }
+function setupRestRoutes(\artbot_rest_server $server) {
+    $server->addRoute('POST', '/pump/{key}', new ClosureRequestHandler(function (HttpRequest $request) {
+        global $allowedPumps;
+        $args = $request->getAttribute(Router::class);
+        if(!isset($args['key']) || !array_key_exists($args['key'], $allowedPumps)) {
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "Invalid key\n");
+        }
 
-    $pumpInfo = $allowedPumps[$args['key']];
-    try {
-        $msg = yield buffer($request->getBody(), 1024 * 9000);
-    } catch (\BufferOverFlow $e) {
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "{$e->getMessage()}\n");
-    }
-    $msg = asciipost_to_array($msg);
-    if(count($msg) > 9000)
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "Too many lines\n");
-    array_unshift($msg, "Pump brought to you by {$pumpInfo['nick']}");
-    pumpToChan($pumpInfo['chan'], $msg);
-    unset($allowedPumps[$args['key']]);
-    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "PUMPED!\n");
-}));
+        $pumpInfo = $allowedPumps[$args['key']];
+        try {
+            $msg = $request->getBody()->buffer(limit: 1024 * 9000);
+        } catch (BufferException|ClientException $e) {
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "{$e->getMessage()}\n");
+        }
+        $msg = asciipost_to_array($msg);
+        if(count($msg) > 9000)
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "Too many lines\n");
+        array_unshift($msg, "Pump brought to you by {$pumpInfo['nick']}");
+        pumpToChan($pumpInfo['chan'], $msg);
+        unset($allowedPumps[$args['key']]);
+        return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "PUMPED!\n");
+    }));
 
-$restRouter->addRoute('POST', '/record2/{key}/{filename}', new CallableRequestHandler(function (HttpRequest $request) {
-    global $config;
-    $keys = Yaml::parseFile('recording_keys.yaml');
-    $args = $request->getAttribute(Router::class);
-    if(!isset($args['key']) || !isset($keys[$args['key']])) {
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "Invalid key\n");
-    }
-    $user = $keys[$args['key']];
-    if(!isset($args['filename'])) {
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "Missing required filename\n");
-    }
+    $server->addRoute('POST', '/record2/{key}/{filename}', new ClosureRequestHandler(function (HttpRequest $request) {
+        global $config;
+        $keys = Yaml::parseFile('recording_keys.yaml');
+        $args = $request->getAttribute(Router::class);
+        if(!isset($args['key']) || !isset($keys[$args['key']])) {
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "Invalid key\n");
+        }
+        $user = $keys[$args['key']];
+        if(!isset($args['filename'])) {
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "Missing required filename\n");
+        }
 
-    $file = $args['filename'];
+        $file = $args['filename'];
 
-    try {
-        $msg = yield buffer($request->getBody(), 1024 * 9000);
-    } catch (\BufferOverFlow $e) {
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "{$e->getMessage()}\n");
-    }
-    $msg = asciipost_to_array($msg);
-    if(count($msg) > 9000)
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "Too many lines\n");
+        try {
+            $msg = $request->getBody()->buffer(limit: 1024 * 9000);
+        } catch (BufferException|ClientException $e) {
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "{$e->getMessage()}\n");
+        }
+        $msg = asciipost_to_array($msg);
+        if(count($msg) > 9000)
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "Too many lines\n");
 
-    $dir = "{$config['artdir']}h4x/{$user}";
-    if(file_exists($dir) && !is_dir($dir)) {
-        return new HttpResponse(Status::INTERNAL_SERVER_ERROR, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "dir for recordings is not valid plz tell admin to fix\n");
-    }
-    if(!file_exists($dir)) {
-        mkdir($dir, 0777, true);
-    }
-    $cnt = 0;
-    while((file_exists("$dir/{$file}.txt") && $cnt == 0) || file_exists("$dir/{$file}-$cnt.txt")) {
-        $cnt++;
-    }
-    if($cnt > 0)
-        $file = "$file-$cnt";
-    file_put_contents("$dir/{$file}.txt", implode("\n", $msg));
-    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "h4x/{$user}/$file.txt\n");
-}));
+        $dir = "{$config['artdir']}h4x/{$user}";
+        if(file_exists($dir) && !is_dir($dir)) {
+            return new HttpResponse(HttpStatus::INTERNAL_SERVER_ERROR, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "dir for recordings is not valid plz tell admin to fix\n");
+        }
+        if(!file_exists($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        $cnt = 0;
+        while((file_exists("$dir/{$file}.txt") && $cnt == 0) || file_exists("$dir/{$file}-$cnt.txt")) {
+            $cnt++;
+        }
+        if($cnt > 0)
+            $file = "$file-$cnt";
+        file_put_contents("$dir/{$file}.txt", implode("\n", $msg));
+        return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "h4x/{$user}/$file.txt\n");
+    }));
 
-$restRouter->addRoute('POST', '/record/{key}', new CallableRequestHandler(function (HttpRequest $request) {
-    global $recordTokens, $config;
-    $args = $request->getAttribute(Router::class);
-    if(!isset($args['key']) || !array_key_exists($args['key'], $recordTokens)) {
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "Invalid key\n");
-    }
-    $token = $recordTokens[$args['key']];
-    try {
-        $msg = yield buffer($request->getBody(), 1024 * 9000);
-    } catch (\BufferOverFlow $e) {
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "{$e->getMessage()}\n");
-    }
-    $msg = asciipost_to_array($msg);
+    $server->addRoute('POST', '/record/{key}', new ClosureRequestHandler(function (HttpRequest $request) {
+        global $recordTokens, $config;
+        $args = $request->getAttribute(Router::class);
+        if(!isset($args['key']) || !array_key_exists($args['key'], $recordTokens)) {
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "Invalid key\n");
+        }
+        $token = $recordTokens[$args['key']];
+        try {
+            $msg = $request->getBody()->buffer(limit: 1024 * 9000);
+        } catch (BufferException|ClientException $e) {
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "{$e->getMessage()}\n");
+        }
+        $msg = asciipost_to_array($msg);
 
-    if(count($msg) > 9000)
-        return new HttpResponse(Status::FORBIDDEN, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "Too many lines\n");
+        if(count($msg) > 9000)
+            return new HttpResponse(HttpStatus::FORBIDDEN, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "Too many lines\n");
 
-    $dir = "{$config['artdir']}h4x/{$token->nick}";
-    if(file_exists($dir) && !is_dir($dir)) {
-        return new HttpResponse(Status::INTERNAL_SERVER_ERROR, [
-            "content-type" => "text/plain; charset=utf-8"
-        ], "dir for recordings is not valid plz tell admin to fix\n");
-    }
-    if(!file_exists($dir)) {
-        mkdir($dir, 0777, true);
-    }
-    $file = "$dir/{$token->file}.txt";
-    file_put_contents($file, implode("\n", $msg));
-    pumpToChan($token->chan, ["{$token->nick} has posted a new art @{$token->file}"]);
-    return new HttpResponse(Status::OK, ['content-type' => 'text/plain'], "SAVED!\n");
-}));
-
+        $dir = "{$config['artdir']}h4x/{$token->nick}";
+        if(file_exists($dir) && !is_dir($dir)) {
+            return new HttpResponse(HttpStatus::INTERNAL_SERVER_ERROR, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "dir for recordings is not valid plz tell admin to fix\n");
+        }
+        if(!file_exists($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        $file = "$dir/{$token->file}.txt";
+        file_put_contents($file, implode("\n", $msg));
+        pumpToChan($token->chan, ["{$token->nick} has posted a new art @{$token->file}"]);
+        return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "SAVED!\n");
+    }));
+}
 class RecordToken {
     public function __construct(
         public string $nick,
@@ -180,58 +164,54 @@ $recordTokens = [];
  * @param $chan
  * @param $file
  * @param $minutes
- * @return Promise<String>
+ * @return string
  */
-function requestRecordUrl($nick, $chan, $file, $minutes): Promise {
-    return \Amp\call(function () use ($nick, $chan, $file, $minutes) {
+function requestRecordUrl($nick, $chan, $file, $minutes): string {
+    global $recordTokens;
+    $key = bin2hex(random_bytes(5));
+    $url = makeUrl("record/$key");
+    if(!$url)
+        throw new \Exception("Couldn't find my ip");
+    $exists = array_reduce($recordTokens, fn($c, $t) => $t->nick == $nick ? $t->token : $c);
+    if($exists)
+        unset($recordTokens[$exists]);
+    $token = new RecordToken($nick, $chan, $file, $key);
+    $recordTokens[$key] = $token;
+    EventLoop::delay($minutes*60, function () use ($key) {
         global $recordTokens;
-        $key = bin2hex(random_bytes(5));
-        $url = yield makeUrl("record/$key");
-        if(!$url)
-            throw new \Exception("Couldn't find my ip");
-        $exists = array_reduce($recordTokens, fn($c, $t) => $t->nick == $nick ? $t->token : $c);
-        if($exists)
-            unset($recordTokens[$exists]);
-        $token = new RecordToken($nick, $chan, $file, $key);
-        $recordTokens[$key] = $token;
-        \Amp\Loop::delay($minutes*60*1000, function () use ($key) {
-            global $recordTokens;
-            unset($recordTokens[$key]);
-        });
-        return $url;
+        unset($recordTokens[$key]);
     });
+    return $url;
 }
 
 /**
  * @param string $route
- * @return Promise<String|False>
+ * @return string
  */
-function makeUrl(string $route): Promise {
-    return \Amp\call(function () use ($route) {
-        global $config;
-        if (isset($config['rest_url'])) {
-            $url = $config['rest_url'];
-        } else {
-            //need the http or it wont parse ipv6 correct
-            $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
-            $ourIp = false;
-            foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
-                try {
-                    $ourIp = yield async_get_contents("http://$ipserv");
-                    if ($ourIp)
-                        break;
-                } catch (\Exception $e) {
-                }
+function makeUrl(string $route): string {
+    global $config;
+    if (isset($config['rest_url'])) {
+        $url = $config['rest_url'];
+    } else {
+        //need the http or it wont parse ipv6 correct
+        $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
+        $ourIp = false;
+        foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
+            try {
+                $ourIp = async_get_contents("http://$ipserv");
+                if ($ourIp)
+                    break;
+            } catch (\Exception $e) {
             }
-            if (!$ourIp) {
-                return false;
-            }
-            $https = isset($config['listen_cert']) ? "https" : "http";
-            $url = "$https://$ourIp:$port";
         }
-        $route = ltrim($route, '/');
-        return "$url/$route";
-    });
+        if (!$ourIp) {
+            return '';
+        }
+        $https = isset($config['listen_cert']) ? "https" : "http";
+        $url = "$https://$ourIp:$port";
+    }
+    $route = ltrim($route, '/');
+    return "$url/$route";
 }
 
 function getWrapLength($bot, $chan) {
@@ -249,12 +229,11 @@ function getWrapLength($bot, $chan) {
 
 #[Cmd("getpumper")]
 #[Desc("Gets a URL you can send a HTTP POST to play art in the channel")]
-#[CallWrap("\Amp\asyncCall")]
 function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $allowedPumps;
     $key = bin2hex(random_bytes(5));
-    $url = yield makeUrl("pump/$key");
+    $url = makeUrl("pump/$key");
     if(!$url) {
         $bot->pm($args->chan, "Couldn't find my ip :(");
         return;
@@ -266,7 +245,7 @@ function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     ];
 
     $bot->notice($args->nick, "  $url  This is valid for 1 pump and expires in 10 min");
-    \Amp\Loop::delay(10*60*1000, function () use ($key) {
+    EventLoop::delay(10*60, function () use ($key) {
         global $allowedPumps;
         unset($allowedPumps[$key]);
     });
@@ -279,7 +258,6 @@ $limitWarns = [];
 #[Desc("Record a new art, use this, paste the art to the chat then type @end when finished")]
 #[Option(["--post", "--url"], "Get a URL to POST the art data to instead of pasting it to the channel")]
 #[Syntax('<filename>')]
-#[CallWrap('\Amp\asyncCall')]
 function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $nick = $args->nick;
     $chan = $args->chan;
@@ -336,7 +314,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
     if($cmdArgs->optEnabled('--post') || $cmdArgs->optEnabled('--url')) {
         try {
-            $url = yield requestRecordUrl($nick, $chan, $file, 60);
+            $url = requestRecordUrl($nick, $chan, $file, 60);
         } catch (\Exception $e) {
             $bot->notice($nick, "Problem encountered: {$e->getMessage()}");
             return;
@@ -350,7 +328,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         'nick' => $nick,
         'chan' => $chan,
         'art' => [],
-        'timeOut' => Amp\Loop::delay(15000, 'timeOut', [$nick, $bot]),
+        'timeOut' => EventLoop::delay(15, fn () => timeOut($nick, $bot)),
     ];
     $bot->pm($chan, 'Recording started type @end when done or discard with @cancel');
 }
@@ -359,8 +337,8 @@ function tryRec($bot, $nick, $text) {
     global $recordings;
     if(!isset($recordings[$nick]))
         return;
-    Amp\Loop::cancel($recordings[$nick]['timeOut']);
-    $recordings[$nick]['timeOut'] = Amp\Loop::delay(15000, 'timeOut', [$nick, $bot]);
+    EventLoop::cancel($recordings[$nick]['timeOut']);
+    $recordings[$nick]['timeOut'] = EventLoop::delay(15, fn () => timeOut($nick, $bot));
     $recordings[$nick]['art'][] = $text;
 }
 
@@ -372,7 +350,7 @@ function timeOut($watcher, $data) {
         return;
     }
     $bot->pm($recordings[$nick]['chan'], "Canceling art for $nick due to no messages for 15 seconds");
-    Amp\Loop::cancel($recordings[$nick]['timeOut']);
+    EventLoop::cancel($recordings[$nick]['timeOut']);
     unset($recordings[$nick]);
 }
 
@@ -386,7 +364,7 @@ function endart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $bot->pm($chan, "You aren't doing a recording");
         return;
     }
-    Amp\Loop::cancel($recordings[$nick]['timeOut']);
+    EventLoop::cancel($recordings[$nick]['timeOut']);
     //last line will be the command for end, so delete it
     array_pop($recordings[$nick]['art']);
     if(empty($recordings[$nick]['art'])) {
@@ -420,82 +398,79 @@ function cancel($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         return;
     }
     $bot->pm($chan, "Recording canceled");
-    Amp\Loop::cancel($recordings[$nick]['timeOut']);
+    EventLoop::cancel($recordings[$nick]['timeOut']);
     unset($recordings[$nick]);
 }
 
 $reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed', '--link', '--download'];
 function reqart($bot, $chan, $file, $opts = [], $args = []) {
-    \Amp\asyncCall(function() use ($bot, $chan, $file, $opts, $args) {
-        global $config, $playing;
-        if(isset($playing[strtolower($chan)])) {
+    global $config, $playing;
+    if(isset($playing[strtolower($chan)])) {
+        return;
+    }
+
+    $finder = getFinder([]);
+    //in the future support other extensions run through appropriate handlers
+    $finder->name("/\.txt$/i");
+
+    $tryEdit = function ($ent) use ($bot, $chan, $opts) {
+        global $config;
+        if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
+            $relPath = substr($ent, strlen($config['artdir']));
+            $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=$relPath");
+            return true;
+        }
+        return false;
+    };
+
+    $tryLink = function ($ent) use ($bot, $chan, $opts) {
+        global $config;
+        if(array_key_exists('--link', $opts) || array_key_exists('--download', $opts)) {
+            $relPath = substr($ent, strlen($config['artdir']));
+            $bot->pm($chan, "{$config['link_url']}$relPath");
+            return true;
+        }
+        return false;
+    };
+
+    $speed = null;
+    if(array_key_exists('--speed', $opts)) {
+        $speed = $opts['--speed'];
+        if(!is_numeric($speed) || $speed < 20 || $speed > 500) {
+            $bot->pm($chan, "--speed must be between 20 and 500 (milliseconds between lines)");
             return;
         }
+    }
 
-        $finder = getFinder([]);
-        //in the future support other extensions run through appropriate handlers
-        $finder->name("/\.txt$/i");
-
-        $tryEdit = function ($ent) use ($bot, $chan, $opts) {
-            global $config;
-            if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
-                $relPath = substr($ent, strlen($config['artdir']));
-                $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=$relPath");
-                return true;
-            }
-            return false;
-        };
-
-        $tryLink = function ($ent) use ($bot, $chan, $opts) {
-            global $config;
-            if(array_key_exists('--link', $opts) || array_key_exists('--download', $opts)) {
-                $relPath = substr($ent, strlen($config['artdir']));
-                $bot->pm($chan, "{$config['link_url']}$relPath");
-                return true;
-            }
-            return false;
-        };
-
-        $speed = null;
-        if(array_key_exists('--speed', $opts)) {
-            $speed = $opts['--speed'];
-            if(!is_numeric($speed) || $speed < 20 || $speed > 500) {
-                $bot->pm($chan, "--speed must be between 20 and 500 (milliseconds between lines)");
+    if(strlen($file) > 1 && $file[0] == '@') {
+        $file = substr($file, 1);
+        $art = selectRandFile($file);
+        if($art !== false)
+            playart($bot, $chan, $art, $file, $opts, $args, $speed);
+        else
+            $bot->pm($chan, "no matching art found");
+        return;
+    }
+    $finder->sortByModifiedTime()->reverseSorting();
+    //try fullpath first
+    foreach($finder as $f) {
+        $ent = $f->getRealPath();
+        if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
+            if($tryEdit($ent) || $tryLink($ent))
                 return;
-            }
-        }
-
-        if(strlen($file) > 1 && $file[0] == '@') {
-            $file = substr($file, 1);
-            $art = selectRandFile($file);
-            if($art !== false)
-                playart($bot, $chan, $art, $file, $opts, $args, $speed);
-            else
-                $bot->pm($chan, "no matching art found");
+            playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
             return;
         }
-        $finder->sortByModifiedTime()->reverseSorting();
-        //try fullpath first
-        foreach($finder as $f) {
-            $ent = $f->getRealPath();
-            if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
-                if($tryEdit($ent) || $tryLink($ent))
-                    return;
-                playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
+    }
+    foreach($finder as $f) {
+        $ent = $f->getRealPath();
+        if($file == strtolower(basename($ent, '.txt'))) {
+            if($tryEdit($ent) || $tryLink($ent))
                 return;
-            }
+            playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
+            return;
         }
-        foreach($finder as $f) {
-            $ent = $f->getRealPath();
-            if($file == strtolower(basename($ent, '.txt'))) {
-                if($tryEdit($ent) || $tryLink($ent))
-                    return;
-                playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
-                return;
-            }
-        }
-        //$bot->pm($chan, "that art not found");
-    });
+    }
 }
 
 $trashLimit = [];
@@ -575,7 +550,7 @@ function trash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
  */
 function getFinder(array $exclude = ['p2u']) : \Symfony\Component\Finder\Finder {
     global $config;
-    $finder = new Symfony\Component\Finder\Finder();
+    $finder = new \Symfony\Component\Finder\Finder();
     $finder->files();
     $finder->in($config['artdir'])->exclude($exclude);
     return $finder;
@@ -923,7 +898,7 @@ function quietExec($cmd)
     $descSpec = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
     $p = proc_open($cmd, $descSpec, $pipes);
     if (!is_resource($p)) {
-        throw new Exception("Unable to execute $cmd\n");
+        throw new \Exception("Unable to execute $cmd\n");
     }
     $out = stream_get_contents($pipes[1]);
     $err = stream_get_contents($pipes[2]);
@@ -946,83 +921,81 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $bot->pm($chan, "a2m not setup in config");
         return;
     }
-    \Amp\asyncCall(function () use ($bot, $chan, $cmdArgs) {
-        global $config;
-        try {
-            $a2m = $config['a2m'];
-            $url = $cmdArgs['url'];
-            /*
-             * restricting the allowed URL for this to try to only do ansi arts otherwise anything would run through
-             *
-             * also content-type: application/octet-stream is what https://16colo.rs/ gives
-             * curl -i https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans
-             *
-             * TODO since we are limiting to 16colo.rs just allow any url to the file and auto get width option etc
-             */
-            if(!preg_match("@https?://16colo\.rs/.+\.(?:ans|asc|cia)@i", $url)) {
-                $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ urls (ans|asc) (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
-                return;
-            }
-            //try to parse url here
-            // https://16colo.rs/pack/croyale01/raw/sp-coc.asc
-            // https://16colo.rs/pack/ane-0696/DA-MASK.ANS
-            // https://16colo.rs/pack/ane-0696/data/DA-MASK.ANS
-            // https://16colo.rs/pack/ciapak12/raw/DA-NXS.CIA
-            if(!preg_match("@^https?://16colo\.rs/pack/([^/]+)/(?:raw/)?([^/]+\.(?:ans|asc|cia))$@i", $url, $m)) {
-                $bot->pm($chan, "\2a2m Error:\2 url seems wrong");
-                return;
-            }
-            if(!isset($config['artdir'])) {
-                $bot->pm($chan, "artdir not configured");
-                return;
-            }
-            $pack = urldecode($m[1]);
-            $pfile = urldecode($m[2]);
-            $saveFile = "{$config['artdir']}/ans/$pack/$pfile";
-            if(!file_exists("$saveFile.txt")) {
-                try {
-                    $data = yield async_get_contents("https://16colo.rs/pack/$pack/data/$pfile");
-                    $json = json_decode($data);
-                    if (isset($json->sauce->tinfo1)) {
-                        $width = $json->sauce->tinfo1;
-                    }
-                } catch (\Exception $e) {
-                }
 
-                $body = yield async_get_contents("https://16colo.rs/pack/$pack/raw/$pfile");
-
-                if (!is_dir("{$config['artdir']}/ans"))
-                    mkdir("{$config['artdir']}/ans");
-                if (!is_dir("{$config['artdir']}/ans/$pack"))
-                    mkdir("{$config['artdir']}/ans/$pack");
-
-                file_put_contents($saveFile, $body);
-                if (!isset($width))
-                    $width = intval($cmdArgs->getOpt("--width"));
-                if (!$width)
-                    $width = 80;
-                list($rc, $out, $err) = quietExec("$a2m -w $width " . escapeshellarg($saveFile));
-                if ($rc != 0) {
-                    $bot->pm($chan, "\2a2m Error:\2 " . trim($err));
-                    return;
-                }
-                file_put_contents("$saveFile.txt", $out);
-            } else {
-                $out = file_get_contents("$saveFile.txt");
-            }
-            if($cmdArgs->optEnabled('--edit')) {
-                $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=ans/" .urlencode($pack) . "/" . urlencode($pfile) . ".txt");
-                return;
-            } else {
-                pumpToChan($chan, explode("\n", rtrim($out)));
-            }
-        } catch (\async_get_exception $error) {
-            $bot->pm($chan, "\a2m:\2 {$error->getIRCMsg()}");
-        } catch (\Exception $error) {
-            echo $error->getMessage();
-            $bot->pm($chan, "\2a2m:\2 {$error->getMessage()}");
+    try {
+        $a2m = $config['a2m'];
+        $url = $cmdArgs['url'];
+        /*
+            * restricting the allowed URL for this to try to only do ansi arts otherwise anything would run through
+            *
+            * also content-type: application/octet-stream is what https://16colo.rs/ gives
+            * curl -i https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans
+            *
+            * TODO since we are limiting to 16colo.rs just allow any url to the file and auto get width option etc
+            */
+        if(!preg_match("@https?://16colo\.rs/.+\.(?:ans|asc|cia)@i", $url)) {
+            $bot->pm($chan, "\2a2m Error:\2 Limited to https://16colo.rs/ urls (ans|asc) (https://16colo.rs/pack/impure79/raw/ldn-fatnikon.ans)");
             return;
         }
-    });
+        //try to parse url here
+        // https://16colo.rs/pack/croyale01/raw/sp-coc.asc
+        // https://16colo.rs/pack/ane-0696/DA-MASK.ANS
+        // https://16colo.rs/pack/ane-0696/data/DA-MASK.ANS
+        // https://16colo.rs/pack/ciapak12/raw/DA-NXS.CIA
+        if(!preg_match("@^https?://16colo\.rs/pack/([^/]+)/(?:raw/)?([^/]+\.(?:ans|asc|cia))$@i", $url, $m)) {
+            $bot->pm($chan, "\2a2m Error:\2 url seems wrong");
+            return;
+        }
+        if(!isset($config['artdir'])) {
+            $bot->pm($chan, "artdir not configured");
+            return;
+        }
+        $pack = urldecode($m[1]);
+        $pfile = urldecode($m[2]);
+        $saveFile = "{$config['artdir']}/ans/$pack/$pfile";
+        if(!file_exists("$saveFile.txt")) {
+            try {
+                $data = async_get_contents("https://16colo.rs/pack/$pack/data/$pfile");
+                $json = json_decode($data);
+                if (isset($json->sauce->tinfo1)) {
+                    $width = $json->sauce->tinfo1;
+                }
+            } catch (\Exception $e) {
+            }
+
+            $body = async_get_contents("https://16colo.rs/pack/$pack/raw/$pfile");
+
+            if (!is_dir("{$config['artdir']}/ans"))
+                mkdir("{$config['artdir']}/ans");
+            if (!is_dir("{$config['artdir']}/ans/$pack"))
+                mkdir("{$config['artdir']}/ans/$pack");
+
+            file_put_contents($saveFile, $body);
+            if (!isset($width))
+                $width = intval($cmdArgs->getOpt("--width"));
+            if (!$width)
+                $width = 80;
+            list($rc, $out, $err) = quietExec("$a2m -w $width " . escapeshellarg($saveFile));
+            if ($rc != 0) {
+                $bot->pm($chan, "\2a2m Error:\2 " . trim($err));
+                return;
+            }
+            file_put_contents("$saveFile.txt", $out);
+        } else {
+            $out = file_get_contents("$saveFile.txt");
+        }
+        if($cmdArgs->optEnabled('--edit')) {
+            $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=ans/" .urlencode($pack) . "/" . urlencode($pfile) . ".txt");
+            return;
+        } else {
+            pumpToChan($chan, explode("\n", rtrim($out)));
+        }
+    } catch (\async_get_exception $error) {
+        $bot->pm($chan, "\a2m:\2 {$error->getIRCMsg()}");
+    } catch (\Exception $error) {
+        echo $error->getMessage();
+        $bot->pm($chan, "\2a2m:\2 {$error->getMessage()}");
+        return;
+    }
 }
 

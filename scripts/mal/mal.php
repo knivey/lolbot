@@ -12,13 +12,12 @@ use function knivey\tools\multi_array_padding;
 #[Cmd("mals", "myanimelistsearch")]
 #[Syntax("<search>...")]
 #[Desc("search a anime on myanimelist")]
-#[CallWrap("Amp\asyncCall")]
 function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     var_dump(urlencode($cmdArgs["search"]));
     $url = "https://myanimelist.net/anime.php?cat=anime&q=" .  urlencode($cmdArgs["search"]);
     try {
-        $body = yield async_get_contents($url);
+        $body = async_get_contents($url);
     } catch (\async_get_exception $e) {
         $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
         return;
@@ -45,7 +44,7 @@ function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $results[] = [$id, $type, $eps, $title, $score];
     }
 
-    if(count($results) == 0) {
+    if(count($results) <= 1) {
         $bot->pm($args->chan, "\2MAL:\2 no results found");
     }
 
@@ -61,7 +60,6 @@ function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 #[Cmd("mal", "myanimelist")]
 #[Syntax("<search>...")]
 #[Desc("lookup a anime on myanimelist, search can be an ID to lookup directly")]
-#[CallWrap("Amp\asyncCall")]
 function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     if(preg_match("/^\d+$/", $cmdArgs["search"])) {
@@ -69,7 +67,7 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     } else {
         $url = "https://myanimelist.net/anime.php?cat=anime&q=" . urlencode($cmdArgs["search"]);
         try {
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
         } catch (\async_get_exception $e) {
             $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
             return;
@@ -90,7 +88,7 @@ function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         }
     }
     try {
-        $body = yield async_get_contents($result);
+        $body = async_get_contents($result);
     } catch (\async_get_exception $e) {
         if($e->getCode() == 404)
             $bot->pm($args->chan, "\2MAL:\2 404 anime not found");

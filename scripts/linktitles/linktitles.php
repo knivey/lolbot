@@ -2,7 +2,7 @@
 namespace scripts\linktitles;
 
 use Amp\Http\Client\Cookie\CookieInterceptor;
-use Amp\Http\Client\Cookie\InMemoryCookieJar;
+use Amp\Http\Client\Cookie\LocalCookieJar;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
@@ -13,9 +13,14 @@ use scripts\linktitles\entities\ignore_type;
 use scripts\linktitles\entities\ignore;
 use scripts\script_base;
 
+use function Amp\Future\awaitAll;
+
 class linktitles extends script_base
 {
     public $eventDispatcher;
+
+    //adding buffer limit is an extra precaution to the body size limit
+    const bufferLimit = 1024*1024*40;
 
 //feature requested by terps
 //sends all urls into a log channel for easier viewing url history
@@ -76,7 +81,8 @@ class linktitles extends script_base
             $urlEvent->text = $text;
             $this->eventDispatcher->dispatch($urlEvent);
 
-            yield \Amp\Promise\any($urlEvent->promises);
+            $urlEvent->awaitAll();
+            
             if ($urlEvent->handled) {
                 $urlEvent->sendReplies($bot, $chan);
                 $urlEvent->doLog($this, $bot);
@@ -87,7 +93,7 @@ class linktitles extends script_base
             $word = preg_replace("@^https?://(www\.)?reddit.com@i", "https://old.reddit.com", $word);
 
             try {
-                $cookieJar = new InMemoryCookieJar;
+                $cookieJar = new LocalCookieJar;
                 $client = (new HttpClientBuilder)
                     ->interceptNetwork(new CookieInterceptor($cookieJar))
                     ->build();
@@ -98,17 +104,18 @@ class linktitles extends script_base
                 $req->setTransferTimeout(4000);
                 $req->setBodySizeLimit(1024 * 1024 * 8);
                 /** @var Response $response */
-                $response = yield $client->request($req);
-                $body = yield $response->getBody()->buffer();
+                $response = $client->request($req);
+                $body = $response->getBody()->buffer(limit: self::bufferLimit);
                 if ($response->getStatus() != 200) {
                     $this->logUrl($bot, $nick, $chan, $text, "Err: {$response->getStatus()} {$response->getReason()}");
                     continue;
                 }
 
+                //TODO move these handlers to their own UrlEvents
                 if (preg_match("@^image/(.*)$@i", $response->getHeader("content-type"), $m)) {
                     $size = $response->getHeader("content-length");
                     if ($size !== null && is_numeric($size))
-                        $size = \knivey\tools\convert($size);
+                        $size = \knivey\tools\convert((int)$size);
                     else
                         $size = "?b";
                     $d = getimagesizefromstring($body);
@@ -124,7 +131,7 @@ class linktitles extends script_base
                 if (preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
                     $size = $response->getHeader("content-length");
                     if ($size !== null && is_numeric($size))
-                        $size = \knivey\tools\convert($size);
+                        $size = \knivey\tools\convert((int)$size);
                     else
                         $size = "?b";
 
@@ -163,7 +170,7 @@ class linktitles extends script_base
                     $resY = $vt->Height ?? '?';
 
                     if (isset($vt->Duration)) {
-                        $dur = Duration_toString(round((float)$vt->Duration)) . ' long';
+                        $dur = \Duration_toString((int)round((float)$vt->Duration)) . ' long';
                     } else {
                         $dur = 'unknown duration';
                     }

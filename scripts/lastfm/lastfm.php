@@ -17,7 +17,6 @@ class lastfm extends script_base
     #[Cmd("setlastfm")]
     #[Syntax('<username>')]
     #[Desc("Set your last.fm name for the bot to remember for np")]
-    #[CallWrap("Amp\asyncCall")]
     function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         global $config, $entityManager;
@@ -29,7 +28,7 @@ class lastfm extends script_base
         $user = urlencode($cmdArgs['username']);
         $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
         try {
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
         } catch (\Exception $error) {
             $this->logger->error($error->getMessage());
             $bot->pm($args->chan, "\2setlastfm:\2 couldn't lookup that username");
@@ -48,7 +47,6 @@ class lastfm extends script_base
     #[Cmd("np")]
     #[Syntax('[nick]')]
     #[Desc("Show your nowplaying status from last.fm")]
-    #[CallWrap("Amp\asyncCall")]
     function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         global $config, $entityManager;
@@ -72,7 +70,7 @@ class lastfm extends script_base
         $user = urlencode($user);
         $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
         try {
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
         } catch (\async_get_exception $error) {
             $this->logger->error($error);
             $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
@@ -101,7 +99,6 @@ class lastfm extends script_base
     #[Cmd("lastfm")]
     #[Syntax('[user]')]
     #[Desc("Lookup a user on last.fm")]
-    #[CallWrap("Amp\asyncCall")]
     #[Options("--info")]
     function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
@@ -127,7 +124,7 @@ class lastfm extends script_base
         $user = urlencode($user);
         $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
         try {
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
         } catch (\async_get_exception $error) {
             $this->logger->error($error);
             $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
@@ -154,8 +151,8 @@ class lastfm extends script_base
         $time = 'scrobbling now';
         if (isset($track['date']['uts'])) {
             $ago = time() - $track['date']['uts'];
-            $dur = Duration_int2array($ago);
-            $ago = Duration_array2string(array_slice($dur, 0, 3), 1);
+            $dur = \Duration_int2array($ago);
+            $ago = \Duration_array2string(array_slice($dur, 0, 3), 1);
             $time = "last scrobbled $ago ago";
         }
         $bot->pm($args->chan, "\2last.fm:\2 $user $time: $title - $album - $artist");
@@ -167,7 +164,7 @@ class lastfm extends script_base
         findinfo:
         $url = "http://ws.audioscrobbler.com/2.0/?method=user.getinfo&user=$user&api_key=$key&format=json&limit=1";
         try {
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
         } catch (\async_get_exception $error) {
             $this->logger->error($error);
             $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");

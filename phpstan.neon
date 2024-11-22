@@ -1,4 +1,7 @@
 parameters:
+	fileExtensions:
+		- php
+		- inc
 	level: 5
 	paths:
 		- .

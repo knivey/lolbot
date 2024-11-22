@@ -1,11 +1,6 @@
 <?php
 namespace scripts\wolfram;
 
-use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\HttpException;
-use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
@@ -13,7 +8,6 @@ const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 
 #[Cmd("calc", "wa")]
 #[Syntax('<query>...')]
-#[CallWrap("Amp\asyncCall")]
 function calc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     global $config;
@@ -25,7 +19,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     //note width means pixels not text len
     $query = waURL . urlencode($cmdArgs['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=Los+Angeles,+California&format=plaintext&width=3000';
     try {
-        $body = yield async_get_contents($query);
+        $body = async_get_contents($query);
 
         $xml = simplexml_load_string($body);
         $res = '';

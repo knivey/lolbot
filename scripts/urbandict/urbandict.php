@@ -1,7 +1,6 @@
 <?php
 namespace scripts\urbandict;
 
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
@@ -13,12 +12,11 @@ class urbandict extends \scripts\script_base
 {
     #[Cmd("ud", "urban", "urbandict")]
     #[Syntax('<query>...')]
-    #[CallWrap("Amp\asyncCall")]
     function ud($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         $query = urlencode($cmdArgs['query']);
-        try {
-            $body = yield async_get_contents("http://www.urbandictionary.com/define.php?term=$query");
+        try { 
+            $body = async_get_contents("http://www.urbandictionary.com/define.php?term=$query");
         } catch (\async_get_exception $e) {
             // we get a 404 if word not found
             if ($e->getCode() == 404) {
@@ -55,7 +53,7 @@ class urbandict extends \scripts\script_base
             $def = $defs[$i];
             $num++;
             //Haven't seen this on the pages again, maybe they stopped it
-            if (str_contains($def->find('div.ribbon', 0)->plaintext, "Word of the Day")) {
+            if (str_contains($def->find('div.ribbon', 0)?->plaintext, "Word of the Day")) {
                 $max++;
                 continue;
             }

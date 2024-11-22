@@ -3,7 +3,6 @@
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
@@ -13,7 +12,6 @@ use Itwmw\ColorDifference\Lib\RGB;
 
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
-#[CallWrap("Amp\asyncCall")]
 #[Options("--rainbow", "--rnb", "--bsize", "--width", '--edit')]
 function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $config;
@@ -35,8 +33,8 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $request = new Request($url);
 
         /** @var Response $response */
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
+        $response = $client->request($request);
+        $body = $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
             $body = substr($body, 0, 200);
             $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
@@ -246,7 +244,6 @@ static $palette = [
 
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
-#[CallWrap("Amp\asyncCall")]
 #[\knivey\cmdr\attributes\Desc("Generates an ascii from an image url, color matching defaults to Din99")]
 #[Option("--width", "how wide to make the ascii ex --width=80")]
 #[Option("--edit", "Generate a URL to open the ascii in asciibird editor")]
@@ -275,8 +272,8 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $request = new Request($url);
 
         /** @var Response $response */
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
+        $response = $client->request($request);
+        $body = $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
             $body = substr($body, 0, 200);
             $bot->pm($args->chan, "Error (" . $response->getStatus() . ") $body");
@@ -349,7 +346,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         }
         pumpToChan($args->chan, ["ok give me a few seconds to generate the ascii.."]);
         //delay so the above actualy has a chance to send first
-        yield \Amp\delay(100);
+        Amp\delay(0.05);
 
         for($row = 0; $row < $size['height']; $row++) {
             $last_match_index = -1;

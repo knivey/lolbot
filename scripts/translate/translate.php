@@ -1,16 +1,14 @@
 <?php
 use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Body\FormBody;
+use Amp\Http\Client\Form;
 use Amp\Http\Client\Request;
-use Amp\Http\Client\Response;
-use knivey\cmdr\attributes\CallWrap;
+
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("translate", "trans")]
 #[Syntax('<input>...')]
-#[CallWrap("Amp\asyncCall")]
 #[Options("--langs")]
 function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
@@ -33,22 +31,22 @@ function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t";
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url, "POST");
-        $body = new FormBody();
+        $body = new Form();
         $body->addField('sl', $fromLang);
         $body->addField('tl', $toLang);
         $body->addField('q', $text);
         $request->setBody($body);
-        $response = yield $client->request($request);
+        $response = $client->request($request);
         if ($response->getStatus() != 200) {
-            $body = yield $response->getBody()->buffer();
+            $body = $response->getBody()->buffer();
             echo $body;
             throw new \Exception("gTranslate returned {$response->getStatus()}");
         }
-        $respBody = yield $response->getBody()->buffer();
+        $respBody = $response->getBody()->buffer();
         $responseArray = json_decode($respBody, true);
 
+        $translatedSentences = [];
         if (is_array($responseArray)) {
-            $translatedSentences = [];
             foreach ($responseArray[0] as $translation) {
                 $translatedSentence = urldecode($translation[0]);
                 $translatedSentences[] = $translatedSentence;

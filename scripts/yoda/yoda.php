@@ -1,37 +1,44 @@
 <?php
+
+use Amp\Future;
 use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\Body\FormBody;
+use Amp\Http\Client\Form;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
-use Amp\Promise;
+use knivey\cmdr\attributes\Option;
 
 #[Cmd("yoda")]
 #[Syntax('<url>...')]
 #[Option("--og", "OG Yoda")]
-#[CallWrap("Amp\asyncCall")]
 function yoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     $url = $cmdArgs['url'];
 
-    if(!filter_var($url, FILTER_VALIDATE_URL)) return;
+    if(!filter_var($url, FILTER_VALIDATE_URL))
+        return;
 
     try {
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url);
 
         /** @var Response $response */
-        $response = yield $client->request($request);
-        $body = yield $response->getBody()->buffer();
+        $response = $client->request($request);
+        $body = $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
+            $bot->pm($args->chan, "Server returned {$response->getStatus()}");
             return;
         }
 
         $img = new Imagick();
-        $img->readImageBlob($body);
-        if(!$img->getImageFormat()) {
+        try {
+            $img->readImageBlob($body);
+            if(!$img->getImageFormat()) {
+                throw new \Exception();
+            }
+        } catch (\Exception $e) {
+            $bot->pm($args->chan, "couldn't recognize any image data");
             return;
         }
 
@@ -54,38 +61,41 @@ function yoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             $img->compositeImage($yodaImg, Imagick::COMPOSITE_BLEND, 0, 0);
         }
 
-        $tmpfile = tempnam(sys_get_temp_dir(), 'yoda');
+        $tmpfile = tempnam(sys_get_temp_dir(), 'yoda') . '.webp';
         $img->writeImage($tmpfile);
-        $yodaPic = yield hostToFilehole($tmpfile);
+        $yodaPic = hostToFilehole($tmpfile)->await();
         unlink($tmpfile);
-
         $bot->pm($args->chan,  $yodaPic);
-
     } catch (\Exception $e) {
         return;
     }
 }
 
-function hostToFilehole(string $filename): Promise
+/**
+ * 
+ * @param string $filename 
+ * @return Future<string> 
+ */
+function hostToFilehole(string $filename): Future
 {
-    return \Amp\call(function () use ($filename) {
+    return \Amp\async(function () use ($filename) {
         if(!file_exists($filename))
             throw new \Exception("hostToFilehole called with non existant filename: $filename");
         $client = HttpClientBuilder::buildDefault();
         $request = new Request("https://filehole.org", "POST");
-        $body = new FormBody();
+        $body = new Form();
         $body->addField('url_len', '5');
         $body->addField('expiry', '86400');
         $body->addFile('file', $filename);
         $request->setBody($body);
         //var_dump($request);
         /** @var Response $response */
-        $response = yield $client->request($request);
+        $response = $client->request($request);
         //var_dump($response);
         if ($response->getStatus() != 200) {
             throw new \Exception("filehole.org returned {$response->getStatus()}");
         }
-        $respBody = yield $response->getBody()->buffer();
+        $respBody = $response->getBody()->buffer();
         return $respBody;
     });
 }

@@ -1,11 +1,9 @@
 <?php
 namespace scripts\bing;
 
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
 $ratelimit = 0;
@@ -14,7 +12,6 @@ $warned = false;
 #[Cmd("bing")]
 #[Syntax('<query>...')]
 #[Desc("Search bing.com")]
-#[CallWrap("Amp\asyncCall")]
 #[Option("--amt", "How many results to show")]
 #[Option("--result", "Show result at this position")]
 function bing($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
@@ -63,7 +60,7 @@ function bing($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $url = $config['bingEP'] . "search?q=$query&mkt=$config[bingLang]&setLang=$config[bingLang]";
     try {
         $headers = ['Ocp-Apim-Subscription-Key' => $config['bingKey']];
-        $body = yield async_get_contents($url, $headers);
+        $body = async_get_contents($url, $headers);
         $j = json_decode($body, true);
 
         if (!array_key_exists('webPages', $j)) {

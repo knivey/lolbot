@@ -12,7 +12,6 @@ use Symfony\Component\Yaml\Yaml;
 
 #[Cmd("owncast", "popcorn", "🍿")]
 #[Desc("Lookup status of a configured owncast server")]
-#[CallWrap("Amp\asyncCall")]
 function owncast($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
     if(!file_exists(__DIR__.'/casts.yaml')) {
@@ -28,7 +27,7 @@ function owncast($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     try {
         $url = "{$casts[$chan]}/api/status";
         $surl = $casts[$chan];
-        $body = yield async_get_contents($url);
+        $body = async_get_contents($url);
         $j = json_decode($body, true);
         if(!$j['online']) {
             $bot->pm($args->chan, "$surl - Stream is offline now.");

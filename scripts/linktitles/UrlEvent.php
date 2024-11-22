@@ -1,24 +1,36 @@
 <?php
-
-
 namespace scripts\linktitles;
 
+use Amp\Future;
 
 class UrlEvent
 {
     public bool $handled = false;
     public string $url = '';
-    public $bot;
     public string $chan;
     public string $nick;
     public string $text;
 
-    public array $promises = [];
-
+    /**
+     * @var list<Future>
+     */
+    public array $futures = [];
+    /**
+     * @var list<string>
+     */
     public array $replies = [];
 
-    public function addPromise($promise) {
-        $this->promises[] = $promise;
+    /**
+     * 
+     * @param Future<void> $future 
+     * @return void 
+     */
+    public function addFuture(Future $future) {
+        $this->futures[] = $future;
+    }
+
+    public function awaitAll() {
+        return Future\awaitAll($this->futures);
     }
 
     public function reply(string $msg) {

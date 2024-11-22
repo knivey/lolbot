@@ -20,45 +20,43 @@ class remindme extends script_base
     #[Desc("sets a reminder for your after time. time is formatted like 5m30s supports: 1y2M3d4h5m6s")]
     function in($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
-        \Amp\asyncCall(function () use ($args, $bot, $cmdArgs) {
-            global $entityManager;
-            $host = $args->host;
-            if (isset($this->cmdLimit[$host]) && $this->cmdLimit[$host] > time()) {
-                if (!isset($this->limitWarns[$host]) || $this->limitWarns[$host] < time() - 2) {
-                    $bot->pm($args->chan, "You're going too fast, wait awhile");
-                    $this->limitWarns[$host] = time();
-                }
-                return;
+        global $entityManager;
+        $host = $args->host;
+        if (isset($this->cmdLimit[$host]) && $this->cmdLimit[$host] > time()) {
+            if (!isset($this->limitWarns[$host]) || $this->limitWarns[$host] < time() - 2) {
+                $bot->pm($args->chan, "You're going too fast, wait awhile");
+                $this->limitWarns[$host] = time();
             }
-            $this->cmdLimit[$host] = time() + 2;
-            unset($this->limitWarns[$host]);
+            return;
+        }
+        $this->cmdLimit[$host] = time() + 2;
+        unset($this->limitWarns[$host]);
 
-            $in = string2Seconds($cmdArgs['time']);
-            if (is_string($in)) {
-                $bot->pm($args->chan, "Error: $in, Give me a proper duration of at least 15 seconds with no spaces using yMwdhms (Ex: 1h10m15s)");
-                return;
-            }
-            if ($in < 15) {
-                $bot->pm($args->chan, "Give me a proper duration of at least 15 seconds with no spaces (Ex: 1h10m15s)");
-                return;
-            }
-            if ($in > string2Seconds("69y")) {
-                $bot->pm($args->chan, "Yeah sure I'll totally remind you in " . Duration_toString($in) . " ;-)");
-                return;
-            }
+        $in = \string2Seconds($cmdArgs['time']);
+        if (is_string($in)) {
+            $bot->pm($args->chan, "Error: $in, Give me a proper duration of at least 15 seconds with no spaces using yMwdhms (Ex: 1h10m15s)");
+            return;
+        }
+        if ($in < 15) {
+            $bot->pm($args->chan, "Give me a proper duration of at least 15 seconds with no spaces (Ex: 1h10m15s)");
+            return;
+        }
+        if ($in > \string2Seconds("69y")) {
+            $bot->pm($args->chan, "Yeah sure I'll totally remind you in " . \Duration_toString($in) . " ;-)");
+            return;
+        }
 
-            $r = new reminder();
-            $r->nick = $args->nick;
-            $r->chan = $args->chan;
-            $r->at = time() + $in;
-            $r->msg = $cmdArgs['msg'];
-            $r->network = $this->network;
-            $entityManager->persist($r);
-            $entityManager->flush();
+        $r = new reminder();
+        $r->nick = $args->nick;
+        $r->chan = $args->chan;
+        $r->at = time() + $in;
+        $r->msg = $cmdArgs['msg'];
+        $r->network = $this->network;
+        $entityManager->persist($r);
+        $entityManager->flush();
 
-            $bot->pm($args->chan, "Ok, I'll remind you in " . Duration_toString($in));
-            $this->sendDelayed($bot, $r, $in);
-        });
+        $bot->pm($args->chan, "Ok, I'll remind you in " . \Duration_toString($in));
+        $this->sendDelayed($bot, $r, $in);
     }
 
     /*
@@ -96,7 +94,7 @@ class remindme extends script_base
         $r->nick = $args->nick;
         $r->chan = $args->chan;
         $r->at = $dt->getTimestamp();
-        $r->sent = 0;
+        $r->sent = false;
         $r->msg = $msg;
         $r->network = $this->network;
         $entityManager->persist($r);
@@ -109,13 +107,13 @@ class remindme extends script_base
 
     function sendDelayed(\Irc\Client $bot, $r, $seconds)
     {
-        \Amp\asyncCall(function () use ($bot, $r, $seconds) {
+        \Amp\async(function () use ($bot, $r, $seconds) {
             global $entityManager;
             if ($seconds > 0)
-                yield \Amp\delay($seconds * 1000);
+                \Amp\delay($seconds);
             //if bot somehow isnt connected keep retrying
             while (!$bot->isEstablished()) {
-                yield \Amp\delay(10000);
+                \Amp\delay(10);
             }
             $bot->pm($r->chan, "[REMINDER: {$r->nick}] {$r->msg}");
             $r->sent = true;
@@ -132,20 +130,20 @@ class remindme extends script_base
             return;
         $inited = true;
         echo "Initializing remindme...\n";
-        \Amp\asyncCall(function () {
+        \Amp\async(function () {
             global $entityManager;
             while (!$this->client->isEstablished()) {
-                yield \Amp\delay(10000);
+                \Amp\delay(10);
             }
             //A bit of a hack here so we give the bot time to join channels etc
-            yield \Amp\delay(5000);
+            \Amp\delay(5);
             //load our reminders from db and call sendDelayed on all
             $rs = $entityManager->getRepository(reminder::class)->findBy(["network"=>$this->network, "sent"=>false]);
             echo "remindme has " . count($rs) . " reminders loaded from db\n";
             foreach ($rs as $r) {
                 //whoops already passed while bot was down
                 if ($r->at <= time()) {
-                    $ago = Duration_toString(time() - $r->at);
+                    $ago = \Duration_toString(time() - $r->at);
                     $this->client->pm($r->chan, "[REMINDER: {$r->nick} (late by $ago)] {$r->msg}");
                     $r->sent = true;
                     $entityManager->persist($r);

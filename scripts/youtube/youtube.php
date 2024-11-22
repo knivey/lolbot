@@ -1,12 +1,11 @@
 <?php
 namespace scripts\youtube;
 
-use Amp\Http\Client\Body\FormBody;
+use Amp\Http\Client\Form;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Process\Process;
-use Amp\Promise;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Options;
@@ -55,76 +54,66 @@ class youtube extends script_base
         return $dur;
     }
 
-    function getLiveVideos($channelId): Promise
+    function getLiveVideos($channelId)
     {
-        return \Amp\call(function () use ($channelId) {
-            global $config;
-            if (!isset($config['gkey'])) {
-                echo "No gkey set for youtube lookup\n";
-                return null;
-            }
-            $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key={$config['gkey']}");
-            $data = json_decode($body, false);
+        global $config;
+        if (!isset($config['gkey'])) {
+            echo "No gkey set for youtube lookup\n";
+            return null;
+        }
+        $body = async_get_contents("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key={$config['gkey']}");
+        $data = json_decode($body, false);
 
-            if (!is_object($data)) {
-                echo "Youtube getLiveVideos for $channelId, bad or no data\n";
-                var_dump($data);
-                return null;
-            }
-            if (!is_array($data->items) || count($data->items) < 1)
-                return null;
-            return $data->items;
-        });
+        if (!is_object($data)) {
+            echo "Youtube getLiveVideos for $channelId, bad or no data\n";
+            var_dump($data);
+            return null;
+        }
+        if (!is_array($data->items) || count($data->items) < 1)
+            return null;
+        return $data->items;
     }
 
-    /**
-     * @param $id
-     * @return Promise
-     */
-    function getVideoInfo($id): Promise
+    function getVideoInfo($id)
     {
-        return \Amp\call(function () use ($id) {
-            global $config;
-            if (!isset($config['gkey'])) {
-                echo "No gkey set for youtube lookup\n";
-                return null;
-            }
-            $body = yield async_get_contents("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key={$config['gkey']}");
-            $data = json_decode($body, false);
+        global $config;
+        if (!isset($config['gkey'])) {
+            echo "No gkey set for youtube lookup\n";
+            return null;
+        }
+        $body = async_get_contents("https://www.googleapis.com/youtube/v3/videos?id=$id&part=snippet%2CcontentDetails%2Cstatistics&key={$config['gkey']}");
+        $data = json_decode($body, false);
 
-            if (!is_object($data)) {
-                echo "Youtube $id bad or no data\n";
-                var_dump($data);
-                return null;
-            }
-            if (!is_array($data->items) || count($data->items) < 1)
-                return null;
-            return $data->items[0];
-        });
+        if (!is_object($data)) {
+            echo "Youtube $id bad or no data\n";
+            var_dump($data);
+            return null;
+        }
+        if (!is_array($data->items) || count($data->items) < 1)
+            return null;
+        return $data->items[0];
     }
 
-    function hostToFilehole(string $filename): Promise
+    function hostToFilehole(string $filename)
     {
-        return \Amp\call(function () use ($filename) {
-            if (!file_exists($filename))
-                throw new \Exception("hostToFilehole called with non existant filename: $filename");
-            $client = HttpClientBuilder::buildDefault();
-            $request = new Request("https://filehole.org", "POST");
-            $body = new FormBody();
-            $body->addField('url_len', '5');
-            $body->addField('expiry', '86400');
-            $body->addFile('file', $filename);
-            $request->setBody($body);
-            //var_dump($request);
-            /** @var Response $response */
-            $response = yield $client->request($request);
-            //var_dump($response);
-            if ($response->getStatus() != 200) {
-                throw new \Exception("filehole.org returned {$response->getStatus()}");
-            }
-            $respBody = yield $response->getBody()->buffer();
-            return $respBody;
-        });
+        if (!file_exists($filename))
+            throw new \Exception("hostToFilehole called with non existant filename: $filename");
+        $client = HttpClientBuilder::buildDefault();
+        $request = new Request("https://filehole.org", "POST");
+        $body = new Form();
+        $body->addField('url_len', '5');
+        $body->addField('expiry', '86400');
+        $body->addFile('file', $filename);
+        $request->setBody($body);
+        //var_dump($request);
+        /** @var Response $response */
+        $response = $client->request($request);
+        //var_dump($response);
+        if ($response->getStatus() != 200) {
+            throw new \Exception("filehole.org returned {$response->getStatus()}");
+        }
+        $respBody = $response->getBody()->buffer();
+        return $respBody;
     }
 
     function isShort($duration)
@@ -178,7 +167,7 @@ class youtube extends script_base
         }
         $id = $m[5];
 
-        $event->addPromise(\Amp\call(function () use ($event, $id) {
+        $event->addFuture(\Amp\async(function () use ($event, $id) {
             global $config;
             // Get this with https://www.youtube.com/watch?time_continue=165&v=Bfdy5a_R4K4
             if ($id == "watch") {
@@ -198,7 +187,7 @@ class youtube extends script_base
             echo "Looking up youtube video $id\n";
 
             try {
-                $v = yield $this->getVideoInfo($id);
+                $v = $this->getVideoInfo($id);
             } catch (\async_get_exception $error) {
                 echo $error->getMessage();
                 $event->reply("\2YouTube:\2 {$error->getIRCMsg()}");
@@ -218,11 +207,10 @@ class youtube extends script_base
                     (($config['youtube_upload_shorts'] ?? false) || ($config['youtube_host_shorts'] ?? false))) {
                     try {
                         //TODO check if file was already downloaded
-                        $proc = new Process("yt-dlp --no-playlist --no-progress -q --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
-                        yield $proc->start();
-                        $ytjson_raw = yield \Amp\ByteStream\buffer($proc->getStdout());
-                        $ytjsonerr = yield \Amp\ByteStream\buffer($proc->getStderr());
-                        $code = yield $proc->join();
+                        $proc = Process::start("yt-dlp --no-playlist --no-progress -q --no-simulate -j -o '%(id)s.%(ext)s' " . escapeshellarg($event->url));
+                        $ytjson_raw = \Amp\ByteStream\buffer($proc->getStdout());
+                        $ytjsonerr = \Amp\ByteStream\buffer($proc->getStderr());
+                        $code = $proc->join();
                         $ytjson = json_decode($ytjson_raw);
                         if (isset($ytjson->filename)) {
                             echo "file: {$ytjson->filename}\n";
@@ -230,7 +218,7 @@ class youtube extends script_base
                                 rename($ytjson->filename, $config['youtube_host_shorts'] . '/' . $ytjson->filename);
                                 $shorts = " | " . ($config['youtube_host_shorts_url'] ?? "https://localhost/") . $ytjson->filename;
                             } else {
-                                $shorts = " | " . yield $this->hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
+                                $shorts = " | " . $this->hostToFilehole((new \SplFileInfo($ytjson->filename))->getRealPath());
                                 unlink($ytjson->filename);
                             }
                             echo "shorts: $shorts\n";
@@ -267,7 +255,7 @@ class youtube extends script_base
                     $ext = array_pop($ext);
                     try {
                         echo "fetching thumbnail at $thumbnail\n";
-                        $body = yield async_get_contents($thumbnail);
+                        $body = async_get_contents($thumbnail);
                         $filename = "thumb_$id.$ext";
                         echo "saving to $filename\n";
                         file_put_contents($filename, $body);
@@ -302,8 +290,8 @@ class youtube extends script_base
                                 $request->setBody($sendBody);
                                 $request->setHeader('key', $config['bots'][$this->bot->id]['youtube_pump_key']);
                                 /** @var Response $response */
-                                $response = yield $client->request($request);
-                                //$body = yield $response->getBody()->buffer();
+                                $response = $client->request($request);
+                                //$body = $response->getBody()->buffer();
                                 if ($response->getStatus() == 200) {
                                     $sent = true;
                                     $event->handled = true;
@@ -339,7 +327,6 @@ class youtube extends script_base
 
     #[Cmd("yt", "ytsearch", "youtube")]
     #[Syntax('<query>...')]
-    #[CallWrap("Amp\asyncCall")]
     #[Options("--amt")]
     function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
@@ -367,7 +354,7 @@ class youtube extends script_base
         // search only supports snippet part :(
         $url = "https://www.googleapis.com/youtube/v3/search?q=$q&key=$key&part=snippet&safeSearch=none&type=video";
         try {
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
         } catch (\async_get_exception $error) {
             echo $error;
             $reply($error->getIRCMsg());
@@ -396,7 +383,7 @@ class youtube extends script_base
             //$desc = htmlspecialchars_decode($desc);
             $dur = null;
             try {
-                $v = yield $this->getVideoInfo($i['id']['videoId']);
+                $v = $this->getVideoInfo($i['id']['videoId']);
                 if ($v != null) {
                     $dur = $this->ytDuration($v->contentDetails->duration);
                     //if for some reason duration fails format it so it wont look bad missing

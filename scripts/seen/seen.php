@@ -109,7 +109,7 @@ class seen extends script_base
 
     function init(): void
     {
-        \Amp\Loop::repeat(15000, $this->saveSeens(...));
+        \Revolt\EventLoop::repeat(15, $this->saveSeens(...));
 
         $this->client->on('notice', function ($args, \Irc\Client $bot) {
             if (!$bot->isChannel($args->to))
