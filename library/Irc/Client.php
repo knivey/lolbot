@@ -465,19 +465,45 @@ class Client extends EventEmitter
     //Should only be called by watcher
     public function processSendq(): void
     {
-        $this->log->debug("processing sendQ");
-        if (empty($this->sendQ)) {
-            $this->log->debug("sendQ empty");
-            return;
-        }
-        if($this->socket == null) {
-            $this->log->debug("sendQ socket null");
-            return;
-        }
+        \Amp\async(function() {
+            $this->log->debug("processing sendQ");
+            if (empty($this->sendQ)) {
+                $this->log->debug("sendQ empty");
+                return;
+            }
+            if($this->socket == null) {
+                $this->log->debug("sendQ socket null");
+                return;
+            }
 
-        if ($this->doThrottle == false) {
-            while (!empty($this->sendQ)) {
-                $msg = array_shift($this->sendQ);
+            if ($this->doThrottle == false) {
+                while (!empty($this->sendQ)) {
+                    $msg = array_shift($this->sendQ);
+                    if (preg_match("/(PING|PONG) .*/i", $msg))
+                        $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
+                    else
+                        $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
+                    try {
+                        $this->socket->write($msg);
+                    } catch (\Exception $e) {
+                        $this->log->info("Exception while writing", compact('e'));
+                        $this->onDisconnect();
+                        return;
+                    }
+                }
+                $this->sendWatcherID = null;
+                return;
+            }
+
+            $time = microtime(true);
+            if ($time > $this->msg_since) {
+                $this->msg_since = $time;
+            }
+
+            foreach ($this->sendQ as $key => $msg) {
+                if ($this->msg_since - microtime(true) >= 10) {
+                    break;
+                }
                 if (preg_match("/(PING|PONG) .*/i", $msg))
                     $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
                 else
@@ -489,41 +515,17 @@ class Client extends EventEmitter
                     $this->onDisconnect();
                     return;
                 }
+                $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
+                unset($this->sendQ[$key]);
             }
             $this->sendWatcherID = null;
-            return;
-        }
 
-        $time = microtime(true);
-        if ($time > $this->msg_since) {
-            $this->msg_since = $time;
-        }
-
-        foreach ($this->sendQ as $key => $msg) {
-            if ($this->msg_since - microtime(true) >= 10) {
-                break;
+            if (!empty($this->sendQ)) {
+                $next = $this->msg_since - 10 - microtime(true) + 0.1;
+                $this->log->debug("delay processing sendq for " . $next . "s");
+                $this->sendWatcherID = EventLoop::delay($next, $this->processSendq(...));
             }
-            if (preg_match("/(PING|PONG) .*/i", $msg))
-                $this->log->debug("OUT", ['line' => stripForTerminal($msg)]);
-            else
-                $this->log->info("OUT", ['line' => stripForTerminal($msg)]);
-            try {
-                $this->socket->write($msg);
-            } catch (\Exception $e) {
-                $this->log->info("Exception while writing", compact('e'));
-                $this->onDisconnect();
-                return;
-            }
-            $this->msg_since += 2 + ((strlen($msg) + 2) / 120);
-            unset($this->sendQ[$key]);
-        }
-        $this->sendWatcherID = null;
-
-        if (!empty($this->sendQ)) {
-            $next = $this->msg_since - 10 - microtime(true) + 0.1;
-            $this->log->debug("delay processing sendq for " . $next . "s");
-            $this->sendWatcherID = EventLoop::delay($next, $this->processSendq(...));
-        }
+        });
     }
 
     /**
