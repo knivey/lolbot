@@ -4,9 +4,7 @@ namespace scripts\help;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-use PHPUnit\Exception;
 use scripts\script_base;
 
 class help extends script_base
@@ -55,19 +53,17 @@ class help extends script_base
             return;
         }
         if (strlen($lines) > 1000) {
-            \Amp\asyncCall(function () use ($chan, $bot, $lines) {
-                try {
-                    $connectContext = (new \Amp\Socket\ConnectContext)
-                        ->withConnectTimeout(250);
-                    $sock = yield \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
-                    $sock->write($lines);
-                    $url = yield \Amp\ByteStream\buffer($sock);
-                    $sock->end();
-                    $bot->msg($chan, "help: $url");
-                } catch (\Exception $e) {
-                    $bot->msg($chan, "trouble uploading help :(");
-                }
-            });
+            try {
+                $connectContext = (new \Amp\Socket\ConnectContext)
+                    ->withConnectTimeout(250);
+                $sock = \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
+                $sock->write($lines);
+                $url = \Amp\ByteStream\buffer($sock);
+                $sock->end();
+                $bot->msg($chan, "help: $url");
+            } catch (\Exception $e) {
+                $bot->msg($chan, "trouble uploading help :(");
+            }
             return;
         }
         foreach (explode("\n", $lines) as $line) {

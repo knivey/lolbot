@@ -3,14 +3,11 @@
 namespace scripts\stocks;
 
 use async_get_exception;
-use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use JsonMapper\JsonMapperBuilder;
 use draw;
 use knivey\irctools;
-use Amp\Promise;
-use Error;
 
 use function knivey\tools\multi_array_padding;
 
@@ -27,17 +24,15 @@ class stocks extends \scripts\script_base
     /**
      * 
      * @param string $symbol 
-     * @return Promise<lastClose> 
-     * @throws Error 
+     * @return lastClose
      */
-    public function lastClose(string $symbol): Promise {
-        return \Amp\call(function () use ($symbol) {
+    public function lastClose(string $symbol): lastClose {
             if (false === $key = $this->getKey()) {
                 throw new \Exception("alphavantage key not set");
             }
             $symbol = rawurlencode($symbol);
             $url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=$symbol&apikey=$key";
-            $body = yield \async_get_contents($url);
+            $body = \async_get_contents($url);
             $mapper = JsonMapperBuilder::new()
                 ->withTypedPropertiesMiddleware()
                 ->withAttributesMiddleware()
@@ -48,23 +43,21 @@ class stocks extends \scripts\script_base
             if(!isset($lastClose->symbol))
                 throw new \Exception("Symbol $symbol not found");
             return $lastClose;
-        });
     }
 
     /**
      * 
      * @param string $keyword 
-     * @return \Amp\Promise<list<ticker>> 
+     * @return list<ticker>
      * @throws async_get_exception 
      */
-    public function tickerSearch(string $keyword): Promise {
-        return \Amp\call(function () use ($keyword) {
+    public function tickerSearch(string $keyword): array {
             if (false === $key = $this->getKey()) {
                 throw new \Exception("alphavantage key not set");
             }
             $keyword = rawurlencode($keyword);
             $url = "https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=$keyword&apikey=$key";
-            $body = yield \async_get_contents($url);
+            $body = \async_get_contents($url);
             $j = json_decode($body);
             $j = $j->bestMatches;
             $mapper = JsonMapperBuilder::new()
@@ -72,12 +65,10 @@ class stocks extends \scripts\script_base
                 ->withAttributesMiddleware()
                 ->build();
             return $mapper->mapToClassArray($j, ticker::class);
-        });
     }
 
     #[Cmd("stock")]
     #[Syntax('<symbol>')]
-    #[CallWrap("Amp\asyncCall")]
     public function stock($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         if (false === $this->getKey()) {
@@ -85,8 +76,8 @@ class stocks extends \scripts\script_base
         }
 
         try {
-            $q = yield $this->lastClose($cmdArgs['symbol']);
-            $t = yield $this->tickerSearch($cmdArgs['symbol']);
+            $q = $this->lastClose($cmdArgs['symbol']);
+            $t = $this->tickerSearch($cmdArgs['symbol']);
             if(!isset($t[0]))
                 throw new \Exception("Error getting ticker info");
             $t = $t[0];
@@ -109,7 +100,6 @@ class stocks extends \scripts\script_base
 
     #[Cmd("findticker")]
     #[Syntax('<query>')]
-    #[CallWrap("Amp\asyncCall")]
     public function findticker($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         if (false === $this->getKey()) {
@@ -117,7 +107,7 @@ class stocks extends \scripts\script_base
         }
 
         try {
-            $tickers = yield $this->tickerSearch($cmdArgs['query']);
+            $tickers = $this->tickerSearch($cmdArgs['query']);
             if(!isset($tickers[0]))
                 throw new \Exception("No results found");
             
@@ -140,16 +130,15 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("doge")]
-    #[CallWrap("\Amp\asyncCall")]
     public function doge($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         try {
             if ($this->server->throttle) {
-                $bot->pm($args->chan, yield self::getCoinPrice('dogecoin'));
+                $bot->pm($args->chan, self::getCoinPrice('dogecoin'));
                 return;
             }
 
-            $chart = yield from self::getCoinChart("dogecoin");
+            $chart = self::getCoinChart("dogecoin");
         } catch (\Exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
@@ -160,16 +149,15 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("bch")]
-    #[CallWrap("\Amp\asyncCall")]
     public function bch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         try {
             if ($this->server->throttle) {
-                $bot->pm($args->chan, yield self::getCoinPrice('bitcoin-cash'));
+                $bot->pm($args->chan, self::getCoinPrice('bitcoin-cash'));
                 return;
             }
 
-            $chart = yield from self::getCoinChart("bitcoin-cash");
+            $chart = self::getCoinChart("bitcoin-cash");
         } catch (\Exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
@@ -180,16 +168,15 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("eth")]
-    #[CallWrap("\Amp\asyncCall")]
     public function eth($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         try {
             if ($this->server->throttle) {
-                $bot->pm($args->chan, yield self::getCoinPrice('ethereum'));
+                $bot->pm($args->chan, self::getCoinPrice('ethereum'));
                 return;
             }
 
-            $chart = yield from self::getCoinChart("ethereum");
+            $chart = self::getCoinChart("ethereum");
         } catch (\Exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
@@ -200,16 +187,15 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("btc")]
-    #[CallWrap("\Amp\asyncCall")]
     public function btc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         try {
             if ($this->server->throttle) {
-                $bot->pm($args->chan, yield self::getCoinPrice('bitcoin'));
+                $bot->pm($args->chan, self::getCoinPrice('bitcoin'));
                 return;
             }
 
-            $chart = yield from self::getCoinChart("bitcoin");
+            $chart = self::getCoinChart("bitcoin");
         } catch (\Exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
@@ -221,17 +207,15 @@ class stocks extends \scripts\script_base
 
     public function getCoinPrice($coin)
     {
-        return \Amp\call(function () use ($coin) {
-            $json = json_decode(yield async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
-            //hope this works out lol
-            $current = $json->$coin->usd;
-            return "Current price for $coin: $current USD";
-        });
+        $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+        //hope this works out lol
+        $current = $json->$coin->usd;
+        return "Current price for $coin: $current USD";
     }
 
     public function getCoinChart($coin)
     {
-        $data = yield async_get_contents("https://api.coingecko.com/api/v3/coins/$coin/market_chart?vs_currency=usd&days=7");
+        $data = async_get_contents("https://api.coingecko.com/api/v3/coins/$coin/market_chart?vs_currency=usd&days=7");
         $json = json_decode($data);
 
         $w = 86; // api gives hourly for 7 days cut out half those data points and give room for box
@@ -288,7 +272,7 @@ class stocks extends \scripts\script_base
             $i--;
         }
 
-        $json = json_decode(yield async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+        $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
         $out = explode("\n", (string)$canvas);
         foreach($out as &$line)
             $line = irctools\fixColors($line);

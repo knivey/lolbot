@@ -73,9 +73,9 @@ use scripts\codesand\codesand;
 
 use scripts\tools\tools;
 
-//use scripts\urbandict\urbandict;
-//use scripts\help\help;
-//use scripts\stocks\stocks;
+use scripts\urbandict\urbandict;
+use scripts\help\help;
+use scripts\stocks\stocks;
 
 use scripts\linktitles\linktitles;
 use scripts\youtube\youtube;
@@ -165,12 +165,12 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $router->loadMethods($codesand);
     $tools = new tools($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tools", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($tools);
-//    $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans, $router);
-//    $router->loadMethods($urbandict);
-//    $help = new help($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:help", [$logHandler]), $nicks, $chans, $router);
-//    $router->loadMethods($help);
-//    $stocks = new stocks($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:stocks", [$logHandler]), $nicks, $chans, $router);
-//    $router->loadMethods($stocks);
+    $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($urbandict);
+    $help = new help($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:help", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($help);
+    $stocks = new stocks($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:stocks", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($stocks);
 
     $eventLogger = new Logger("{$dbBot->name}:linktitles:UrlEvents", [$logHandler]);
     $eventProvider = new OrderedListenerProvider();
@@ -183,9 +183,9 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $youtube->setEventProvider($eventProvider);
     $router->loadMethods($youtube);
 
-    //$twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans, $router);
-    //$twitter->setEventProvider($eventProvider);
-    //$router->loadMethods($twitter);
+//    $twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans, $router);
+//    $twitter->setEventProvider($eventProvider);
+//    $router->loadMethods($twitter);
 
 //    $invidious = new invidious($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:invidious", [$logHandler]), $nicks, $chans, $router);
 //    $invidious->setEventProvider($eventProvider);
