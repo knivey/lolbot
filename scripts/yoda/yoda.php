@@ -71,6 +71,43 @@ function yoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     }
 }
 
+#[Cmd("doubleyoda")]
+#[Syntax('<url>...')]
+function doubleyoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+{
+    $url = $cmdArgs['url'];
+
+    if(!filter_var($url, FILTER_VALIDATE_URL))
+        return;
+
+    try {
+        $body = async_get_contents($url);
+        $img = new Imagick();
+        $img->readImageBlob($body);
+        if(!$img->getImageFormat()) {
+            throw new \Exception("data recieved not recognized as image");
+        }
+        $yoda = new Imagick(__DIR__ . "/yoda-og.png");
+        //$yoda->scaleImage(0, $img->getImageHeight());
+        $final = new Imagick();
+        $width = $img->getImageWidth() + $yoda->getImageWidth() * 2;
+        $height = max($img->getImageHeight(), $yoda->getImageHeight());
+        $final->newImage($width, $height, new ImagickPixel('transparent'));
+        $final->compositeImage($yoda, Imagick::COMPOSITE_OVER, 0, 0);
+        $final->compositeImage($img, Imagick::COMPOSITE_OVER, $yoda->getImageWidth(), 0);
+        $yoda->flopImage();
+        $final->compositeImage($yoda, Imagick::COMPOSITE_OVER, $width - $yoda->getImageWidth(), 0);
+        $tmpfile = tempnam(sys_get_temp_dir(), 'yoda') . '.webp';
+        $final->writeImage($tmpfile);
+        $yodaPic = hostToFilehole($tmpfile)->await();
+        unlink($tmpfile);
+        $bot->pm($args->chan,  $yodaPic);
+    } catch (\Exception $e) {
+        $bot->pm($args->chan,  "yoda troubles: {$e->getMessage()}");
+        return;
+    }
+}
+
 /**
  * 
  * @param string $filename 
