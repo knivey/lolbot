@@ -38,7 +38,7 @@ class ignore_add extends Command
         $ignore = new Ignore();
         $ignore->hostmask = $input->getArgument('hostmask');
         if($input->getArgument('reason') !== null)
-            $ignore->setReason($input->getArgument('reason'));
+            $ignore->reason = $input->getArgument('reason');
 
         /** @var EntityRepository<Network> $repo */
         $repo = $entityManager->getRepository(Network::class);
