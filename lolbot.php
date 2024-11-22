@@ -69,7 +69,7 @@ use scripts\weather\weather;
 //use scripts\remindme\remindme;
 use scripts\tell\tell;
 use scripts\seen\seen;
-//use scripts\codesand\codesand;
+use scripts\codesand\codesand;
 
 use scripts\tools\tools;
 
@@ -161,8 +161,8 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $router->loadMethods($tell);
     $seen = new seen($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:seen", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($seen);
-//    $codesand = new codesand($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:codesand", [$logHandler]), $nicks, $chans, $router);
-//    $router->loadMethods($codesand);
+    $codesand = new codesand($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:codesand", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($codesand);
     $tools = new tools($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tools", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($tools);
 //    $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans, $router);
