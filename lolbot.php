@@ -27,7 +27,7 @@ $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
  * @param object $args
  * @param \Irc\Client $bot
  * @param string $prefix
- * @return array<\Closure(string,string): void>
+ * @return array{0: \Closure(string,?string=): void, 1: \Closure(string,?string=): void}
  */
 function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
     return [
@@ -62,7 +62,7 @@ require_once 'scripts/notifier/notifier.php';
 //require_once 'scripts/insult/insult.php';
 //require_once "scripts/mal/mal.php";
 
-//use scripts\bomb_game\bomb_game;
+use scripts\bomb_game\bomb_game;
 
 //use scripts\lastfm\lastfm;
 use scripts\alias\alias;
@@ -148,10 +148,9 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
 
     $router = new Cmdr();
     $router->loadFuncs();
-/*
+
     $bomb_game = new bomb_game($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:bomb_game", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($bomb_game);
-*/
     $alias = new alias($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:alias", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($alias);
 /*

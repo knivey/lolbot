@@ -1,6 +1,7 @@
 <?php
 namespace scripts\alias;
 
+use Doctrine\ORM\EntityRepository;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
@@ -8,11 +9,19 @@ use knivey\cmdr\attributes\Syntax;
 use scripts\script_base;
 use function Symfony\Component\String\u;
 
+/** @var \Doctrine\ORM\EntityManager $entityManager */
+global $entityManager;
 class alias extends script_base
 {
+    /**
+     * 
+     * @var EntityRepository<entities\alias>
+     */
+    private EntityRepository $repo;
 
     public function init(): void
     {
+        /** @var \Doctrine\ORM\EntityManager */
         global $entityManager;
         $this->repo = $entityManager->getRepository(entities\alias::class);
     }

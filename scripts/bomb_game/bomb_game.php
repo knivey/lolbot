@@ -60,6 +60,10 @@ class bomb_game extends script_base
         "Well, who knows - %target% could be anywhere!"
     ];
 
+    /**
+     * Active bombs
+     * @var array<string, bomb>
+     */
     protected array $bombs = [];
 
     public function init():void {
@@ -91,29 +95,29 @@ class bomb_game extends script_base
             $bot->msg($args->chan, self::randReply(self::NOT_ON_CHAN, compact("target")));
             return;
         }
-        \Amp\asyncCall(function () use ($args, $bot, $cmdArgs, $target) {
-            if (array_key_exists(strtolower($target), $this->bombs)) {
-                $bot->msg($args->chan, self::randReply(self::ALREADY_BOMBING, compact("target")));
-                return;
-            }
-            $color = self::COLORS[array_rand(self::COLORS)];
-            $colors =  implode(", ", array_keys(self::COLORS));
-            $time = self::TIME;
-            $bot->msg($args->chan, self::randReply(self::BOMB, compact("target", "time", "colors")));
-            $bot->notice($args->nick, self::randReply(self::BOMBING, compact("target", "color")));
-            $def = new \Amp\Deferred();
-            $this->bombs[strtolower($target)] = new bomb($target, $color, $def);
-            $bomb =& $this->bombs[strtolower($target)];
-            $result = yield \Amp\Promise\timeoutWithDefault($def->promise(), self::TIME * 60 * 1000, 0);
-            if($result == 0) {
-                //times up
-                //data could have changed during wait
-                $target = $bomb->target;
-                $color = $bomb->color;
-                $bot->msg($args->chan, self::randReply(self::TIMESUP, compact("target", "color")));
-            }
-            unset($this->bombs[strtolower($bomb->target)]);
-        });
+        if (array_key_exists(strtolower($target), $this->bombs)) {
+            $bot->msg($args->chan, self::randReply(self::ALREADY_BOMBING, compact("target")));
+            return;
+        }
+        $color = self::COLORS[array_rand(self::COLORS)];
+        $colors =  implode(", ", array_keys(self::COLORS));
+        $time = self::TIME;
+        $bot->msg($args->chan, self::randReply(self::BOMB, compact("target", "time", "colors")));
+        $bot->notice($args->nick, self::randReply(self::BOMBING, compact("target", "color")));
+        $def = new \Amp\DeferredFuture();
+        $this->bombs[strtolower($target)] = new bomb($target, $color, $def);
+        $bomb =& $this->bombs[strtolower($target)];
+        //TODO can handle the results here after defered completes?
+        try {
+            $result = $def->getFuture()->await(new \Amp\TimeoutCancellation(self::TIME * 60));
+        } catch(\Amp\CancelledException $e) {
+            //times up
+            //data could have changed during wait
+            $target = $bomb->target;
+            $color = $bomb->color;
+            $bot->msg($args->chan, self::randReply(self::TIMESUP, compact("target", "color")));
+        }
+        unset($this->bombs[strtolower($bomb->target)]);
     }
 
     #[Cmd("cutwire")]
@@ -128,10 +132,10 @@ class bomb_game extends script_base
         $color = $this->bombs[strtolower($target)]->color;
         if(strtolower($cmdArgs['color']) == strtolower($color)) {
             $bot->msg($args->chan, self::randReply(self::DEFUSED, compact("target")));
-            $this->bombs[strtolower($target)]->def->resolve(1);
+            $this->bombs[strtolower($target)]->def->complete(1);
             return;
         }
         $bot->msg($args->chan, self::randReply(self::WRONG, compact("target", "color")));
-        $this->bombs[strtolower($target)]->def->resolve(2);
+        $this->bombs[strtolower($target)]->def->complete(2);
     }
 }
