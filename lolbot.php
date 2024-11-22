@@ -66,7 +66,7 @@ use scripts\bomb_game\bomb_game;
 
 //use scripts\lastfm\lastfm;
 use scripts\alias\alias;
-//use scripts\weather\weather;
+use scripts\weather\weather;
 //use scripts\remindme\remindme;
 //use scripts\tell\tell;
 //use scripts\seen\seen;
@@ -153,9 +153,9 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $router->loadMethods($bomb_game);
     $alias = new alias($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:alias", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($alias);
-/*
     $weather = new weather($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:weather", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($weather);
+/*
     $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($lastfm);
     $remindme = new remindme($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:remindme", [$logHandler]), $nicks, $chans, $router);

@@ -1,7 +1,6 @@
 <?php
 namespace scripts\weather;
 
-use JetBrains\PhpStorm\Pure;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use knivey\cmdr\attributes\CallWrap;
@@ -13,17 +12,32 @@ use function Symfony\Component\String\u;
 
 class weather extends script_base
 {
+    /**
+     * @phpstan-pure
+     * @param mixed $temp 
+     * @return float 
+     */
     static function kToF($temp): float
     {
         return (1.8 * ($temp - 273)) + 32;
     }
 
+    /**
+     * @phpstan-pure
+     * @param mixed $temp 
+     * @return int|float 
+     */
     static function kToC($temp)
     {
         return $temp - 273;
     }
 
-    #[Pure]
+    /**
+     * @phpstan-pure
+     * @param mixed $temp 
+     * @param bool $si 
+     * @return string 
+     */
     static function displayTemp($temp, $si = false): string
     {
         if ($si)
@@ -31,7 +45,12 @@ class weather extends script_base
         return round(self::kToF($temp)) . '°F';
     }
 
-    #[Pure]
+    /**
+     * @phpstan-pure
+     * @param mixed $speed 
+     * @param bool $si 
+     * @return string 
+     */
     static function displayWindspeed($speed, $si = false): string
     {
         if ($si) {
@@ -41,6 +60,11 @@ class weather extends script_base
         return "$speed mph";
     }
 
+    /**
+     * @phpstan-pure
+     * @param mixed $deg 
+     * @return string 
+     */
     static function windDir($deg): string
     {
         $dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
@@ -49,16 +73,16 @@ class weather extends script_base
 
     /**
      * @param $query
-     * @return \Amp\Promise
+     * @return \Amp\Future<array{'location':string,'lat':string,'lon':string}|string>
      * @throws \async_get_exception
      */
-    function getLocation($query): \Amp\Promise
+    function getLocation($query): \Amp\Future
     {
-        return \Amp\call(function () use ($query) {
+        return \Amp\async(function () use ($query) {
             global $config;
             $query = urlencode($query);
             $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
 
             $j = json_decode($body, true);
             $res = $j['resourceSets'][0]['resources'];
@@ -75,7 +99,6 @@ class weather extends script_base
 
     #[Cmd("weather", "wz", "wea")]
     #[Syntax('[query]...')]
-    #[CallWrap("Amp\asyncCall")]
     #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
     function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
@@ -127,7 +150,7 @@ class weather extends script_base
                     $si = $location->si;
                 } else {
                     try {
-                        $loc = yield self::getLocation($query);
+                        $loc = self::getLocation($query)->await();
                     } catch (\async_get_exception $error) {
                         echo $error;
                         $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
@@ -153,7 +176,7 @@ class weather extends script_base
             //Now use lat lon to get weather
 
             $url = "https://api.openweathermap.org/data/3.0/onecall?lat={$location->lat}&lon={$location->long}&appid=$config[openweatherKey]&exclude=minutely,hourly";
-            $body = yield async_get_contents($url);
+            $body = async_get_contents($url);
 
             $j = json_decode($body, true);
             $cur = $j['current'];
@@ -197,8 +220,6 @@ class weather extends script_base
             echo $error->getMessage();
             $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
         } catch (\Exception $error) {
-            // If something goes wrong Amp will throw the exception where the promise was yielded.
-            // The HttpClient::request() method itself will never throw directly, but returns a promise.
             echo $error->getMessage();
             $bot->pm($args->chan, "\2wz:\2 {$error->getMessage()}");
         }
@@ -206,7 +227,6 @@ class weather extends script_base
 
     #[Cmd("setlocation")]
     #[Syntax("<query>...")]
-    #[CallWrap("Amp\asyncCall")]
     #[Options("--si", "--metric")]
     function setlocation($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
@@ -217,7 +237,7 @@ class weather extends script_base
         }
 
         try {
-            $loc = yield self::getLocation($cmdArgs['query']);
+            $loc = self::getLocation($cmdArgs['query'])->await();
         } catch (\async_get_exception $error) {
             echo $error;
             $bot->pm($args->chan, "\2getLocation error:\2 {$error->getIRCMsg()}");
