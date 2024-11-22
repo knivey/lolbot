@@ -21,14 +21,15 @@ class async_get_exception extends Exception {
 
 /**
  * @param $url
- * @param string[] $headers
+ * @param array<string,string> $headers Headers to override/set
  * @throws async_get_exception
  * @return string
  */
 function async_get_contents(string $url, array $headers = []): string {
     $client = HttpClientBuilder::buildDefault();
     $request = new Request($url);
-    $request->setHeaders($headers);
+    foreach ($headers as $header => $value)
+        $request->setHeader($header, $value);
     /** @var Response $response */
     $response = $client->request($request);
     $body =  $response->getBody()->buffer();
