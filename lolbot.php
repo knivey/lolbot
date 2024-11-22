@@ -55,10 +55,10 @@ require_once 'scripts/notifier/notifier.php';
 //require_once 'scripts/bing/bing.php';
 
 //require_once 'scripts/brave/brave.php';
-//require_once 'scripts/wolfram/wolfram.php';
-//require_once 'scripts/owncast/owncast.php';
+require_once 'scripts/wolfram/wolfram.php';
+require_once 'scripts/owncast/owncast.php';
 require_once 'scripts/zyzz/zyzz.php';
-//require_once 'scripts/wiki/wiki.php';
+require_once 'scripts/wiki/wiki.php';
 require_once 'scripts/insult/insult.php';
 require_once "scripts/mal/mal.php";
 
