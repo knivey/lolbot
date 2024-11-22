@@ -86,7 +86,7 @@ use scripts\linktitles\linktitles;
 use scripts\reddit\reddit;
 
 require_once 'scripts/durendaltv/durendaltv.php';
-//require_once 'scripts/translate/translate.php';
+require_once 'scripts/translate/translate.php';
 //require_once 'scripts/yoda/yoda.php';
 
 
