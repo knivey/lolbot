@@ -66,7 +66,7 @@ use scripts\bomb_game\bomb_game;
 use scripts\lastfm\lastfm;
 use scripts\alias\alias;
 use scripts\weather\weather;
-//use scripts\remindme\remindme;
+use scripts\remindme\remindme;
 use scripts\tell\tell;
 use scripts\seen\seen;
 use scripts\codesand\codesand;
@@ -80,8 +80,8 @@ use scripts\stocks\stocks;
 use scripts\linktitles\linktitles;
 use scripts\youtube\youtube;
 //use scripts\twitter\twitter;
-//use scripts\invidious\invidious;
-//use scripts\github\github;
+use scripts\invidious\invidious;
+use scripts\github\github;
 
 use scripts\reddit\reddit;
 
@@ -155,8 +155,8 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $router->loadMethods($weather);
     $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($lastfm);
-//    $remindme = new remindme($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:remindme", [$logHandler]), $nicks, $chans, $router);
-//    $router->loadMethods($remindme);
+    $remindme = new remindme($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:remindme", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($remindme);
     $tell = new tell($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tell", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($tell);
     $seen = new seen($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:seen", [$logHandler]), $nicks, $chans, $router);
@@ -187,13 +187,13 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
 //    $twitter->setEventProvider($eventProvider);
 //    $router->loadMethods($twitter);
 
-//    $invidious = new invidious($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:invidious", [$logHandler]), $nicks, $chans, $router);
-//    $invidious->setEventProvider($eventProvider);
-//    $router->loadMethods($invidious);
+    $invidious = new invidious($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:invidious", [$logHandler]), $nicks, $chans, $router);
+    $invidious->setEventProvider($eventProvider);
+    $router->loadMethods($invidious);
 
-//    $github = new github($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:github", [$logHandler]), $nicks, $chans, $router);
-//    $github->setEventProvider($eventProvider);
-//    $router->loadMethods($github);
+    $github = new github($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:github", [$logHandler]), $nicks, $chans, $router);
+    $github->setEventProvider($eventProvider);
+    $router->loadMethods($github);
 
     $reddit = new reddit($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:reddit", [$logHandler]), $nicks, $chans, $router);
     $reddit->setEventProvider($eventProvider);

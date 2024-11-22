@@ -26,12 +26,12 @@ class invidious extends script_base
             return;
         }
 
-        $event->promises[] = \Amp\call(function () use ($event) {
+        $event->addFuture(\Amp\async(function () use ($event) {
             try {
                 $client = HttpClientBuilder::buildDefault();
                 $req = new Request($event->url);
-                $response = yield $client->request($req);
-                $body = yield $response->getBody()->buffer();
+                $response = $client->request($req);
+                $body = $response->getBody()->buffer();
                 if ($response->getStatus() != 200) {
                     echo "invidious lookup failed with code {$response->getStatus()}\n";
                     var_dump($body);
@@ -55,13 +55,13 @@ class invidious extends script_base
                     return;
                 }
                 $json = json_decode($vd, flags: JSON_THROW_ON_ERROR);
-                $length = Duration_toString($json?->length_seconds ?? 0);
+                $length = \Duration_toString($json?->length_seconds ?? 0);
                 $rpl = "\x0315,01[\x0300,01I\x0315ꞐꝞI\x0314D\x0300IꝊU\x0315Ꞩ\x0300,01]\x03 $title | $channel | $date | $length";
                 $event->reply($rpl);
             } catch (\Exception $e) {
                 echo "invidious exception {$e->getMessage()}\n";
                 return;
             }
-        });
+        }));
     }
 }
