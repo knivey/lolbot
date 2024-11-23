@@ -10,23 +10,26 @@ use knivey\cmdr\attributes\Options;
 #[Options("--rainbow", "--rnb")]
 function artfart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
-    $url = "http://www.asciiartfarts.com/random.cgi";
+    $filename = __DIR__.'/farts.xml';
+    if(!file_exists($filename)) {
+        $bot->pm($args->chan, "\2artfart:\2 artfart db not found");
+        return;
+    }
     try {
-        $body = async_get_contents($url);
-        if(!preg_match('/<table cellpadding=10><tr><td bgcolor="[^"]+"><font color="[^"]+"><pre>([^<]+)<\/pre>/i', $body, $m)) {
-            $bot->pm($args->chan, "\2artfart:\2 bad response from server");
-            return;
-        }
+        $xml = simplexml_load_file($filename);
+        if($xml === false)
+            throw new \Exception("couldn't understand artfart db");
 
-        $fart = trim(htmlspecialchars_decode($m[1], ENT_QUOTES|ENT_HTML5), "\n\r");
+        //can't use array_rand on xml element
+        $fart = $xml->farts->fart[random_int(0, count($xml->farts->fart) - 1)];
+        $title = (string)$fart->full . ' - ' . (string)$fart->author;
+        $fart = (string)$fart->content;
         if($cmdArgs->optEnabled('--rnb') || $cmdArgs->optEnabled('--rainbow'))
             $fart = \knivey\ircTools\diagRainbow($fart);
         $fart = explode("\n", $fart);
         $fart = array_map(rtrim(...), $fart);
+        array_unshift($fart, $title);
         pumpToChan($args->chan, $fart);
-    } catch (\async_get_exception $error) {
-        echo $error;
-        $bot->pm($args->chan, "\2artfart:\2 {$error->getIRCMsg()}");
     } catch (\Exception $error) {
         echo $error->getMessage();
         $bot->pm($args->chan, "\2artfart:\2 {$error->getMessage()}");
