@@ -245,8 +245,9 @@ function main() {
         });
     });
     $server = new artbot_rest_server($logHandler);
-    $server->startRestServer();
+    $server->initRestServer();
     artbot_scripts\setupRestRoutes($server);
+    $server->start();
 
     EventLoop::onSignal(SIGINT, function () use ($bot, $server) {
         if (!$bot->isConnected)

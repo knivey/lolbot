@@ -8,6 +8,7 @@ use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
 use Amp\Http\Server\Response;
 use Amp\Http\Server\SocketHttpServer;
 use Amp\Http\HttpStatus;
+use Amp\Http\Server\ErrorHandler;
 use Amp\Http\Server\RequestHandler;
 use Amp\Socket;
 use Monolog\Logger;
@@ -22,6 +23,10 @@ class artbot_rest_server {
 
     public SocketHttpServer $server;
 
+    public RequestHandler $stack;
+
+    public ErrorHandler $errorHandler;
+
     public function __construct(
         public $logHandler
     )
@@ -30,7 +35,7 @@ class artbot_rest_server {
         $this->logger->pushHandler($logHandler);
     }
 
-    public function startRestServer() {
+    public function initRestServer() {
         global $config;
         if(!isset($config['listen'])) {
             return null;
@@ -66,16 +71,18 @@ class artbot_rest_server {
         $loader = new SimpleConfigurationLoader(new ArrayConfiguration($arrayConfig));
         $middleware = new CorsMiddleware($loader);
 
-        $errorHandler = new DefaultErrorHandler();
-        $this->restRouter = new Router($this->server, $this->logger, $errorHandler);
+        $this->errorHandler = new DefaultErrorHandler();
+        $this->restRouter = new Router($this->server, $this->logger, $this->errorHandler);
 
-        $stack = stackMiddleware($this->restRouter, $middleware);
-
-        $this->server->start($stack, $errorHandler);
+        $this->stack = stackMiddleware($this->restRouter, $middleware);
 
         $this->setupRoutes();
 
         return $this->server;
+    }
+
+    public function start() {
+        $this->server->start($this->stack, $this->errorHandler);
     }
 
     public function stop() {

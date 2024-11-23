@@ -256,8 +256,9 @@ function main() {
         $cnt++;
     }
     $server = new artbot_rest_server($logHandler);
-    $server->startRestServer();
+    $server->initRestServer();
     artbot_scripts\setupRestRoutes($server);
+    $server->start();
 
     $botExit = function () use ($server) {
         global $clients;
