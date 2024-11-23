@@ -82,7 +82,8 @@ class artbot_rest_server {
     }
 
     public function start() {
-        $this->server->start($this->stack, $this->errorHandler);
+        if(isset($this->server))
+            $this->server->start($this->stack, $this->errorHandler);
     }
 
     public function stop() {
