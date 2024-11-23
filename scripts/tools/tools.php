@@ -1,6 +1,10 @@
 <?php
 namespace scripts\tools;
 require_once 'library/async_get_contents.php';
+
+use Amp\Http\Client\HttpClient;
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Request;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
@@ -188,16 +192,14 @@ class tools extends script_base
             'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0',
             'Accept' => 'application/x-ndjson',
             'Accept-Language' => 'en-US,en;q=0.5',
-            'Accept-Encoding' => 'gzip, deflate, br',
+            'Accept-Encoding' => 'identity', // amphp http-client fails to handle compression from this site
             'Referer' => 'https://instantdomainsearch.com/domain/extensions?q=' . $domain,
             'Alt-Used' => 'instantdomainsearch.com',
-            'Connection' => 'keep-alive',
             'Sec-Fetch-Dest' => 'empty',
             'Sec-Fetch-Mode' => 'cors',
             'Sec-Fetch-Site' => 'same-origin',
             'Pragma' => 'no-cache',
             'Cache-Control' => 'no-cache',
-            'Te' => 'trailers',
         ];
 
         $urls = [
@@ -206,11 +208,20 @@ class tools extends script_base
         ];
 
         $lines = [];
+        $client = HttpClientBuilder::buildDefault();
         foreach($urls as $url) {
             try {
-                $result = async_get_contents($url, $headers);
+                $request = new Request($url);
+                foreach($headers as $header => $value)
+                    $request->setHeader($header, $value);
+                $response = $client->request($request);
+                $result = $response->getBody()->buffer();
             } catch (\Exception $e) {
-                echo $e->getMessage();
+                $result = '';
+                echo $e->getMessage() . "\n";
+                dumpRequestTrace($request);
+                if(isset($response))
+                    dumpResponseTrace($response);
             }
             $results = explode("\n", $result);
             $lines = array_merge($lines, $results);
@@ -274,4 +285,33 @@ class tools extends script_base
             $bot->pm($args->chan, $line);
         }
     }
+}
+
+// taken from amphp example helpers
+use \Amp\Http\Client\Response;
+use \Amp\Http\Http1\Rfc7230;
+function dumpRequestTrace(Request $request): void
+{
+    \printf(
+        "%s %s HTTP/%s\r\n",
+        $request->getMethod(),
+        (string) $request->getUri(),
+        \implode('+', $request->getProtocolVersions())
+    );
+
+    /** @noinspection PhpUnhandledExceptionInspection */
+    print Rfc7230::formatHeaders($request->getHeaders()) . "\r\n\r\n";
+}
+
+function dumpResponseTrace(Response $response): void
+{
+    \printf(
+        "HTTP/%s %d %s\r\n",
+        $response->getProtocolVersion(),
+        $response->getStatus(),
+        $response->getReason()
+    );
+
+    /** @noinspection PhpUnhandledExceptionInspection */
+    print Rfc7230::formatHeaders($response->getHeaders()) . "\r\n\r\n";
 }
