@@ -66,10 +66,10 @@ class artbot_rest_server {
         $loader = new SimpleConfigurationLoader(new ArrayConfiguration($arrayConfig));
         $middleware = new CorsMiddleware($loader);
 
-        $stack = stackMiddleware($this->restRouter, $middleware);
-
         $errorHandler = new DefaultErrorHandler();
         $this->restRouter = new Router($this->server, $this->logger, $errorHandler);
+
+        $stack = stackMiddleware($this->restRouter, $middleware);
 
         $this->server->start($stack, $errorHandler);
 
