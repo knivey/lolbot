@@ -60,6 +60,8 @@ class alias extends script_base
             $alias->network = $this->network;
             if ($cmdArgs->optEnabled('--cmd')) {
                 $alias->cmd = $cmdArgs->getOpt('--cmd');
+            } else {
+                $alias->cmd = null;
             }
             $entityManager->persist($alias);
             $entityManager->flush();
