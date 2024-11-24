@@ -4,6 +4,7 @@ namespace scripts\codesand;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\Process\Process;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
@@ -210,7 +211,12 @@ class codesand extends script_base
         if (!$this->canRun($args)) {
             return;
         }
-        $code = "package main\nimport \"fmt\"\n{$cmdArgs['code']}\n";
+        $tmpfile = tempnam(sys_get_temp_dir(), 'codesand') . '.go';
+        file_put_contents($tmpfile, "package main\n\n{$cmdArgs['code']}\n");
+        Process::start("gofmt -w $tmpfile")->join();
+        Process::start("goimports -w $tmpfile")->join();
+        $code = file_get_contents($tmpfile);
+        unlink($tmpfile);
         $output = $this->getRun("golang", $code);
         $this->sendOut($bot, $args->chan, $output);
     }
