@@ -14,64 +14,58 @@ use function knivey\tools\multi_array_padding;
 class stocks extends \scripts\script_base
 {
     private function getKey(): string|false {
-        if (!isset($this->config['alphavantage'])) {
-            $this->logger->warning("alphavantage key not set in config");
+        if (!isset($this->config['finnhub'])) {
+            $this->logger->warning("finnhub key not set in config");
             return false;
         }
-        return $this->config['alphavantage'];
+        return $this->config['finnhub'];
     }
 
-    /**
-     * 
-     * @param string $symbol 
-     * @return lastClose
-     */
-    public function lastClose(string $symbol): lastClose {
-            if (false === $key = $this->getKey()) {
-                throw new \Exception("alphavantage key not set");
-            }
-            $symbol = rawurlencode($symbol);
-            $url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=$symbol&apikey=$key";
-            $body = \async_get_contents($url);
-            $mapper = JsonMapperBuilder::new()
-                ->withTypedPropertiesMiddleware()
-                ->withAttributesMiddleware()
-                ->build();
-            $lastClose = new lastClose();
-            $j = json_decode($body);
-            if(!isset($j->{'Global Quote'})) {
-                var_dump($j);
-                throw new \Exception("Symbol $symbol not found or api error");
-            }
-            $mapper->mapObject($j->{'Global Quote'}, $lastClose);
-            if(!isset($lastClose->symbol))
-                throw new \Exception("Symbol $symbol not found");
-            return $lastClose;
+    public function quote(string $symbol): quote {
+        if (false === $key = $this->getKey()) {
+            throw new \Exception("finnhub key not set");
+        }
+        $url = "https://finnhub.io/api/v1/quote?symbol=$symbol&token=$key";
+        $body = \async_get_contents($url);
+
+        $mapper = JsonMapperBuilder::new()
+        ->withTypedPropertiesMiddleware()
+        ->withAttributesMiddleware()
+        ->build();
+        
+        $out = $mapper->mapToClassFromString($body, quote::class);
+        if(!$out->verify())
+            throw new \Exception("quote lookup failed");
+        return $out;
     }
 
     /**
      * 
      * @param string $keyword 
-     * @return list<ticker>
+     * @return list<symbol>
      * @throws async_get_exception 
      */
-    public function tickerSearch(string $keyword): array {
+    public function symbolSearch(string $keyword): array {
             if (false === $key = $this->getKey()) {
-                throw new \Exception("alphavantage key not set");
+                throw new \Exception("finnhub key not set");
             }
             $keyword = rawurlencode($keyword);
-            $url = "https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=$keyword&apikey=$key";
+            $url = "https://finnhub.io/api/v1/search?q=$keyword&exchange=US&token=$key";
             $body = \async_get_contents($url);
             $j = json_decode($body);
-            if(!isset($j->bestMatches)) {
+            if(!isset($j->count) || !is_numeric($j->count)) {
+                var_dump($j);
                 throw new \Exception("API error");
             }
-            $j = $j->bestMatches;
+            if($j->count < 1) {
+                throw new \Exception("No results for search");
+            }
             $mapper = JsonMapperBuilder::new()
                 ->withTypedPropertiesMiddleware()
                 ->withAttributesMiddleware()
                 ->build();
-            return $mapper->mapToClassArray($j, ticker::class);
+            $out = $mapper->mapToClassArray($j->result, symbol::class);
+            return $out;
     }
 
     #[Cmd("stock")]
@@ -83,19 +77,32 @@ class stocks extends \scripts\script_base
         }
 
         try {
-            $q = $this->lastClose($cmdArgs['symbol']);
-            $t = $this->tickerSearch($cmdArgs['symbol']);
+            $t = $this->symbolSearch($cmdArgs['symbol']);
             if(!isset($t[0]))
-                throw new \Exception("Error getting ticker info");
-            $t = $t[0];
-            var_dump($t);
-            if ($q->changeP > 0) {
-                $change = "\x0309$q->change\x0F";
+                throw new \Exception("Error getting symbol info");
+            foreach($t as $v) {
+                if(!$v->verify())
+                    continue;
+                if(strtoupper($v->symbol) == strtoupper($cmdArgs['symbol'])) {
+                    $t = $v;
+                    break;
+                }
+            }
+            if(is_array($t))
+                throw new \Exception("no matching symbols found");
+            $q = $this->quote($t->symbol);
+            
+            $c = "";
+            $co = "\x0F";
+            if ($q->changePercent > 0) {
+                $c = "\x0309";
             } else {
-                $change = "\x0304$q->change\x0F";
+                $c = "\x0304";
             }
 
-            $bot->pm($args->chan, "$q->symbol ($t->name) Last Close ($q->date): $q->price $t->currency $change ($q->changeP) High: $q->high Low: $q->low");
+            $time = (new \DateTime("@{$q->time}"))->format(DATE_RSS);
+
+            $bot->pm($args->chan, "$t->symbol ($t->description) at $time: $q->price USD {$c}$q->change{$co} ({$c}$q->changePercent%{$co}) High: $q->high Low: $q->low");
         } catch (\async_get_exception $error) {
             echo $error;
             $bot->pm($args->chan, "\2Stocks:\2 {$error->getIRCMsg()}");
@@ -105,23 +112,23 @@ class stocks extends \scripts\script_base
         }
     }
 
-    #[Cmd("findticker")]
+    #[Cmd("findsymbol")]
     #[Syntax('<query>')]
-    public function findticker($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function findsymbol($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         if (false === $this->getKey()) {
             return;
         }
 
         try {
-            $tickers = $this->tickerSearch($cmdArgs['query']);
-            if(!isset($tickers[0]))
+            $symbols = $this->symbolSearch($cmdArgs['query']);
+            if(!isset($symbols[0]))
                 throw new \Exception("No results found");
             
-            $tickers = array_slice($tickers, 0, 10);
-            $out = [["Symbol", "Name", "Type", "Region", "Currency"]];
-            foreach($tickers as $t) {
-                $out[] = [$t->symbol, $t->name, $t->type, $t->region, $t->currency];
+            $symbols = array_slice($symbols, 0, 5);
+            $out = [["Symbol", "Description", "Type"]];
+            foreach($symbols as $t) {
+                $out[] = [$t->symbol, $t->description, $t->type];
             }
             $out = multi_array_padding($out);
             foreach($out as $line) {
