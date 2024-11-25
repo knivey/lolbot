@@ -123,7 +123,6 @@ class tools extends script_base
             $bot->pm($args->chan, "namecheap key or user not set on config");
             return;
         }
-        \Amp\delay(30);
         $domain = $cmdArgs['domain'];
         $domain = urlencode($domain);
         //ClientIP 127.0.0.1 seems to work weird for API to want this..
