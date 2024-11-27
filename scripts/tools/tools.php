@@ -240,7 +240,7 @@ class tools extends script_base
             if ($tld->isRegistered == false) {
                 $string = str_pad("\x033 [✓] $domain.$tld->tld", 40, " ", STR_PAD_RIGHT);
             } else {
-                $string = str_pad("\x034 [☓] $domain.$tld->tld", 40, " ", STR_PAD_RIGHT);
+                $string = str_pad("\x034 [✕] $domain.$tld->tld", 40, " ", STR_PAD_RIGHT);
             }
 
             $msgString .= $string;
