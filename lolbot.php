@@ -82,7 +82,7 @@ use scripts\youtube\youtube;
 //use scripts\twitter\twitter;
 use scripts\invidious\invidious;
 use scripts\github\github;
-
+use scripts\tiktok\tiktok;
 use scripts\reddit\reddit;
 
 require_once 'scripts/durendaltv/durendaltv.php';
@@ -198,6 +198,10 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $reddit = new reddit($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:reddit", [$logHandler]), $nicks, $chans, $router);
     $reddit->setEventProvider($eventProvider);
     $router->loadMethods($reddit);
+
+    $tiktok = new tiktok($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tiktok", [$logHandler]), $nicks, $chans, $router);
+    $tiktok->setEventProvider($eventProvider);
+    $router->loadMethods($tiktok);
 
     $client->on('welcome', function ($e, \Irc\Client $bot) use ($dbBot) {
         foreach (explode("\n", $dbBot->onConnect) as $line) {
