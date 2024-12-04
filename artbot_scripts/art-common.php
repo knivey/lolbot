@@ -416,7 +416,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
     $tryEdit = function ($ent) use ($bot, $chan, $opts) {
         global $config;
         if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
-            $relPath = substr($ent, strlen($config['artdir']));
+            $relPath = urlencode(substr($ent, strlen($config['artdir'])));
             $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=$relPath");
             return true;
         }
@@ -426,7 +426,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
     $tryLink = function ($ent) use ($bot, $chan, $opts) {
         global $config;
         if(array_key_exists('--link', $opts) || array_key_exists('--download', $opts)) {
-            $relPath = substr($ent, strlen($config['artdir']));
+            $relPath = urlencode(substr($ent, strlen($config['artdir'])));
             $bot->pm($chan, "{$config['link_url']}$relPath");
             return true;
         }
