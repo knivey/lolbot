@@ -411,7 +411,7 @@ function startPump($chan, $speed = null): Future {
             }
             try {
                 $def->getFuture()->await(new \Amp\TimeoutCancellation(8));
-            } catch (\Amp\CancelledException|\Amp\TimeoutCancellation|\Exception $e) {
+            } catch (\Amp\CancelledException|\Amp\TimeoutException|\Exception $e) {
                 echo "Something horrible has happened, timeout on looking for pump lines\n";
                 unset($playing[$chan]);
                 $nextbot->off('chat', null, $eventIdx);
