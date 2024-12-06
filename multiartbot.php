@@ -1,10 +1,6 @@
 #!/usr/bin/env php
 <?php
-// Another bot just used for playing ascii arts
-/*
- * Experimenting with pumping from several bots at the same time on efnet
- * for faster pumps of moderate size arts
- */
+
 
 require_once 'bootstrap.php';
 
@@ -415,7 +411,7 @@ function startPump($chan, $speed = null): Future {
             }
             try {
                 $def->getFuture()->await(new \Amp\TimeoutCancellation(8));
-            } catch (\Amp\CancelledException $e) {
+            } catch (\Amp\CancelledException|\Amp\TimeoutCancellation|\Exception $e) {
                 echo "Something horrible has happened, timeout on looking for pump lines\n";
                 unset($playing[$chan]);
                 $nextbot->off('chat', null, $eventIdx);
