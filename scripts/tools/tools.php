@@ -137,10 +137,17 @@ class tools extends script_base
                 var_dump($xml);
                 throw new \Exception($xml->Errors->Error);
             }
-            if (!isset($xml->CommandResponse))
+            if (!isset($xml->CommandResponse->DomainCheckResult))
                 throw new \Exception("API didnt include response");
-            if ($xml->CommandResponse->DomainCheckResult["Available"] == "true") {
-                $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) That domain is available for register!");
+            $dc = $xml->CommandResponse->DomainCheckResult;
+            if ($dc["Available"] == "true") {
+                if($dc["IsPremiumName"] == "false")
+                    $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) That domain is available for register!");
+                else {
+                    $price = '$' . number_format((float)$dc["PremiumRegistrationPrice"]) . ' registration, ' .
+                        '$' . number_format((float)$dc["PremiumRenewalPrice"]) . ' renewal';
+                    $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) That domain is available for register AT AN AMAZING PRICE!!!! $price");
+                }
             } else {
                 $bot->pm($args->chan, "\2DomainCheck:\2 ({$cmdArgs['domain']}) That domain is already taken :(");
             }
