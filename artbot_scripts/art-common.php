@@ -590,7 +590,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if (isset($playing[strtolower($chan)])) {
         return;
     }
-    $finder = getFinder();
+    $finder = getFinder()->name("/\.txt$/i");
     if($cmdArgs->optEnabled("--contains")) {
         //$finder->contains($query);
         $glob = tools\globToRegex("*$query*", anchor: false) . 'i';
@@ -692,7 +692,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         return;
     }
 
-    $finder = getFinder();
+    $finder = getFinder()->name("/\.txt$/i");
     $finder->date("since $since");
     $finder->sortByModifiedTime();
     if(!$finder->hasResults()) {
@@ -757,7 +757,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 function selectRandFile($search = null) : String|false {
-    $finder = getFinder();
+    $finder = getFinder()->name("/\.txt$/i");
     if($search != null) {
         $finder->path(tools\globToRegex("*$search*.txt") . 'i');
     }
