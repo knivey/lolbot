@@ -304,7 +304,7 @@ class codesand extends script_base
 using namespace std;
 {$cmdArgs['code']}";
         //$gccArgs = urlencode("-Wfatal-errors -std=c++17");
-        $gccArgs = urlencode("-Wfatal-errors");
+        $gccArgs = urlencode("-Wfatal-errors -std=gnu++2b");
         $output = $this->getRun("gpp", $code, "&flags=$gccArgs");
         $this->sendOut($bot, $args->chan, $output);
     }
