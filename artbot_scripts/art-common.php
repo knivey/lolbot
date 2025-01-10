@@ -342,9 +342,8 @@ function tryRec($bot, $nick, $text) {
     $recordings[$nick]['art'][] = $text;
 }
 
-function timeOut($watcher, $data) {
+function timeOut($nick, $bot) {
     global $recordings;
-    list ($nick, $bot) = $data;
     if(!isset($recordings[$nick])) {
         echo "Timeout called but not recording?\n";
         return;
