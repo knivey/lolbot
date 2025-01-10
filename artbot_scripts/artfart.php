@@ -4,8 +4,10 @@ namespace artbot_scripts;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Options;
+use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("artfart")]
+#[Syntax("[id]")]
 #[Desc("play a random artfart")]
 #[Options("--rainbow", "--rnb")]
 function artfart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
@@ -20,8 +22,22 @@ function artfart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
         if($xml === false)
             throw new \Exception("couldn't understand artfart db");
 
-        //can't use array_rand on xml element
-        $fart = $xml->farts->fart[random_int(0, count($xml->farts->fart) - 1)];
+        $fart = null;
+        $id = $cmdArgs->getArg("id");
+        if($id != null) {
+            $id = (int)(string)$id;
+            foreach($xml->farts->fart as $f) {
+                if((int)($f->number) == $id-1) {
+                    $fart = $f;
+                    break;
+                }
+            }
+            if($fart === null)
+                throw new \Exception("couldn't find that artfart id");
+        } else {
+            //can't use array_rand on xml element
+            $fart = $xml->farts->fart[random_int(0, count($xml->farts->fart) - 1)];
+        }
         $title = (string)$fart->full . ' - ' . (string)$fart->author;
         $fart = (string)$fart->content;
         if($cmdArgs->optEnabled('--rnb') || $cmdArgs->optEnabled('--rainbow'))
