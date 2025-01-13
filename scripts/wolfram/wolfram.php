@@ -16,54 +16,60 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         return;
     }
 
-    //note width means pixels not text len
-    $query = waURL . urlencode($cmdArgs['query']) . '&appid=' . $config['waKey'] . '&format=plaintext&location=Los+Angeles,+California&format=plaintext&width=3000';
+    // https://products.wolframalpha.com/api/documentation?scrollTo=controlling-width-of-results
+    // width is how many pixels rendered text would fit in
+    $query = waURL . urlencode($cmdArgs['query']) . '&appid=' . $config['waKey'] . 
+    '&format=plaintext&location=Los+Angeles,+California&width=3000'.
+    '&excludepodid=MakeChangeMoreThanOneCoin:QuantityData';
     try {
         $body = async_get_contents($query);
 
         $xml = simplexml_load_string($body);
-        $res = '';
-        $resa = "";
-        $resb = "";
+        $input = '';
+        $result = '';
+        $decimalAprox = '';
+        if ($xml['parsetimedout'] == 'true') {
+            throw new \Exception("Error, query took too long to parse.");
+        }
+        if ($xml['error'] == 'true') {
+            throw new \Exception("Error, " . @$xml->error->msg);
+        }
 
-        //first check if there was an error
         if ($xml['success'] == 'false') {
-            $res = @$xml->tips->tip[0]['text'];
-        } else {
-            //the xml has things called pods so lets cycle through em
-            //i decided to cycle here in case i want to look at more then 2 in future
-            $count = 0;
-            foreach ($xml->pod as $pod) {
-                //I'm pretty sure our input pod will always be called Input
-                //Or will be the first pod
-                if ($count == 0) {
-                    //input
-                    $resa = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
-                }
-                if($pod->subpod->plaintext == '')
-                    continue;
-                if ($count == 1) {
-                    $resb = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
-                }
-                if ($count != 1 && $pod['id'] == 'DecimalApproximation') {
-                    $resb .= " \2DecimalApproximation:\2 " . substr($pod->subpod->plaintext, 0, 200);
-                }
-                $count++;
-            }
-            $res = "$resa = $resb";
+            // The input wasn't understood, show tips or didyoumeans
+            if(isset($xml->tips))
+                $result = ", " . @$xml->tips->tip[0]['text'];
+            elseif(isset($xml->didyoumeans))
+                $result .= ", Did you mean: " . @$xml->didyoumeans->didyoumean[0];
+            throw new \Exception("Query not understood" . $result);
         }
-        $parsetime = $xml['parsetiming'];
-        $outtatime = $xml['parsetimedout'];
-        //we didn't have tips? try didyoumean
-        if ($res == '') {
-            $res = "No results for query";
-            if (isset($xml->didyoumeans->didyoumean[0])) {
-                $res .= ", Did you mean: " . $xml->didyoumeans->didyoumean[0];
+        $topPod = '';
+        foreach ($xml->pod as $pod) {
+            switch($pod['id']) {
+            case 'Input':
+                $input = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
+                break;
+            case 'Result':
+                $result = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
+                break;
+            case 'DecimalApproximation':
+                $decimalAprox = substr($pod->subpod->plaintext, 0, 200);
+                break;
+            default:
+                if($topPod == '')
+                    $topPod = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
             }
         }
-
-        if ($outtatime != 'false') {
-            $res = "Error, query took too long to parse.";
+        if($result == "") {
+            $result = $topPod;
+        }
+        if($result == "" && $decimalAprox != "") {
+            $result = $decimalAprox;
+            $decimalAprox = "";
+        }
+        $res = "$input = $result";
+        if($decimalAprox != "") {
+            $res .= " ($decimalAprox)";
         }
         $out = explode("\n", wordwrap($res, 400, "\n", true));
         $cnt = 0;
@@ -73,7 +79,7 @@ function calc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         }
     } catch (\async_get_exception $error) {
         echo $error->getMessage();
-        $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
+        $bot->pm($args->chan, "\2WA:\2 {$error->getIRCMsg()}");
         return;
     } catch (\Exception $error) {
         echo $error->getMessage();
