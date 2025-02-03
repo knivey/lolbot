@@ -40,9 +40,8 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $bot->pm($chan, "Quote recording started type \x02\x034@endquote\x03\x02 when done or discard with @cancelquote or just wait 15 seconds.");
 }
 
-function quoteTimeOut($watcher, $data): void {
+function quoteTimeOut($nick, $bot): void {
     global $quote_recordings;
-    list ($nick, $bot) = $data;
     if(!isset($quote_recordings[$nick])) {
         echo "Timeout called but not recording?\n";
         return;
