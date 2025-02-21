@@ -114,6 +114,11 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 require_once 'library/Nicks.php';
 require_once 'library/Channels.php';
 
+\Revolt\EventLoop::setErrorHandler(function(\Throwable $error) {
+    echo "Uncaught error thrown:\n";
+    echo $error->getTraceAsString();
+});
+
 /**
  * @var \Irc\Client[]
  */
