@@ -194,14 +194,14 @@ function initQuotes($bot) {
 
 #[Cmd("quote")]
 #[Desc("Play a random quote or quote by id")]
-#[Syntax("[id...]")]
+#[Syntax("[id]...")]
 #[Option("--contains", "Instead of id lookup find a random quote matching text")]
 function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     R::selectDatabase('quotes');
     if(isset($cmdArgs['id'])) {
         if($cmdArgs->optEnabled("--contains")) {
             $search = "%" . trim($cmdArgs["id"]) . "%";
-            $quote = R::findFromSQL("quote", "SELECT * FROM quote data LIKE ? ORDER BY RANDOM() LIMIT 1", [$search]);
+            $quote = R::findFromSQL("quote", "SELECT * FROM quote WHERE data LIKE ? ORDER BY RANDOM() LIMIT 1", [$search]);
             $quote = array_pop($quote);
         } else {
             $quote = R::findOne('quote', ' id = ? ', [$cmdArgs['id']]);
