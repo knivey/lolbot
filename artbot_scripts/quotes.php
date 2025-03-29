@@ -4,6 +4,7 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
+use knivey\cmdr\Validate;
 
 use \RedBeanPHP\R as R;
 global $config;
@@ -121,10 +122,24 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 #[Syntax("<query>...")]
 #[Desc("Search for any quotes that match using * for wildcard")]
 #[Option("--play", "Play the results up to limit")]
+#[Option("--limit", "Limit amount played, default is 10")]
+#[Option("--recent", "Order by most recent first")]
 function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     R::selectDatabase('quotes');
     $query = "%" . str_replace("*", "%", $cmdArgs['query']) . "%";
-    $quotes = R::find('quote', 'data LIKE ?', [$query]);
+    $order = "";
+    if($cmdArgs->optEnabled("--recent")) {
+        $order = "ORDER BY id DESC";
+    }
+    $limit = 10;
+    if($cmdArgs->getOpt("--limit") !== false) {
+        $limit = $cmdArgs->getOpt("--limit");
+        if(!Validate::int($limit, 1)) {
+            $bot->pm($args->chan, "--limit must be integer greater than 0");
+            return;
+        }
+    }
+    $quotes = R::find('quote', "data LIKE ? {$order} LIMIT $limit", [$query]);
     if(empty($quotes)) {
         $bot->pm($args->chan, "Nothing found");
         return;
@@ -133,8 +148,8 @@ function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $cnt = 0;
         foreach($quotes as $quote) {
             $cnt++;
-            if($cnt > 10) {
-                pumpToChan($args->chan, ["Limiting to 10 quotes..."]);
+            if($cnt > $limit) {
+                pumpToChan($args->chan, ["Limiting to $limit quotes..."]);
                 return;
             }
             showQuote($bot, $args->chan, $quote);
