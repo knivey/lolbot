@@ -162,12 +162,12 @@ function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         return;
     }
     $ids = array_map(fn($it) => $it->id, $quotes);
-    $ids = array_slice($ids, 0, 50);
     $ids = implode(', ', $ids);
-    if($cnt > 50)
-        $bot->pm($args->chan, "Found ($cnt) quotes limiting to 50: $ids");
-    else
-        $bot->pm($args->chan, "Found ($cnt) quotes: $ids");
+    $ids = "Found ($cnt) quotes: $ids";
+    $ids = wordwrap($ids, 350);
+    foreach(explode("\n", $ids) as $i) {
+        $bot->pm($args->chan, $i);
+    }
 }
 
 function initQuotes($bot) {
