@@ -119,7 +119,7 @@ function hostToFilehole(string $filename): Future
         if(!file_exists($filename))
             throw new \Exception("hostToFilehole called with non existant filename: $filename");
         $client = HttpClientBuilder::buildDefault();
-        $request = new Request("https://filehole.org", "POST");
+        $request = new Request("https://upload.beer", "POST");
         $body = new Form();
         $body->addField('url_len', '5');
         $body->addField('expiry', '86400');
@@ -130,7 +130,7 @@ function hostToFilehole(string $filename): Future
         $response = $client->request($request);
         //var_dump($response);
         if ($response->getStatus() != 200) {
-            throw new \Exception("filehole.org returned {$response->getStatus()}");
+            throw new \Exception("upload.beer returned {$response->getStatus()}");
         }
         $respBody = $response->getBody()->buffer();
         return $respBody;
