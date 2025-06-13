@@ -970,7 +970,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
                 mkdir("{$config['artdir']}/ans/$pack");
 
             file_put_contents($saveFile, $body);
-            if (!isset($width))
+            if (!isset($width) || $cmdArgs->optEnabled("--width") )
                 $width = intval($cmdArgs->getOpt("--width"));
             if (!$width)
                 $width = 80;
