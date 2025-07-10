@@ -1,6 +1,9 @@
 <?php
 namespace scripts\weather;
 
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\HttpClient;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use knivey\cmdr\attributes\CallWrap;
@@ -8,14 +11,27 @@ use knivey\cmdr\attributes\Options;
 use lolbot\entities\Network;
 use scripts\script_base;
 use scripts\weather\entities\location;
+
+use function knivey\tools\microtime_float;
 use function Symfony\Component\String\u;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+
 
 class weather extends script_base
 {
+
+    static $location_cache;
+    static $last_location_time = 0;
+
+    public function init(): void
+    {
+        self::$location_cache = new FilesystemAdapter('weather');
+    }
+
     /**
      * @phpstan-pure
      * @param mixed $temp 
-     * @return float 
+     * @return float microtime_float() - $last_location_time
      */
     static function kToF($temp): float
     {
@@ -76,22 +92,43 @@ class weather extends script_base
      * @return \Amp\Future<array{'location':string,'lat':string,'lon':string}|string>
      * @throws \async_get_exception
      */
-    function getLocation($query): \Amp\Future
+    function getLocation(string $query): \Amp\Future
     {
         return \Amp\async(function () use ($query) {
-            global $config;
-            $query = urlencode($query);
-            $url = "http://dev.virtualearth.net/REST/v1/Locations/?key=$config[bingMapsKey]&o=json&query=$query&limit=1&language=$config[bingLang]";
-            $body = async_get_contents($url);
+            $loc = self::$location_cache->getItem($query);
+            if(!$loc->isHit()) {
+                if (microtime_float() - self::$last_location_time < 2) {
+                    $delay = 2 - (microtime_float() - self::$last_location_time);
+                    $this->logger->info("delaying lookup by $delay");
+                    \Amp\delay($delay);
+                }
+                self::$last_location_time = microtime_float();
+                $query = urlencode($query);
+                $url = "https://nominatim.openstreetmap.org/search?q=$query&format=json";
+                $client = HttpClientBuilder::buildDefault();
+                $request = new Request($url);
+                $request->setHeader("User-Agent", "lolbot irc weather bot");
+                $response = $client->request($request);
+                $body =  $response->getBody()->buffer();
+                if ($response->getStatus() != 200) {
+                    throw new \async_get_exception($body, $response->getStatus());
+                }
 
-            $j = json_decode($body, true);
-            $res = $j['resourceSets'][0]['resources'];
-            if (empty($res)) {
-                return "\2wz:\2 Location not found";
+                $res = json_decode($body, true);
+                if (!is_array($res)) {
+                    return "\2wz:\2 Location service error";
+                }
+                if (count($res) == 0) {
+                    return "\2wz:\2 Location not found";
+                }
+                $loc->set($res);
+                self::$location_cache->save($loc);
+            } else {
+                $res = $loc->get();
             }
-            $location = $res[0]['address']['formattedAddress'];
-            $lat = $res[0]['point']['coordinates'][0];
-            $lon = $res[0]['point']['coordinates'][1];
+            $location = $res[0]['display_name'];
+            $lat = $res[0]['lat'];
+            $lon = $res[0]['lon'];
             return ['location' => $location, 'lat' => $lat, 'lon' => $lon];
         });
     }
