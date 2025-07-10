@@ -97,7 +97,7 @@ class weather extends script_base
         return \Amp\async(function () use ($query) {
             $loc = self::$location_cache->getItem($query);
             if(!$loc->isHit()) {
-                if (microtime_float() - self::$last_location_time < 2) {
+                while (microtime_float() - self::$last_location_time < 2) {
                     $delay = 2 - (microtime_float() - self::$last_location_time);
                     $this->logger->info("delaying lookup by $delay");
                     \Amp\delay($delay);
