@@ -79,7 +79,7 @@ use scripts\stocks\stocks;
 
 use scripts\linktitles\linktitles;
 use scripts\youtube\youtube;
-//use scripts\twitter\twitter;
+use scripts\twitter\twitter;
 use scripts\invidious\invidious;
 use scripts\github\github;
 use scripts\tiktok\tiktok;
