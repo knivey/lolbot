@@ -125,10 +125,6 @@ class remindme extends script_base
 
     function init(): void
     {
-        static $inited = false;
-        if ($inited)
-            return;
-        $inited = true;
         $this->logger->info("Initializing remindme...\n");
         \Amp\async(function () {
             global $entityManager;
