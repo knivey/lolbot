@@ -129,7 +129,7 @@ class remindme extends script_base
         if ($inited)
             return;
         $inited = true;
-        echo "Initializing remindme...\n";
+        $this->logger->info("Initializing remindme...\n");
         \Amp\async(function () {
             global $entityManager;
             while (!$this->client->isEstablished()) {
@@ -139,7 +139,7 @@ class remindme extends script_base
             \Amp\delay(5);
             //load our reminders from db and call sendDelayed on all
             $rs = $entityManager->getRepository(reminder::class)->findBy(["network"=>$this->network, "sent"=>false]);
-            echo "remindme has " . count($rs) . " reminders loaded from db\n";
+            $this->logger->info("Network {$this->network} remindme has " . count($rs) . " reminders loaded from db\n");
             foreach ($rs as $r) {
                 //whoops already passed while bot was down
                 if ($r->at <= time()) {
