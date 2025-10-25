@@ -952,7 +952,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $pack = urldecode($m[1]);
         $pfile = urldecode($m[2]);
         $saveFile = "{$config['artdir']}/ans/$pack/$pfile";
-        if(!file_exists("$saveFile.txt")) {
+        if(!file_exists("$saveFile.txt")) { //TODO regenerate the ascii as --width might have changed
             try {
                 $data = async_get_contents("https://16colo.rs/pack/$pack/data/$pfile");
                 $json = json_decode($data);
