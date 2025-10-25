@@ -27,19 +27,12 @@ class twitter extends script_base {
         $id = $m[2];
         $event->addFuture(\Amp\async(function() use ($event, $id, $user) {
             global $config;
+            if (!isset($config['nitters'])) {
+                return;
+            }
             try {
                 $client = HttpClientBuilder::buildDefault();
-                $nitters = [
-                    "https://nitter.net/",
-                    "https://nitter.kavin.rocks/",
-                    "https://nitter.unixfox.eu/",
-                    "https://nitter.moomoo.me/",
-                    "https://nitter.mint.lgbt/",
-                    "https://nitter.esmailelbob.xyz/",
-                    "https://nitter.bird.froth.zone/",
-                    "https://nitter.privacydev.net/",
-                    "https://nitter.no-logs.com/",
-                ];
+                $nitters = $config['nitters'];
                 $nitters = array_map(fn ($it) => "{$it}$user/status/$id", $nitters);
                 $responses = [];
                 foreach ($nitters as $nitter) {

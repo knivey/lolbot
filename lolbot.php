@@ -188,9 +188,9 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $youtube->setEventProvider($eventProvider);
     $router->loadMethods($youtube);
 
-//    $twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans, $router);
-//    $twitter->setEventProvider($eventProvider);
-//    $router->loadMethods($twitter);
+    $twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans, $router);
+    $twitter->setEventProvider($eventProvider);
+    $router->loadMethods($twitter);
 
     $invidious = new invidious($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:invidious", [$logHandler]), $nicks, $chans, $router);
     $invidious->setEventProvider($eventProvider);
