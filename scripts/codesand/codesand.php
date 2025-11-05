@@ -130,7 +130,23 @@ class codesand extends script_base
         if (!$this->canRun($args)) {
             return;
         }
-        $output = $this->getRun("python3", $cmdArgs['code']);
+        $code = "import os, sys, math, datetime, re, json, random, subprocess, collections, itertools, threading, time, functools, argparse, copy, shutil, unittest, pathlib, logging, pickle"
+        ."\n{$cmdArgs['code']}";
+        $output = $this->getRun("python3", $code);
+        $this->sendOut($bot, $args->chan, $output);
+    }
+
+    #[Cmd("pyp")]
+    #[Syntax("<code>...")]
+    #[Desc("Run code in python3 wrapped inside a Print()")]
+    function runPy3p($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    {
+        if (!$this->canRun($args)) {
+            return;
+        }
+        $code = "import os, sys, math, datetime, re, json, random, subprocess, collections, itertools, threading, time, functools, argparse, copy, shutil, unittest, pathlib, logging, pickle"
+        ."\nprint({$cmdArgs['code']})";
+        $output = $this->getRun("python3", $code);
         $this->sendOut($bot, $args->chan, $output);
     }
 
