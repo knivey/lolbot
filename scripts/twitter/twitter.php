@@ -64,17 +64,23 @@ class twitter extends script_base {
                 
                 $html = new HtmlDocument();
                 $html->load($body);
-                $text = $html->find("div.tweet-content", 0)?->plaintext;
+                $mainTweet = $html->find("div.main-tweet", 0);
+                if ($mainTweet === null) {
+                    $this->logger->notice("couldn't find main tweet container");
+                    $this->logger->debug("response body: " . $body);
+                    return;
+                }
+                $text = $mainTweet->find("div.tweet-content", 0)?->plaintext;
                 if($text === null) {
                     $this->logger->notice("couldnt understand response");
                     return;
                 }
-                $date = $html->find("p.tweet-published", 0)->plaintext;
+                $date = $mainTweet->find("p.tweet-published", 0)->plaintext;
                 $date = str_replace("· ", "", $date);
                 $date = Carbon::createFromTimeString($date, 'utc');
                 $ago = $date->shortRelativeToNowDiffForHumans(null, 3);
-                $like_count = $html->find('div.icon-container span.icon-heart', 0)->parent()->plaintext;
-                $reply_count = $html->find('div.icon-container span.icon-comment', 0)->parent()->plaintext;
+                $like_count = $mainTweet->find('span.icon-heart', 0)->parent()->plaintext;
+                $reply_count = $mainTweet->find('span.icon-comment', 0)->parent()->plaintext;
 
                 $event->reply("[Twitter] $ago $user tweeted: $text | {$like_count} likes, {$reply_count} replies");
             } catch (\Exception $e) {
