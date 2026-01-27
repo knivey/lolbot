@@ -67,7 +67,6 @@ class twitter extends script_base {
                 $mainTweet = $html->find("div.main-tweet", 0);
                 if ($mainTweet === null) {
                     $this->logger->notice("couldn't find main tweet container");
-                    $this->logger->debug("response body: " . $body);
                     return;
                 }
                 $text = $mainTweet->find("div.tweet-content", 0)?->plaintext;
