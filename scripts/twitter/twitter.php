@@ -81,9 +81,9 @@ class twitter extends script_base {
                 $like_count = $mainTweet->find('span.icon-heart', 0)->parent()->plaintext;
                 $reply_count = $mainTweet->find('span.icon-comment', 0)->parent()->plaintext;
 
-                $event->reply("[Twitter] $ago $user tweeted: $text | {$like_count} likes, {$reply_count} replies");
+                $event->reply("[X.com] $ago $user tweeted: $text | {$like_count} likes, {$reply_count} replies");
             } catch (\Exception $e) {
-                echo "twitter exception {$e->getMessage()}\n";
+                echo "X.com exception {$e->getMessage()}\n";
                 return;
             }
         }));
