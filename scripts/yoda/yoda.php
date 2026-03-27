@@ -116,10 +116,14 @@ function doubleyoda_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 function hostToFilehole(string $filename): Future
 {
     return \Amp\async(function () use ($filename) {
+        global $config;
+        if(!isset($config['filehole'])) {
+            throw new \Exception("filehole url unconfigured");
+        }
         if(!file_exists($filename))
             throw new \Exception("hostToFilehole called with non existant filename: $filename");
         $client = HttpClientBuilder::buildDefault();
-        $request = new Request("https://upload.beer", "POST");
+        $request = new Request($config['filehole'], "POST");
         $body = new Form();
         $body->addField('url_len', '5');
         $body->addField('expiry', '86400');
@@ -130,7 +134,7 @@ function hostToFilehole(string $filename): Future
         $response = $client->request($request);
         //var_dump($response);
         if ($response->getStatus() != 200) {
-            throw new \Exception("upload.beer returned {$response->getStatus()}");
+            throw new \Exception("{$config['filehole']} returned {$response->getStatus()}");
         }
         $respBody = $response->getBody()->buffer();
         return $respBody;

@@ -94,3 +94,5 @@ youtube_download_shorts: false
 # Can just register a throwaway github for this
 #github_auth: ""
 
+# file sharing service for yoda script
+filehole: "https://jonesfilesandfootmassage.com"

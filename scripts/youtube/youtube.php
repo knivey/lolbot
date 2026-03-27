@@ -96,10 +96,14 @@ class youtube extends script_base
 
     function hostToFilehole(string $filename)
     {
+        global $config;
+        if(!isset($config['filehole'])) {
+            throw new \Exception("filehole url unconfigured");
+        }
         if (!file_exists($filename))
             throw new \Exception("hostToFilehole called with non existant filename: $filename");
         $client = HttpClientBuilder::buildDefault();
-        $request = new Request("https://filehole.org", "POST");
+        $request = new Request($config['filehole'], "POST");
         $body = new Form();
         $body->addField('url_len', '5');
         $body->addField('expiry', '86400');
@@ -110,7 +114,7 @@ class youtube extends script_base
         $response = $client->request($request);
         //var_dump($response);
         if ($response->getStatus() != 200) {
-            throw new \Exception("filehole.org returned {$response->getStatus()}");
+            throw new \Exception("{$config['filehole']} returned {$response->getStatus()}");
         }
         $respBody = $response->getBody()->buffer();
         return $respBody;
