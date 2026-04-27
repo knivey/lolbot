@@ -11,10 +11,10 @@
             "port": 9003
         },
         {
-            "name": "Launch artbot.php",
+            "name": "Launch multiartbot.php",
             "type": "php",
             "request": "launch",
-            "program": "${workspaceFolder}/artbot.php",
+            "program": "${workspaceFolder}/multiartbot.php",
             "cwd": "${workspaceFolder}",
             "port": 0,
             "runtimeArgs": [

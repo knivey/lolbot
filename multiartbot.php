@@ -238,6 +238,26 @@ function main() {
             }
         });
 
+        $bot->on('mode', function($args, \Irc\Client $bot) {
+            if($args->on == $bot->getNick()) {
+                $adding = true;
+                foreach (str_split($args->args[0]) as $mode) {
+                    switch($mode) {
+                        case '+':
+                            $adding = true;
+                            break;
+                        case '-':
+                            $adding = false;
+                            break;
+                        case 'd':
+                        case 'D':
+                            if($adding)
+                                $bot->send("MODE {$bot->getNick()} -{$mode}");
+                    }
+                }
+            }
+        });
+
         //Only first bot handles seeing commands, recording arts, etc
         if($cnt == 0) {
             $nicks = new Nicks($bot);
@@ -333,7 +353,7 @@ function pumpToChan(string $chan, array $data, $speed = null) {
 
 function startPump($chan, $speed = null): Future {
     return async(function() use($chan, $speed) {
-        global $playing;
+        global $playing, $clients, $config;
         $chan = strtolower($chan);
         if(!isset($playing[$chan])) {
             echo "startPump but chan not in array?\n";
@@ -344,6 +364,20 @@ function startPump($chan, $speed = null): Future {
         if (count($playing[$chan]) > 9001) {
             $playing[$chan] = [$playing[$chan][0], "that arts too big for this network"];
         }
+
+        if (count($clients) == 1) {
+            $bot = $clients[0];
+            while (!empty($playing[$chan])) {
+                $bot->pm($chan, irctools\fixColors(array_shift($playing[$chan])));
+                $pumpLag = $config['pumplag'] ?? 0.025;
+                if($speed)
+                    $pumpLag = max($pumpLag, $speed);
+                \Amp\delay($pumpLag);
+            }
+            unset($playing[$chan]);
+            return;
+        }
+
         $bot = null;
         $nextbot = null;
         while (!empty($playing[$chan])) {

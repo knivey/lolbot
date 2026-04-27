@@ -7,7 +7,7 @@ which I modified a little to use Amphp.
 ## Running the bot
 I just run the bot inside a tmux session left open.
 
-To setup you need to edit config.yaml, artconfig.yaml or multiartconfig.yaml depending on what kind of bot you will run.
+To setup you need to edit config.yaml or multiartconfig.yaml depending on what kind of bot you will run.
 There are many API keys that need to be obtained by you and placed in the config file, if you leave them commented out then the commands or functionality that need them will be disabled.
 
 For the normal sopel-like channel bot
@@ -15,14 +15,18 @@ For the normal sopel-like channel bot
 php lolbot.php
 ```
 
-For a artbot that uses 1 irc connection
-```
-php artbot.php
-```
-
-For an artbot that uses multiple irc connections (for slow networks)
+For an artbot (single or multiple irc connections)
 ```
 php multiartbot.php
+```
+
+The `multiartconfig.yaml` uses a `bots` array to define one or more IRC connections. A single-entry `bots` array runs a single-headed bot, while multiple entries enable round-robin art pumping for slow networks.
+
+### Migrating from artconfig.yaml
+
+If you have an old `artconfig.yaml` (flat format), you can migrate it to the new format:
+```
+php migrate_artconfig.php artconfig.yaml multiartconfig.yaml
 ```
 
 
