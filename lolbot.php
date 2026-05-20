@@ -211,7 +211,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         foreach (explode("\n", $dbBot->onConnect) as $line) {
             if($line == "")
                 continue;
-            str_replace('$me', $bot->getNick(), $line);
+            $line = str_replace('$me', $bot->getNick(), $line);
             $bot->send($line);
         }
         $join = [];
