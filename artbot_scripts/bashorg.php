@@ -26,7 +26,7 @@ function bash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     unset($bashdb[$id]);
     $head = "\2Bash.org (\2$id\2):";
     $quote = array_map(fn($it) => "  $it", $quote);
-    pumpToChan($args->chan, [$head, ...$quote]);
+    \pumpToChan($bot, $args->chan, [$head, ...$quote]);
 }
 
 function populateBash() {

@@ -14,7 +14,8 @@ use Itwmw\ColorDifference\Lib\RGB;
 #[Syntax('<input>')]
 #[Options("--rainbow", "--rnb", "--bsize", "--width", '--edit')]
 function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    global $config;
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $url = $cmdArgs[0] ?? '';
     if(!filter_var($url, FILTER_VALIDATE_URL)) {
         $bot->pm($args->chan, "invalid url");
@@ -92,7 +93,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                     break;
                 }
             }
-            pumpToChan($args->chan, $out);
+            pumpToChan($bot, $args->chan, $out);
         }
         if($type[0] == 'text') {
             var_dump($type);
@@ -124,7 +125,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                     break;
                 }
             }
-            pumpToChan($args->chan, $out);
+            pumpToChan($bot, $args->chan, $out);
         }
 
     } catch (\Exception $error) {
@@ -253,7 +254,8 @@ static $palette = [
 #[Option("--render2", "alternate text rending for luminocity")]
 #[Option("--16", "limit to only using 16 colors")]
 function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    global $config;
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $url = $cmdArgs[0];
     if(!filter_var($url, FILTER_VALIDATE_URL)) {
         $bot->pm($args->chan, "invalid url");
@@ -339,7 +341,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         if($cmdArgs->optEnabled("--block")) {
             $words =  ["█"];
         }
-        pumpToChan($args->chan, ["ok give me a few seconds to generate the ascii.."]);
+        pumpToChan($bot, $args->chan, ["ok give me a few seconds to generate the ascii.."]);
         //delay so the above actualy has a chance to send first
         Amp\delay(0.05);
 
@@ -459,7 +461,7 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             return;
         }
 
-        pumpToChan($args->chan, $out);
+        pumpToChan($bot, $args->chan, $out);
     } catch (\Exception $error) {
         // If something goes wrong Amp will throw the exception where the promise was yielded.
         // The HttpClient::request() method itself will never throw directly, but returns a promise.

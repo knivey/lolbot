@@ -11,7 +11,7 @@ require_once 'vendor/autoload.php';
 $botKeys = ['name', 'server', 'port', 'ssl', 'throttle', 'bindIp', 'pass'];
 
 $inputFile = $argv[1] ?? 'artconfig.yaml';
-$outputFile = $argv[2] ?? 'multiartconfig.yaml';
+$outputFile = $argv[2] ?? 'artbotsconfig.yaml';
 
 if(!file_exists($inputFile) || !is_file($inputFile)) {
     fwrite(STDERR, "Usage: ".__FILE__." [input.yaml] [output.yaml]\n  ({$inputFile} does not exist or is not a file)\n");
@@ -29,32 +29,43 @@ if(!is_array($config)) {
     exit(1);
 }
 
-if(isset($config['bots'])) {
-    fwrite(STDERR, "{$inputFile} already uses the bots array format, nothing to do.\n");
+if(isset($config['networks'])) {
+    fwrite(STDERR, "{$inputFile} already uses the networks array format, nothing to do.\n");
     exit(0);
 }
 
-if(!isset($config['name']) || !isset($config['server'])) {
-    fwrite(STDERR, "{$inputFile} does not appear to be a valid artconfig (missing name/server).\n");
-    exit(1);
-}
-
-$botEntry = [];
-foreach ($botKeys as $key) {
-    if(array_key_exists($key, $config)) {
-        $botEntry[$key] = $config[$key];
-        unset($config[$key]);
+if(isset($config['bots'])) {
+    // Old multiartconfig format (single network with bots array)
+    $networkConfig = $config;
+    unset($networkConfig['bots']);
+    if(!isset($networkConfig['name'])) {
+        // Derive name from server or first bot
+        $firstBot = $config['bots'][0] ?? null;
+        $networkConfig['name'] = $firstBot['server'] ?? 'default';
     }
-}
+    $newConfig = ['networks' => [$networkConfig]];
+    $newConfig['networks'][0]['bots'] = $config['bots'];
+} else {
+    // Old single-bot artconfig format
+    if(!isset($config['name']) || !isset($config['server'])) {
+        fwrite(STDERR, "{$inputFile} does not appear to be a valid artconfig (missing name/server).\n");
+        exit(1);
+    }
 
-$newConfig = [];
-$newConfig['bots'] = [$botEntry];
-foreach ($config as $key => $value) {
-    $newConfig[$key] = $value;
+    $networkName = $config['server'] ?? 'default';
+    $botEntry = [];
+    foreach ($botKeys as $key) {
+        if(array_key_exists($key, $config)) {
+            $botEntry[$key] = $config[$key];
+            unset($config[$key]);
+        }
+    }
+    $config['name'] = $networkName;
+    $config['bots'] = [$botEntry];
+    $newConfig = ['networks' => [$config]];
 }
 
 $yaml = Yaml::dump($newConfig, 4, 2);
 file_put_contents($outputFile, $yaml);
 
 echo "Migrated {$inputFile} -> {$outputFile}\n";
-echo "Bot entry created from keys: " . implode(', ', array_keys($botEntry)) . "\n";

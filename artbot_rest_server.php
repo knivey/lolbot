@@ -28,15 +28,16 @@ class artbot_rest_server {
     public ErrorHandler $errorHandler;
 
     public function __construct(
-        public $logHandler
+        public $logHandler,
+        public NetworkContext $ctx
     )
     {
-        $this->logger = new Logger('server');
+        $this->logger = new Logger("{$ctx->name}:server");
         $this->logger->pushHandler($logHandler);
     }
 
     public function initRestServer() {
-        global $config;
+        $config = $this->ctx->config;
         if(!isset($config['listen'])) {
             return null;
         }
@@ -92,7 +93,7 @@ class artbot_rest_server {
     }
 
     public function addRoute(string $method, string $uri, RequestHandler $requestHandler) {
-        global $config;
+        $config = $this->ctx->config;
         if(!isset($config['listen'])) {
             return null;
         }
@@ -122,7 +123,7 @@ class artbot_rest_server {
                 $msg = $request->getBody()->buffer();
                 $msg = str_replace("\r", "\n", $msg);
                 $msg = explode("\n", $msg);
-                pumpToChan($chan, $msg);
+                $this->ctx->pumpToChan($chan, $msg);
 
                 return new Response(HttpStatus::OK, [
                     "content-type" => "text/plain; charset=utf-8"

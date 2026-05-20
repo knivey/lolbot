@@ -7,10 +7,6 @@ use knivey\cmdr\attributes\Syntax;
 use knivey\cmdr\Validate;
 
 use \RedBeanPHP\R as R;
-global $config;
-R::addDatabase('quotes', "sqlite:{$config['quotedb']}");
-
-$quote_recordings = [];
 
 
 #[Cmd("addquote", "quoteadd")]
@@ -18,14 +14,14 @@ $quote_recordings = [];
 #[Syntax("[quote]...")]
 #[Option('--keeptimes', "We try to strip timestamps by default, use this to keep them")]
 function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = $args->chan;
-    global $quote_recordings, $config;
-    if(isset($quote_recordings[$nick])) {
+    if(isset($ctx->quoteRecordings[$nick])) {
         return;
     }
 
-    $quote_recordings[$nick] = [
+    $ctx->quoteRecordings[$nick] = [
         'nick' => $nick,
         'chan' => $chan,
         'lines' => [],
@@ -33,8 +29,8 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         'timeOut' => \Revolt\EventLoop::delay(15, fn() => quoteTimeOut($nick, $bot)),
     ];
     if(isset($cmdArgs['quote'])) {
-        $quote_recordings[$nick]['lines'][] = $cmdArgs['quote'];
-        $quote_recordings[$nick]['lines'][] = "removed by array_pop";
+        $ctx->quoteRecordings[$nick]['lines'][] = $cmdArgs['quote'];
+        $ctx->quoteRecordings[$nick]['lines'][] = "removed by array_pop";
         endquote($args, $bot, $cmdArgs);
         return;
     }
@@ -42,38 +38,39 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 function quoteTimeOut($nick, $bot): void {
-    global $quote_recordings;
-    if(!isset($quote_recordings[$nick])) {
+    $ctx = \NetworkContext::get($bot);
+    if(!isset($ctx->quoteRecordings[$nick])) {
         echo "Timeout called but not recording?\n";
         return;
     }
-    $bot->pm($quote_recordings[$nick]['chan'], "Canceling quote recording for $nick due to no messages for 15 seconds");
-    \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
-    unset($quote_recordings[$nick]);
+    $bot->pm($ctx->quoteRecordings[$nick]['chan'], "Canceling quote recording for $nick due to no messages for 15 seconds");
+    \Revolt\EventLoop::cancel($ctx->quoteRecordings[$nick]['timeOut']);
+    unset($ctx->quoteRecordings[$nick]);
 }
 
 #[Cmd("endquote", "stopquote")]
 #[Desc("Finish quote recording")]
 function endquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $host = $args->host;
     $chan = $args->chan;
-    global $quote_recordings, $config;
-    if(!isset($quote_recordings[$nick])) {
+    if(!isset($ctx->quoteRecordings[$nick])) {
         $bot->pm($chan, "You aren't doing a recording");
         return;
     }
-    \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
+    \Revolt\EventLoop::cancel($ctx->quoteRecordings[$nick]['timeOut']);
     //last line will be the command for end, so delete it
-    array_pop($quote_recordings[$nick]['lines']);
-    if(empty($quote_recordings[$nick]['lines'])) {
-        $bot->pm($quote_recordings[$nick]['chan'], "Nothing recorded, cancelling");
-        unset($quote_recordings[$nick]);
+    array_pop($ctx->quoteRecordings[$nick]['lines']);
+    if(empty($ctx->quoteRecordings[$nick]['lines'])) {
+        $bot->pm($ctx->quoteRecordings[$nick]['chan'], "Nothing recorded, cancelling");
+        unset($ctx->quoteRecordings[$nick]);
         return;
     }
-    R::selectDatabase('quotes');
+    $ctx->initQuotesDb();
+    R::selectDatabase("quotes_{$ctx->name}");
     $quote = R::dispense('quote');
-    $quote->data = implode("\n", $quote_recordings[$nick]['lines']);
+    $quote->data = implode("\n", $ctx->quoteRecordings[$nick]['lines']);
     $creator = R::findOne('creator', ' nick = ? AND host = ? ', [$nick, $host]);
     if($creator == null) {
         $creator = R::dispense('creator');
@@ -86,8 +83,8 @@ function endquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $quote->date = R::isoDateTime();
 
     $id = R::store($quote);
-    $bot->pm($quote_recordings[$nick]['chan'], "Quote recording finished ;) saved to id: $id");
-    unset($quote_recordings[$nick]);
+    $bot->pm($ctx->quoteRecordings[$nick]['chan'], "Quote recording finished ;) saved to id: $id");
+    unset($ctx->quoteRecordings[$nick]);
 }
 
 function stripTimestamp($line) {
@@ -106,16 +103,16 @@ function stripTimestamp($line) {
 #[Cmd("cancelquote")]
 #[Desc("cancel and discard a quote recording")]
 function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = $args->chan;
-    global $quote_recordings;
-    if(!isset($quote_recordings[$nick])) {
+    if(!isset($ctx->quoteRecordings[$nick])) {
         $bot->pm($chan, "You aren't doing a quote recording");
         return;
     }
     $bot->pm($chan, "Quote recording canceled");
-    \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
-    unset($quote_recordings[$nick]);
+    \Revolt\EventLoop::cancel($ctx->quoteRecordings[$nick]['timeOut']);
+    unset($ctx->quoteRecordings[$nick]);
 }
 
 #[Cmd("querch", "findquote")]
@@ -125,7 +122,9 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 #[Option("--limit", "Limit amount played, default is 10")]
 #[Option("--recent", "Order by most recent first")]
 function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    R::selectDatabase('quotes');
+    $ctx = \NetworkContext::get($bot);
+    $ctx->initQuotesDb();
+    R::selectDatabase("quotes_{$ctx->name}");
     $query = "%" . str_replace("*", "%", $cmdArgs['query']) . "%";
     $order = "";
     if($cmdArgs->optEnabled("--recent")) {
@@ -149,7 +148,7 @@ function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         foreach($quotes as $quote) {
             $cnt++;
             if($cnt > $limit) {
-                pumpToChan($args->chan, ["Limiting to $limit quotes..."]);
+                \pumpToChan($bot, $args->chan, ["Limiting to $limit quotes..."]);
                 return;
             }
             showQuote($bot, $args->chan, $quote);
@@ -170,25 +169,25 @@ function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     }
 }
 
-function initQuotes($bot) {
-    $bot->on('chat', function ($args, \Irc\Client $bot) {
-        global $quote_recordings;
+function initQuotes($bot, \NetworkContext $ctx) {
+    $ctx->initQuotesDb();
+    $bot->on('chat', function ($args, \Irc\Client $bot) use ($ctx) {
         $nick = $args->from;
         $text = $args->text;
-        if(!isset($quote_recordings[$nick]))
+        if(!isset($ctx->quoteRecordings[$nick]))
             return;
-        if($args->chan != $quote_recordings[$nick]['chan'])
+        if($args->chan != $ctx->quoteRecordings[$nick]['chan'])
             return;
-        \Revolt\EventLoop::cancel($quote_recordings[$nick]['timeOut']);
-        if(!$quote_recordings[$nick]['keeptimes'])
+        \Revolt\EventLoop::cancel($ctx->quoteRecordings[$nick]['timeOut']);
+        if(!$ctx->quoteRecordings[$nick]['keeptimes'])
             $text = stripTimestamp($text);
-        $quote_recordings[$nick]['lines'][] = $text;
-        if(count($quote_recordings[$nick]['lines']) > 100) {
-            $bot->msg($quote_recordings[$nick]['chan'], "$nick that quote sucks, keep it short");
-            unset($quote_recordings[$nick]);
+        $ctx->quoteRecordings[$nick]['lines'][] = $text;
+        if(count($ctx->quoteRecordings[$nick]['lines']) > 100) {
+            $bot->msg($ctx->quoteRecordings[$nick]['chan'], "$nick that quote sucks, keep it short");
+            unset($ctx->quoteRecordings[$nick]);
             return;
         }
-        $quote_recordings[$nick]['timeOut'] = \Revolt\EventLoop::delay(15, fn() => quoteTimeOut($nick, $bot));
+        $ctx->quoteRecordings[$nick]['timeOut'] = \Revolt\EventLoop::delay(15, fn() => quoteTimeOut($nick, $bot));
     });
 }
 
@@ -197,7 +196,9 @@ function initQuotes($bot) {
 #[Syntax("[id]...")]
 #[Option("--contains", "Instead of id lookup find a random quote matching text")]
 function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    R::selectDatabase('quotes');
+    $ctx = \NetworkContext::get($bot);
+    $ctx->initQuotesDb();
+    R::selectDatabase("quotes_{$ctx->name}");
     if(isset($cmdArgs['id'])) {
         if($cmdArgs->optEnabled("--contains")) {
             $search = "%" . trim($cmdArgs["id"]) . "%";
@@ -227,7 +228,7 @@ function showQuote($bot, $chan, $quote) {
     $lines = explode("\n", $quote['data']);
     $lines = array_map(fn ($it) => "  $it", $lines);
     array_unshift($lines, $header);
-    pumpToChan($chan, $lines);
+    \pumpToChan($bot, $chan, $lines);
 }
 
 /*

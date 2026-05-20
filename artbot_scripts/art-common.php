@@ -21,27 +21,22 @@ use Symfony\Component\Yaml\Yaml;
 use Amp\Http\Server\ClientException;
 use Revolt\EventLoop;
 
-$recordings = [];
-
-$allowedPumps = [];
-
 function asciipost_to_array(string $msg): array {
     $msg = str_replace("\r", "\n", $msg);
     $msg = explode("\n", $msg);
     return array_filter($msg);
 }
 
-function setupRestRoutes(\artbot_rest_server $server) {
-    $server->addRoute('POST', '/pump/{key}', new ClosureRequestHandler(function (HttpRequest $request) {
-        global $allowedPumps;
+function setupRestRoutes(\artbot_rest_server $server, \NetworkContext $ctx) {
+    $server->addRoute('POST', '/pump/{key}', new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
         $args = $request->getAttribute(Router::class);
-        if(!isset($args['key']) || !array_key_exists($args['key'], $allowedPumps)) {
+        if(!isset($args['key']) || !array_key_exists($args['key'], $ctx->allowedPumps)) {
             return new HttpResponse(HttpStatus::FORBIDDEN, [
                 "content-type" => "text/plain; charset=utf-8"
             ], "Invalid key\n");
         }
 
-        $pumpInfo = $allowedPumps[$args['key']];
+        $pumpInfo = $ctx->allowedPumps[$args['key']];
         try {
             $msg = $request->getBody()->buffer(limit: 1024 * 9000);
         } catch (BufferException|ClientException $e) {
@@ -55,13 +50,13 @@ function setupRestRoutes(\artbot_rest_server $server) {
                 "content-type" => "text/plain; charset=utf-8"
             ], "Too many lines\n");
         array_unshift($msg, "Pump brought to you by {$pumpInfo['nick']}");
-        pumpToChan($pumpInfo['chan'], $msg);
-        unset($allowedPumps[$args['key']]);
+        $ctx->pumpToChan($pumpInfo['chan'], $msg);
+        unset($ctx->allowedPumps[$args['key']]);
         return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "PUMPED!\n");
     }));
 
-    $server->addRoute('POST', '/record2/{key}/{filename}', new ClosureRequestHandler(function (HttpRequest $request) {
-        global $config;
+    $server->addRoute('POST', '/record2/{key}/{filename}', new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
+        $config = $ctx->config;
         $keys = Yaml::parseFile('recording_keys.yaml');
         $args = $request->getAttribute(Router::class);
         if(!isset($args['key']) || !isset($keys[$args['key']])) {
@@ -110,15 +105,15 @@ function setupRestRoutes(\artbot_rest_server $server) {
         return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "h4x/{$user}/$file.txt\n");
     }));
 
-    $server->addRoute('POST', '/record/{key}', new ClosureRequestHandler(function (HttpRequest $request) {
-        global $recordTokens, $config;
+    $server->addRoute('POST', '/record/{key}', new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
+        $config = $ctx->config;
         $args = $request->getAttribute(Router::class);
-        if(!isset($args['key']) || !array_key_exists($args['key'], $recordTokens)) {
+        if(!isset($args['key']) || !array_key_exists($args['key'], $ctx->recordTokens)) {
             return new HttpResponse(HttpStatus::FORBIDDEN, [
                 "content-type" => "text/plain; charset=utf-8"
             ], "Invalid key\n");
         }
-        $token = $recordTokens[$args['key']];
+        $token = $ctx->recordTokens[$args['key']];
         try {
             $msg = $request->getBody()->buffer(limit: 1024 * 9000);
         } catch (BufferException|ClientException $e) {
@@ -144,7 +139,7 @@ function setupRestRoutes(\artbot_rest_server $server) {
         }
         $file = "$dir/{$token->file}.txt";
         file_put_contents($file, implode("\n", $msg));
-        pumpToChan($token->chan, ["{$token->nick} has posted a new art @{$token->file}"]);
+        $ctx->pumpToChan($token->chan, ["{$token->nick} has posted a new art @{$token->file}"]);
         return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "SAVED!\n");
     }));
 }
@@ -156,40 +151,25 @@ class RecordToken {
         public string $token
     ){}
 }
-/** @var array<string, RecordToken> */
-$recordTokens = [];
 
-/**
- * @param $nick
- * @param $chan
- * @param $file
- * @param $minutes
- * @return string
- */
-function requestRecordUrl($nick, $chan, $file, $minutes): string {
-    global $recordTokens;
+function requestRecordUrl($nick, $chan, $file, $minutes, \NetworkContext $ctx): string {
     $key = bin2hex(random_bytes(5));
-    $url = makeUrl("record/$key");
+    $url = makeUrl("record/$key", $ctx);
     if(!$url)
         throw new \Exception("Couldn't find my ip");
-    $exists = array_reduce($recordTokens, fn($c, $t) => $t->nick == $nick ? $t->token : $c);
+    $exists = array_reduce($ctx->recordTokens, fn($c, $t) => $t->nick == $nick ? $t->token : $c);
     if($exists)
-        unset($recordTokens[$exists]);
+        unset($ctx->recordTokens[$exists]);
     $token = new RecordToken($nick, $chan, $file, $key);
-    $recordTokens[$key] = $token;
-    EventLoop::delay($minutes*60, function () use ($key) {
-        global $recordTokens;
-        unset($recordTokens[$key]);
+    $ctx->recordTokens[$key] = $token;
+    EventLoop::delay($minutes*60, function () use ($key, $ctx) {
+        unset($ctx->recordTokens[$key]);
     });
     return $url;
 }
 
-/**
- * @param string $route
- * @return string
- */
-function makeUrl(string $route): string {
-    global $config;
+function makeUrl(string $route, \NetworkContext $ctx): string {
+    $config = $ctx->config;
     if (isset($config['rest_url'])) {
         $url = $config['rest_url'];
     } else {
@@ -214,57 +194,45 @@ function makeUrl(string $route): string {
     return "$url/$route";
 }
 
-function getWrapLength($bot, $chan) {
-    global $clients;
-    $size = 0;
-    if(isset($clients) && is_array($clients)) {
-        foreach($clients as $b)
-            $size = max($size, strlen($b->getNickHost()));
-    } else {
-        $size = strlen($bot->getNickHost());
-    }
-    //could use 509 but rather give a little extra
-    return 500 - $size - strlen(" PRIVMSG $chan :");
+function getWrapLength($bot, $chan, \NetworkContext $ctx) {
+    return $ctx->getWrapLength($bot, $chan);
 }
 
 #[Cmd("getpumper")]
 #[Desc("Gets a URL you can send a HTTP POST to play art in the channel")]
 function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $allowedPumps;
+    $ctx = \NetworkContext::get($bot);
     $key = bin2hex(random_bytes(5));
-    $url = makeUrl("pump/$key");
+    $url = makeUrl("pump/$key", $ctx);
     if(!$url) {
         $bot->pm($args->chan, "Couldn't find my ip :(");
         return;
     }
 
-    $allowedPumps[$key] = [
+    $ctx->allowedPumps[$key] = [
         'nick' => $args->nick,
         'chan' => $args->chan,
     ];
 
     $bot->notice($args->nick, "  $url  This is valid for 1 pump and expires in 10 min");
-    EventLoop::delay(10*60, function () use ($key) {
-        global $allowedPumps;
-        unset($allowedPumps[$key]);
+    EventLoop::delay(10*60, function () use ($key, $ctx) {
+        unset($ctx->allowedPumps[$key]);
     });
 }
-
-$recordLimit = [];
-$limitWarns = [];
 
 #[Cmd("record")]
 #[Desc("Record a new art, use this, paste the art to the chat then type @end when finished")]
 #[Option(["--post", "--url"], "Get a URL to POST the art data to instead of pasting it to the channel")]
 #[Syntax('<filename>')]
 function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $nick = $args->nick;
     $chan = $args->chan;
     $host = $args->host;
     $file = $cmdArgs['filename'];
-    global $recordings, $recordLimit, $limitWarns;
-    if(isset($recordings[$nick])) {
+    if(isset($ctx->recordings[$nick])) {
         return;
     }
     if(str_contains($file, "/") || $file[0] == '.') {
@@ -285,17 +253,17 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $bot->pm($chan, 'That name has been reserved');
         return;
     }
-    if(isset($recordLimit[$host]) && $recordLimit[$host] > time()) {
-        if(!isset($limitWarns[$host]) || $limitWarns[$host] < time()-2) {
+    if(isset($ctx->recordLimit[$host]) && $ctx->recordLimit[$host] > time()) {
+        if(!isset($ctx->limitWarns[$host]) || $ctx->limitWarns[$host] < time()-2) {
             $bot->pm($chan, "You're recording too fast, wait awhile");
-            $limitWarns[$host] = time();
+            $ctx->limitWarns[$host] = time();
         }
         return;
     }
-    $recordLimit[$host] = time()+2;
-    unset($limitWarns[$host]);
+    $ctx->recordLimit[$host] = time()+2;
+    unset($ctx->limitWarns[$host]);
 
-    $files = getFinder()->path("@^h4x/" . preg_quote($nick, "@") . "/". preg_quote($file, "@") ."\.txt$@i");
+    $files = $ctx->getFinder()->path("@^h4x/" . preg_quote($nick, "@") . "/". preg_quote($file, "@") ."\.txt$@i");
     if($files->hasResults()) {
         //should just be one file
         $existing = implode(', ', array_map(function ($file) {
@@ -304,7 +272,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $bot->pm($chan, "$existing already exists, \x0300,04\x02Existing arts files can no longer be recorded over due to abuse >:(\x02\x03 you can ask slime, jewbird or sansGato to delete the file or pick another name");
         return;
     }
-    $files = getFinder()->name("@^" . preg_quote($file, "@") . "\.txt$@i");
+    $files = $ctx->getFinder()->name("@^" . preg_quote($file, "@") . "\.txt$@i");
     if($files->hasResults()) {
         $files = implode(', ', array_map(function ($file) {
             return substr($file->getRelativePathname(), 0, -4);
@@ -314,7 +282,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
     if($cmdArgs->optEnabled('--post') || $cmdArgs->optEnabled('--url')) {
         try {
-            $url = requestRecordUrl($nick, $chan, $file, 60);
+            $url = requestRecordUrl($nick, $chan, $file, 60, $ctx);
         } catch (\Exception $e) {
             $bot->notice($nick, "Problem encountered: {$e->getMessage()}");
             return;
@@ -323,7 +291,7 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         return;
     }
 
-    $recordings[$nick] = [
+    $ctx->recordings[$nick] = [
         'name' => $file,
         'nick' => $nick,
         'chan' => $chan,
@@ -333,87 +301,86 @@ function record($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $bot->pm($chan, 'Recording started type @end when done or discard with @cancel');
 }
 
-function tryRec($bot, $nick, $text) {
-    global $recordings;
-    if(!isset($recordings[$nick]))
+function tryRec($bot, $nick, $text, \NetworkContext $ctx) {
+    if(!isset($ctx->recordings[$nick]))
         return;
-    EventLoop::cancel($recordings[$nick]['timeOut']);
-    $recordings[$nick]['timeOut'] = EventLoop::delay(15, fn () => timeOut($nick, $bot));
-    $recordings[$nick]['art'][] = $text;
+    EventLoop::cancel($ctx->recordings[$nick]['timeOut']);
+    $ctx->recordings[$nick]['timeOut'] = EventLoop::delay(15, fn () => timeOut($nick, $bot));
+    $ctx->recordings[$nick]['art'][] = $text;
 }
 
 function timeOut($nick, $bot) {
-    global $recordings;
-    if(!isset($recordings[$nick])) {
+    $ctx = \NetworkContext::get($bot);
+    if(!isset($ctx->recordings[$nick])) {
         echo "Timeout called but not recording?\n";
         return;
     }
-    $bot->pm($recordings[$nick]['chan'], "Canceling art for $nick due to no messages for 15 seconds");
-    EventLoop::cancel($recordings[$nick]['timeOut']);
-    unset($recordings[$nick]);
+    $bot->pm($ctx->recordings[$nick]['chan'], "Canceling art for $nick due to no messages for 15 seconds");
+    EventLoop::cancel($ctx->recordings[$nick]['timeOut']);
+    unset($ctx->recordings[$nick]);
 }
 
 #[Cmd("end")]
 #[Desc("Finish recording art")]
 function endart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $nick = $args->nick;
     $chan = $args->chan;
-    global $recordings, $config;
-    if(!isset($recordings[$nick])) {
+    if(!isset($ctx->recordings[$nick])) {
         $bot->pm($chan, "You aren't doing a recording");
         return;
     }
-    EventLoop::cancel($recordings[$nick]['timeOut']);
+    EventLoop::cancel($ctx->recordings[$nick]['timeOut']);
     //last line will be the command for end, so delete it
-    array_pop($recordings[$nick]['art']);
-    if(empty($recordings[$nick]['art'])) {
-        $bot->pm($recordings[$nick]['chan'], "Nothing recorded, cancelling");
-        unset($recordings[$nick]);
+    array_pop($ctx->recordings[$nick]['art']);
+    if(empty($ctx->recordings[$nick]['art'])) {
+        $bot->pm($ctx->recordings[$nick]['chan'], "Nothing recorded, cancelling");
+        unset($ctx->recordings[$nick]);
         return;
     }
     $dir = "{$config['artdir']}h4x/$nick";
     if(file_exists($dir) && !is_dir($dir)) {
-        $bot->pm($recordings[$nick]['chan'], "crazy error occurred panicing atm");
-        unset($recordings[$nick]);
+        $bot->pm($ctx->recordings[$nick]['chan'], "crazy error occurred panicing atm");
+        unset($ctx->recordings[$nick]);
         return;
     }
     if(!file_exists($dir)) {
         mkdir($dir, 0777, true);
     }
-    $file = "$dir/". $recordings[$nick]['name'] . '.txt';
-    file_put_contents($file, implode("\n", $recordings[$nick]['art']));
-    $bot->pm($recordings[$nick]['chan'], "Recording finished ;) saved to " . substr($file, strlen($config['artdir'])));
-    unset($recordings[$nick]);
+    $file = "$dir/". $ctx->recordings[$nick]['name'] . '.txt';
+    file_put_contents($file, implode("\n", $ctx->recordings[$nick]['art']));
+    $bot->pm($ctx->recordings[$nick]['chan'], "Recording finished ;) saved to " . substr($file, strlen($config['artdir'])));
+    unset($ctx->recordings[$nick]);
 }
 
 #[Cmd("cancel")]
 #[Desc("Cancel recording art")]
 function cancel($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = $args->chan;
-    global $recordings;
-    if(!isset($recordings[$nick])) {
+    if(!isset($ctx->recordings[$nick])) {
         $bot->pm($chan, "You aren't doing a recording");
         return;
     }
     $bot->pm($chan, "Recording canceled");
-    EventLoop::cancel($recordings[$nick]['timeOut']);
-    unset($recordings[$nick]);
+    EventLoop::cancel($ctx->recordings[$nick]['timeOut']);
+    unset($ctx->recordings[$nick]);
 }
 
 $reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed', '--link', '--download'];
-function reqart($bot, $chan, $file, $opts = [], $args = []) {
-    global $config, $playing;
-    if(isset($playing[strtolower($chan)])) {
+function reqart($bot, $chan, $file, $opts = [], $args = [], \NetworkContext $ctx) {
+    $config = $ctx->config;
+    if(isset($ctx->playing[strtolower($chan)])) {
         return;
     }
 
-    $finder = getFinder([]);
+    $finder = $ctx->getFinder([]);
     //in the future support other extensions run through appropriate handlers
     $finder->name("/\.txt$/i");
 
-    $tryEdit = function ($ent) use ($bot, $chan, $opts) {
-        global $config;
+    $tryEdit = function ($ent) use ($bot, $chan, $opts, $config) {
         if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
             $relPath = urlencode(substr($ent, strlen($config['artdir'])));
             $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=$relPath");
@@ -422,8 +389,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
         return false;
     };
 
-    $tryLink = function ($ent) use ($bot, $chan, $opts) {
-        global $config;
+    $tryLink = function ($ent) use ($bot, $chan, $opts, $config) {
         if(array_key_exists('--link', $opts) || array_key_exists('--download', $opts)) {
             $relPath = urlencode(substr($ent, strlen($config['artdir'])));
             $bot->pm($chan, "{$config['link_url']}$relPath");
@@ -443,7 +409,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
 
     if(strlen($file) > 1 && $file[0] == '@') {
         $file = substr($file, 1);
-        $art = selectRandFile($file);
+        $art = selectRandFile($file, $ctx);
         if($art !== false)
             playart($bot, $chan, $art, $file, $opts, $args, $speed);
         else
@@ -472,23 +438,22 @@ function reqart($bot, $chan, $file, $opts = [], $args = []) {
     }
 }
 
-$trashLimit = [];
-$trashLimitWarns = [];
 #[Cmd("trash")]
 #[Desc("Move a recorded art to trash, requires special access.")]
 #[Syntax("<file>")]
 function trash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    global $config, $trashLimit, $trashLimitWarns;
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $host = $args->host;
-    if(isset($trashLimit[$host]) && $trashLimit[$host] > time()) {
-        if(!isset($trashLimitWarns[$host]) || $trashLimitWarns[$host] < time()-2) {
+    if(isset($ctx->trashLimit[$host]) && $ctx->trashLimit[$host] > time()) {
+        if(!isset($ctx->trashLimitWarns[$host]) || $ctx->trashLimitWarns[$host] < time()-2) {
             $bot->pm($args->chan, "You're trashing too fast, wait awhile");
-            $trashLimitWarns[$host] = time();
+            $ctx->trashLimitWarns[$host] = time();
         }
         return;
     }
-    $trashLimit[$host] = time()+2;
-    unset($trashLimitWarns[$host]);
+    $ctx->trashLimit[$host] = time()+2;
+    unset($ctx->trashLimitWarns[$host]);
 
     //Some networks can easily fake hosts to bypass host based auth
     if(!($config['trustedNetwork'] ?? false)) {
@@ -544,17 +509,6 @@ function trash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $bot->pm($args->chan, "Art file moved to trash");
 }
 
-/**
- * Gets Finder for art dir, excluding p2u
- */
-function getFinder(array $exclude = ['p2u']) : \Symfony\Component\Finder\Finder {
-    global $config;
-    $finder = new \Symfony\Component\Finder\Finder();
-    $finder->files();
-    $finder->in($config['artdir'])->exclude($exclude);
-    return $finder;
-}
-
 #[Cmd("search", "find")]
 #[Desc("Search for art by mathcing against directorys/names")]
 #[Option(["--max"], "Max results to show")]
@@ -565,9 +519,10 @@ function getFinder(array $exclude = ['p2u']) : \Symfony\Component\Finder\Finder 
 #[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('<query>...')]
 function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $chan = $args->chan;
     $query = $cmdArgs['query'];
-    global $config;
     $max = $config['art_search_max'] ?? 100;
     if($cmdArgs->optEnabled("--max")) {
         $max = $cmdArgs->getOpt("--max");
@@ -585,11 +540,10 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         }
     }
 
-    global $playing;
-    if (isset($playing[strtolower($chan)])) {
+    if (isset($ctx->playing[strtolower($chan)])) {
         return;
     }
-    $finder = getFinder()->name("/\.txt$/i");
+    $finder = $ctx->getFinder()->name("/\.txt$/i");
     if($cmdArgs->optEnabled("--contains")) {
         //$finder->contains($query);
         $glob = tools\globToRegex("*$query*", anchor: false) . 'i';
@@ -631,7 +585,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                 if(substr_compare(substr($query, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
                     $npump = [];
                     foreach($pump as $line) {
-                        $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $chan), "\n", true)));
+                        $npump = array_merge($npump, explode("\n", wordwrap($line, $ctx->getWrapLength($bot, $chan), "\n", true)));
                     }
                     $pump = $npump;
                     break;
@@ -643,7 +597,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             $bot->pm($chan, "no matching art found");
             return;
         }
-        pumpToChan($chan, $out);
+        \pumpToChan($bot, $chan, $out);
         return;
     }
 
@@ -669,7 +623,7 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         $out[] = "$cnt total matches, only showing $max";
     }
 
-    pumpToChan($chan, $out);
+    \pumpToChan($bot, $chan, $out);
 }
 
 #[Cmd("recent")]
@@ -678,7 +632,8 @@ function searchart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 #[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('[since]...')]
 function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
-    global $config;
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $since = $cmdArgs['since'] ?? '8 days ago';
     $time = strtotime($since);
     //sometimes people just put "5 hours" when they mean "5 hours ago";
@@ -691,7 +646,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
         return;
     }
 
-    $finder = getFinder()->name("/\.txt$/i");
+    $finder = $ctx->getFinder()->name("/\.txt$/i");
     $finder->date("since $since");
     $finder->sortByModifiedTime();
     if(!$finder->hasResults()) {
@@ -731,7 +686,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                 if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
                     $npump = [];
                     foreach($pump as $line) {
-                        $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $args->chan), "\n", true)));
+                        $npump = array_merge($npump, explode("\n", wordwrap($line, $ctx->getWrapLength($bot, $args->chan), "\n", true)));
                     }
                     $pump = $npump;
                     break;
@@ -739,7 +694,7 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             }
             $out = array_merge($out, $pump);
         }
-        pumpToChan($args->chan, $out);
+        \pumpToChan($bot, $args->chan, $out);
         return;
     }
 
@@ -752,11 +707,11 @@ function recent($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     }
     $table = \knivey\tools\multi_array_padding($table);
     $out = array_merge($out, array_map(fn($v) => rtrim(implode($v)), $table));
-    pumpToChan($args->chan, $out);
+    \pumpToChan($bot, $args->chan, $out);
 }
 
-function selectRandFile($search = null) : String|false {
-    $finder = getFinder()->name("/\.txt$/i");
+function selectRandFile($search, \NetworkContext $ctx) : String|false {
+    $finder = $ctx->getFinder()->name("/\.txt$/i");
     if($search != null) {
         $finder->path(tools\globToRegex("*$search*.txt") . 'i');
     }
@@ -772,9 +727,9 @@ function selectRandFile($search = null) : String|false {
 #[Option("--speed", "set the playback speed, delay between lines in ms")]
 #[Syntax('[search]')]
 function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
     $chan = strtolower($args->chan);
-    global $playing;
-    if(isset($playing[$chan])) {
+    if(isset($ctx->playing[$chan])) {
         return;
     }
 
@@ -792,7 +747,7 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     if(isset($cmdArgs['search'])) {
         $search = strtolower($cmdArgs['search']);
     }
-    $art = selectRandFile($search);
+    $art = selectRandFile($search, $ctx);
 
     if($art !== false)
         playart($bot, $chan, $art, $search, $opts, [], $speed);
@@ -803,14 +758,14 @@ function randart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 #[Cmd("stop")]
 #[Desc("Stops art playback")]
 function stop($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = strtolower($args->chan);
-    global $recordings, $playing;
-    if(isset($playing[$chan])) {
-        $playing[$chan] = [];
+    if(isset($ctx->playing[$chan])) {
+        $ctx->playing[$chan] = [];
         $bot->pm($chan, 'stopped');
     } else {
-        if(isset($recordings[$nick])) {
+        if(isset($ctx->recordings[$nick])) {
             endart($args, $bot, $cmdArgs);
             return;
         }
@@ -820,8 +775,9 @@ function stop($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 
 function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], $speed = null)
 {
-    global $playing, $config;
-    if (isset($playing[strtolower($chan)])) {
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
+    if (isset($ctx->playing[strtolower($chan)])) {
         return;
     }
     $pump = irctools\loadartfile($file);
@@ -829,7 +785,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         if(substr_compare(substr($file, strlen($config['artdir'])), $lwdir, 0, strlen($lwdir)) === 0) {
             $npump = [];
             foreach($pump as $line) {
-                $npump = array_merge($npump, explode("\n", wordwrap($line, getWrapLength($bot, $chan), "\n", true)));
+                $npump = array_merge($npump, explode("\n", wordwrap($line, $ctx->getWrapLength($bot, $chan), "\n", true)));
             }
             $pump = $npump;
             break;
@@ -888,7 +844,7 @@ function playart($bot, $chan, $file, $searched = false, $opts = [], $args = [], 
         $pmsg = preg_replace(tools\globToRegex($searched, '/', false) . 'i', "\x0306\$0\x0F", $pmsg);
     }
     array_unshift($pump, $pmsg);
-    pumpToChan($chan, $pump, speed: $speed);
+    \pumpToChan($bot, $chan, $pump, speed: $speed);
 }
 
 //little helper because exec() echod
@@ -914,7 +870,8 @@ function quietExec($cmd)
 #[Option("--edit", "make a link to open in asciibird")]
 function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $config;
+    $ctx = \NetworkContext::get($bot);
+    $config = $ctx->config;
     $chan = $args->chan;
     if(!isset($config['a2m'])) {
         $bot->pm($chan, "a2m not setup in config");
@@ -987,7 +944,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             $bot->pm($chan, "https://asciibird.birdnest.live/?haxAscii=ans/" .urlencode($pack) . "/" . urlencode($pfile) . ".txt");
             return;
         } else {
-            pumpToChan($chan, explode("\n", rtrim($out)));
+            \pumpToChan($bot, $chan, explode("\n", rtrim($out)));
         }
     } catch (\async_get_exception $error) {
         $bot->pm($chan, "\a2m:\2 {$error->getIRCMsg()}");
@@ -997,4 +954,3 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         return;
     }
 }
-

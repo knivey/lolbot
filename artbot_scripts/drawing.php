@@ -22,7 +22,7 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
     $art->drawLine($sx, $sy, $ex, $ey, new Color(04, 0), "x");
 
-    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
 
 
@@ -38,7 +38,7 @@ function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
     $art->drawFilledEllipse($cx, $cy, $w, $h, new Color(04, 0), "x");
 
-    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
 
 #[Cmd("ellipsetest")]
@@ -54,7 +54,7 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
     $art->drawEllipse($cx, $cy, $w, $h, new Color(04, 0), "x", $segs);
 
-    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
 
 
@@ -73,7 +73,7 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $art->drawLine($sx, $sy, $ex, $ey, $color);
     }
 
-    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
 
 
@@ -92,8 +92,9 @@ function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $art->drawEllipse($cx, $cy, $w, $h, $color);
     }
 
-    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
+
 
 #[Cmd("pentagons")]
 #[Desc("Draw some random pentagons")]
@@ -110,8 +111,9 @@ function pentagons($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $art->drawEllipse($cx, $cy, $w, $h, $color, '', 5, random_int(0, 36));
     }
 
-    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
+
 
 #[Cmd("stars")]
 #[Desc("Draw some random stars")]
@@ -164,5 +166,5 @@ function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $art->overlay($tart);
     }
 
-    \pumpToChan($args->chan, explode("\n", trim($art, "\n")));
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }

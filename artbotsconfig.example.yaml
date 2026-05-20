@@ -1,18 +1,17 @@
-#general options from artconfig.yaml may be used in here
-
-channels: ['#knivey']
-trigger: "@"
-artdir: "/home/knivey/ircart/"
-bots:
-    -
-        name: van
+networks:
+  - name: "example"
+    network_id: 1
+    trigger: "@"
+    channels: ['#knivey']
+    artdir: "/home/knivey/ircart/"
+    bots:
+      - name: van
         server: snek.irc.ltd
         port: 6667
         ssl: false
         throttle: false
         bindIp: 0
-    -
-        name: pee
+      - name: pee
         server: snek.irc.ltd
         port: 6667
         ssl: false

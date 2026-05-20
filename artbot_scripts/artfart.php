@@ -45,7 +45,7 @@ function artfart($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
         $fart = explode("\n", $fart);
         $fart = array_map(rtrim(...), $fart);
         array_unshift($fart, $title);
-        pumpToChan($args->chan, $fart);
+        \pumpToChan($bot, $args->chan, $fart);
     } catch (\Exception $error) {
         echo $error->getMessage();
         $bot->pm($args->chan, "\2artfart:\2 {$error->getMessage()}");

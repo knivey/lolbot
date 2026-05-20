@@ -14,7 +14,7 @@ use PHPUnit\Exception;
 #[Desc("lookup help for commands")]
 function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 {
-    global $router;
+    $router = \NetworkContext::get($bot)->router;
     if(isset($cmdArgs['command'])) {
         if(!$cmdArgs->optEnabled("--priv")) {
             if (!$router->cmdExists($cmdArgs['command'])) {
@@ -29,7 +29,7 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             }
             $help = (string)$router->privCmds[$cmdArgs['command']];
         }
-        showHelp($args->chan, $bot, $help);
+        showHelp($bot, $args->chan, $help);
         return;
     }
     $first = 0;
@@ -43,29 +43,9 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             $out .= "---\n";
         $out .= (string)$cmd . "\n";
     }
-    showHelp($args->chan, $bot, $out);
+    showHelp($bot, $args->chan, $out);
 }
 
-function showHelp(string $chan, $bot, string $lines) {
-    if(function_exists('pumpToChan')) {
-        pumpToChan($chan, explode("\n", $lines));
-        return;
-    }
-    if(strlen($lines) > 1000) {
-        try {
-            $connectContext = (new \Amp\Socket\ConnectContext)
-                ->withConnectTimeout(15);
-            $sock = \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
-            $sock->write($lines);
-            $url = \Amp\ByteStream\buffer($sock);
-            $sock->end();
-            $bot->msg($chan, "help: $url");
-        } catch (Exception $e) {
-            $bot->msg($chan, "trouble uploading help :(");
-        }
-        return;
-    }
-    foreach(explode("\n", $lines) as $line) {
-        $bot->msg($chan, $line);
-    }
+function showHelp($bot, $chan, $lines) {
+    \pumpToChan($bot, $chan, explode("\n", $lines));
 }
