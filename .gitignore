@@ -5,6 +5,7 @@ vendor
 config.yaml
 artconfig.yaml
 multiartconfig.yaml
+artbotsconfig.yaml
 composer.lock
 scripts/notifier/notifier_keys.yaml
 ignores.txt
