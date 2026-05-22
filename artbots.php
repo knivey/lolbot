@@ -6,13 +6,18 @@ require_once 'bootstrap.php';
 
 use lolbot\entities\Ignore;
 use lolbot\entities\Network;
-use Symfony\Component\Yaml\Yaml;
 
 use Amp\ByteStream;
+use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
+use Amp\Http\Server\Router;
+use Amp\Http\HttpStatus;
+use Amp\Http\Server\Request;
+use Amp\Http\Server\Response;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
 use Amp\TimeoutCancellation;
 use Monolog\Logger;
+use Symfony\Component\Yaml\Yaml;
 use function Amp\async;
 use Amp\Future;
 
@@ -142,9 +147,48 @@ function onchat($args, \Irc\Client $bot, NetworkContext $ctx)
     });
 }
 
-function startNetwork(array $networkConfig, $logHandler): NetworkContext
+function registerNetworkRoutes(artbot_rest_server $server, NetworkContext $ctx, string $prefix) {
+    $server->addRoute("POST", "/{$prefix}/privmsg/{chan}", new ClosureRequestHandler(
+        function (Request $request) use ($ctx): Response {
+            $notifier_keys = Yaml::parseFile(__DIR__. '/notifier_keys.yaml');
+            $key = $request->getHeader('key');
+            if (isset($notifier_keys[$key])) {
+                echo "Request from $notifier_keys[$key] ($key)\n";
+            } else {
+                echo \Irc\stripForTerminal("Blocked request for bad key $key\n");
+                return new Response(HttpStatus::FORBIDDEN, [
+                    "content-type" => "text/plain; charset=utf-8"
+                ], "Invalid key");
+            }
+            $args = $request->getAttribute(Router::class);
+            if(!isset($args['chan'])) {
+                return new Response(HttpStatus::BAD_REQUEST, [
+                    "content-type" => "text/plain; charset=utf-8"
+                ], "Must specify a chan to privmsg");
+            }
+            $chan = "#{$args['chan']}";
+            $msg = $request->getBody()->buffer();
+            $msg = str_replace("\r", "\n", $msg);
+            $msg = explode("\n", $msg);
+            $ctx->pumpToChan($chan, $msg);
+
+            return new Response(HttpStatus::OK, [
+                "content-type" => "text/plain; charset=utf-8"
+            ], "PRIVMSG sent\n");
+    }));
+
+    artbot_scripts\setupRestRoutes($server, $ctx, $prefix);
+}
+
+function startNetwork(array $networkConfig, $logHandler, ?artbot_rest_server $restServer, string $restUrl): NetworkContext
 {
     $ctx = new NetworkContext($networkConfig);
+
+    if ($restServer !== null) {
+        $ctx->route = $networkConfig['route'];
+        $ctx->restUrl = $restUrl;
+        registerNetworkRoutes($restServer, $ctx, $networkConfig['route']);
+    }
 
     $ctx->router = new Cmdr();
     $ctx->router->loadFuncs();
@@ -232,13 +276,6 @@ function startNetwork(array $networkConfig, $logHandler): NetworkContext
         $cnt++;
     }
 
-    if (isset($networkConfig['listen'])) {
-        $ctx->restServer = new artbot_rest_server($logHandler, $ctx);
-        $ctx->restServer->initRestServer();
-        artbot_scripts\setupRestRoutes($ctx->restServer, $ctx);
-        $ctx->restServer->start();
-    }
-
     foreach ($ctx->clients as $bot) {
         $bot->go();
     }
@@ -246,7 +283,7 @@ function startNetwork(array $networkConfig, $logHandler): NetworkContext
     return $ctx;
 }
 
-function shutdown(array $contexts, string $msg) {
+function shutdown(array $contexts, string $msg, ?artbot_rest_server $restServer) {
     echo "shutdown started: $msg\n";
     $futures = [];
     foreach ($contexts as $ctx) {
@@ -265,34 +302,57 @@ function shutdown(array $contexts, string $msg) {
         foreach ($ctx->clients as $bot) {
             $bot->exit();
         }
-        if ($ctx->restServer)
-            $ctx->restServer->stop();
     }
+    if ($restServer)
+        $restServer->stop();
     \Amp\delay(0.5);
     echo "Stopped?\n";
     exit(0);
 }
 
 $contexts = [];
+$restServer = null;
 
 function main() {
-    global $config, $logHandler, $contexts;
+    global $config, $logHandler, $contexts, $restServer;
 
+    if (isset($config['listen'])) {
+        if (!isset($config['rest_url']) || $config['rest_url'] === '') {
+            $port = parse_url("http://{$config['listen']}", PHP_URL_PORT) ?? 80;
+            $config['rest_url'] = "http://localhost:$port";
+            echo "WARNING: rest_url not set, defaulting to {$config['rest_url']}\n";
+        }
+        $restServer = new artbot_rest_server($logHandler);
+        $restServer->initRestServer($config);
+    }
+
+    $routes = [];
     foreach ($config['networks'] as $networkConfig) {
         if(!isset($networkConfig['name']))
             die("Each network must have a 'name'\n");
         if(!isset($networkConfig['network_id']))
             die("Each network must have a 'network_id'\n");
+        if ($restServer !== null) {
+            if (!isset($networkConfig['route']))
+                die("Each network must have a 'route' when global listen is configured (missing for '{$networkConfig['name']}')\n");
+            if (in_array($networkConfig['route'], $routes))
+                die("Duplicate route '{$networkConfig['route']}' on network '{$networkConfig['name']}', routes must be unique\n");
+            $routes[] = $networkConfig['route'];
+        }
         echo "Starting network: {$networkConfig['name']}\n";
-        $contexts[] = startNetwork($networkConfig, $logHandler);
+        $contexts[] = startNetwork($networkConfig, $logHandler, $restServer, $config['rest_url'] ?? '');
     }
 
-    EventLoop::onSignal(SIGINT, function () use ($contexts): void {
-        shutdown($contexts, "Caught SIGINT GOODBYE!!!!");
+    if ($restServer !== null) {
+        $restServer->start();
+    }
+
+    EventLoop::onSignal(SIGINT, function () use ($contexts, $restServer): void {
+        shutdown($contexts, "Caught SIGINT GOODBYE!!!!", $restServer);
     });
 
-    EventLoop::onSignal(SIGTERM, function () use ($contexts): void {
-        shutdown($contexts, "Caught SIGTERM GOODBYE!!!!");
+    EventLoop::onSignal(SIGTERM, function () use ($contexts, $restServer): void {
+        shutdown($contexts, "Caught SIGTERM GOODBYE!!!!", $restServer);
     });
 }
 

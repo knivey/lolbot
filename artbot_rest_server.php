@@ -2,14 +2,9 @@
 
 use Amp\Http\Server\Router;
 use Amp\Http\Server\DefaultErrorHandler;
-use Symfony\Component\Yaml\Yaml;
-use Amp\Http\Server\Request;
-use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
-use Amp\Http\Server\Response;
-use Amp\Http\Server\SocketHttpServer;
-use Amp\Http\HttpStatus;
-use Amp\Http\Server\ErrorHandler;
 use Amp\Http\Server\RequestHandler;
+use Amp\Http\Server\SocketHttpServer;
+use Amp\Http\Server\ErrorHandler;
 use Amp\Socket;
 use Monolog\Logger;
 use Cspray\Labrador\Http\Cors\ArrayConfiguration;
@@ -28,21 +23,19 @@ class artbot_rest_server {
     public ErrorHandler $errorHandler;
 
     public function __construct(
-        public $logHandler,
-        public NetworkContext $ctx
+        public $logHandler
     )
     {
-        $this->logger = new Logger("{$ctx->name}:server");
+        $this->logger = new Logger("server");
         $this->logger->pushHandler($logHandler);
     }
 
-    public function initRestServer() {
-        $config = $this->ctx->config;
-        if(!isset($config['listen'])) {
+    public function initRestServer(array $globalConfig) {
+        if(!isset($globalConfig['listen'])) {
             return null;
         }
-        if(isset($config['listen_cert'])) {
-            $cert = new Socket\Certificate($config['listen_cert']);
+        if(isset($globalConfig['listen_cert'])) {
+            $cert = new Socket\Certificate($globalConfig['listen_cert']);
             $context = (new Socket\BindContext)
                 ->withTlsContext((new Socket\ServerTlsContext)->withDefaultCertificate($cert));
         } else {
@@ -51,14 +44,13 @@ class artbot_rest_server {
 
         $this->server = SocketHttpServer::createForDirectAccess($this->logger);
         
-        if(is_array($config['listen'])) {
-            foreach ($config['listen'] as $address) {
+        if(is_array($globalConfig['listen'])) {
+            foreach ($globalConfig['listen'] as $address) {
                 $this->server->expose($address, $context);
             }
         } else {
-            $this->server->expose($config['listen'], $context);
+            $this->server->expose($globalConfig['listen'], $context);
         }
-
 
         $arrayConfig = [
             'origins' => ['*'],
@@ -77,8 +69,6 @@ class artbot_rest_server {
 
         $this->stack = stackMiddleware($this->restRouter, $middleware);
 
-        $this->setupRoutes();
-
         return $this->server;
     }
 
@@ -93,41 +83,6 @@ class artbot_rest_server {
     }
 
     public function addRoute(string $method, string $uri, RequestHandler $requestHandler) {
-        $config = $this->ctx->config;
-        if(!isset($config['listen'])) {
-            return null;
-        }
         $this->restRouter->addRoute($method, $uri, $requestHandler);
-    }
-
-    private function setupRoutes() {
-        $this->restRouter->addRoute("POST", "/privmsg/{chan}", new ClosureRequestHandler(
-            function (Request $request): Response {
-                $notifier_keys = Yaml::parseFile(__DIR__. '/notifier_keys.yaml');
-                $key = $request->getHeader('key');
-                if (isset($notifier_keys[$key])) {
-                    echo "Request from $notifier_keys[$key] ($key)\n";
-                } else {
-                    echo \Irc\stripForTerminal("Blocked request for bad key $key\n");
-                    return new Response(HttpStatus::FORBIDDEN, [
-                        "content-type" => "text/plain; charset=utf-8"
-                    ], "Invalid key");
-                }
-                $args = $request->getAttribute(Router::class);
-                if(!isset($args['chan'])) { // todo not sure if needed
-                    return new Response(HttpStatus::BAD_REQUEST, [
-                        "content-type" => "text/plain; charset=utf-8"
-                    ], "Must specify a chan to privmsg");
-                }
-                $chan = "#{$args['chan']}";
-                $msg = $request->getBody()->buffer();
-                $msg = str_replace("\r", "\n", $msg);
-                $msg = explode("\n", $msg);
-                $this->ctx->pumpToChan($chan, $msg);
-
-                return new Response(HttpStatus::OK, [
-                    "content-type" => "text/plain; charset=utf-8"
-                ], "PRIVMSG sent\n");
-        }));
     }
 }

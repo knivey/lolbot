@@ -27,8 +27,8 @@ function asciipost_to_array(string $msg): array {
     return array_filter($msg);
 }
 
-function setupRestRoutes(\artbot_rest_server $server, \NetworkContext $ctx) {
-    $server->addRoute('POST', '/pump/{key}', new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
+function setupRestRoutes(\artbot_rest_server $server, \NetworkContext $ctx, string $prefix) {
+    $server->addRoute('POST', "/{$prefix}/pump/{key}", new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
         $args = $request->getAttribute(Router::class);
         if(!isset($args['key']) || !array_key_exists($args['key'], $ctx->allowedPumps)) {
             return new HttpResponse(HttpStatus::FORBIDDEN, [
@@ -55,7 +55,7 @@ function setupRestRoutes(\artbot_rest_server $server, \NetworkContext $ctx) {
         return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "PUMPED!\n");
     }));
 
-    $server->addRoute('POST', '/record2/{key}/{filename}', new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
+    $server->addRoute('POST', "/{$prefix}/record2/{key}/{filename}", new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
         $config = $ctx->config;
         $keys = Yaml::parseFile('recording_keys.yaml');
         $args = $request->getAttribute(Router::class);
@@ -105,7 +105,7 @@ function setupRestRoutes(\artbot_rest_server $server, \NetworkContext $ctx) {
         return new HttpResponse(HttpStatus::OK, ['content-type' => 'text/plain'], "h4x/{$user}/$file.txt\n");
     }));
 
-    $server->addRoute('POST', '/record/{key}', new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
+    $server->addRoute('POST', "/{$prefix}/record/{key}", new ClosureRequestHandler(function (HttpRequest $request) use ($ctx) {
         $config = $ctx->config;
         $args = $request->getAttribute(Router::class);
         if(!isset($args['key']) || !array_key_exists($args['key'], $ctx->recordTokens)) {
@@ -156,7 +156,7 @@ function requestRecordUrl($nick, $chan, $file, $minutes, \NetworkContext $ctx): 
     $key = bin2hex(random_bytes(5));
     $url = makeUrl("record/$key", $ctx);
     if(!$url)
-        throw new \Exception("Couldn't find my ip");
+        throw new \Exception("rest_url not configured");
     $exists = array_reduce($ctx->recordTokens, fn($c, $t) => $t->nick == $nick ? $t->token : $c);
     if($exists)
         unset($ctx->recordTokens[$exists]);
@@ -169,29 +169,12 @@ function requestRecordUrl($nick, $chan, $file, $minutes, \NetworkContext $ctx): 
 }
 
 function makeUrl(string $route, \NetworkContext $ctx): string {
-    $config = $ctx->config;
-    if (isset($config['rest_url'])) {
-        $url = $config['rest_url'];
-    } else {
-        //need the http or it wont parse ipv6 correct
-        $port = parse_url("http://{$config['listen']}", PHP_URL_PORT);
-        $ourIp = false;
-        foreach (["ifconfig.me", "icanhazip.com", "api.ipify.org", "bot.whatismyipaddress.com"] as $ipserv) {
-            try {
-                $ourIp = async_get_contents("http://$ipserv");
-                if ($ourIp)
-                    break;
-            } catch (\Exception $e) {
-            }
-        }
-        if (!$ourIp) {
-            return '';
-        }
-        $https = isset($config['listen_cert']) ? "https" : "http";
-        $url = "$https://$ourIp:$port";
+    if (!$ctx->restUrl) {
+        return '';
     }
+    $baseUrl = rtrim($ctx->restUrl, '/');
     $route = ltrim($route, '/');
-    return "$url/$route";
+    return "{$baseUrl}/{$ctx->route}/{$route}";
 }
 
 function getWrapLength($bot, $chan, \NetworkContext $ctx) {
@@ -206,7 +189,7 @@ function getpumper($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     $key = bin2hex(random_bytes(5));
     $url = makeUrl("pump/$key", $ctx);
     if(!$url) {
-        $bot->pm($args->chan, "Couldn't find my ip :(");
+        $bot->pm($args->chan, "rest_url not configured :(");
         return;
     }
 

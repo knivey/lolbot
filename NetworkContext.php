@@ -26,7 +26,8 @@ class NetworkContext
     public array $quoteRecordings = [];
     public string $name;
     public int $networkId;
-    public ?artbot_rest_server $restServer = null;
+    public string $route = '';
+    public string $restUrl = '';
     public bool $quotesDbInit = false;
 
     public function __construct(array $config)

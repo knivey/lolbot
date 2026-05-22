@@ -1,5 +1,10 @@
+listen: '0.0.0.0:1745'
+rest_url: 'https://arts.shrews.xyz'
+#listen_cert: 'cert.pem'
+
 networks:
   - name: "example"
+    route: "lib"
     network_id: 1
     trigger: "@"
     channels: ['#knivey']
