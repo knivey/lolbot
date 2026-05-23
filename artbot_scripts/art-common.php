@@ -399,8 +399,7 @@ function reqart($bot, $chan, $file, $opts = [], $args = [], \NetworkContext $ctx
             $bot->pm($chan, "no matching art found");
         return;
     }
-    $finder->sortByModifiedTime()->reverseSorting();
-    //try fullpath first
+    //try fullpath first (no sort needed, exact path is unique)
     foreach($finder as $f) {
         $ent = $f->getRealPath();
         if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
@@ -410,7 +409,11 @@ function reqart($bot, $chan, $file, $opts = [], $args = [], \NetworkContext $ctx
             return;
         }
     }
-    foreach($finder as $f) {
+    // Narrow to matching basenames, then sort
+    $basenameFinder = $ctx->getFinder([]);
+    $basenameFinder->name("/^" . preg_quote($file, '/') . "\.txt$/i");
+    $basenameFinder->sortByModifiedTime()->reverseSorting();
+    foreach($basenameFinder as $f) {
         $ent = $f->getRealPath();
         if($file == strtolower(basename($ent, '.txt'))) {
             if($tryEdit($ent) || $tryLink($ent))
