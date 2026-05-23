@@ -360,8 +360,6 @@ function reqart($bot, $chan, $file, $opts = [], $args = [], \NetworkContext $ctx
     }
 
     $finder = $ctx->getFinder([]);
-    //in the future support other extensions run through appropriate handlers
-    $finder->name("/\.txt$/i");
 
     $tryEdit = function ($ent) use ($bot, $chan, $opts, $config) {
         if(array_key_exists('--edit', $opts) || array_key_exists('--asciibird', $opts)) {
@@ -410,10 +408,9 @@ function reqart($bot, $chan, $file, $opts = [], $args = [], \NetworkContext $ctx
         }
     }
     // Narrow to matching basenames, then sort
-    $basenameFinder = $ctx->getFinder([]);
-    $basenameFinder->name("/^" . preg_quote($file, '/') . "\.txt$/i");
-    $basenameFinder->sortByModifiedTime()->reverseSorting();
-    foreach($basenameFinder as $f) {
+    $finder->name("/^" . preg_quote($file, '/') . "\.txt$/i");
+    $finder->sortByModifiedTime()->reverseSorting();
+    foreach($finder as $f) {
         $ent = $f->getRealPath();
         if($file == strtolower(basename($ent, '.txt'))) {
             if($tryEdit($ent) || $tryLink($ent))
