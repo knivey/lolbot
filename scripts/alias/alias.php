@@ -9,6 +9,8 @@ use knivey\cmdr\attributes\Syntax;
 use scripts\script_base;
 use function Symfony\Component\String\u;
 
+require_once __DIR__ . '/../../library/paste.php';
+
 /** @var \Doctrine\ORM\EntityManager $entityManager */
 global $entityManager;
 class alias extends script_base
@@ -102,6 +104,7 @@ class alias extends script_base
 
     #[Cmd("aliases")]
     #[Desc("List the channel aliases")]
+    #[Option("--web", "show detailed aliases on web paste")]
     function aliases($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
@@ -119,9 +122,39 @@ class alias extends script_base
             $rpl("No aliases set for {$args->chan}");
             return;
         }
+        $usePaste = $cmdArgs->optEnabled('--web') || count($aliases) > 20;
+        if ($usePaste && isset($this->config['paste_host'], $this->config['paste_key'])) {
+            try {
+                $content = $this->formatAliasesMarkdown($aliases, $args->chan);
+                $url = \createPaste($content, "Aliases for {$args->chan}", $this->config['paste_host'], $this->config['paste_key']);
+                $rpl($url, 'list');
+                return;
+            } catch (\Throwable $e) {
+                echo "Paste error for aliases: " . $e->getMessage() . "\n";
+            }
+        }
         $list = implode(', ', array_map(fn($it) => $it->name, $aliases));
         foreach (explode("\n", wordwrap($list, 300, "\n", true)) as $line)
             $rpl("$line", 'list');
+    }
+
+    function formatAliasesMarkdown(array $aliases, string $chan): string
+    {
+        $out = "# Aliases for {$chan}\n\n";
+        $first = true;
+        foreach ($aliases as $alias) {
+            if (!$first)
+                $out .= "\n---\n\n";
+            $first = false;
+
+            $out .= "## `{$alias->name}`\n\n";
+            $out .= "- **Set by:** `{$alias->fullhost}`\n";
+            $out .= "- **Action:** " . ($alias->act ? "true" : "false") . "\n";
+            if ($alias->cmd !== null)
+                $out .= "- **Cmd:** `{$alias->cmd}`\n";
+            $out .= "\n**Value:**\n```\n{$alias->value}\n```\n\n";
+        }
+        return $out;
     }
 
     #[Cmd("showalias", "aliasinfo")]
