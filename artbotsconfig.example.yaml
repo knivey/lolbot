@@ -2,6 +2,10 @@ listen: '0.0.0.0:1745'
 rest_url: 'https://arts.shrews.xyz'
 #listen_cert: 'cert.pem'
 
+# Paste service for help listings and long output
+#paste_host: "http://localhost:8080"
+#paste_key: "your_api_key"
+
 networks:
   - name: "example"
     route: "lib"

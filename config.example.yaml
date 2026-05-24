@@ -96,3 +96,7 @@ youtube_download_shorts: false
 
 # file sharing service for yoda script
 filehole: "https://jonesfilesandfootmassage.com"
+
+# Paste service for help listings and long output
+#paste_host: "http://localhost:8080"
+#paste_key: "your_api_key"

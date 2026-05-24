@@ -6,7 +6,8 @@ use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-use PHPUnit\Exception;
+
+require_once __DIR__ . '/../library/paste.php';
 
 #[Cmd("help")]
 #[Syntax("[command]")]
@@ -29,23 +30,56 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
             }
             $help = (string)$router->privCmds[$cmdArgs['command']];
         }
-        showHelp($bot, $args->chan, $help);
+        showHelpDirect($bot, $args->chan, $help);
         return;
     }
-    $first = 0;
+
     if($cmdArgs->optEnabled("--priv"))
         $cmds = $router->privCmds;
     else
         $cmds = $router->cmds;
-    $out = "";
-    foreach ($cmds as $cmd) {
-        if($first++)
-            $out .= "---\n";
-        $out .= (string)$cmd . "\n";
-    }
-    showHelp($bot, $args->chan, $out);
+
+    $out = formatHelpMarkdown($cmds);
+    showHelpPaste($bot, $args->chan, $out);
 }
 
-function showHelp($bot, $chan, $lines) {
+function formatHelpMarkdown(array $cmds): string
+{
+    $out = "# Bot Commands\n\n";
+    $first = true;
+    foreach ($cmds as $cmd) {
+        if (!$first)
+            $out .= "\n---\n\n";
+        $first = false;
+
+        $syntax = trim($cmd->command . " " . $cmd->syntax);
+        $out .= "## `{$syntax}`\n\n";
+        foreach ($cmd->opts as $opt) {
+            $out .= "- `{$opt->option}` {$opt->desc}\n";
+        }
+        if (!empty($cmd->opts))
+            $out .= "\n";
+        $out .= "{$cmd->desc}\n\n";
+    }
+    return $out;
+}
+
+function showHelpPaste($bot, $chan, string $content)
+{
+    global $config;
+    if (!isset($config['paste_host']) || !isset($config['paste_key'])) {
+        $bot->msg($chan, "help: paste service not configured");
+        return;
+    }
+    try {
+        $url = \createPaste($content, "Bot Commands", $config['paste_host'], $config['paste_key']);
+        $bot->msg($chan, "help: $url");
+    } catch (\Exception $e) {
+        $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());
+    }
+}
+
+function showHelpDirect($bot, $chan, string $lines)
+{
     \pumpToChan($bot, $chan, explode("\n", $lines));
 }

@@ -7,6 +7,8 @@ use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
 use scripts\script_base;
 
+require_once __DIR__ . '/../../library/paste.php';
+
 class help extends script_base
 {
     #[Cmd("help")]
@@ -29,41 +31,58 @@ class help extends script_base
                 }
                 $help = (string)$this->router->privCmds[$cmdArgs['command']];
             }
-            $this->showHelp($args->chan, $bot, $help);
+            $this->showHelpDirect($args->chan, $bot, $help);
             return;
         }
-        $first = 0;
+
         if ($cmdArgs->optEnabled("--priv"))
             $cmds = $this->router->privCmds;
         else
             $cmds = $this->router->cmds;
-        $out = "";
-        foreach ($cmds as $cmd) {
-            if ($first++)
-                $out .= "---\n";
-            $out .= (string)$cmd . "\n";
-        }
-        $this->showHelp($args->chan, $bot, $out);
+
+        $out = $this->formatHelpMarkdown($cmds);
+        $this->showHelpPaste($args->chan, $bot, $out);
     }
 
-    function showHelp(string $chan, $bot, string $lines)
+    function formatHelpMarkdown(array $cmds): string
+    {
+        $out = "# Bot Commands\n\n";
+        $first = true;
+        foreach ($cmds as $cmd) {
+            if (!$first)
+                $out .= "\n---\n\n";
+            $first = false;
+
+            $syntax = trim($cmd->command . " " . $cmd->syntax);
+            $out .= "## `{$syntax}`\n\n";
+            foreach ($cmd->opts as $opt) {
+                $out .= "- `{$opt->option}` {$opt->desc}\n";
+            }
+            if (!empty($cmd->opts))
+                $out .= "\n";
+            $out .= "{$cmd->desc}\n\n";
+        }
+        return $out;
+    }
+
+    function showHelpPaste(string $chan, $bot, string $content)
+    {
+        if (!isset($this->config['paste_host']) || !isset($this->config['paste_key'])) {
+            $bot->msg($chan, "help: paste service not configured");
+            return;
+        }
+        try {
+            $url = \createPaste($content, "Bot Commands", $this->config['paste_host'], $this->config['paste_key']);
+            $bot->msg($chan, "help: $url");
+        } catch (\Exception $e) {
+            $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());
+        }
+    }
+
+    function showHelpDirect(string $chan, $bot, string $lines)
     {
         if (function_exists('pumpToChan')) {
             pumpToChan($chan, explode("\n", $lines));
-            return;
-        }
-        if (strlen($lines) > 1000) {
-            try {
-                $connectContext = (new \Amp\Socket\ConnectContext)
-                    ->withConnectTimeout(250);
-                $sock = \Amp\Socket\connect("tcp://termbin.com:9999", $connectContext);
-                $sock->write($lines);
-                $url = \Amp\ByteStream\buffer($sock);
-                $sock->end();
-                $bot->msg($chan, "help: $url");
-            } catch (\Exception $e) {
-                $bot->msg($chan, "trouble uploading help :(");
-            }
             return;
         }
         foreach (explode("\n", $lines) as $line) {
