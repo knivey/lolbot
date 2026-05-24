@@ -114,8 +114,11 @@ require_once 'library/Nicks.php';
 require_once 'library/Channels.php';
 
 \Revolt\EventLoop::setErrorHandler(function(\Throwable $error) {
-    echo "Uncaught error thrown:\n";
-    echo $error->getTraceAsString();
+    echo "Uncaught error thrown: " . $error->getMessage() . "\n";
+    if ($prev = $error->getPrevious()) {
+        echo "Caused by: " . $prev->getMessage() . " in " . $prev->getFile() . ":" . $prev->getLine() . "\n";
+    }
+    echo $error->getTraceAsString() . "\n";
 });
 
 /**
@@ -318,7 +321,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
                 if ($router->cmdExists($cmd)) {
                     try {
                         $router->call($cmd, $text, $args, $bot);
-                    } catch (Exception $e) {
+                    } catch (\Throwable $e) {
                         $bot->notice($args->from, $e->getMessage());
                     }
                 } else {
