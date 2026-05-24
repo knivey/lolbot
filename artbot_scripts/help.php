@@ -74,7 +74,7 @@ function showHelpPaste($bot, $chan, string $content)
     try {
         $url = \createPaste($content, "Bot Commands", $config['paste_host'], $config['paste_key']);
         $bot->msg($chan, "help: $url");
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
         $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());
     }
 }

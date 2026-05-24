@@ -74,9 +74,9 @@ class help extends script_base
         try {
             $url = \createPaste($content, "Bot Commands", $this->config['paste_host'], $this->config['paste_key']);
             $bot->msg($chan, "help: $url");
-        } catch (\Exception $e) {
-            $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());
-        }
+    } catch (\Throwable $e) {
+        $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());
+    }
     }
 
     function showHelpDirect(string $chan, $bot, string $lines)
