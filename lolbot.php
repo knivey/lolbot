@@ -322,7 +322,8 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
                     try {
                         $router->call($cmd, $text, $args, $bot);
                     } catch (\Throwable $e) {
-                        $bot->notice($args->from, $e->getMessage());
+                        echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
+                        $bot->notice($args->from, "error running command :(");
                     }
                 } else {
                     //call other cmd handlers

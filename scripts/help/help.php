@@ -44,7 +44,7 @@ class help extends script_base
         $this->showHelpPaste($args->chan, $bot, $out);
     }
 
-    function formatHelpMarkdown(array $cmds): string
+    function formatHelpMarkdown($cmds): string
     {
         $out = "# Bot Commands\n\n";
         $first = true;

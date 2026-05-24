@@ -43,7 +43,7 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     showHelpPaste($bot, $args->chan, $out);
 }
 
-function formatHelpMarkdown(array $cmds): string
+function formatHelpMarkdown($cmds): string
 {
     $out = "# Bot Commands\n\n";
     $first = true;
