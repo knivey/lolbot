@@ -1,11 +1,14 @@
 <?php
 namespace scripts\linktitles;
 
+use Amp\Http\Client\Connection\ConnectionLimitingPool;
+use Amp\Http\Client\Connection\DefaultConnectionFactory;
 use Amp\Http\Client\Cookie\CookieInterceptor;
 use Amp\Http\Client\Cookie\LocalCookieJar;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\Socket\Socks5SocketConnector;
 use Doctrine\Common\Collections\Criteria;
 use lolbot\entities\Network;
 use scripts\linktitles\entities\hostignore;
@@ -53,6 +56,7 @@ class linktitles extends script_base
     private $link_ratelimit = 0;
     function linktitles(\Irc\Client $bot, $nick, $chan, $identhost, $text)
     {
+        global $config;
         foreach (explode(' ', $text) as $word) {
             if (filter_var($word, FILTER_VALIDATE_URL) === false) {
                 continue;
@@ -93,12 +97,10 @@ class linktitles extends script_base
             $word = preg_replace("@^https?://(www\.)?reddit.com@i", "https://old.reddit.com", $word);
 
             try {
-                $cookieJar = new LocalCookieJar;
-                $client = (new HttpClientBuilder)
-                    ->interceptNetwork(new CookieInterceptor($cookieJar))
-                    ->build();
+                $client = $this->buildHttpClient($word);
                 $req = new Request($word);
-                $req->setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36");
+                $userAgent = $config['linktitles_useragent'] ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
+                $req->setHeader("User-Agent", $userAgent);
                 $req->setHeader("Accept", "text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8");
                 $req->setHeader("Accept-Language", "en-US, en;q=0.9");
                 $req->setTransferTimeout(4000);
@@ -209,6 +211,41 @@ class linktitles extends script_base
         }
     }
 
+
+    private function isProxyExcluded(string $host): bool
+    {
+        global $config;
+        $excludes = $config['linktitles_proxy_exclude'] ?? [];
+        foreach ($excludes as $pattern) {
+            if (preg_match(\knivey\tools\globToRegex($pattern) . 'i', $host)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function buildHttpClient(string $url): \Amp\Http\Client\HttpClient
+    {
+        global $config;
+        $cookieJar = new LocalCookieJar;
+        $builder = (new HttpClientBuilder)
+            ->interceptNetwork(new CookieInterceptor($cookieJar));
+
+        $proxy = $config['linktitles_proxy'] ?? null;
+        if ($proxy !== null) {
+            $host = parse_url($url, PHP_URL_HOST);
+            if ($host !== false && $host !== null && !$this->isProxyExcluded($host)) {
+                $user = $config['linktitles_proxy_user'] ?? null;
+                $pass = $config['linktitles_proxy_pass'] ?? null;
+                $connector = new Socks5SocketConnector($proxy, $user, $pass);
+                $factory = new DefaultConnectionFactory($connector);
+                $pool = ConnectionLimitingPool::byAuthority(PHP_INT_MAX, $factory);
+                $builder = $builder->usingPool($pool);
+            }
+        }
+
+        return $builder->build();
+    }
 
 //TODO can add cache for this
     function urlIsIgnored($chan, $fullhost, $url): bool

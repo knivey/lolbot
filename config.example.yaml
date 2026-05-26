@@ -100,3 +100,13 @@ filehole: "https://jonesfilesandfootmassage.com"
 # Paste service for help listings and long output
 #paste_host: "http://localhost:8080"
 #paste_key: "your_api_key"
+
+# SOCKS5 proxy for generic link title fetching (optional, only affects URLs not handled by special handlers)
+#linktitles_proxy: "127.0.0.1:1080"
+#linktitles_proxy_user: "user"
+#linktitles_proxy_pass: "pass"
+# Domains to exclude from the proxy (glob patterns, direct connect instead)
+#linktitles_proxy_exclude:
+#  - "*.internal.local"
+# Custom User-Agent for generic link title fetching
+#linktitles_useragent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
