@@ -200,8 +200,12 @@ class remindme extends script_base
         }
 
         if ($pages > 1) {
-            $nextPage = $pageNum + 1;
-            $bot->pm($args->chan, "Page {$pageNum}/{$pages} — use --page={$nextPage} for next page");
+            $footer = "Page {$pageNum}/{$pages}";
+            if ($pageNum < $pages) {
+                $nextPage = $pageNum + 1;
+                $footer .= " — use --page={$nextPage} for next page";
+            }
+            $bot->pm($args->chan, $footer);
         }
     }
 
