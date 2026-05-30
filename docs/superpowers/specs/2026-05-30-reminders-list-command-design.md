@@ -16,7 +16,7 @@ Add a `!reminders` command to the `remindme` script that lets users list their p
 #[Desc("Show your pending reminders on this channel")]
 #[Option("--all", "Show all users' reminders")]
 #[Option("--sort", "Sort by due or created (default: due)")]
-#[Option("--page", "Results per page (default: 10)")]
+#[Option("--page", "Page number to show (default: 1)")]
 #[Option("--sent", "Show sent reminders instead of pending")]
 ```
 
@@ -56,11 +56,12 @@ Each reminder line:
 
 ### Pagination
 
-- Default page size: 10. Configurable via `--page=N`.
+- Page size: fixed at 10.
+- `--page=N` navigates to page N (default: page 1).
 - If total results fit on one page: output all lines, no pagination footer.
-- If multiple pages: show all lines for the current page, then a footer:
+- If multiple pages: show lines for the requested page, then a footer:
   ```
-  Page 1/N — use --page=20 to see more
+  Page 1/3 — use --page=2 for next page
   ```
 
 ### Empty Results
@@ -74,7 +75,7 @@ Each reminder line:
 !reminders
 !reminders --all
 !reminders oven*
-!reminders --all --sort=created --page=20
+!reminders --all --sort=created --page=2
 !reminders check the*
 !reminders --sent
 !reminders --sent --all
@@ -86,7 +87,7 @@ Each reminder line:
 ```
 <bot> [#3] due in 2h30m (created 5m ago) remember to check the oven
 <bot> [#7] due in 1d2h (created 1h ago) dentist appointment at 3pm on tuesday and ...
-<bot> Page 1/2 — use --page=20 to see more
+<bot> Page 1/2 — use --page=2 for next page
 ```
 
 ```
