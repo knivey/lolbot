@@ -27,7 +27,7 @@ Add a `!reminders` command to the `remindme` script that lets users list their p
 1. Query `remindme_reminders` where `network` = current network, `chan` = current channel.
    - **Without `--sent`:** filter `sent` = false (pending reminders).
    - **With `--sent`:** filter `sent` = true (sent reminders).
-2. Default: also filter by `nick` (current user's nick). With `--all`: skip nick filter.
+2. Default: also filter by `nick` (current user's nick, case-insensitive). With `--all`: skip nick filter.
 3. If `[filter]` is provided:
    - Replace `*` with `%` in the filter string for wildcard support.
    - Case-insensitive `LIKE` match on `msg`.
