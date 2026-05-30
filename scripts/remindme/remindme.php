@@ -196,7 +196,9 @@ class remindme extends script_base
                 $createdStr = " (created " . \Duration_toString(time() - $r->created->getTimestamp()) . " ago)";
             }
 
-            $bot->pm($args->chan, "[#{$r->id}] {$dueStr}{$createdStr} {$msg}");
+            $nickStr = $showAll ? " {$r->nick}:" : "";
+
+            $bot->pm($args->chan, "[#{$r->id}] {$dueStr}{$createdStr}{$nickStr} {$msg}");
         }
 
         if ($pages > 1) {

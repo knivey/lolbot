@@ -22,7 +22,7 @@ final class Version20260530120000 extends AbstractMigration
         $newSchema = clone $schema;
 
         $t = $newSchema->getTable("remindme_reminders");
-        $t->addColumn("created", Types::DATETIME_IMMUTABLE);
+        $t->addColumn("created", Types::DATETIME_IMMUTABLE)->setNotnull(false);
 
         $diff = $comp->compareSchemas($schema, $newSchema);
         foreach ($this->platform->getAlterSchemaSQL($diff) as $sql)

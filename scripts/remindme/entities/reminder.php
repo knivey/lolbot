@@ -21,8 +21,8 @@ class reminder
     #[ORM\Column]
     public int $at;
 
-    #[ORM\Column(updatable: false)]
-    public \DateTimeImmutable $created;
+    #[ORM\Column(updatable: false, nullable: true)]
+    public ?\DateTimeImmutable $created = null;
 
     #[ORM\Column]
     public bool $sent = false;
