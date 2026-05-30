@@ -160,7 +160,7 @@ class remindme extends script_base
                    ->setParameter('nick', $args->nick);
             }
 
-            $qb->andWhere('r.msg LIKE :filter')
+            $qb->andWhere('LOWER(r.msg) LIKE LOWER(:filter)')
                ->setParameter('filter', $filter);
 
             $sortField = $sortBy === 'created' ? 'r.created' : 'r.at';
