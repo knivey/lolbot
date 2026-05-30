@@ -14,3 +14,5 @@ composer-dev.lock
 /.phplint-cache
 *.db
 
+AGENTS.md
+opencode.json
