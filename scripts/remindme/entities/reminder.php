@@ -21,6 +21,9 @@ class reminder
     #[ORM\Column]
     public int $at;
 
+    #[ORM\Column(updatable: false)]
+    public \DateTimeImmutable $created;
+
     #[ORM\Column]
     public bool $sent = false;
 
@@ -30,4 +33,9 @@ class reminder
     #[ORM\ManyToOne(targetEntity: Network::class)]
     #[ORM\JoinColumn(name: 'network_id', referencedColumnName: 'id')]
     public Network $network;
+
+    public function __construct()
+    {
+        $this->created = new \DateTimeImmutable();
+    }
 }
