@@ -112,7 +112,7 @@ class remindme extends script_base
     #[Desc("Show your pending reminders on this channel")]
     #[Option("--all", "Show all users' reminders")]
     #[Option("--sort", "Sort by due or created (default: due)")]
-    #[Option("--page", "Results per page (default: 10)")]
+    #[Option("--page", "Page number to show (default: 1)")]
     #[Option("--sent", "Show sent reminders instead of pending")]
     public function reminders($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
@@ -121,8 +121,9 @@ class remindme extends script_base
         $showSent = $cmdArgs->optEnabled('--sent');
         $showAll = $cmdArgs->optEnabled('--all');
         $pageSize = 10;
+        $pageNum = 1;
         if ($cmdArgs->optEnabled('--page')) {
-            $pageSize = max(1, (int) $cmdArgs->getOpt('--page'));
+            $pageNum = max(1, (int) $cmdArgs->getOpt('--page'));
         }
 
         $sortBy = 'due';
@@ -134,45 +135,31 @@ class remindme extends script_base
             }
         }
 
-        $criteria = [
-            "network" => $this->network,
-            "sent" => $showSent,
-            "chan" => $args->chan,
-        ];
-        if (!$showAll) {
-            $criteria["nick"] = $args->nick;
-        }
-
         $repo = $entityManager->getRepository(reminder::class);
+        $qb = $repo->createQueryBuilder('r');
+        $qb->where('r.network = :network')
+           ->andWhere('r.sent = :sent')
+           ->andWhere('r.chan = :chan')
+           ->setParameter('network', $this->network)
+           ->setParameter('sent', $showSent)
+           ->setParameter('chan', $args->chan);
+
+        if (!$showAll) {
+            $qb->andWhere('LOWER(r.nick) = LOWER(:nick)')
+               ->setParameter('nick', $args->nick);
+        }
 
         if (isset($cmdArgs['filter']) && $cmdArgs['filter'] !== '') {
             $filter = str_replace('*', '%', $cmdArgs['filter']);
-            $qb = $repo->createQueryBuilder('r');
-            $qb->where('r.network = :network')
-               ->andWhere('r.sent = :sent')
-               ->andWhere('r.chan = :chan')
-               ->setParameter('network', $this->network)
-               ->setParameter('sent', $showSent)
-               ->setParameter('chan', $args->chan);
-
-            if (!$showAll) {
-                $qb->andWhere('r.nick = :nick')
-                   ->setParameter('nick', $args->nick);
-            }
-
             $qb->andWhere('LOWER(r.msg) LIKE LOWER(:filter)')
                ->setParameter('filter', $filter);
-
-            $sortField = $sortBy === 'created' ? 'r.created' : 'r.at';
-            $sortDir = $showSent ? 'DESC' : 'ASC';
-            $qb->orderBy($sortField, $sortDir);
-
-            $rs = $qb->getQuery()->getResult();
-        } else {
-            $orderByField = $sortBy === 'created' ? 'created' : 'at';
-            $orderByDir = $showSent ? 'DESC' : 'ASC';
-            $rs = $repo->findBy($criteria, [$orderByField => $orderByDir]);
         }
+
+        $sortField = $sortBy === 'created' ? 'r.created' : 'r.at';
+        $sortDir = $showSent ? 'DESC' : 'ASC';
+        $qb->orderBy($sortField, $sortDir);
+
+        $rs = $qb->getQuery()->getResult();
 
         if (count($rs) == 0) {
             $noun = $showSent ? "sent reminders" : "pending reminders";
@@ -186,7 +173,11 @@ class remindme extends script_base
 
         $total = count($rs);
         $pages = (int) ceil($total / $pageSize);
-        $pageResults = array_slice($rs, 0, $pageSize);
+        if ($pageNum > $pages) {
+            $pageNum = $pages;
+        }
+        $offset = ($pageNum - 1) * $pageSize;
+        $pageResults = array_slice($rs, $offset, $pageSize);
 
         foreach ($pageResults as $r) {
             $msg = $r->msg;
@@ -209,7 +200,8 @@ class remindme extends script_base
         }
 
         if ($pages > 1) {
-            $bot->pm($args->chan, "Page 1/{$pages} — use --page={$pageSize} to see more");
+            $nextPage = $pageNum + 1;
+            $bot->pm($args->chan, "Page {$pageNum}/{$pages} — use --page={$nextPage} for next page");
         }
     }
 
