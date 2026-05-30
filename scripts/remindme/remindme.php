@@ -1,13 +1,15 @@
 <?php
+
 namespace scripts\remindme;
 
 use Carbon\Carbon;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
-
 use scripts\remindme\entities\reminder;
 use scripts\script_base;
+
 use function knivey\tools\makeArgs;
 
 class remindme extends script_base
@@ -18,7 +20,7 @@ class remindme extends script_base
     #[Cmd("in", "remindme")]
     #[Syntax("<time> <msg>...")]
     #[Desc("sets a reminder for your after time. time is formatted like 5m30s supports: 1y2M3d4h5m6s")]
-    function in($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function in($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         global $entityManager;
         $host = $args->host;
@@ -66,7 +68,7 @@ class remindme extends script_base
     #[Cmd("at", "on")]
     #[Syntax("<timemsg>...")]
     #[Desc("Remind you at a certain date time, the date time must be in quotes")]
-    function at($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function at($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     {
         global $entityManager;
         $r = makeArgs($cmdArgs['timemsg']);
@@ -105,12 +107,119 @@ class remindme extends script_base
         $this->sendDelayed($bot, $r, $in);
     }
 
-    function sendDelayed(\Irc\Client $bot, $r, $seconds)
+    #[Cmd("reminders")]
+    #[Syntax("[filter]...")]
+    #[Desc("Show your pending reminders on this channel")]
+    #[Option("--all", "Show all users' reminders")]
+    #[Option("--sort", "Sort by due or created (default: due)")]
+    #[Option("--page", "Results per page (default: 10)")]
+    #[Option("--sent", "Show sent reminders instead of pending")]
+    public function reminders($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    {
+        global $entityManager;
+
+        $showSent = $cmdArgs->optEnabled('--sent');
+        $showAll = $cmdArgs->optEnabled('--all');
+        $pageSize = 10;
+        if ($cmdArgs->optEnabled('--page')) {
+            $pageSize = max(1, (int) $cmdArgs->getOpt('--page'));
+        }
+
+        $sortBy = 'due';
+        if ($cmdArgs->optEnabled('--sort')) {
+            $sortBy = strtolower($cmdArgs->getOpt('--sort'));
+            if (!in_array($sortBy, ['due', 'created'])) {
+                $bot->pm($args->chan, "Invalid sort option, use due or created");
+                return;
+            }
+        }
+
+        $criteria = [
+            "network" => $this->network,
+            "sent" => $showSent,
+            "chan" => $args->chan,
+        ];
+        if (!$showAll) {
+            $criteria["nick"] = $args->nick;
+        }
+
+        $repo = $entityManager->getRepository(reminder::class);
+
+        if (isset($cmdArgs['filter']) && $cmdArgs['filter'] !== '') {
+            $filter = str_replace('*', '%', $cmdArgs['filter']);
+            $qb = $repo->createQueryBuilder('r');
+            $qb->where('r.network = :network')
+               ->andWhere('r.sent = :sent')
+               ->andWhere('r.chan = :chan')
+               ->setParameter('network', $this->network)
+               ->setParameter('sent', $showSent)
+               ->setParameter('chan', $args->chan);
+
+            if (!$showAll) {
+                $qb->andWhere('r.nick = :nick')
+                   ->setParameter('nick', $args->nick);
+            }
+
+            $qb->andWhere('r.msg LIKE :filter')
+               ->setParameter('filter', $filter);
+
+            $sortField = $sortBy === 'created' ? 'r.created' : 'r.at';
+            $sortDir = $showSent ? 'DESC' : 'ASC';
+            $qb->orderBy($sortField, $sortDir);
+
+            $rs = $qb->getQuery()->getResult();
+        } else {
+            $orderByField = $sortBy === 'created' ? 'created' : 'at';
+            $orderByDir = $showSent ? 'DESC' : 'ASC';
+            $rs = $repo->findBy($criteria, [$orderByField => $orderByDir]);
+        }
+
+        if (count($rs) == 0) {
+            $noun = $showSent ? "sent reminders" : "pending reminders";
+            if ($showAll) {
+                $bot->pm($args->chan, "No $noun found");
+            } else {
+                $bot->pm($args->chan, "You have no $noun");
+            }
+            return;
+        }
+
+        $total = count($rs);
+        $pages = (int) ceil($total / $pageSize);
+        $pageResults = array_slice($rs, 0, $pageSize);
+
+        foreach ($pageResults as $r) {
+            $msg = $r->msg;
+            if (mb_strlen($msg) > 80) {
+                $msg = mb_substr($msg, 0, 80) . '...';
+            }
+
+            if ($showSent) {
+                $dueStr = "due " . \Duration_toString(time() - $r->at) . " ago";
+            } else {
+                $dueStr = "due in " . \Duration_toString($r->at - time());
+            }
+
+            $createdStr = "";
+            if ($r->created !== null) {
+                $createdStr = " (created " . \Duration_toString(time() - $r->created->getTimestamp()) . " ago)";
+            }
+
+            $bot->pm($args->chan, "[#{$r->id}] {$dueStr}{$createdStr} {$msg}");
+        }
+
+        if ($pages > 1) {
+            $bot->pm($args->chan, "Page 1/{$pages} — use --page={$pageSize} to see more");
+        }
+    }
+
+    public function sendDelayed(\Irc\Client $bot, $r, $seconds)
     {
         \Amp\async(function () use ($bot, $r, $seconds) {
             global $entityManager;
-            if ($seconds > 0)
+            if ($seconds > 0) {
                 \Amp\delay($seconds);
+            }
             //if bot somehow isnt connected keep retrying
             while (!$bot->isEstablished()) {
                 \Amp\delay(10);
@@ -123,7 +232,7 @@ class remindme extends script_base
     }
 
 
-    function init(): void
+    public function init(): void
     {
         $this->logger->info("Initializing remindme...\n");
         \Amp\async(function () {
@@ -134,7 +243,7 @@ class remindme extends script_base
             //A bit of a hack here so we give the bot time to join channels etc
             \Amp\delay(5);
             //load our reminders from db and call sendDelayed on all
-            $rs = $entityManager->getRepository(reminder::class)->findBy(["network"=>$this->network, "sent"=>false]);
+            $rs = $entityManager->getRepository(reminder::class)->findBy(["network" => $this->network, "sent" => false]);
             $this->logger->info("Network {$this->network} remindme has " . count($rs) . " reminders loaded from db\n");
             foreach ($rs as $r) {
                 //whoops already passed while bot was down
