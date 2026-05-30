@@ -179,6 +179,7 @@ class remindme extends script_base
         $offset = ($pageNum - 1) * $pageSize;
         $pageResults = array_slice($rs, $offset, $pageSize);
 
+        $lines = [];
         foreach ($pageResults as $r) {
             $msg = $r->msg;
             if (mb_strlen($msg) > 80) {
@@ -186,19 +187,39 @@ class remindme extends script_base
             }
 
             if ($showSent) {
-                $dueStr = "due " . \Duration_toString(time() - $r->at) . " ago";
+                $dueStr = "due " . self::shortDuration(time() - $r->at) . " ago";
             } else {
-                $dueStr = "due in " . \Duration_toString($r->at - time());
+                $dueStr = "due in " . self::shortDuration($r->at - time());
             }
 
             $createdStr = "";
             if ($r->created !== null) {
-                $createdStr = " (created " . \Duration_toString(time() - $r->created->getTimestamp()) . " ago)";
+                $createdStr = "created " . self::shortDuration(time() - $r->created->getTimestamp()) . " ago";
             }
 
-            $nickStr = $showAll ? " {$r->nick}:" : "";
+            $nickStr = $showAll ? "{$r->nick}: " : "";
 
-            $bot->pm($args->chan, "[#{$r->id}] {$dueStr}{$createdStr}{$nickStr} {$msg}");
+            $lines[] = ['id' => "[#{$r->id}]", 'due' => $dueStr, 'created' => $createdStr, 'msg' => $nickStr . $msg];
+        }
+
+        $maxId = max(array_map(mb_strlen(...), array_column($lines, 'id')));
+        $maxDue = max(array_map(mb_strlen(...), array_column($lines, 'due')));
+        $hasCreated = count(array_filter(array_column($lines, 'created'))) > 0;
+        $maxCreated = 0;
+        if ($hasCreated) {
+            $maxCreated = max(array_map(mb_strlen(...), array_map(fn($v) => $v === '' ? '0' : $v, array_column($lines, 'created'))));
+        }
+
+        foreach ($lines as $line) {
+            $idPad = mb_str_pad($line['id'], $maxId);
+            $duePad = mb_str_pad($line['due'], $maxDue);
+            $createdPad = "";
+            if ($hasCreated) {
+                $c = $line['created'] !== '' ? mb_str_pad($line['created'], $maxCreated) : str_repeat(' ', $maxCreated);
+                $createdPad = "($c) ";
+            }
+
+            $bot->pm($args->chan, "{$idPad} {$duePad} {$createdPad}{$line['msg']}");
         }
 
         if ($pages > 1) {
@@ -209,6 +230,15 @@ class remindme extends script_base
             }
             $bot->pm($args->chan, $footer);
         }
+    }
+
+    private static function shortDuration(int $seconds): string
+    {
+        $parts = \Duration_int2array($seconds);
+        if (!is_array($parts)) {
+            return '0s';
+        }
+        return \Duration_array2string(array_slice($parts, 0, 3, true));
     }
 
     public function sendDelayed(\Irc\Client $bot, $r, $seconds)
