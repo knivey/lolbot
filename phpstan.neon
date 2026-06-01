@@ -10,3 +10,4 @@ parameters:
 	excludePaths:
 		analyse:
 			- vendor
+			- migrate_artconfig.php
