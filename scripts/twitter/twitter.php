@@ -6,13 +6,13 @@ use Amp\Http\Client\Request;
 use Carbon\Carbon;
 use Amp\Http\Client\Response;
 use Amp\TimeoutCancellation;
-use Psr\EventDispatcher\ListenerProviderInterface;
+use Crell\Tukio\OrderedProviderInterface;
 use scripts\linktitles\UrlEvent;
 use scripts\script_base;
 use simplehtmldom\HtmlDocument;
 
 class twitter extends script_base {
-    public function setEventProvider(ListenerProviderInterface $eventProvider): void
+    public function setEventProvider(OrderedProviderInterface $eventProvider): void
     {
         $eventProvider->addListener($this->handleEvents(...));
     }

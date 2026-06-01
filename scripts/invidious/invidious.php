@@ -3,14 +3,14 @@ namespace scripts\invidious;
 
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
-use Psr\EventDispatcher\ListenerProviderInterface;
+use Crell\Tukio\OrderedProviderInterface;
 use scripts\linktitles\UrlEvent;
 use scripts\script_base;
 use simplehtmldom\HtmlDocument;
 
 class invidious extends script_base
 {
-    public function setEventProvider(ListenerProviderInterface $eventProvider): void
+    public function setEventProvider(OrderedProviderInterface $eventProvider): void
     {
         $eventProvider->addListener($this->handleEvents(...));
     }

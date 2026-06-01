@@ -10,13 +10,13 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use League\Uri\Uri;
-use Psr\EventDispatcher\ListenerProviderInterface;
+use Crell\Tukio\OrderedProviderInterface;
 use scripts\linktitles\UrlEvent;
 use scripts\script_base;
 
 class github extends script_base
 {
-    public function setEventProvider(ListenerProviderInterface $eventProvider)
+    public function setEventProvider(OrderedProviderInterface $eventProvider)
     {
         $eventProvider->addListener($this->handleEvents(...));
     }

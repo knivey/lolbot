@@ -12,7 +12,7 @@ use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use League\Uri\UriString;
 use Carbon\Carbon;
-use Psr\EventDispatcher\ListenerProviderInterface;
+use Crell\Tukio\OrderedProviderInterface;
 use scripts\linktitles\UrlEvent;
 use scripts\script_base;
 
@@ -145,8 +145,8 @@ class youtube extends script_base
 
 
     private $youtube_history = [];
-    public ListenerProviderInterface $eventProvider;
-    function setEventProvider(ListenerProviderInterface $eventProvider): void
+    public OrderedProviderInterface $eventProvider;
+    function setEventProvider(OrderedProviderInterface $eventProvider): void
     {
         $this->eventProvider = $eventProvider;
         $this->eventProvider->addListener($this->eventHandler(...));
