@@ -70,7 +70,7 @@ class stocks extends \scripts\script_base
 
     #[Cmd("stock")]
     #[Syntax('<symbol>')]
-    public function stock(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function stock(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (false === $this->getKey()) {
             return;
@@ -114,7 +114,7 @@ class stocks extends \scripts\script_base
 
     #[Cmd("findsymbol")]
     #[Syntax('<query>')]
-    public function findsymbol(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function findsymbol(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (false === $this->getKey()) {
             return;
@@ -144,7 +144,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("doge")]
-    public function doge(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function doge(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {
@@ -163,7 +163,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("bch")]
-    public function bch(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function bch(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {
@@ -182,7 +182,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("eth")]
-    public function eth(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function eth(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {
@@ -201,7 +201,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("btc")]
-    public function btc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function btc(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {

@@ -13,7 +13,7 @@ use Itwmw\ColorDifference\Lib\RGB;
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
 #[Options("--rainbow", "--rnb", "--bsize", "--width", '--edit')]
-function url(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $url = $cmdArgs[0] ?? '';
@@ -253,7 +253,7 @@ static $palette = [
 #[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
 #[Option("--render2", "alternate text rending for luminocity")]
 #[Option("--16", "limit to only using 16 colors")]
-function ascii(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $url = $cmdArgs[0];

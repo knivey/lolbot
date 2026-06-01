@@ -12,7 +12,7 @@ use Symfony\Component\Yaml\Yaml;
 
 #[Cmd("owncast", "popcorn", "🍿")]
 #[Desc("Lookup status of a configured owncast server")]
-function owncast(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function owncast(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     if(!file_exists(__DIR__.'/casts.yaml')) {
         echo "casts.yaml doernt exist\n";

@@ -69,7 +69,7 @@ class github extends script_base
     #[Cmd("gh", "github")]
     #[Syntax("<user/repo>")]
     #[Desc("Lookup info on a github user or user/repo")]
-    public function github_cmd(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function github_cmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $query = $cmdArgs['user/repo'];
         if (!preg_match("@^([^/]+)(?:/([^/]+))?$@", $query, $m)) {

@@ -22,7 +22,7 @@ class remindme extends script_base
     #[Cmd("in", "remindme")]
     #[Syntax("<time> <msg>...")]
     #[Desc("sets a reminder for your after time. time is formatted like 5m30s supports: 1y2M3d4h5m6s")]
-    public function in(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function in(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         $host = $args->host;
@@ -70,7 +70,7 @@ class remindme extends script_base
     #[Cmd("at", "on")]
     #[Syntax("<timemsg>...")]
     #[Desc("Remind you at a certain date time, the date time must be in quotes")]
-    public function at(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function at(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         $r = makeArgs($cmdArgs['timemsg']);
@@ -116,7 +116,7 @@ class remindme extends script_base
     #[Option("--sort", "Sort by due or created (default: due)")]
     #[Option("--page", "Page number to show (default: 1)")]
     #[Option("--sent", "Show sent reminders instead of pending")]
-    public function reminders(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function reminders(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
 

@@ -337,7 +337,7 @@ class youtube extends script_base
     #[Cmd("yt", "ytsearch", "youtube")]
     #[Syntax('<query>...')]
     #[Options("--amt")]
-    function ytsearch(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function ytsearch(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config;
         $reply = function ($msg) use ($bot, $args) {

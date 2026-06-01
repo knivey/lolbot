@@ -19,7 +19,7 @@ class seen extends script_base
     #[Cmd("seen")]
     #[Desc("check when bot last saw someone chat")]
     #[Syntax("<nick>")]
-    function seen(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function seen(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         $nick = u($cmdArgs['nick'])->lower();
@@ -114,21 +114,21 @@ class seen extends script_base
     {
         \Revolt\EventLoop::repeat(15, $this->saveSeens(...));
 
-        $this->client->on('notice', function ($args, \Irc\Client $bot) {
+        $this->client->on('notice', function (\Irc\Event\NoticeEvent $args, \Irc\Client $bot) {
             if (!$bot->isChannel($args->to))
                 return;
             //ignore ctcp replies to channel
             if (preg_match("@^\x01.*$@i", $args->text))
                 return;
-            $this->updateSeen('notice', $args->to, $args->from, $args->text);
+            $this->updateSeen('notice', $args->to, $args->nick, $args->text);
         });
 
-        $this->client->on('chat', function ($args, \Irc\Client $bot) {
+        $this->client->on('chat', function (\Irc\Event\ChatEvent $args, \Irc\Client $bot) {
             if (preg_match("@^\x01ACTION ([^\x01]+)\x01?$@i", $args->text, $m)) {
-                $this->updateSeen('action', $args->chan, $args->from, $m[1]);
+                $this->updateSeen('action', $args->chan, $args->nick, $m[1]);
                 return;
             }
-            $this->updateSeen('privmsg', $args->chan, $args->from, $args->text);
+            $this->updateSeen('privmsg', $args->chan, $args->nick, $args->text);
         });
     }
 }

@@ -10,7 +10,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Syntax("[id]")]
 #[Desc("play a random artfart")]
 #[Options("--rainbow", "--rnb")]
-function artfart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function artfart(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $filename = __DIR__.'/farts.xml';
     if(!file_exists($filename)) {

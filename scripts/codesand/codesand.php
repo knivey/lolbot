@@ -15,7 +15,7 @@ use Symfony\Component\Yaml\Yaml;
 
 class codesand extends script_base
 {
-    function createStateJson(object $args, \Irc\Client $bot): string|false {
+    function createStateJson(\Irc\Event\ChatEvent $args, \Irc\Client $bot): string|false {
         $channel = $this->chans->getChan($args->chan);
         return json_encode([
             'caller' => [
@@ -74,7 +74,7 @@ class codesand extends script_base
         return $output;
     }
 
-    function canRun(object $args): bool
+    function canRun(\Irc\Event\ChatEvent $args): bool
     {
         global $config;
         if (!($config['bots'][$this->bot->id]['codesand'] ?? false)) {
@@ -90,15 +90,15 @@ class codesand extends script_base
             }
             switch ($config['bots'][$this->bot->id]['codesandMinAccess']) {
                 case '~':
-                    return $this->nicks->isOwner($args->nick, $args->channel);
+                    return $this->nicks->isOwner($args->nick, $args->chan);
                 case '&':
-                    return $this->nicks->isAdminOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isAdminOrHigher($args->nick, $args->chan);
                 case '@':
-                    return $this->nicks->isOpOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isOpOrHigher($args->nick, $args->chan);
                 case '%':
-                    return $this->nicks->isHalfOpOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isHalfOpOrHigher($args->nick, $args->chan);
                 case '+':
-                    return $this->nicks->isVoiceOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isVoiceOrHigher($args->nick, $args->chan);
             }
         }
         return true;
@@ -106,7 +106,7 @@ class codesand extends script_base
 
     #[Cmd("php")]
     #[Syntax("<code>...")]
-    function runPHP(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runPHP(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -117,7 +117,7 @@ class codesand extends script_base
 
     #[Cmd("bash")]
     #[Syntax("<code>...")]
-    function runBash(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runBash(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -128,7 +128,7 @@ class codesand extends script_base
 
     #[Cmd("py3", "py", "python", "python3")]
     #[Syntax("<code>...")]
-    function runPy3(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runPy3(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -142,7 +142,7 @@ class codesand extends script_base
     #[Cmd("pyp")]
     #[Syntax("<code>...")]
     #[Desc("Run code in python3 wrapped inside a Print()")]
-    function runPy3p(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runPy3p(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -155,7 +155,7 @@ class codesand extends script_base
 
     #[Cmd("py2", "python2")]
     #[Syntax("<code>...")]
-    function runPy2(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runPy2(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -166,7 +166,7 @@ class codesand extends script_base
 
     #[Cmd("perl")]
     #[Syntax("<code>...")]
-    function runPerl(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runPerl(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -177,7 +177,7 @@ class codesand extends script_base
 
     #[Cmd("java")]
     #[Syntax("<code>...")]
-    function runJava(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runJava(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -201,7 +201,7 @@ class codesand extends script_base
     #[Cmd("ruby")]
     #[Syntax("<code>...")]
     #[Desc("Run ruby code")]
-    function runRuby(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runRuby(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -213,7 +213,7 @@ class codesand extends script_base
     #[Cmd("c", "tcc")]
     #[Desc("Run C code using tcc compiler")]
     #[Syntax("<code>...")]
-    function runTcc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runTcc(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -225,7 +225,7 @@ class codesand extends script_base
     #[Cmd("go", "golang")]
     #[Desc("Run go code")]
     #[Syntax("<code>...")]
-    function runGolang(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runGolang(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -243,7 +243,7 @@ class codesand extends script_base
     #[Cmd("js", "javascript")]
     #[Desc("Run javascript code")]
     #[Syntax("<code>...")]
-    function runJavascript(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runJavascript(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -255,7 +255,7 @@ class codesand extends script_base
     #[Cmd("gcc")]
     #[Desc("Run ruby code using gcc compiler")]
     #[Syntax("<code>...")]
-    function runGcc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runGcc(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -297,7 +297,7 @@ class codesand extends script_base
     #[Cmd("tcl")]
     #[Desc("Run tcl code")]
     #[Syntax("<code>...")]
-    function runTcl(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runTcl(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -309,7 +309,7 @@ class codesand extends script_base
     #[Cmd("cpp", "g++")]
     #[Desc("Run C++ code using g++")]
     #[Syntax("<code>...")]
-    function runGpp(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function runGpp(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;

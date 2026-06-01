@@ -5,6 +5,7 @@ use function Amp\async;
 use knivey\cmdr\Cmdr;
 use knivey\irctools;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Irc\Event\ChatEvent;
 
 class NetworkContext
 {
@@ -95,15 +96,15 @@ class NetworkContext
             }
             switch ($this->config['artMinAccess']) {
                 case '~':
-                    return $this->nicks->isOwner($args->nick, $args->channel);
+                    return $this->nicks->isOwner($args->nick, $args->chan);
                 case '&':
-                    return $this->nicks->isAdminOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isAdminOrHigher($args->nick, $args->chan);
                 case '@':
-                    return $this->nicks->isOpOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isOpOrHigher($args->nick, $args->chan);
                 case '%':
-                    return $this->nicks->isHalfOpOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isHalfOpOrHigher($args->nick, $args->chan);
                 case '+':
-                    return $this->nicks->isVoiceOrHigher($args->nick, $args->channel);
+                    return $this->nicks->isVoiceOrHigher($args->nick, $args->chan);
             }
         }
         return true;
@@ -189,8 +190,8 @@ class NetworkContext
                 if (count($this->playing[$chan]) < $sendAmount)
                     $sendAmount = count($this->playing[$chan]);
                 $cnt = 0;
-                $nextbot->on('chat', function ($args, $bot) use ($chan, &$eventIdx, &$def, &$cnt, $botNick, $sendAmount) {
-                    if ($args->from != $botNick)
+                $nextbot->on('chat', function (ChatEvent $args, $bot) use ($chan, &$eventIdx, &$def, &$cnt, $botNick, $sendAmount) {
+                    if ($args->nick != $botNick)
                         return;
                     if (strtolower($args->chan) != $chan)
                         return;

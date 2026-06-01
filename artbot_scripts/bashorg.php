@@ -10,7 +10,7 @@ $bashdb = [];
 
 #[Cmd("bash")]
 #[Desc("Play a random bash.org quote")]
-function bash(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function bash(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     global $bashdb;
     try {
         populateBash();

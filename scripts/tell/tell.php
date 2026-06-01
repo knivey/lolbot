@@ -18,7 +18,7 @@ use function Symfony\Component\String\u;
 class tell extends script_base {
     //#[Cmd("gtell", "gask", "ginform")]
     //#[Syntax("<nick> <msg>...")]
-    function gtell(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function gtell(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config;
 
@@ -43,7 +43,7 @@ class tell extends script_base {
     #[Cmd("tell", "ask", "inform", "pester")]
     #[Desc("pass nick a message when they chat next")]
     #[Syntax("<nick> <msg>...")]
-    function tell(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+    function tell(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
         global $config;
         try {
             if (strtolower($bot->getNick()) == strtolower($cmdArgs['nick'])) {
@@ -146,9 +146,9 @@ class tell extends script_base {
     }
 
     function init():void {
-        $this->client->on('chat', function ($args, \Irc\Client $bot) {
+        $this->client->on('chat', function (\Irc\Event\ChatEvent $args, \Irc\Client $bot) {
             global $config, $entityManager;
-            $nick = u($args->from)->lower();
+            $nick = u($args->nick)->lower();
             //TODO possibly cache this
             $msgs = $entityManager->getRepository(entities\tell::class)->findBy(["sent"=>false,"target"=>$nick]);
             if(!is_array($msgs) || count($msgs) == 0)

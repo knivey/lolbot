@@ -137,7 +137,7 @@ class weather extends script_base
     #[Cmd("weather", "wz", "wea")]
     #[Syntax('[query]...')]
     #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
-    function weather(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function weather(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config, $entityManager;
         if (!isset($config['bingMapsKey'])) {
@@ -265,7 +265,7 @@ class weather extends script_base
     #[Cmd("setlocation")]
     #[Syntax("<query>...")]
     #[Options("--si", "--metric")]
-    function setlocation(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function setlocation(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         $si = false;

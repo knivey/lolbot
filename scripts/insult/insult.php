@@ -9,7 +9,7 @@ use knivey\cmdr\attributes\Desc;
 
 #[Cmd("insult")]
 #[Desc("generate an insult")]
-function insult(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function insult(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $insults = [
         "roasted",

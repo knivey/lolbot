@@ -13,7 +13,7 @@ require_once __DIR__ . '/../library/paste.php';
 #[Syntax("[command]")]
 #[Option("--priv", "lookup private message commands")]
 #[Desc("lookup help for commands")]
-function help(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function help(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $router = \NetworkContext::get($bot)->router;
     if(isset($cmdArgs['command'])) {

@@ -1,5 +1,6 @@
 <?php
 use function knivey\tools\get_akey_nc;
+use Irc\Event\{ChatEvent, JoinEvent, PartEvent, KickEvent, NickEvent, QuitEvent, ModeEvent, NamesEvent, PmEvent, NamesReply, NumericEvent};
 
 // Just grabbign this from an old bot project i made and making it work here for now
 
@@ -53,50 +54,50 @@ class Nicks {
             $idx = null;
             if($bot->hasOption('WHOX')) {
                 $this->whoHook[0] = '354';
-                $bot->on('354', function($args, $bot) {$this->whox($args->message);}, $idx);
+                $bot->on('354', function(NumericEvent $args, $bot) {$this->whox($args->message);}, $idx);
             } else {
                 $this->whoHook[0] = '352';
-                $bot->on('352', function($args, $bot) {$this->who($args->message);}, $idx);
+                $bot->on('352', function(NumericEvent $args, $bot) {$this->who($args->message);}, $idx);
             }
             $this->whoHook[1] = $idx;
         };
         $bot->on('422', $doWho);
         $bot->on('376', $doWho);
-        $bot->on('names', function($args, $bot) {$this->names($args->channel, $args->names);});
+        $bot->on('names', function(NamesEvent $args, $bot) {$this->names($args->chan, $args->names);});
 
 
-        $bot->on('join', function($args, $bot) {
+        $bot->on('join', function(JoinEvent $args, $bot) {
             if($bot->isCurrentNick($args->nick)) {
                 if($bot->hasOption('WHOX')) {
-                    $bot->send("WHO {$args->channel} %tnchuf,777");
+                    $bot->send("WHO {$args->chan} %tnchuf,777");
                 } else {
-                    $bot->send("WHO {$args->channel}");
+                    $bot->send("WHO {$args->chan}");
                 }
             }
 
-            $this->join($args->nick, $args->identhost, $args->channel);
+            $this->join($args->nick, $args->identhost, $args->chan);
         });
-        $bot->on('part', function($args, $bot) {
+        $bot->on('part', function(PartEvent $args, $bot) {
             if($bot->isCurrentNick($args->nick))
-                $this->usPart($args->channel);
+                $this->usPart($args->chan);
             else
-                $this->part($args->nick, $args->channel);
+                $this->part($args->nick, $args->chan);
         });
-        $bot->on('nick', function($args, $bot) {$this->nick($args->old, $args->new);});
-        $bot->on('quit', function($args, $bot) {$this->quit($args->nick);});
-        $bot->on('kick', function($args, $bot) {
-            if($bot->isCurrentNick($args->nick))
-                $this->usPart($args->channel);
+        $bot->on('nick', function(NickEvent $args, $bot) {$this->nick($args->old, $args->new);});
+        $bot->on('quit', function(QuitEvent $args, $bot) {$this->quit($args->nick);});
+        $bot->on('kick', function(KickEvent $args, $bot) {
+            if($bot->isCurrentNick($args->target))
+                $this->usPart($args->chan);
             else
-                $this->kick($args->nick, $args->channel);
+                $this->kick($args->target, $args->chan);
         });
-        $bot->on('mode', function($args, $bot) {$this->mode($args, $bot);});
-        $bot->on('pm', function($args, $bot) {$this->tppl($args->nick, $args->identhost);});
-        $bot->on('chat', function($args, $bot) {$this->tpplClear();});
+        $bot->on('mode', function(ModeEvent $args, $bot) {$this->mode($args, $bot);});
+        $bot->on('pm', function(PmEvent $args, $bot) {$this->tppl($args->nick, $args->identhost);});
+        $bot->on('chat', function(ChatEvent $args, $bot) {$this->tpplClear();});
     }
 
-    function mode(object $args, \Irc\Client $bot): void {
-        if($args->on[0] != "#") {
+    function mode(ModeEvent $args, \Irc\Client $bot): void {
+        if($args->target[0] != "#") {
             return;
         }
         $modeArgs = $args->args;
@@ -188,7 +189,7 @@ class Nicks {
     }
 
 
-    function names(string $chan, object $names): void {
+    function names(string $chan, NamesReply $names): void {
         $names = $names->names;
         foreach ($names as $n) {
             $chanModes = array_intersect(['+','%','@','&','~'], str_split($n));

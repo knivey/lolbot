@@ -67,7 +67,7 @@ class bomb_game extends script_base
     protected array $bombs = [];
 
     public function init():void {
-        $this->client->on('nick', function ($args, \Irc\Client $bot) {
+        $this->client->on('nick', function (\Irc\Event\NickEvent $args, \Irc\Client $bot) {
             if(array_key_exists(strtolower($args->old), $this->bombs)) {
                 $this->bombs[strtolower($args->new)] =& $this->bombs[strtolower($args->old)];
                 $this->bombs[strtolower($args->new)]->target = $args->new;
@@ -92,7 +92,7 @@ class bomb_game extends script_base
     #[Cmd("bomb")]
     #[Desc("plant a bomb on target")]
     #[Syntax("<target>")]
-    function bomb(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function bomb(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $target = $cmdArgs["target"];
         if(empty($this->nicks->getChanNickKey($target, $args->chan))) {
@@ -127,7 +127,7 @@ class bomb_game extends script_base
     #[Cmd("cutwire")]
     #[Desc("try to defuse your bomb")]
     #[Syntax("<color>")]
-    function cutwire(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function cutwire(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!array_key_exists(strtolower($args->nick), $this->bombs)) {
             return;

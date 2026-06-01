@@ -24,6 +24,7 @@ use Amp\Future;
 use \Revolt\EventLoop;
 use knivey\irctools;
 
+use Irc\Event\{ChatEvent, KickEvent, ModeEvent, WelcomeEvent, NumericEvent};
 use const Irc\ERR_CANNOTSENDTOCHAN;
 
 if(isset($argv[1])) {
@@ -109,7 +110,7 @@ function onchat(object $args, \Irc\Client $bot, NetworkContext $ctx): void
         if(!$ctx->canRun($args))
             return;
 
-        artbot_scripts\tryRec($bot, $args->from, $args->text, $ctx);
+        artbot_scripts\tryRec($bot, $args->nick, $args->text, $ctx);
         if (isset($ctx->config['trigger'])) {
             if (substr($args->text, 0, 1) != $ctx->config['trigger']) {
                 return;
@@ -138,7 +139,7 @@ function onchat(object $args, \Irc\Client $bot, NetworkContext $ctx): void
             try {
                 $ctx->router->call($cmd, $text, $args, $bot);
             } catch (Exception $e) {
-                $bot->notice($args->from, $e->getMessage());
+                $bot->notice($args->nick, $e->getMessage());
             }
         } else {
             $tmpText = $text;
@@ -146,7 +147,7 @@ function onchat(object $args, \Irc\Client $bot, NetworkContext $ctx): void
             $cmdArgs = \knivey\tools\makeArgs($tmpText);
             if(!is_array($cmdArgs))
                 $cmdArgs = [];
-            artbot_scripts\reqart($bot, $args->channel, $cmd, $opts, $ctx);
+            artbot_scripts\reqart($bot, $args->chan, $cmd, $opts, $ctx);
         }
     });
 }
@@ -224,7 +225,7 @@ function startNetwork(array $networkConfig, \Monolog\Handler\HandlerInterface $l
             $bot->nick($bcfg['name']);
         });
 
-        $bot->on('welcome', function ($e, \Irc\Client $bot) use ($ctx) {
+        $bot->on('welcome', function (WelcomeEvent $e, \Irc\Client $bot) use ($ctx) {
             if(isset($ctx->config['onconnect'])) {
                 if(!is_array($ctx->config['onconnect'])) {
                     die("config['onconnect'] must be an array, found: " . get_debug_type($ctx->config['onconnect']));
@@ -237,12 +238,12 @@ function startNetwork(array $networkConfig, \Monolog\Handler\HandlerInterface $l
             $bot->join(implode(',', $ctx->config['channels']));
         });
 
-        $bot->on('kick', function ($args, \Irc\Client $bot) {
-            if($args->nick == $bot->getNick())
-                $bot->join($args->channel);
+        $bot->on('kick', function (KickEvent $args, \Irc\Client $bot) {
+            if($args->target == $bot->getNick())
+                $bot->join($args->chan);
         });
 
-        $bot->on(ERR_CANNOTSENDTOCHAN, function ($args, \Irc\Client $bot) use ($ctx) {
+        $bot->on(ERR_CANNOTSENDTOCHAN, function (NumericEvent $args, \Irc\Client $bot) use ($ctx) {
             $chan = $args->message->getArg(1);
             if(isset($ctx->playing[$chan])) {
                 unset($ctx->playing[$chan]);
@@ -250,8 +251,8 @@ function startNetwork(array $networkConfig, \Monolog\Handler\HandlerInterface $l
             }
         });
 
-        $bot->on('mode', function($args, \Irc\Client $bot) {
-            if($args->on == $bot->getNick()) {
+        $bot->on('mode', function(ModeEvent $args, \Irc\Client $bot) {
+            if($args->target == $bot->getNick()) {
                 $adding = true;
                 foreach (str_split($args->args[0]) as $mode) {
                     switch($mode) {
@@ -276,7 +277,7 @@ function startNetwork(array $networkConfig, \Monolog\Handler\HandlerInterface $l
             if (function_exists("initQuotes"))
                 initQuotes($bot, $ctx);
 
-            $bot->on('chat', function($args, $bot) use ($ctx) {
+            $bot->on('chat', function(ChatEvent $args, $bot) use ($ctx) {
                 onchat($args, $bot, $ctx);
             });
         }

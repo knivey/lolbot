@@ -1,5 +1,7 @@
 <?php
 
+use Irc\Event\{JoinEvent, PartEvent, KickEvent, QuitEvent, ModeEvent, ChannelModeIsEvent, NumericEvent, NickEvent, NamesEvent};
+
 /**
  * keep track of channel info, like modes, topics etc
  */
@@ -32,29 +34,29 @@ class Channels
         $bot->on('welcome', function($args, $bot) {
             $this->channels = [];
         });
-        $bot->on('join', function($args, \Irc\Client $bot) {
-            if(!isset($this->channels[strtolower($args->channel)]))
-                $this->channels[strtolower($args->channel)] = new Channel();
-            $this->channels[strtolower($args->channel)]->nicks[strtolower($args->nick)] = $args->nick;
-            $bot->send("MODE", $args->channel);
+        $bot->on('join', function(JoinEvent $args, \Irc\Client $bot) {
+            if(!isset($this->channels[strtolower($args->chan)]))
+                $this->channels[strtolower($args->chan)] = new Channel();
+            $this->channels[strtolower($args->chan)]->nicks[strtolower($args->nick)] = $args->nick;
+            $bot->send("MODE", $args->chan);
         });
-        $bot->on('names', function($args, $bot) {
-            if(!isset($this->channels[strtolower($args->channel)]))
+        $bot->on('names', function(NamesEvent $args, $bot) {
+            if(!isset($this->channels[strtolower($args->chan)]))
                 return;
             foreach($args->names->names as $n) {
                 $n = ltrim($n, '~&@%+');
-                $this->channels[strtolower($args->channel)]->nicks[strtolower($n)] = $n;
+                $this->channels[strtolower($args->chan)]->nicks[strtolower($n)] = $n;
             }
         });
-        $bot->on('part', function($args, $bot) {
-            if(!isset($this->channels[strtolower($args->channel)]))
+        $bot->on('part', function(PartEvent $args, $bot) {
+            if(!isset($this->channels[strtolower($args->chan)]))
                 return;
             if($bot->isCurrentNick($args->nick))
-                unset($this->channels[strtolower($args->channel)]);
+                unset($this->channels[strtolower($args->chan)]);
             else
-                unset($this->channels[strtolower($args->channel)]->nicks[strtolower($args->nick)]);
+                unset($this->channels[strtolower($args->chan)]->nicks[strtolower($args->nick)]);
         });
-        $bot->on('quit', function($args, $bot) {
+        $bot->on('quit', function(QuitEvent $args, $bot) {
             if($bot->isCurrentNick($args->nick))
                 $this->channels = [];
             else {
@@ -63,38 +65,38 @@ class Channels
                 }
             }
         });
-        $bot->on('kick', function($args, $bot) {
-            if(!isset($this->channels[strtolower($args->channel)]))
+        $bot->on('kick', function(KickEvent $args, $bot) {
+            if(!isset($this->channels[strtolower($args->chan)]))
                 return;
-            if($bot->isCurrentNick($args->nick))
-                unset($this->channels[strtolower($args->channel)]);
+            if($bot->isCurrentNick($args->target))
+                unset($this->channels[strtolower($args->chan)]);
             else
-                unset($this->channels[strtolower($args->channel)]->nicks[strtolower($args->nick)]);
+                unset($this->channels[strtolower($args->chan)]->nicks[strtolower($args->target)]);
         });
-        $bot->on('mode', function($args, $bot) {
-            $this->processModes($args->on, $args->args, $bot);
+        $bot->on('mode', function(ModeEvent $args, $bot) {
+            $this->processModes($args->target, $args->args, $bot);
         });
         //RPL_CHANNELMODES
-        $bot->on('324', function($args, $bot) {
+        $bot->on('324', function(ChannelModeIsEvent $args, $bot) {
             // shouldn't need to clear modes here
-            $this->processModes($args->channel, $args->args, $bot);
+            $this->processModes($args->chan, $args->args, $bot);
         });
         //RPL_TOPIC
-        $bot->on('332', function($args, $bot) {
+        $bot->on('332', function(NumericEvent $args, $bot) {
             $args = $args->message->args;
             if(!isset($this->channels[strtolower($args[1])]))
                 return;
             $this->channels[strtolower($args[1])]->topic = $args[2];
         });
         //RPL_TOPICWHOTIME
-        $bot->on('333', function($args, $bot) {
+        $bot->on('333', function(NumericEvent $args, $bot) {
             $args = $args->message->args;
             if(!isset($this->channels[strtolower($args[1])]))
                 return;
             $this->channels[strtolower($args[1])]->topicWho = $args[2];
             $this->channels[strtolower($args[1])]->topicTime = $args[3];
         });
-        $bot->on('nick', function($args, $bot) {
+        $bot->on('nick', function(NickEvent $args, $bot) {
             foreach($this->channels as &$channel) {
                 if(isset($channel->nicks[strtolower($args->old)])) {
                     $channel->nicks[strtolower($args->new)] = $channel->nicks[strtolower($args->old)];

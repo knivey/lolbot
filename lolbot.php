@@ -14,6 +14,7 @@ use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
 use Crell\Tukio\OrderedListenerProvider;
 
+use Irc\Event\{ChatEvent, PmEvent, KickEvent, ModeEvent, WelcomeEvent};
 use lolbot\entities\Ignore;
 
 $logHandler = new StreamHandler(ByteStream\getStdout());
@@ -214,7 +215,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $tiktok->setEventProvider($eventProvider);
     $router->loadMethods($tiktok);
 
-    $client->on('welcome', function ($e, \Irc\Client $bot) use ($dbBot) {
+    $client->on('welcome', function (WelcomeEvent $e, \Irc\Client $bot) use ($dbBot) {
         foreach (explode("\n", $dbBot->onConnect) as $line) {
             if($line == "")
                 continue;
@@ -237,14 +238,14 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         $client->nick($dbBot->name);
     });
 
-    $client->on('kick', function ($args, \Irc\Client $bot) {
-        if ($args->nick == $bot->getNick())
-            $bot->join($args->channel);
+    $client->on('kick', function (KickEvent $args, \Irc\Client $bot) {
+        if ($args->target == $bot->getNick())
+            $bot->join($args->chan);
     });
 
     //Stop abuse from an IRCOP called sylar
-    $client->on('mode', function ($args, \Irc\Client $bot) {
-        if ($args->on == $bot->getNick()) {
+    $client->on('mode', function (ModeEvent $args, \Irc\Client $bot) {
+        if ($args->target == $bot->getNick()) {
             $adding = true;
             foreach (str_split($args->args[0]) as $mode) {
                 switch ($mode) {
@@ -263,7 +264,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         }
     });
 
-    $client->on('chat', function ($args, \Irc\Client $bot) use ($alias, $linktitles, $network, $dbBot, $router) {
+    $client->on('chat', function (ChatEvent $args, \Irc\Client $bot) use ($alias, $linktitles, $network, $dbBot, $router) {
         try {
             global $config, $entityManager, $ignoreCache;
 
@@ -281,7 +282,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
 
 
             if ($config['bots'][$dbBot->id]['linktitles'] ?? false) {
-                async(fn() => $linktitles->linktitles($bot, $args->nick, $args->channel, $args->identhost, $args->text));
+                async(fn() => $linktitles->linktitles($bot, $args->nick, $args->chan, $args->identhost, $args->text));
             }
 
             if ($dbBot->trigger != "") {
@@ -303,7 +304,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
 
             $ar = explode(' ', $text);
             if (array_shift($ar) == 'ping') {
-                $bot->msg($args->channel, "Pong");
+                $bot->msg($args->chan, "Pong");
             }
             /*
             $ar = explode(' ', $text);
@@ -327,7 +328,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
                         $router->call($cmd, $text, $args, $bot);
                     } catch (\Throwable $e) {
                         echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
-                        $bot->notice($args->from, "error running command :(");
+                        $bot->notice($args->nick, "error running command :(");
                     }
                 } else {
                     //call other cmd handlers
@@ -345,7 +346,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
             echo "UNCAUGHT EXCEPTION $e\n";
         }
     });
-    $client->on('pm', function ($args, \Irc\Client $bot) use ($router) {
+    $client->on('pm', function (PmEvent $args, \Irc\Client $bot) use ($router) {
         $text = explode(' ', $args->text);
         $cmd = array_shift($text);
         $text = implode(' ', $text);
@@ -355,7 +356,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         try {
             $router->callPriv($cmd, $text, $args, $bot);
         } catch (Exception $e) {
-            $bot->notice($args->from, $e->getMessage());
+            $bot->notice($args->nick, $e->getMessage());
         }
     });
     $client->go();

@@ -34,7 +34,7 @@ class alias extends script_base
     #[Option("--me", "Make the alias reply with /me")]
     #[Option("--act", "same as --me")]
     #[Option("--cmd", "make this an alias for calling bot commands ex: --cmd=ruby (cannot use with --act)")]
-    public function alias(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    public function alias(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         [$rpl] = \makeRepliers($args, $bot, "alias");
@@ -77,7 +77,7 @@ class alias extends script_base
     #[Cmd("unalias")]
     #[Syntax("<name>")]
     #[Desc("Remove a channel alias")]
-    function unalias(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function unalias(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
 
         global $entityManager;
@@ -105,7 +105,7 @@ class alias extends script_base
     #[Cmd("aliases")]
     #[Desc("List the channel aliases")]
     #[Option("--web", "show detailed aliases on web paste")]
-    function aliases(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function aliases(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
         try {
@@ -163,7 +163,7 @@ class alias extends script_base
     #[Cmd("showalias", "aliasinfo")]
     #[Syntax("<name>")]
     #[Desc("Show info about an alias")]
-    function showaliass(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function showaliass(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
@@ -188,13 +188,13 @@ class alias extends script_base
     }
 
     /**
-     * @param object $args
+     * @param \Irc\Event\ChatEvent $args
      * @param \Irc\Client $bot
      * @param string $cmd
      * @param array<string> $cmdArgs
      * @return bool
      */
-    function handleCmd(object $args, \Irc\Client $bot, string $cmd, array $cmdArgs): bool
+    function handleCmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, string $cmd, array $cmdArgs): bool
     {
         global $entityManager;
         try {
@@ -250,7 +250,7 @@ class alias extends script_base
             try {
                 $this->router->call($alias->cmd, $value, $args, $bot);
             } catch (\Exception $e) {
-                $bot->notice($args->from, $e->getMessage());
+                $bot->notice($args->nick, $e->getMessage());
             }
             return true;
         }

@@ -12,7 +12,7 @@ use knivey\cmdr\attributes\Option;
 #[Cmd("yoda")]
 #[Syntax('<url>...')]
 #[Option("--og", "OG Yoda")]
-function yoda_cmd(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function yoda_cmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $url = $cmdArgs['url'];
 
@@ -73,7 +73,7 @@ function yoda_cmd(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): v
 
 #[Cmd("doubleyoda")]
 #[Syntax('<url>...')]
-function doubleyoda_cmd(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function doubleyoda_cmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $url = $cmdArgs['url'];
 

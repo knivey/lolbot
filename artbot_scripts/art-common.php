@@ -186,7 +186,7 @@ function getWrapLength(\Irc\Client $bot, string $chan, \NetworkContext $ctx): in
 
 #[Cmd("getpumper")]
 #[Desc("Gets a URL you can send a HTTP POST to play art in the channel")]
-function getpumper(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function getpumper(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $ctx = \NetworkContext::get($bot);
     $key = bin2hex(random_bytes(5));
@@ -211,7 +211,7 @@ function getpumper(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): 
 #[Desc("Record a new art, use this, paste the art to the chat then type @end when finished")]
 #[Option(["--post", "--url"], "Get a URL to POST the art data to instead of pasting it to the channel")]
 #[Syntax('<filename>')]
-function record(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function record(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $nick = $args->nick;
@@ -308,7 +308,7 @@ function timeOut(string $nick, \Irc\Client $bot): void {
 
 #[Cmd("end")]
 #[Desc("Finish recording art")]
-function endart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function endart(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $nick = $args->nick;
@@ -342,7 +342,7 @@ function endart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): voi
 
 #[Cmd("cancel")]
 #[Desc("Cancel recording art")]
-function cancel(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function cancel(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = $args->chan;
@@ -430,7 +430,7 @@ function reqart(\Irc\Client $bot, string $chan, string $file, array $opts, \Netw
 #[Cmd("trash")]
 #[Desc("Move a recorded art to trash, requires special access.")]
 #[Syntax("<file>")]
-function trash(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function trash(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $host = $args->host;
@@ -507,7 +507,7 @@ function trash(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 #[Option(["--newest"], "Display newest results first")]
 #[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('<query>...')]
-function searchart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function searchart(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $chan = $args->chan;
@@ -620,7 +620,7 @@ function searchart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): 
 #[Option(["--play"], "Play each art")]
 #[Option("--maxlines", "When using --play any result over this limit (default 100) is skipped")]
 #[Syntax('[since]...')]
-function recent(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function recent(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $since = $cmdArgs['since'] ?? '8 days ago';
@@ -715,7 +715,7 @@ function selectRandFile(?string $search, \NetworkContext $ctx) : String|false {
 #[Option("--flip", "play the art upside down")]
 #[Option("--speed", "set the playback speed, delay between lines in ms")]
 #[Syntax('[search]')]
-function randart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function randart(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $chan = strtolower($args->chan);
     if(isset($ctx->playing[$chan])) {
@@ -746,7 +746,7 @@ function randart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): vo
 
 #[Cmd("stop")]
 #[Desc("Stops art playback")]
-function stop(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
+function stop(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = strtolower($args->chan);
@@ -863,7 +863,7 @@ function quietExec(string $cmd): array
 #[Syntax('<url>')]
 #[Option('--width', "force a width to convert at, otherwise we try to detect it from the website")]
 #[Option("--edit", "make a link to open in asciibird")]
-function a2m(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function a2m(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
