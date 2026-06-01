@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace lolbot\Migrations;
 
-use _PHPStan_39fe102d2\Nette\Utils\Type;
+use Nette\Utils\Type;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\BigIntType;
 use Doctrine\DBAL\Types\IntegerType;
