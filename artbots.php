@@ -146,7 +146,7 @@ function onchat(object $args, \Irc\Client $bot, NetworkContext $ctx): void
             $cmdArgs = \knivey\tools\makeArgs($tmpText);
             if(!is_array($cmdArgs))
                 $cmdArgs = [];
-            artbot_scripts\reqart($bot, $args->channel, $cmd, $opts, $args, $ctx);
+            artbot_scripts\reqart($bot, $args->channel, $cmd, $opts, $ctx);
         }
     });
 }

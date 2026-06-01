@@ -359,7 +359,7 @@ $reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed', '--link', '--downlo
 /**
  * @param array<string, mixed> $opts
  */
-function reqart(\Irc\Client $bot, string $chan, string $file, array $opts, object $args, \NetworkContext $ctx): void {
+function reqart(\Irc\Client $bot, string $chan, string $file, array $opts, \NetworkContext $ctx): void {
     $config = $ctx->config;
     if(isset($ctx->playing[strtolower($chan)])) {
         return;
