@@ -25,12 +25,12 @@ $logHandler->setLevel(\Psr\Log\LogLevel::INFO);
 
 /**
  * helper to make replies in cmds easier
- * @param object $args
+ * @param \Irc\Event\ChatEvent $args
  * @param \Irc\Client $bot
  * @param string $prefix
  * @return array{0: \Closure(string,?string=): void, 1: \Closure(string,?string=): void}
  */
-function makeRepliers(object $args, \Irc\Client $bot, string $prefix): array {
+function makeRepliers(\Irc\Event\ChatEvent $args, \Irc\Client $bot, string $prefix): array {
     return [
         function (string $msg, ?string $err = null) use ($args, $bot, $prefix) {
             if($err == null) {

@@ -89,7 +89,7 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     echo $error->getTraceAsString();
 });
 
-function onchat(object $args, \Irc\Client $bot, NetworkContext $ctx): void
+function onchat(\Irc\Event\ChatEvent $args, \Irc\Client $bot, NetworkContext $ctx): void
 {
     async(function() use ($args, $bot, $ctx) {
         global $entityManager;

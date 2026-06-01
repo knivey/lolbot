@@ -84,7 +84,7 @@ class NetworkContext
         return $contexts;
     }
 
-    public function canRun(object $args): bool
+    public function canRun(\Irc\Event\ChatEvent $args): bool
     {
         if (isset($this->config['artMinAccess'])) {
             if (!is_string($this->config['artMinAccess']) ||
