@@ -13,7 +13,7 @@ require_once __DIR__ . '/../library/paste.php';
 #[Syntax("[command]")]
 #[Option("--priv", "lookup private message commands")]
 #[Desc("lookup help for commands")]
-function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function help(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $router = \NetworkContext::get($bot)->router;
     if(isset($cmdArgs['command'])) {
@@ -43,7 +43,7 @@ function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     showHelpPaste($bot, $args->chan, $out);
 }
 
-function formatHelpMarkdown($cmds): string
+function formatHelpMarkdown(iterable $cmds): string
 {
     $out = "# Bot Commands\n\n";
     $first = true;
@@ -64,7 +64,7 @@ function formatHelpMarkdown($cmds): string
     return $out;
 }
 
-function showHelpPaste($bot, $chan, string $content)
+function showHelpPaste(\Irc\Client $bot, string $chan, string $content): void
 {
     global $config;
     if (!isset($config['paste_host']) || !isset($config['paste_key'])) {
@@ -79,7 +79,7 @@ function showHelpPaste($bot, $chan, string $content)
     }
 }
 
-function showHelpDirect($bot, $chan, string $lines)
+function showHelpDirect(\Irc\Client $bot, string $chan, string $lines): void
 {
     \pumpToChan($bot, $chan, explode("\n", $lines));
 }

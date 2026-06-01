@@ -18,7 +18,7 @@ use function Symfony\Component\String\u;
 class tell extends script_base {
     //#[Cmd("gtell", "gask", "ginform")]
     //#[Syntax("<nick> <msg>...")]
-    function gtell($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function gtell(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config;
 
@@ -43,7 +43,7 @@ class tell extends script_base {
     #[Cmd("tell", "ask", "inform", "pester")]
     #[Desc("pass nick a message when they chat next")]
     #[Syntax("<nick> <msg>...")]
-    function tell($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+    function tell(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
         global $config;
         try {
             if (strtolower($bot->getNick()) == strtolower($cmdArgs['nick'])) {
@@ -68,7 +68,7 @@ class tell extends script_base {
         }
     }
 
-    function actionMsg($action, $nick) {
+    function actionMsg(string $action, string $nick): string {
 
         $messages = [
            "tell" => [
@@ -119,7 +119,7 @@ class tell extends script_base {
         }
     }
 
-    function countMsgs($nick, $global = false): int {
+    function countMsgs(string $nick, bool $global = false): int {
         global $entityManager;
         $nick = u($nick)->lower();
         $criteria = Criteria::create();
@@ -131,7 +131,7 @@ class tell extends script_base {
         return $entityManager->getRepository(entities\tell::class)->matching($criteria)->count();
     }
 
-    function addMsg($nick, $msg, $from, $chan, $global = false) {
+    function addMsg(string $nick, string $msg, string $from, string $chan, bool $global = false): void {
         global $entityManager;
         $tell = new entities\tell();
         $tell->sender = $from;

@@ -16,7 +16,7 @@ use scripts\script_base;
 
 class github extends script_base
 {
-    public function setEventProvider(OrderedProviderInterface $eventProvider)
+    public function setEventProvider(OrderedProviderInterface $eventProvider): void
     {
         $eventProvider->addListener($this->handleEvents(...));
     }
@@ -69,7 +69,7 @@ class github extends script_base
     #[Cmd("gh", "github")]
     #[Syntax("<user/repo>")]
     #[Desc("Lookup info on a github user or user/repo")]
-    public function github_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function github_cmd(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $query = $cmdArgs['user/repo'];
         if (!preg_match("@^([^/]+)(?:/([^/]+))?$@", $query, $m)) {
@@ -93,7 +93,7 @@ class github extends script_base
     }
 
     //TODO throw exceptions instead of just return false
-    public function github_get_json($url, $assoc = false)
+    public function github_get_json(string $url, bool $assoc = false): mixed
     {
         try {
             $client = HttpClientBuilder::buildDefault();
@@ -116,7 +116,7 @@ class github extends script_base
         }
     }
 
-    public function github($user, $repo)
+    public function github(string $user, ?string $repo): string|false
     {
         if ($repo != null) {
             return $this->github_repo($user, $repo);
@@ -134,7 +134,7 @@ class github extends script_base
         return false;
     }
 
-    public function github_issueStr($user, $repo, $issue)
+    public function github_issueStr(string $user, string $repo, string $issue): string|false
     {
         $url = "https://api.github.com/repos/$user/$repo/issues/$issue";
         if (!$json = $this->github_get_json($url)) {
@@ -147,7 +147,7 @@ class github extends script_base
         return "\x02[GitHub]\x02 {$user->login}/$repo Issue({$json->state}): {$json->title}";
     }
 
-    public function github_stars($user)
+    public function github_stars(string $user): int
     {
         $page = 1;
         $stars = 0;
@@ -170,7 +170,7 @@ class github extends script_base
         return $stars;
     }
 
-    public function github_repo($user, $repo)
+    public function github_repo(string $user, string $repo): string|false
     {
         $url = "https://api.github.com/repos/$user/$repo";
         $body = $this->github_get_json($url, true);
@@ -186,7 +186,7 @@ class github extends script_base
         return "{$out}- $body[description] | $langs | \x02Stargazers:\x02 $body[stargazers_count] \x02Watchers:\x02 $body[watchers_count] \x02Forks:\x02 $body[forks] \x02Open Issues:\x02 $body[open_issues] \x02Last Push:\x02 $pushed_at";
     }
 
-    public function reftime($time)
+    public function reftime(string $time): string|false
     {
         try {
             $out = strtotime($time);
@@ -196,7 +196,7 @@ class github extends script_base
         }
     }
 
-    public function github_langs($user, $repo)
+    public function github_langs(string $user, string $repo): string
     {
         $url = "https://api.github.com/repos/$user/$repo/languages";
         $body = $this->github_get_json($url, true);

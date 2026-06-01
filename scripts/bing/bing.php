@@ -14,7 +14,7 @@ $warned = false;
 #[Desc("Search bing.com")]
 #[Option("--amt", "How many results to show")]
 #[Option("--result", "Show result at this position")]
-function bing($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function bing(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $config, $warned, $ratelimit;
     if(!isset($config['bingKey'])) {

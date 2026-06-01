@@ -16,7 +16,7 @@ class tiktok extends script_base
         $eventProvider->addListener($this->handleEvents(...));
     }
 
-    function handleEvents(UrlEvent $event)
+    function handleEvents(UrlEvent $event): void
     {
         global $config;
         if ($event->handled)

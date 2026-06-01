@@ -16,7 +16,7 @@ class tools extends script_base
     #[Cmd("define", "dictionary")]
     #[Syntax('<query>...')]
     #[Desc("lookup definitions from api.dictionaryapi.dev")]
-    function dictionary($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function dictionary(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $word = rawurlencode($cmdArgs['query']);
         try {
@@ -43,7 +43,7 @@ class tools extends script_base
         $bot->pm($args->chan, $out);
     }
 
-    function getDnsType($type)
+    function getDnsType(string $type): int|false
     {
         $rc = new \ReflectionClass(\Amp\Dns\DnsRecord::class);
         $ret = false;
@@ -60,7 +60,7 @@ class tools extends script_base
     #[Cmd("dns", "resolve")]
     #[Syntax('<query> [type]')]
     #[Desc("lookup dns records default is A, AAAA")]
-    function dns($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function dns(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config;
         try {
@@ -92,7 +92,7 @@ class tools extends script_base
     #[Cmd("choice", "choose")]
     #[Syntax('<stuff>...')]
     #[Desc("let tthe bot make the hard desicions, choices separated by eiher: or , |")]
-    function choice($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function choice(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $opts = preg_split("/[,|]| +or( +|$)/", $cmdArgs['stuff']);
         if ($opts === false) {
@@ -110,7 +110,7 @@ class tools extends script_base
     #[Cmd("domaincheck", "dc")]
     #[Syntax('<domain>')]
     #[Desc("check namecheap to see if a domain can be registered")]
-    function domaincheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function domaincheck(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config;
         $key = $config['namecheap_key'] ?? false;
@@ -157,7 +157,7 @@ class tools extends script_base
         }
     }
 
-    function hash32($name)
+    function hash32(string $name): int
     {
         $n = 42;
         $r = strlen($name);
@@ -172,7 +172,7 @@ class tools extends script_base
 
     #[Cmd("tldcheck", "tc")]
     #[Syntax('<domain>')]
-    function tldcheck($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function tldcheck(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $domain = $cmdArgs['domain'];
 
@@ -260,7 +260,7 @@ class tools extends script_base
 
     #[Cmd("affirm")]
     #[Syntax('[nick]...')]
-    function affirm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function affirm(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             $body = async_get_contents("https://www.affirmations.dev");
@@ -281,7 +281,7 @@ class tools extends script_base
 
     #[Cmd("rainbow", "rnb", "nes")]
     #[Syntax('<input>...')]
-    function nes($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function nes(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $text = str_replace('\n', "\n", $cmdArgs[0]);
         $text = irctools\diagRainbow($text);

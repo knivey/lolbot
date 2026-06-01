@@ -70,7 +70,7 @@ class stocks extends \scripts\script_base
 
     #[Cmd("stock")]
     #[Syntax('<symbol>')]
-    public function stock($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function stock(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (false === $this->getKey()) {
             return;
@@ -114,7 +114,7 @@ class stocks extends \scripts\script_base
 
     #[Cmd("findsymbol")]
     #[Syntax('<query>')]
-    public function findsymbol($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function findsymbol(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (false === $this->getKey()) {
             return;
@@ -144,7 +144,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("doge")]
-    public function doge($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function doge(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {
@@ -163,7 +163,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("bch")]
-    public function bch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function bch(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {
@@ -182,7 +182,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("eth")]
-    public function eth($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function eth(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {
@@ -201,7 +201,7 @@ class stocks extends \scripts\script_base
     }
 
     #[Cmd("btc")]
-    public function btc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    public function btc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         try {
             if ($this->server->throttle) {
@@ -219,7 +219,7 @@ class stocks extends \scripts\script_base
         }
     }
 
-    public function getCoinPrice($coin)
+    public function getCoinPrice(string $coin): string
     {
         $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
         //hope this works out lol
@@ -227,7 +227,10 @@ class stocks extends \scripts\script_base
         return "Current price for $coin: $current USD";
     }
 
-    public function getCoinChart($coin)
+    /**
+     * @return string[]
+     */
+    public function getCoinChart(string $coin): array
     {
         $data = async_get_contents("https://api.coingecko.com/api/v3/coins/$coin/market_chart?vs_currency=usd&days=7");
         $json = json_decode($data);

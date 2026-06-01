@@ -76,6 +76,10 @@ class bomb_game extends script_base
         });
     }
 
+    /**
+     * @param array<string, string> $templates
+     * @param array<string, string> $values
+     */
     static function randReply(array $templates, array $values) : string {
         $t = $templates[array_rand($templates)];
         $newVals = [];

@@ -9,7 +9,7 @@ use simplehtmldom\HtmlDocument;
 
 #[Cmd("wiki")]
 #[Syntax('<query>...')]
-function wiki($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function wiki(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     list($rpl, $rpln) = makeRepliers($args, $bot, "Wiki");
     $query = rawurlencode($cmdArgs['query']);

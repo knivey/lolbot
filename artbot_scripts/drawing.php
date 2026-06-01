@@ -12,7 +12,7 @@ use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("linetest")]
 #[Syntax('<sx: uint max=100> <sy: uint max=100> <ex: uint max=100> <ey: uint max=100>')]
-function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function lineTest(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $art = Canvas::createBlank(30, 14);
     $sx = $cmdArgs['sx'];
@@ -28,7 +28,7 @@ function lineTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("filledellipsetest")]
 #[Syntax('<cx: uint max=100> <cy: uint max=100> <w: uint max=100> <h: uint max=100>')]
-function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function filledEllipseTest(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $art = Canvas::createBlank(80, 24);
     $cx = $cmdArgs['cx'];
@@ -43,7 +43,7 @@ function filledEllipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("ellipsetest")]
 #[Syntax('<cx: uint max=100> <cy: uint max=100> <w: uint max=100> <h: uint max=100> <segs: uint max=100>')]
-function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function ellipseTest(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $art = Canvas::createBlank(80, 24);
     $cx = $cmdArgs['cx'];
@@ -60,7 +60,7 @@ function ellipseTest($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("lines")]
 #[Desc("Draw some random lines")]
-function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function lines(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $art = Canvas::createBlank(80, 48, true);
     $numlines = rand(5, 20);
@@ -79,7 +79,7 @@ function lines($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("circles")]
 #[Desc("Draw some random circles")]
-function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function circles(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $art = Canvas::createBlank(80, 48, true);
     $numcircles = rand(5, 20);
@@ -98,7 +98,7 @@ function circles($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 #[Cmd("pentagons")]
 #[Desc("Draw some random pentagons")]
-function pentagons($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function pentagons(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $art = Canvas::createBlank(80, 48, true);
     $numcircles = rand(5, 20);
@@ -118,7 +118,7 @@ function pentagons($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 #[Cmd("stars")]
 #[Desc("Draw some random stars")]
 #[Option("--lines")]
-function stars($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function stars(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $lines = 48;
     if ($cmdArgs->optEnabled("--lines")) {

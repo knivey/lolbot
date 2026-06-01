@@ -20,8 +20,8 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 class weather extends script_base
 {
 
-    static $location_cache;
-    static $last_location_time = 0;
+    static FilesystemAdapter $location_cache;
+    static float $last_location_time = 0;
 
     public function init(): void
     {
@@ -137,7 +137,7 @@ class weather extends script_base
     #[Cmd("weather", "wz", "wea")]
     #[Syntax('[query]...')]
     #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
-    function weather($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function weather(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config, $entityManager;
         if (!isset($config['bingMapsKey'])) {
@@ -265,7 +265,7 @@ class weather extends script_base
     #[Cmd("setlocation")]
     #[Syntax("<query>...")]
     #[Options("--si", "--metric")]
-    function setlocation($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function setlocation(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         $si = false;

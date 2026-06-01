@@ -13,7 +13,7 @@ use \RedBeanPHP\R as R;
 #[Desc("add a quote, used this then paste the quotes to the chat and type @endquote, OR if its one line you can @addquote quoteline")]
 #[Syntax("[quote]...")]
 #[Option('--keeptimes', "We try to strip timestamps by default, use this to keep them")]
-function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function addquote(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = $args->chan;
@@ -37,7 +37,7 @@ function addquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     $bot->pm($chan, "Quote recording started type \x02\x034@endquote\x03\x02 when done or discard with @cancelquote or just wait 15 seconds.");
 }
 
-function quoteTimeOut($nick, $bot): void {
+function quoteTimeOut(string $nick, \Irc\Client $bot): void {
     $ctx = \NetworkContext::get($bot);
     if(!isset($ctx->quoteRecordings[$nick])) {
         echo "Timeout called but not recording?\n";
@@ -50,7 +50,7 @@ function quoteTimeOut($nick, $bot): void {
 
 #[Cmd("endquote", "stopquote")]
 #[Desc("Finish quote recording")]
-function endquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function endquote(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $host = $args->host;
@@ -87,7 +87,7 @@ function endquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     unset($ctx->quoteRecordings[$nick]);
 }
 
-function stripTimestamp($line) {
+function stripTimestamp(string $line): string {
     //var_dump($line);
     if(!preg_match("@^( *\[? *[\d:\-\\\/ ]+ *(?:am|pm)? *[\d:\-\\\/ ]* *]? *).+$@i", $line, $m)) {
         return $line;
@@ -102,7 +102,7 @@ function stripTimestamp($line) {
 
 #[Cmd("cancelquote")]
 #[Desc("cancel and discard a quote recording")]
-function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function cancelquote(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $nick = $args->nick;
     $chan = $args->chan;
@@ -121,7 +121,7 @@ function cancelquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 #[Option("--play", "Play the results up to limit")]
 #[Option("--limit", "Limit amount played, default is 10")]
 #[Option("--recent", "Order by most recent first")]
-function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function searchquote(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $ctx->initQuotesDb();
     R::selectDatabase("quotes_{$ctx->name}");
@@ -169,7 +169,7 @@ function searchquote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     }
 }
 
-function initQuotes($bot, \NetworkContext $ctx) {
+function initQuotes(\Irc\Client $bot, \NetworkContext $ctx): void {
     $ctx->initQuotesDb();
     $bot->on('chat', function ($args, \Irc\Client $bot) use ($ctx) {
         $nick = $args->from;
@@ -195,7 +195,7 @@ function initQuotes($bot, \NetworkContext $ctx) {
 #[Desc("Play a random quote or quote by id")]
 #[Syntax("[id]...")]
 #[Option("--contains", "Instead of id lookup find a random quote matching text")]
-function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function cmd_quote(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $ctx->initQuotesDb();
     R::selectDatabase("quotes_{$ctx->name}");
@@ -218,7 +218,7 @@ function cmd_quote($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     showQuote($bot, $args->chan, $quote);
 }
 
-function showQuote($bot, $chan, $quote) {
+function showQuote(\Irc\Client $bot, string $chan, object $quote): void {
     $creator = $quote->creator;
     $header = "\2Quote {$quote['id']} recorded by {$creator['nick']} ({$creator['host']}) on {$quote['date']} in {$quote['chan']}";
     if(!is_string($quote['data'])) {

@@ -13,7 +13,7 @@ use Itwmw\ColorDifference\Lib\RGB;
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
 #[Options("--rainbow", "--rnb", "--bsize", "--width", '--edit')]
-function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function url(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $url = $cmdArgs[0] ?? '';
@@ -253,7 +253,7 @@ static $palette = [
 #[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
 #[Option("--render2", "alternate text rending for luminocity")]
 #[Option("--16", "limit to only using 16 colors")]
-function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function ascii(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
     $url = $cmdArgs[0];
@@ -472,11 +472,11 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     }
 }
 
-function make_even($n) {
+function make_even(int|float $n): int|float {
     return $n - $n % 2;
 }
 
-function getClosestMatchCIEDE2000(Color $color, $limit = true) {
+function getClosestMatchCIEDE2000(Color $color, bool $limit = true): int {
     global $palette;
     if($limit)
         $pal = array_slice($palette, 0, 16);
@@ -494,7 +494,7 @@ function getClosestMatchCIEDE2000(Color $color, $limit = true) {
     return $matchIndex;
 }
 
-function getClosestMatchDin99(Color $color, $limit = false) {
+function getClosestMatchDin99(Color $color, bool $limit = false): int {
     global $palette;
     if($limit)
         $pal = array_slice($palette, 0, 16);
@@ -512,7 +512,7 @@ function getClosestMatchDin99(Color $color, $limit = false) {
     return $matchIndex;
 }
 
-function getClosestMatchEuclideanLab(Color $color, $limit = false) {
+function getClosestMatchEuclideanLab(Color $color, bool $limit = false): int {
     global $palette;
     if($limit)
         $pal = array_slice($palette, 0, 16);
@@ -530,7 +530,7 @@ function getClosestMatchEuclideanLab(Color $color, $limit = false) {
     return $matchIndex;
 }
 
-function getClosestMatchEuclideanRGB(Color $color, $limit = false) {
+function getClosestMatchEuclideanRGB(Color $color, bool $limit = false): int {
     global $palette;
     if($limit)
         $pal = array_slice($palette, 0, 16);
@@ -548,13 +548,13 @@ function getClosestMatchEuclideanRGB(Color $color, $limit = false) {
     return $matchIndex;
 }
 
-function render($lum)
+function render(float $lum): string
 {
     $chars = ['.', ':', '-', '~', '+', '*', '=', '>', '%', '$', '&', '#', '@'];
     return $chars[(int)round($lum * (count($chars) -1))];
 }
 
-function render2($lum) {
+function render2(float $lum): string {
     $chars = [' ','@','8','%','#','*','!','+','=','-',';',':',',','.', '$'];
     $total = $lum * 256;
     switch($total) {

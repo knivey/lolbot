@@ -10,7 +10,7 @@ $bashdb = [];
 
 #[Cmd("bash")]
 #[Desc("Play a random bash.org quote")]
-function bash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
+function bash(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     global $bashdb;
     try {
         populateBash();
@@ -33,7 +33,7 @@ function bash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     \pumpToChan($bot, $args->chan, [$head, ...$quote]);
 }
 
-function populateBash() {
+function populateBash(): void {
     global $bashdb;
     if(!empty($bashdb))
         return;

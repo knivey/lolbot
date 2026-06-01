@@ -12,7 +12,7 @@ class UrlEvent
     public string $text;
 
     /**
-     * @var list<Future>
+     * @var list<Future<void>>
      */
     public array $futures = [];
     /**
@@ -29,21 +29,28 @@ class UrlEvent
         $this->futures[] = $future;
     }
 
-    public function awaitAll() {
+    /**
+     * @return array{list<\Throwable>, list<mixed>}
+     */
+    public function awaitAll(): array
+    {
         return Future\awaitAll($this->futures);
     }
 
-    public function reply(string $msg) {
+    public function reply(string $msg): void
+    {
         $this->handled = true;
         $this->replies[] = $msg;
     }
 
-    public function sendReplies($bot, $chan) {
+    public function sendReplies(\Irc\Client $bot, string $chan): void
+    {
         foreach ($this->replies as $msg)
             $bot->pm($chan, "  $msg");
     }
 
-    public function doLog($linktitles, $bot) {
+    public function doLog(linktitles $linktitles, \Irc\Client $bot): void
+    {
         $linktitles->logUrl($bot, $this->nick, $this->chan, $this->text, $this->replies);
     }
 }

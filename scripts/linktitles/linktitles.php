@@ -20,7 +20,7 @@ use function Amp\Future\awaitAll;
 
 class linktitles extends script_base
 {
-    public $eventDispatcher;
+    public \Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher;
 
     //adding buffer limit is an extra precaution to the body size limit
     const bufferLimit = 1024*1024*40;
@@ -29,14 +29,9 @@ class linktitles extends script_base
 //sends all urls into a log channel for easier viewing url history
 //TODO take url as param to highlight it here
     /**
-     * @param $bot
-     * @param $nick
-     * @param $chan
-     * @param $line
-     * @param string|array $title
-     * @return void
+     * @param string[] $title
      */
-    function logUrl($bot, $nick, $chan, $line, string|array $title)
+    function logUrl(\Irc\Client $bot, string $nick, string $chan, string $line, string|array $title): void
     {
         global $config;
         if (!isset($config['bots'][$this->bot->id]['url_log_chan']))
@@ -52,9 +47,15 @@ class linktitles extends script_base
             $bot->pm($logChan, "  $msg");
     }
 
-    private $link_history = [];
+    /**
+     * @var array<string, string>
+     */
+    private array $link_history = [];
+    /**
+     * @var array<string, list<int>>
+     */
     private array $link_ratelimit = [];
-    function linktitles(\Irc\Client $bot, $nick, $chan, $identhost, $text)
+    function linktitles(\Irc\Client $bot, string $nick, string $chan, string $identhost, string $text): void
     {
         global $config;
         foreach (explode(' ', $text) as $word) {
@@ -255,7 +256,7 @@ class linktitles extends script_base
     }
 
 //TODO can add cache for this
-    function urlIsIgnored($chan, $fullhost, $url): bool
+    function urlIsIgnored(string $chan, string $fullhost, string $url): bool
     {
         global $entityManager;
         $criteria = Criteria::create();

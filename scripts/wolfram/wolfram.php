@@ -8,7 +8,7 @@ const waURL = 'https://api.wolframalpha.com/v2/query?input=';
 
 #[Cmd("calc", "wa")]
 #[Syntax('<query>...')]
-function calc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function calc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $config;
     if(!isset($config['waKey'])) {

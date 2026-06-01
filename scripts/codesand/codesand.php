@@ -15,7 +15,7 @@ use Symfony\Component\Yaml\Yaml;
 
 class codesand extends script_base
 {
-    function createStateJson($args, \Irc\Client $bot) {
+    function createStateJson(object $args, \Irc\Client $bot): string|false {
         $channel = $this->chans->getChan($args->chan);
         return json_encode([
             'caller' => [
@@ -29,7 +29,10 @@ class codesand extends script_base
         ]);
     }
 
-    function getRun($ep, $code, $extraParam = '', $stateData = '')
+    /**
+     * @return string[]
+     */
+    function getRun(string $ep, string $code, string $extraParam = '', string $stateData = ''): array
     {
         global $config;
         $maxlines = $config['bots'][$this->bot->id]['codesand_maxlines'] ?? 10;
@@ -71,7 +74,7 @@ class codesand extends script_base
         return $output;
     }
 
-    function canRun($args): bool
+    function canRun(object $args): bool
     {
         global $config;
         if (!($config['bots'][$this->bot->id]['codesand'] ?? false)) {
@@ -103,7 +106,7 @@ class codesand extends script_base
 
     #[Cmd("php")]
     #[Syntax("<code>...")]
-    function runPHP($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runPHP(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -114,7 +117,7 @@ class codesand extends script_base
 
     #[Cmd("bash")]
     #[Syntax("<code>...")]
-    function runBash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runBash(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -125,7 +128,7 @@ class codesand extends script_base
 
     #[Cmd("py3", "py", "python", "python3")]
     #[Syntax("<code>...")]
-    function runPy3($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runPy3(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -139,7 +142,7 @@ class codesand extends script_base
     #[Cmd("pyp")]
     #[Syntax("<code>...")]
     #[Desc("Run code in python3 wrapped inside a Print()")]
-    function runPy3p($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runPy3p(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -152,7 +155,7 @@ class codesand extends script_base
 
     #[Cmd("py2", "python2")]
     #[Syntax("<code>...")]
-    function runPy2($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runPy2(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -163,7 +166,7 @@ class codesand extends script_base
 
     #[Cmd("perl")]
     #[Syntax("<code>...")]
-    function runPerl($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runPerl(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -174,7 +177,7 @@ class codesand extends script_base
 
     #[Cmd("java")]
     #[Syntax("<code>...")]
-    function runJava($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runJava(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -198,7 +201,7 @@ class codesand extends script_base
     #[Cmd("ruby")]
     #[Syntax("<code>...")]
     #[Desc("Run ruby code")]
-    function runRuby($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runRuby(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -210,7 +213,7 @@ class codesand extends script_base
     #[Cmd("c", "tcc")]
     #[Desc("Run C code using tcc compiler")]
     #[Syntax("<code>...")]
-    function runTcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runTcc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -222,7 +225,7 @@ class codesand extends script_base
     #[Cmd("go", "golang")]
     #[Desc("Run go code")]
     #[Syntax("<code>...")]
-    function runGolang($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runGolang(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -240,7 +243,7 @@ class codesand extends script_base
     #[Cmd("js", "javascript")]
     #[Desc("Run javascript code")]
     #[Syntax("<code>...")]
-    function runJavascript($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runJavascript(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -252,7 +255,7 @@ class codesand extends script_base
     #[Cmd("gcc")]
     #[Desc("Run ruby code using gcc compiler")]
     #[Syntax("<code>...")]
-    function runGcc($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runGcc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -294,7 +297,7 @@ class codesand extends script_base
     #[Cmd("tcl")]
     #[Desc("Run tcl code")]
     #[Syntax("<code>...")]
-    function runTcl($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runTcl(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -306,7 +309,7 @@ class codesand extends script_base
     #[Cmd("cpp", "g++")]
     #[Desc("Run C++ code using g++")]
     #[Syntax("<code>...")]
-    function runGpp($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function runGpp(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (!$this->canRun($args)) {
             return;
@@ -325,6 +328,9 @@ using namespace std;
         $this->sendOut($bot, $args->chan, $output);
     }
 
+    /**
+     * @param string[] $data
+     */
     function sendOut(\Irc\Client $bot, string $chan, array $data): void
     {
         global $config;

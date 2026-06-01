@@ -12,7 +12,7 @@ use function knivey\tools\multi_array_padding;
 #[Cmd("mals", "myanimelistsearch")]
 #[Syntax("<search>...")]
 #[Desc("search a anime on myanimelist")]
-function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function mals(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     var_dump(urlencode($cmdArgs["search"]));
     $url = "https://myanimelist.net/anime.php?cat=anime&q=" .  urlencode($cmdArgs["search"]);
@@ -57,7 +57,7 @@ function mals($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 #[Cmd("mal", "myanimelist")]
 #[Syntax("<search>...")]
 #[Desc("lookup a anime on myanimelist, search can be an ID to lookup directly")]
-function mal($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function mal(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     if(preg_match("/^\d+$/", $cmdArgs["search"])) {
         $result = "https://myanimelist.net/anime/{$cmdArgs['search']}";

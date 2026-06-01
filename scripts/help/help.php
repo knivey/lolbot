@@ -15,7 +15,7 @@ class help extends script_base
     #[Syntax("[command]")]
     #[Option("--priv", "lookup private message commands")]
     #[Desc("lookup help for commands")]
-    function help($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function help(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         if (isset($cmdArgs['command'])) {
             if (!$cmdArgs->optEnabled("--priv")) {
@@ -44,7 +44,7 @@ class help extends script_base
         $this->showHelpPaste($args->chan, $bot, $out);
     }
 
-    function formatHelpMarkdown($cmds): string
+    function formatHelpMarkdown(iterable $cmds): string
     {
         $out = "# Bot Commands\n\n";
         $first = true;
@@ -65,7 +65,7 @@ class help extends script_base
         return $out;
     }
 
-    function showHelpPaste(string $chan, $bot, string $content)
+    function showHelpPaste(string $chan, \Irc\Client $bot, string $content): void
     {
         if (!isset($this->config['paste_host']) || !isset($this->config['paste_key'])) {
             $bot->msg($chan, "help: paste service not configured");
@@ -79,7 +79,7 @@ class help extends script_base
     }
     }
 
-    function showHelpDirect(string $chan, $bot, string $lines)
+    function showHelpDirect(string $chan, \Irc\Client $bot, string $lines): void
     {
         if (function_exists('pumpToChan')) {
             pumpToChan($bot, $chan, explode("\n", $lines));

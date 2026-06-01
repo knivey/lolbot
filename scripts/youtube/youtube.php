@@ -20,7 +20,7 @@ require_once 'library/async_get_contents.php';
 
 class youtube extends script_base
 {
-    function ytDuration($input): string
+    function ytDuration(string $input): string
     {
         try {
             $di = new \DateInterval($input);
@@ -54,7 +54,7 @@ class youtube extends script_base
         return $dur;
     }
 
-    function getLiveVideos($channelId)
+    function getLiveVideos(string $channelId): ?array
     {
         global $config;
         if (!isset($config['gkey'])) {
@@ -79,7 +79,7 @@ class youtube extends script_base
         return $data->items;
     }
 
-    function getVideoInfo($id)
+    function getVideoInfo(string $id): ?object
     {
         global $config;
         if (!isset($config['gkey'])) {
@@ -99,7 +99,7 @@ class youtube extends script_base
         return $data->items[0];
     }
 
-    function hostToFilehole(string $filename)
+    function hostToFilehole(string $filename): string
     {
         global $config;
         if(!isset($config['filehole'])) {
@@ -125,7 +125,7 @@ class youtube extends script_base
         return $respBody;
     }
 
-    function isShort($duration)
+    function isShort(string $duration): bool
     {
         try {
             $di = new \DateInterval($duration);
@@ -149,7 +149,8 @@ class youtube extends script_base
     }
 
 
-    private $youtube_history = [];
+    /** @var array<string, string> */
+    private array $youtube_history = [];
     public OrderedProviderInterface $eventProvider;
     function setEventProvider(OrderedProviderInterface $eventProvider): void
     {
@@ -333,7 +334,7 @@ class youtube extends script_base
     #[Cmd("yt", "ytsearch", "youtube")]
     #[Syntax('<query>...')]
     #[Options("--amt")]
-    function ytsearch($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function ytsearch(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config;
         $reply = function ($msg) use ($bot, $args) {

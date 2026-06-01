@@ -9,7 +9,7 @@ use Amp\Http\Server\SocketHttpServer;
 use Amp\Http\HttpStatus;
 use Amp\Http\Server\DefaultErrorHandler;
 
-function notifier(\Irc\Client $bot, $addresses, $logger) {
+function notifier(\Irc\Client $bot, string|array $addresses, \Psr\Log\LoggerInterface $logger): SocketHttpServer {
     //$cert = new Socket\Certificate(__DIR__ . '/../test/server.pem');
 
     //$context = (new Socket\BindContext)
@@ -32,7 +32,7 @@ function notifier(\Irc\Client $bot, $addresses, $logger) {
     return $server;
 }
 
-function requestHandler(Request $request, $bot) {
+function requestHandler(Request $request, \Irc\Client $bot): Response {
     $path = $request->getUri()->getPath();
     $path = explode('/', $path);
     $path = array_filter($path);

@@ -17,7 +17,7 @@ class lastfm extends script_base
     #[Cmd("setlastfm")]
     #[Syntax('<username>')]
     #[Desc("Set your last.fm name for the bot to remember for np")]
-    function setlastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function setlastfm(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config, $entityManager;
         $key = $config['lastfm'] ?? false;
@@ -47,7 +47,7 @@ class lastfm extends script_base
     #[Cmd("np")]
     #[Syntax('[nick]')]
     #[Desc("Show your nowplaying status from last.fm")]
-    function np($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function np(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config, $entityManager;
         $key = $config['lastfm'] ?? false;
@@ -96,7 +96,7 @@ class lastfm extends script_base
     #[Syntax('[user]')]
     #[Desc("Lookup a user on last.fm")]
     #[Options("--info")]
-    function lastfm($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function lastfm(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config, $entityManager;
         $key = $config['lastfm'] ?? false;

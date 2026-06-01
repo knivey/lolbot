@@ -15,7 +15,7 @@ class hostignore
     public int $id;
 
     #[ORM\Column]
-    public $hostmask;
+    public string $hostmask;
 
     #[ORM\Column]
     public ignore_type $type;

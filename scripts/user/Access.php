@@ -8,9 +8,11 @@ namespace scripts\user;
 
 
 class Access {
+    /** @var array<string, callable> */
     protected static array $acls = [];
 
-    static function allowed(string $name, ...$args) {
+    static function allowed(string $name, ...$args): mixed
+    {
         if(!array_key_exists($name, self::$acls)) {
             throw new \Exception("acl $name is undefined");
         }
@@ -18,7 +20,8 @@ class Access {
     }
 
     // best way to give function args like $user?
-    static function define(string $name, callable $function) {
+    static function define(string $name, callable $function): void
+    {
         self::$acls[$name] = $function;
     }
 }

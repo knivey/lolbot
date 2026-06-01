@@ -77,7 +77,7 @@ class alias extends script_base
     #[Cmd("unalias")]
     #[Syntax("<name>")]
     #[Desc("Remove a channel alias")]
-    function unalias($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function unalias(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
 
         global $entityManager;
@@ -105,7 +105,7 @@ class alias extends script_base
     #[Cmd("aliases")]
     #[Desc("List the channel aliases")]
     #[Option("--web", "show detailed aliases on web paste")]
-    function aliases($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function aliases(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
         try {
@@ -138,6 +138,9 @@ class alias extends script_base
             $rpl("$line", 'list');
     }
 
+    /**
+     * @param array<entities\alias> $aliases
+     */
     function formatAliasesMarkdown(array $aliases, string $chan): string
     {
         $out = "# Aliases for {$chan}\n\n";
@@ -160,7 +163,7 @@ class alias extends script_base
     #[Cmd("showalias", "aliasinfo")]
     #[Syntax("<name>")]
     #[Desc("Show info about an alias")]
-    function showaliass($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    function showaliass(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         list($rpl, $rpln) = makeRepliers($args, $bot, "alias");

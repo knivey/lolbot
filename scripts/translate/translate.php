@@ -10,7 +10,7 @@ use knivey\cmdr\attributes\Syntax;
 #[Cmd("translate", "trans")]
 #[Syntax('<input>...')]
 #[Options("--langs")]
-function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function translate_cmd(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     try {
         $text = $cmdArgs['input'];
@@ -63,7 +63,7 @@ function translate_cmd($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
 
 }
 
-function validateLanguages($languages)
+function validateLanguages(string $languages): array|false
 {
 
     $validLanguages = [

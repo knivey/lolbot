@@ -19,7 +19,7 @@ class seen extends script_base
     #[Cmd("seen")]
     #[Desc("check when bot last saw someone chat")]
     #[Syntax("<nick>")]
-    function seen($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function seen(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
         $nick = u($cmdArgs['nick'])->lower();
@@ -64,9 +64,9 @@ class seen extends script_base
 
 
 
-    private $updates = [];
+    private array $updates = [];
 
-    function updateSeen(string $action, string $chan, string $nick, string $text)
+    function updateSeen(string $action, string $chan, string $nick, string $text): void
     {
         $orig_nick = $nick;
         $nick = strtolower($nick);

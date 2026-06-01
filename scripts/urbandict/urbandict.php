@@ -12,7 +12,7 @@ class urbandict extends \scripts\script_base
 {
     #[Cmd("ud", "urban", "urbandict")]
     #[Syntax('<query>...')]
-    function ud($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+    function ud(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         $query = urlencode($cmdArgs['query']);
         try { 

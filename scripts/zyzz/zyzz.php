@@ -6,7 +6,7 @@ namespace scripts\zyzz;
 use knivey\cmdr\attributes\Cmd;
 
 #[Cmd("zyzz")]
-function zyzz($args, \Irc\Client $bot, $req)
+function zyzz(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $facts = file(__DIR__ . '/zyzz.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     if (empty($facts)) {

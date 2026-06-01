@@ -13,7 +13,7 @@ $warned = false;
 #[Syntax('<query>...')]
 #[Desc("Search brave.com")]
 #[Option("--amt", "How many results to show")]
-function brave($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
+function brave(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $config, $warned, $ratelimit;
     if (!isset($config['braveKey'])) {
