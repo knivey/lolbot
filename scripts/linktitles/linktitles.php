@@ -53,7 +53,7 @@ class linktitles extends script_base
     }
 
     private $link_history = [];
-    private $link_ratelimit = 0;
+    private array $link_ratelimit = [];
     function linktitles(\Irc\Client $bot, $nick, $chan, $identhost, $text)
     {
         global $config;
@@ -72,11 +72,18 @@ class linktitles extends script_base
             }
             $this->link_history[$chan] = $word;
 
-            if (time() < $this->link_ratelimit) {
+            $maxUrls = (int)($config['linktitles_rate_urls'] ?? 2);
+            $window = (int)($config['linktitles_rate_seconds'] ?? 2);
+            $now = time();
+            $this->link_ratelimit[$chan] = array_values(array_filter(
+                $this->link_ratelimit[$chan] ?? [],
+                fn($ts) => $now - $ts < $window
+            ));
+            if (count($this->link_ratelimit[$chan]) >= $maxUrls) {
                 $this->logUrl($bot, $nick, $chan, $text, "Err: Rate limit exceeded");
-                return;
+                continue;
             }
-            $this->link_ratelimit = time() + 2;
+            $this->link_ratelimit[$chan][] = $now;
 
             $urlEvent = new UrlEvent();
             $urlEvent->url = $word;
