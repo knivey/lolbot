@@ -182,7 +182,9 @@ class Client extends EventEmitter
         $this->onChannels = [];
         $this->inQ = '';
         $this->caps = [];
-        $this->emit('disconnected');
+        $this->emit('disconnected', new Event\DisconnectedEvent(
+            time: time(), event: 'disconnected', sender: $this
+        ));
     }
 
     //TODO use a lambda not a public function
@@ -454,7 +456,10 @@ class Client extends EventEmitter
                 $this->log->debug("IN", ['line' => stripForTerminal("$message")]);
             else
                 $this->log->info("IN", ['line' => stripForTerminal("$message")]);
-            $this->emit("message, message:{$msg->command}", array('message' => $msg, 'raw' => $message));
+            $this->emit("message, message:{$msg->command}", new Event\MessageEvent(
+                time: time(), event: "message", sender: $this,
+                message: $msg, raw: $message
+            ));
         }
         return $this;
     }
@@ -567,7 +572,10 @@ class Client extends EventEmitter
             $this->sendWatcherID = EventLoop::defer($this->processSendq(...));
         }
 
-        $this->emit("sent, sent:$message->command", array('message' => $message));
+        $this->emit("sent, sent:$message->command", new Event\SentEvent(
+            time: time(), event: "sent", sender: $this,
+            message: $message
+        ));
         return $this;
     }
 
@@ -682,11 +690,11 @@ class Client extends EventEmitter
 
 
     /**
-     * @var \stdClass|null
+     * @var Event\NamesReply|null
      */
-    protected ?object $namesReply = null;
+    protected ?Event\NamesReply $namesReply = null;
     /**
-     * @var ?array<string, object{channel: string, userCount: string, topic: string}>
+     * @var ?array<string, Event\ListEntry>
      */
     protected ?array $listReply = null;
 
@@ -722,8 +730,9 @@ class Client extends EventEmitter
                 if ($this->awaitingPong != null) {
                     $this->awaitingPong = null;
                 }
-                $this->emit("pong", array(
-                    'arg' => $message->getArg(1)
+                $this->emit("pong", new Event\PongEvent(
+                    time: time(), event: "pong", sender: $this,
+                    arg: $message->getArg(1)
                 ));
                 break;
             case "CAP":
@@ -764,10 +773,11 @@ class Client extends EventEmitter
                     $this->onChannels[$channel] = $channel;
                 }
 
-                $this->emit("join, join:$channel, join:$nick, join:$channel:$nick", array(
-                    'nick' => $nick,
-                    'identhost' => $message->getIdentHost(),
-                    'channel' => $channel
+                $this->emit("join, join:$channel, join:$nick, join:$channel:$nick", new Event\JoinEvent(
+                    time: time(), event: "join", sender: $this,
+                    nick: $nick, ident: $message->name ?? '', host: $message->host ?? '',
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    chan: $channel
                 ));
                 break;
             case CMD_PART:
@@ -778,10 +788,11 @@ class Client extends EventEmitter
                     unset($this->onChannels[$channel]);
                 }
 
-                $this->emit("part, part:$channel, part:$nick, part:$channel:$nick", array(
-                    'nick' => $nick,
-                    'identhost' => $message->getIdentHost(),
-                    'channel' => $channel
+                $this->emit("part, part:$channel, part:$nick, part:$channel:$nick", new Event\PartEvent(
+                    time: time(), event: "part", sender: $this,
+                    nick: $nick, ident: $message->name ?? '', host: $message->host ?? '',
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    chan: $channel
                 ));
                 break;
             case CMD_KICK:
@@ -792,10 +803,12 @@ class Client extends EventEmitter
                     unset($this->onChannels[$channel]);
                 }
 
-                $this->emit("kick, kick:$channel, kick:$nick, kick:$channel:$nick", array(
-                    'nick' => $nick,
-                    'identhost' => $message->getIdentHost(),
-                    'channel' => $channel
+                $kickNick = $nick;
+                $this->emit("kick, kick:$channel, kick:$kickNick, kick:$channel:$kickNick", new Event\KickEvent(
+                    time: time(), event: "kick", sender: $this,
+                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    chan: $channel, target: $kickNick
                 ));
                 break;
             case CMD_NOTICE:
@@ -804,40 +817,28 @@ class Client extends EventEmitter
                 $to = $message->getArg(0);
                 $text = $message->getArg(1, '');
 
-                $this->emit("notice, notice:$to, notice:$to:$from", array(
-                    'from' => $from,
-                    'nick' => $message->nick,
-                    'ident' => $message->name,
-                    'host' => $message->host,
-                    'identhost' => $message->getIdentHost(),
-                    'fullhost' => $message->getHostString(),
-                    'to' => $to,
-                    'target' => $to,
-                    'text' => $text
+                $this->emit("notice, notice:$to, notice:$to:$from", new Event\NoticeEvent(
+                    time: time(), event: "notice", sender: $this,
+                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    to: $to, text: $text
                 ));
                 break;
             case CMD_MODE:
-                $this->emit("mode", [
-                    'from' => $message->nick,
-                    'nick' => $message->nick,
-                    'ident' => $message->name,
-                    'host' => $message->host,
-                    'fullhost' => $message->getHostString(),
-                    'on' => $message->getArg(0),
-                    'target' => $message->getArg(0),
-                    'args' => array_splice($message->args, 1)
-                ]);
+                $this->emit("mode", new Event\ModeEvent(
+                    time: time(), event: "mode", sender: $this,
+                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    target: $message->getArg(0) ?? '', args: array_splice($message->args, 1)
+                ));
                 break;
             case RPL_CHANNELMODEIS:
-                $this->emit(RPL_CHANNELMODEIS, [
-                    'from' => $message->nick,
-                    'nick' => $message->nick,
-                    'ident' => $message->name,
-                    'host' => $message->host,
-                    'fullhost' => $message->getHostString(),
-                    'channel' => $message->getArg(1),
-                    'args' => array_splice($message->args, 2)
-                ]);
+                $this->emit(RPL_CHANNELMODEIS, new Event\ChannelModeIsEvent(
+                    time: time(), event: RPL_CHANNELMODEIS, sender: $this,
+                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    chan: $message->getArg(1) ?? '', args: array_splice($message->args, 2)
+                ));
                 break;
             case CMD_PRIVMSG:
                 //Handle private messages (Normal chat messages)
@@ -848,41 +849,30 @@ class Client extends EventEmitter
                 $text = $message->getArg(1, '');
 
                 if ($this->isChannel($to)) {
-                    $this->emit("chat, chat:$to, chat:$to:$from", array(
-                        'from' => $message->nick,
-                        'nick' => $message->nick,
-                        'ident' => $message->name,
-                        'host' => $message->host,
-                        'identhost' => $message->getIdentHost(),
-                        'fullhost' => $message->getHostString(),
-                        'channel' => $to,
-                        'target' => $to,
-                        'chan' => $to,
-                        'text' => $text
+                    $this->emit("chat, chat:$to, chat:$to:$from", new Event\ChatEvent(
+                        time: time(), event: "chat", sender: $this,
+                        nick: $message->nick, ident: $message->name, host: $message->host,
+                        identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                        chan: $to, text: $text
                     ));
                     break;
                 }
 
-                $this->emit("pm, pm:$to, pm:$to:$from", array(
-                    'from' => $message->nick,
-                    'nick' => $message->nick,
-                    'ident' => $message->name,
-                    'host' => $message->host,
-                    'fullhost' => $message->getHostString(),
-                    'identhost' => $message->getIdentHost(),
-                    'to' => $to,
-                    'target' => $to,
-                    'text' => $text
+                $this->emit("pm, pm:$to, pm:$to:$from", new Event\PmEvent(
+                    time: time(), event: "pm", sender: $this,
+                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    to: $to, text: $text
                 ));
                 break;
             case RPL_NAMREPLY:
                 if($this->namesReply != null) {
                     $this->namesReply->names = array_merge($this->namesReply->names, explode(' ', $message->getArg(3, '')));
                 } else {
-                    $this->namesReply = new \stdClass();
+                    $this->namesReply = new Event\NamesReply();
                     $this->namesReply->nick = $message->getArg(0, '');
                     $this->namesReply->channelType = $message->getArg(1, '');
-                    $this->namesReply->channel = $message->getArg(2, '');
+                    $this->namesReply->chan = $message->getArg(2, '');
                     $this->namesReply->names = explode(' ', $message->getArg(3, ''));
                 }
                 break;
@@ -890,11 +880,11 @@ class Client extends EventEmitter
                 if (empty($this->namesReply))
                     break;
 
-                $channel = $this->namesReply->channel;
+                $channel = $this->namesReply->chan;
 
-                $this->emit("names, names:$channel", array(
-                    'names' => $this->namesReply,
-                    'channel' => $channel
+                $this->emit("names, names:$channel", new Event\NamesEvent(
+                    time: time(), event: "names", sender: $this,
+                    chan: $channel, names: $this->namesReply
                 ));
                 $this->namesReply = null;
                 break;
@@ -905,21 +895,26 @@ class Client extends EventEmitter
                 $channel = $message->getArg(1);
                 if($channel === null)
                     break;
-                $this->listReply[$channel] = (object)array(
-                    'channel' => $channel,
-                    'userCount' => $message->getArg(2, ''),
-                    'topic' => $message->getArg(3, '')
+                $this->listReply[$channel] = new Event\ListEntry(
+                    chan: $channel,
+                    userCount: $message->getArg(2, ''),
+                    topic: $message->getArg(3, '')
                 );
                 break;
             case RPL_LISTEND:
-                $this->emit('list', array('list' => $this->listReply));
+                $this->emit('list', new Event\ListEvent(
+                    time: time(), event: 'list', sender: $this,
+                    items: $this->listReply
+                ));
                 $this->listReply = null;
                 break;
             case RPL_WELCOME:
                 //correct internal nickname, if given a new one by the server
                 $this->nick = $message->getArg(0, $this->nick);
                 $this->ircEstablished = true;
-                $this->emit('welcome');
+                $this->emit('welcome', new Event\WelcomeEvent(
+                    time: time(), event: 'welcome', sender: $this
+                ));
                 //$this->send("USERHOST {$this->nick}");
                 $this->send(CMD_WHOIS, $this->nick);
                 break;
@@ -975,7 +970,10 @@ class Client extends EventEmitter
                     $this->options[strtoupper($key)] = $val;
                 }
 
-                $this->emit('options', array('options' => $this->options));
+                $this->emit('options', new Event\OptionsEvent(
+                    time: time(), event: 'options', sender: $this,
+                    options: $this->options
+                ));
                 break;
             case ERR_NICKNAMEINUSE:
                 if(!$this->isEstablished())
@@ -988,23 +986,26 @@ class Client extends EventEmitter
                 if($this->getNick() == $message->nick && $newNick !== null) {
                     $this->nick = $newNick;
                 }
-                $this->emit("nick", array(
-                    'old' => $message->nick,
-                    'new' => $newNick
+                $this->emit("nick", new Event\NickEvent(
+                    time: time(), event: "nick", sender: $this,
+                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    old: $message->nick, new: $newNick ?? ''
                 ));
                 break;
             case "QUIT":
-                $this->emit("quit", array(
-                    'nick' => $message->nick,
-                    'ident' => $message->name,
-                    'host' => $message->host,
-                    'fullhost' => $message->getHostString(),
-                    'identhost' => $message->getIdentHost(),
-                    'msg' => $message->getArg(0)
+                $this->emit("quit", new Event\QuitEvent(
+                    time: time(), event: "quit", sender: $this,
+                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
+                    text: $message->getArg(0) ?? ''
                 ));
                 break;
             default:
-                $this->emit($message->command, ['message' => $message]);
+                $this->emit($message->command, new Event\NumericEvent(
+                    time: time(), event: $message->command, sender: $this,
+                    message: $message
+                ));
         }
     }
 

@@ -2,6 +2,8 @@
 
 namespace Irc;
 
+use Irc\Event\Event;
+
 /**
  * @template T
  * @package Irc
@@ -77,31 +79,37 @@ class EventEmitter
     //TODO the object sent by this is stupid and dumb would like to make better defined objects
 
     /**
-     * @param array<string, mixed> $args
+     * @param array<string, mixed>|Event $args
      */
-    public function emit(string $event, array $args = array()): static
+    public function emit(string $event, array|Event $args = []): static
     {
         if (str_contains($event, ',')) {
             $events = explode(',', $event);
-            foreach ($events as $event) {
-                $this->emit(trim($event), $args);
+            foreach ($events as $ev) {
+                $this->emit(trim($ev), $args);
             }
             return $this;
         }
 
-        $args['time'] = time();
-        $args['event'] = $event;
-        $args['sender'] = $this;
+        if ($args instanceof Event) {
+            $args->event = $event;
+            $evtObj = $args;
+        } else {
+            $args['time'] = time();
+            $args['event'] = $event;
+            $args['sender'] = $this;
+            $evtObj = (object)$args;
+        }
 
         if (!empty($this->onceEventCallbacks[$event])) {
             foreach ($this->onceEventCallbacks[$event] as $callback)
-                call_user_func($callback, (object)$args, $this);
+                call_user_func($callback, $evtObj, $this);
             $this->onceEventCallbacks[$event] = array();
         }
 
         if (!empty($this->eventCallbacks[$event])) {
             foreach ($this->eventCallbacks[$event] as $callback)
-                call_user_func($callback, (object)$args, $this);
+                call_user_func($callback, $evtObj, $this);
         }
 
         return $this;
