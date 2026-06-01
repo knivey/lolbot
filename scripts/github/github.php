@@ -28,7 +28,7 @@ class github extends script_base
         }
         $event->addFuture(\Amp\async(function () use ($event) {
             //Handle github user or project
-            $uri = Uri::createFromString($event->url);
+            $uri = Uri::new($event->url);
             //array_values to make sure its indexed if anything removed with filter
             $pathParts = array_values(array_filter(explode('/', $uri->getPath())));
             //var_dump($word, $uri, $uri->getPath(), $pathParts);
