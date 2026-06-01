@@ -51,6 +51,7 @@
         "psr-4": {
             "scripts\\": "scripts",
             "Irc\\": "library/Irc",
+            "Irc\\Event\\": "library/Irc/Event",
             "draw\\": "library/draw",
             "lolbot\\entities\\": "entities",
             "lolbot\\cli_cmds\\": "cli_cmds"
