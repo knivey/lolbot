@@ -10,7 +10,7 @@ class Channel
 {
     /**
      * indexed by mode and has value if mode has arg (like keys, limit etc)
-     * @var array<string,string>
+     * @var array<string, bool|string>
      */
     public array $modes = [];
     /**
@@ -116,9 +116,29 @@ class Channels
             return;
 
         $modeString = array_shift($modeArgs);
+        if ($modeString === null) {
+            $bot->log->warning("Malformed MODE event: no mode string", [
+                'channel' => $channel,
+                'modeArgs' => $modeArgs,
+            ]);
+            throw new \RuntimeException("Malformed MODE event on $channel: no mode string");
+        }
         $modeArgs = array_values($modeArgs);
         $adding = true;
-        $CHANMODES = $bot->getOption('CHANMODES', []);
+        $rawChanmodes = $bot->getOption('CHANMODES', []);
+        $CHANMODES = [];
+        if (is_array($rawChanmodes)) {
+            foreach ($rawChanmodes as $v) {
+                if (is_string($v)) $CHANMODES[] = $v;
+            }
+        }
+        if (count($CHANMODES) < 4) {
+            $bot->log->warning("MODE event but server has no CHANMODES ISUPPORT", [
+                'channel' => $channel,
+                'modeString' => $modeString,
+            ]);
+            throw new \RuntimeException("Server is missing CHANMODES ISUPPORT; cannot safely parse MODE on $channel");
+        }
         foreach (str_split($modeString) as $mode) {
             //If a switch is inside a loop, continue 2 will continue with the next iteration of the outer loop.
             switch ($mode) {
@@ -133,26 +153,49 @@ class Channels
             // https://modern.ircdocs.horse/#mode-message
 
             //address to list modes (always has arg)
-            if (str_contains($CHANMODES[0] ?? '', $mode)) {
+            if (str_contains($CHANMODES[0], $mode)) {
                 $arg = array_shift($modeArgs);
+                if ($arg === null) {
+                    $bot->log->warning("Malformed MODE event: ran out of args", [
+                        'channel' => $channel, 'mode' => $mode, 'modeType' => 'A',
+                        'modeString' => $modeString, 'remainingArgs' => $modeArgs,
+                    ]);
+                    throw new \RuntimeException("Malformed MODE event on $channel: ran out of args at mode '$mode' (Type A)");
+                }
             }
             //change setting, must always have arg
-            if (str_contains($CHANMODES[1] ?? '', $mode)) {
+            if (str_contains($CHANMODES[1], $mode)) {
                 $arg = array_shift($modeArgs);
+                if ($arg === null) {
+                    $bot->log->warning("Malformed MODE event: ran out of args", [
+                        'channel' => $channel, 'mode' => $mode, 'modeType' => 'B',
+                        'modeString' => $modeString, 'remainingArgs' => $modeArgs,
+                    ]);
+                    throw new \RuntimeException("Malformed MODE event on $channel: ran out of args at mode '$mode' (Type B)");
+                }
                 if($adding)
                     $this->channels[strtolower($channel)]->modes[$mode] = $arg;
                 else
                     unset($this->channels[strtolower($channel)]->modes[$mode]);
             }
             //change setting, has arg when set, no args when unset
-            if (str_contains($CHANMODES[2] ?? '', $mode)) {
-                if($adding)
-                    $this->channels[strtolower($channel)]->modes[$mode] = array_shift($modeArgs);
-                else
+            if (str_contains($CHANMODES[2], $mode)) {
+                if($adding) {
+                    $arg = array_shift($modeArgs);
+                    if ($arg === null) {
+                        $bot->log->warning("Malformed MODE event: ran out of args", [
+                            'channel' => $channel, 'mode' => $mode, 'modeType' => 'C',
+                            'modeString' => $modeString, 'remainingArgs' => $modeArgs,
+                        ]);
+                        throw new \RuntimeException("Malformed MODE event on $channel: ran out of args at mode '$mode' (Type C)");
+                    }
+                    $this->channels[strtolower($channel)]->modes[$mode] = $arg;
+                } else {
                     unset($this->channels[strtolower($channel)]->modes[$mode]);
+                }
             }
             //change a setting, has no args
-            if (str_contains($CHANMODES[3] ?? '', $mode)) {
+            if (str_contains($CHANMODES[3], $mode)) {
                 if($adding)
                     $this->channels[strtolower($channel)]->modes[$mode] = true;
                 else
@@ -176,6 +219,6 @@ class Channels
      * @return array<string>
      */
     public function dump(): array {
-        return explode("\n", json_encode($this->channels, JSON_PRETTY_PRINT));
+        return explode("\n", json_encode($this->channels, JSON_PRETTY_PRINT) ?: '');
     }
 }
