@@ -4,7 +4,7 @@ parameters:
 	fileExtensions:
 		- php
 		- inc
-	level: 5
+	level: 6
 	paths:
 		- .
 	excludePaths:
