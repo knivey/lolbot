@@ -21,8 +21,19 @@ class seen
     #[ORM\Column]
     public string $chan;
 
+    /**
+     * @var resource|string
+     */
     #[ORM\Column(type: Types::BINARY)]
-    public string $text;
+    public $text = '';
+
+    public function getText(): string
+    {
+        if (is_resource($this->text)) {
+            $this->text = stream_get_contents($this->text);
+        }
+        return $this->text;
+    }
 
     #[ORM\Column]
     public string $action;

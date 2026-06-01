@@ -55,10 +55,7 @@ class seen extends script_base
         if ($seen->action == "notice") {
             $n = "[{$seen->orig_nick}]";
         }
-        if(is_string($seen->text))
-            $text = $seen->text;
-        else
-            $text = stream_get_contents($seen->text);
+        $text = $seen->getText();
         $bot->pm($args->chan, "seen {$ago}: $n {$text}");
     }
 
