@@ -353,7 +353,7 @@ function cancel($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
 }
 
 $reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed', '--link', '--download'];
-function reqart($bot, $chan, $file, $opts = [], $args = [], \NetworkContext $ctx) {
+function reqart($bot, $chan, $file, $opts, $args, \NetworkContext $ctx) {
     $config = $ctx->config;
     if(isset($ctx->playing[strtolower($chan)])) {
         return;

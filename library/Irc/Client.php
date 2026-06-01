@@ -672,7 +672,7 @@ class Client extends EventEmitter
 
 
     /**
-     * @var ?object{nick: string, channelType: string, channel: string, names: list<string>}
+     * @var \stdClass|null
      */
     protected ?object $namesReply = null;
     /**
@@ -869,12 +869,11 @@ class Client extends EventEmitter
                 if($this->namesReply != null) {
                     $this->namesReply->names = array_merge($this->namesReply->names, explode(' ', $message->getArg(3, '')));
                 } else {
-                    $this->namesReply = (object)array(
-                        'nick' => $message->getArg(0, ''),
-                        'channelType' => $message->getArg(1, ''),
-                        'channel' => $message->getArg(2, ''),
-                        'names' => explode(' ', $message->getArg(3, ''))
-                    );
+                    $this->namesReply = new \stdClass();
+                    $this->namesReply->nick = $message->getArg(0, '');
+                    $this->namesReply->channelType = $message->getArg(1, '');
+                    $this->namesReply->channel = $message->getArg(2, '');
+                    $this->namesReply->names = explode(' ', $message->getArg(3, ''));
                 }
                 break;
             case RPL_ENDOFNAMES:

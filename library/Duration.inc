@@ -131,7 +131,7 @@ function Duration_int2array($seconds, $periods = null) {
  */
 function Duration_array2string($duration, $nopad = false) {
     if (!is_array($duration)) {
-        return false;
+        return '';
     }
     $array = [];
     foreach ($duration as $key => $value) {

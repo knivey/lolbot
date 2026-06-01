@@ -352,10 +352,12 @@ function ascii($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
             $hb = "▀";
             for($col = 0; $col < $size['width']; $col++) {
                 $pixel = $img->getImagePixelColor($col, $row);
-                $color = new Color(new RGB(...array_values($pixel->getColor())));
+                $rgba = $pixel->getColor();
+                $color = new Color(new RGB((int)$rgba['r'], (int)$rgba['g'], (int)$rgba['b']));
                 if($cmdArgs->optEnabled("--halfblock")) {
                     $pixel2 = $img->getImagePixelColor($col, $row + 1);
-                    $color2 = new Color(new RGB(...array_values($pixel2->getColor())));
+                    $rgba2 = $pixel2->getColor();
+                    $color2 = new Color(new RGB((int)$rgba2['r'], (int)$rgba2['g'], (int)$rgba2['b']));
                 }
 
 
@@ -549,7 +551,7 @@ function getClosestMatchEuclideanRGB(Color $color, $limit = false) {
 function render($lum)
 {
     $chars = ['.', ':', '-', '~', '+', '*', '=', '>', '%', '$', '&', '#', '@'];
-    return $chars[round($lum * (count($chars) -1))];
+    return $chars[(int)round($lum * (count($chars) -1))];
 }
 
 function render2($lum) {

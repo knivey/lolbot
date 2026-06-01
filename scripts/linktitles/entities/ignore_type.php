@@ -15,7 +15,8 @@ enum ignore_type: int
             "global" => self::global,
             "network" => self::network,
             "bot" => self::bot,
-            "channel", "chan" => self::channel
+            "channel", "chan" => self::channel,
+            default => throw new \ValueError("Unknown ignore type: $string")
         };
     }
 

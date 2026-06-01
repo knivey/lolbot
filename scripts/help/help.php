@@ -82,7 +82,7 @@ class help extends script_base
     function showHelpDirect(string $chan, $bot, string $lines)
     {
         if (function_exists('pumpToChan')) {
-            pumpToChan($chan, explode("\n", $lines));
+            pumpToChan($bot, $chan, explode("\n", $lines));
             return;
         }
         foreach (explode("\n", $lines) as $line) {
