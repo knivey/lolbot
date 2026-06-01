@@ -23,6 +23,7 @@ function usageAndExit(string $msg = ''): never {
 $inputs = [];
 $outputFile = 'artbotsconfig.yaml';
 $currentName = null;
+$argv = $argv ?? $_SERVER['argv'] ?? [];
 
 for($i = 1; $i < count($argv); $i++) {
     if($argv[$i] === '-n') {

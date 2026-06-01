@@ -59,6 +59,10 @@ require_once 'artbot_scripts/artfart.php';
 require_once 'artbot_scripts/help.php';
 
 //copied from Cmdr should give it its own function in there later
+/**
+ * @param array<string, string> $validOpts
+ * @return array<string, mixed>
+ */
 function parseOpts(string &$msg, array $validOpts = []): array {
     $opts = [];
     $msga = explode(' ', $msg);
@@ -84,7 +88,7 @@ function parseOpts(string &$msg, array $validOpts = []): array {
     echo $error->getTraceAsString();
 });
 
-function onchat($args, \Irc\Client $bot, NetworkContext $ctx)
+function onchat(object $args, \Irc\Client $bot, NetworkContext $ctx): void
 {
     async(function() use ($args, $bot, $ctx) {
         global $entityManager;
@@ -142,12 +146,12 @@ function onchat($args, \Irc\Client $bot, NetworkContext $ctx)
             $cmdArgs = \knivey\tools\makeArgs($tmpText);
             if(!is_array($cmdArgs))
                 $cmdArgs = [];
-            artbot_scripts\reqart($bot, $args->channel, $cmd, $opts, $cmdArgs, $ctx);
+            artbot_scripts\reqart($bot, $args->channel, $cmd, $opts, $args, $ctx);
         }
     });
 }
 
-function registerNetworkRoutes(artbot_rest_server $server, NetworkContext $ctx, string $prefix) {
+function registerNetworkRoutes(artbot_rest_server $server, NetworkContext $ctx, string $prefix): void {
     $server->addRoute("POST", "/{$prefix}/privmsg/{chan}", new ClosureRequestHandler(
         function (Request $request) use ($ctx): Response {
             $notifier_keys = Yaml::parseFile(__DIR__. '/notifier_keys.yaml');
@@ -180,7 +184,10 @@ function registerNetworkRoutes(artbot_rest_server $server, NetworkContext $ctx, 
     artbot_scripts\setupRestRoutes($server, $ctx, $prefix);
 }
 
-function startNetwork(array $networkConfig, $logHandler, ?artbot_rest_server $restServer, string $restUrl): NetworkContext
+/**
+ * @param array<string, mixed> $networkConfig
+ */
+function startNetwork(array $networkConfig, \Monolog\Handler\HandlerInterface $logHandler, ?artbot_rest_server $restServer, string $restUrl): NetworkContext
 {
     $ctx = new NetworkContext($networkConfig);
 
@@ -283,7 +290,10 @@ function startNetwork(array $networkConfig, $logHandler, ?artbot_rest_server $re
     return $ctx;
 }
 
-function shutdown(array $contexts, string $msg, ?artbot_rest_server $restServer) {
+/**
+ * @param NetworkContext[] $contexts
+ */
+function artbotShutdown(array $contexts, string $msg, ?artbot_rest_server $restServer): void {
     echo "shutdown started: $msg\n";
     $futures = [];
     foreach ($contexts as $ctx) {
@@ -313,7 +323,7 @@ function shutdown(array $contexts, string $msg, ?artbot_rest_server $restServer)
 $contexts = [];
 $restServer = null;
 
-function main() {
+function main(): void {
     global $config, $logHandler, $contexts, $restServer;
 
     if (isset($config['listen'])) {
@@ -348,11 +358,11 @@ function main() {
     }
 
     EventLoop::onSignal(SIGINT, function () use ($contexts, $restServer): void {
-        shutdown($contexts, "Caught SIGINT GOODBYE!!!!", $restServer);
+        artbotShutdown($contexts, "Caught SIGINT GOODBYE!!!!", $restServer);
     });
 
     EventLoop::onSignal(SIGTERM, function () use ($contexts, $restServer): void {
-        shutdown($contexts, "Caught SIGTERM GOODBYE!!!!", $restServer);
+        artbotShutdown($contexts, "Caught SIGTERM GOODBYE!!!!", $restServer);
     });
 }
 

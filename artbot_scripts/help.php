@@ -43,6 +43,9 @@ function help(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     showHelpPaste($bot, $args->chan, $out);
 }
 
+/**
+ * @param iterable<string, object> $cmds
+ */
 function formatHelpMarkdown(iterable $cmds): string
 {
     $out = "# Bot Commands\n\n";

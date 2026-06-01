@@ -11,7 +11,7 @@ class Access {
     /** @var array<string, callable> */
     protected static array $acls = [];
 
-    static function allowed(string $name, ...$args): mixed
+    static function allowed(string $name, object ...$args): mixed
     {
         if(!array_key_exists($name, self::$acls)) {
             throw new \Exception("acl $name is undefined");

@@ -66,12 +66,15 @@ class Color
     }
 
     //thinking this can be like an array of colors with a step size?
-    public function setGradiant(array $colors)
+    /**
+     * @param array<int|Color> $colors
+     */
+    public function setGradiant(array $colors): void
     {
 
     }
 
-    public function advanceGradiant()
+    public function advanceGradiant(): void
     {
 
     }

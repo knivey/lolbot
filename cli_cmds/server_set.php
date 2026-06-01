@@ -16,6 +16,7 @@ use lolbot\entities\Server;
 #[AsCommand("server:set")]
 class server_set extends Command
 {
+    /** @var array<string> */
     public array $settings = [
         "address",
         "port",

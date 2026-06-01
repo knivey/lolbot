@@ -144,7 +144,7 @@ class lastfm extends script_base
         if (isset($track['date']['uts'])) {
             $ago = time() - $track['date']['uts'];
             $dur = \Duration_int2array($ago);
-            $ago = \Duration_array2string(array_slice($dur, 0, 3), 1);
+            $ago = \Duration_array2string(array_slice($dur, 0, 3), true);
             $time = "last scrobbled $ago ago";
         }
         $bot->pm($args->chan, "\2last.fm:\2 $user $time: $title - $album - $artist");

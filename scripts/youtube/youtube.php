@@ -54,6 +54,9 @@ class youtube extends script_base
         return $dur;
     }
 
+    /**
+     * @return list<object>|null
+     */
     function getLiveVideos(string $channelId): ?array
     {
         global $config;
@@ -172,9 +175,6 @@ class youtube extends script_base
             return;
         }
 
-        if (!array_key_exists(5, $m)) {
-            return;
-        }
         $id = $m[5];
 
         $event->addFuture(\Amp\async(function () use ($event, $id) {
@@ -255,7 +255,7 @@ class youtube extends script_base
 
                 $sent = false;
                 $msg = "\2\3" . "01,00You" . "\3" . "00,04Tube\3\2 {$repost}$title | $chanTitle | $ago | $dur $shorts";
-                $thumbnail = $v?->snippet?->thumbnails?->high?->url;
+                $thumbnail = $v->snippet?->thumbnails?->high?->url;
                 if ($thumbnail != null && ($config['bots'][$this->bot->id]['youtube_thumb'] ?? false) && isset($config['p2u']) && $repost == '') {
                     $ext = explode('.', $thumbnail);
                     $ext = array_pop($ext);

@@ -33,7 +33,11 @@
  * @param   int|array  $duration  Array of time segments or a number of seconds
  * @return  string
  */
-function Duration_toString($duration, $periods = null) {
+/**
+ * @param array<string, int|float>|int $duration
+ * @param array<string, int|float>|null $periods
+ */
+function Duration_toString(array|int $duration, ?array $periods = null): string {
     if (!is_array($duration)) {
         $duration = Duration_int2array($duration, $periods);
     }
@@ -94,7 +98,12 @@ function string2Seconds(string $duration): int|string {
  * @param        int $seconds Number of seconds to be parsed
  * @return       mixed An array containing named segments
  */
-function Duration_int2array($seconds, $periods = null) {
+/**
+ * @param int|float $seconds
+ * @param array<string, int|float>|null $periods
+ * @return array<string, int|float>|null
+ */
+function Duration_int2array(int|float $seconds, ?array $periods = null): ?array {
 	global $Duration_periods;
     // Define time periods
     if (!is_array($periods)) {
@@ -129,10 +138,10 @@ function Duration_int2array($seconds, $periods = null) {
  * @param        mixed $duration An array of named segments
  * @return       string
  */
-function Duration_array2string($duration, $nopad = false) {
-    if (!is_array($duration)) {
-        return '';
-    }
+/**
+ * @param array<string, int|float> $duration
+ */
+function Duration_array2string(array $duration, bool $nopad = false): string {
     $array = [];
     foreach ($duration as $key => $value) {
         //$segment_name = substr($key, 0, -1);

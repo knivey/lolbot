@@ -63,11 +63,11 @@ class weather extends script_base
 
     /**
      * @phpstan-pure
-     * @param mixed $speed 
+     * @param int|float $speed 
      * @param bool $si 
      * @return string 
      */
-    static function displayWindspeed($speed, $si = false): string
+    static function displayWindspeed(int|float $speed, bool $si = false): string
     {
         if ($si) {
             return "$speed m/s";

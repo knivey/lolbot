@@ -104,7 +104,10 @@ class Channels
         });
     }
 
-    private function processModes($channel, $modeArgs, $bot): void {
+    /**
+     * @param array<string> $modeArgs
+     */
+    private function processModes(string $channel, array $modeArgs, \Irc\Client $bot): void {
         if($channel[0] != "#")
             return;
         if(!isset($this->channels[strtolower($channel)]))
@@ -167,7 +170,10 @@ class Channels
             clone $this->channels[strtolower($channel)] : false;
     }
 
-    public function dump() {
+    /**
+     * @return array<string>
+     */
+    public function dump(): array {
         return explode("\n", json_encode($this->channels, JSON_PRETTY_PRINT));
     }
 }

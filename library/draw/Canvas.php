@@ -158,7 +158,7 @@ class Canvas
         return $out;
     }
 
-    public function drawPoint(int $x, int $y, Color $color, string $text = '')
+    public function drawPoint(int $x, int $y, Color $color, string $text = ''): void
     {
         if (isset($this->data[$y][$x])) {
             $this->data[$y][$x]->fg = $color->fg;
@@ -169,7 +169,7 @@ class Canvas
         }
     }
 
-    public function fillColor(int $x, int $y, Color $color, string $text = '')
+    public function fillColor(int $x, int $y, Color $color, string $text = ''): void
     {
         if (!isset($this->data[$y][$x])) {
             return;
@@ -200,7 +200,7 @@ class Canvas
         }
     }
 
-    public function drawLine(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = '')
+    public function drawLine(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = ''): void
     {
         $dx = abs($endX - $startX);
         $dy = abs($endY - $startY);
@@ -228,7 +228,7 @@ class Canvas
         }
     }
 
-    public function drawFilledEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '')
+    public function drawFilledEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = ''): void
     {
         for ($y = -$height; $y <= $height; $y++) {
             for ($x = -$width; $x <= $width; $x++) {
@@ -240,7 +240,7 @@ class Canvas
     }
 
     //with a low seg number it draws shapes so maybe just add rotation later for shape drawing
-    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100, float $rotate = 0)
+    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100, float $rotate = 0): void
     {
         //want radius amts
         $width = $width / 2;
@@ -263,7 +263,7 @@ class Canvas
     }
 
     //for now force to be same size, can add another function for copying rects later
-    public function overlay(Canvas $art)
+    public function overlay(Canvas $art): void
     {
         if ($art->w != $this->w) {
             echo "art overlay widths mismatch\n";

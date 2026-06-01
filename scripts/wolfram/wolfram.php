@@ -25,8 +25,11 @@ function calc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
         $body = async_get_contents($query);
 
         $xml = simplexml_load_string($body);
+        /** @var string $input */
         $input = '';
+        /** @var string $result */
         $result = '';
+        /** @var string $decimalAprox */
         $decimalAprox = '';
         if ($xml['parsetimedout'] == 'true') {
             throw new \Exception("Error, query took too long to parse.");
@@ -43,6 +46,7 @@ function calc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
                 $result .= ", Did you mean: " . @$xml->didyoumeans->didyoumean[0];
             throw new \Exception("Query not understood" . $result);
         }
+        /** @var string $topPod */
         $topPod = '';
         foreach ($xml->pod as $pod) {
             switch($pod['id']) {
@@ -56,14 +60,14 @@ function calc(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
                 $decimalAprox = substr($pod->subpod->plaintext, 0, 200);
                 break;
             default:
-                if($topPod == '')
+                if($topPod === '')
                     $topPod = str_replace("\n", "\2;\2 ", $pod->subpod->plaintext);
             }
         }
-        if($result == "") {
+        if($result === "") {
             $result = $topPod;
         }
-        if($result == "" && $decimalAprox != "") {
+        if($result === "" && $decimalAprox !== "") {
             $result = $decimalAprox;
             $decimalAprox = "";
         }

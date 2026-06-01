@@ -90,6 +90,10 @@ require_once 'scripts/yoda/yoda.php';
 
 
 //copied from Cmdr should give it its own function in there later
+/**
+ * @param array<string> $validOpts
+ * @return array<string, string|null>
+ */
 function parseOpts(string &$msg, array $validOpts = []): array {
     $opts = [];
     $msga = explode(' ', $msg);
@@ -358,7 +362,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     return $client;
 }
 
-function main() {
+function main(): void {
     global $clients, $entityManager, $config, $servers, $logHandler;
     $nets = $entityManager->getRepository(Network::class)->findAll();
     foreach ($nets as $network) {
@@ -383,7 +387,11 @@ function main() {
 }
 
 
-function shutdown($clients, $servers, $msg) {
+/**
+ * @param \Irc\Client[] $clients
+ * @param \Amp\Http\Server\HttpServer[] $servers
+ */
+function shutdown(array $clients, array $servers, string $msg): void {
         echo "shutdown started: $msg\n";
         foreach ($clients as $bot) {
             if (!$bot->isConnected)

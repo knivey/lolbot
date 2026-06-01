@@ -47,15 +47,15 @@ class invidious extends script_base
                 }
                 $title = $html->find("meta [property=\"og:title\"]", 0)?->attr['content'] ?? "?";
                 //$views = $html->find("p#views", 0)?->plaintext ?? "?";
-                $channel = $html->find("span#channel-name", 0)?->plaintext ?? "?";
-                $date = $html->find("p#published-date", 0)?->plaintext ?? "?";
+                $channel = $html->find("span#channel-name", 0)?->plaintext ?? "?"; // @phpstan-ignore nullsafe.neverNull
+                $date = $html->find("p#published-date", 0)?->plaintext ?? "?"; // @phpstan-ignore nullsafe.neverNull
                 $vd = $html->find("script#video_data", 0)?->innertext;
                 if (!is_string($vd)) {
                     echo "invidious didnt get video data json, aborting\n";
                     return;
                 }
                 $json = json_decode($vd, flags: JSON_THROW_ON_ERROR);
-                $length = \Duration_toString($json?->length_seconds ?? 0);
+                $length = \Duration_toString($json->length_seconds ?? 0);
                 $rpl = "\x0315,01[\x0300,01I\x0315ꞐꝞI\x0314D\x0300IꝊU\x0315Ꞩ\x0300,01]\x03 $title | $channel | $date | $length";
                 $event->reply($rpl);
             } catch (\Exception $e) {

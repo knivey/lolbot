@@ -22,7 +22,7 @@ class seen
     public string $chan;
 
     #[ORM\Column(type: Types::BINARY)]
-    public $text;
+    public string $text;
 
     #[ORM\Column]
     public string $action;

@@ -23,16 +23,19 @@ class artbot_rest_server {
     public ErrorHandler $errorHandler;
 
     public function __construct(
-        public $logHandler
+        public \Monolog\Handler\HandlerInterface $logHandler
     )
     {
         $this->logger = new Logger("server");
         $this->logger->pushHandler($logHandler);
     }
 
-    public function initRestServer(array $globalConfig) {
+    /**
+     * @param array<string, mixed> $globalConfig
+     */
+    public function initRestServer(array $globalConfig): void {
         if(!isset($globalConfig['listen'])) {
-            return null;
+            return;
         }
         if(isset($globalConfig['listen_cert'])) {
             $cert = new Socket\Certificate($globalConfig['listen_cert']);
@@ -69,20 +72,19 @@ class artbot_rest_server {
 
         $this->stack = stackMiddleware($this->restRouter, $middleware);
 
-        return $this->server;
     }
 
-    public function start() {
+    public function start(): void {
         if(isset($this->server))
             $this->server->start($this->stack, $this->errorHandler);
     }
 
-    public function stop() {
+    public function stop(): void {
         if(isset($this->server))
             $this->server->stop();
     }
 
-    public function addRoute(string $method, string $uri, RequestHandler $requestHandler) {
+    public function addRoute(string $method, string $uri, RequestHandler $requestHandler): void {
         $this->restRouter->addRoute($method, $uri, $requestHandler);
     }
 }

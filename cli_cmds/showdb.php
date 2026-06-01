@@ -23,7 +23,7 @@ class showdb extends Command
         return Command::SUCCESS;
     }
 
-    static public function showdb()
+    static public function showdb(): void
     {
         global $entityManager;
         echo "networks:\n";

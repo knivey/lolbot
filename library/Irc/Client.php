@@ -31,7 +31,7 @@ class Client extends EventEmitter
     /**
      * OPTIONNAME => Value
      * Name always uppercased
-     * @var array<string, string|array|null>
+     * @var array<string, mixed>
      */
     protected array $options = array();
     protected bool $reconnect = true;
@@ -66,6 +66,7 @@ class Client extends EventEmitter
 
     /**
      * IRCv3 Capability enabled
+     * @var list<string>
      */
     protected array $caps = [];
 
@@ -100,6 +101,9 @@ class Client extends EventEmitter
         $this->exit = true;
     }
 
+    /**
+     * @return \Amp\Future<void>
+     */
     public function go(): \Amp\Future
     {
         $this->log->debug("Bot go called");
@@ -251,6 +255,9 @@ class Client extends EventEmitter
         return $this->ircEstablished;
     }
 
+    /**
+     * @return list<string>
+     */
     public function getCaps(): array {
         return $this->caps;
     }
@@ -373,7 +380,7 @@ class Client extends EventEmitter
         return $this;
     }
 
-    public function getOption(string $option, null|string|array $defaultValue = null): string|array|null
+    public function getOption(string $option, mixed $defaultValue = null): mixed
     {
         return ($this->options[strtoupper($option)] ?? $defaultValue);
     }
@@ -383,6 +390,9 @@ class Client extends EventEmitter
         return array_key_exists(strtoupper($option), $this->options);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getOptions(): array
     {
         return $this->options;
@@ -426,11 +436,11 @@ class Client extends EventEmitter
         while ($this->hasLine()) {
             $message = $this->getLine();
 
-            if ($message == '') {
+            if ($message === '') {
                 $this->log->debug("doLine got empty message");
                 return $this;
             }
-            if ($message == null) {
+            if ($message === null) {
                 $this->log->debug("doLine got null type message");
                 return $this;
             }

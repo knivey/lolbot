@@ -21,6 +21,9 @@ use Symfony\Component\Yaml\Yaml;
 use Amp\Http\Server\ClientException;
 use Revolt\EventLoop;
 
+/**
+ * @return array<int, string>
+ */
 function asciipost_to_array(string $msg): array {
     $msg = str_replace("\r", "\n", $msg);
     $msg = explode("\n", $msg);
@@ -353,6 +356,9 @@ function cancel(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): voi
 }
 
 $reqArtOpts = ['--flip', '--edit', '--asciibird', '--speed', '--link', '--download'];
+/**
+ * @param array<string, mixed> $opts
+ */
 function reqart(\Irc\Client $bot, string $chan, string $file, array $opts, object $args, \NetworkContext $ctx): void {
     $config = $ctx->config;
     if(isset($ctx->playing[strtolower($chan)])) {
@@ -724,7 +730,7 @@ function randart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): vo
             return;
         }
     }
-    $opts = $cmdArgs->getOpts();
+    $opts = iterator_to_array($cmdArgs->getOpts());
 
     $search = '';
     if(isset($cmdArgs['search'])) {
@@ -756,6 +762,9 @@ function stop(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void 
     }
 }
 
+/**
+ * @param array<string, mixed> $opts
+ */
 function playart(\Irc\Client $bot, string $chan, string $file, string|false $searched = false, array $opts = [], ?string $speed = null): void
 {
     $ctx = \NetworkContext::get($bot);
@@ -831,6 +840,9 @@ function playart(\Irc\Client $bot, string $chan, string $file, string|false $sea
 }
 
 //little helper because exec() echod
+/**
+ * @return array{0: int, 1: string|false, 2: string|false}
+ */
 function quietExec(string $cmd): array
 {
     $descSpec = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];

@@ -49,15 +49,18 @@ class Network
         $this->servers = new ArrayCollection();
     }
 
-    public function addServer(Server $server) {
+    public function addServer(Server $server): void {
         $this->servers[] = $server;
     }
 
-    public function getServers() {
+    /**
+     * @return Collection<int, Server>
+     */
+    public function getServers(): Collection {
         return $this->servers;
     }
 
-    private $serverIdx = 0;
+    private int $serverIdx = 0;
     public function selectServer(): ?Server {
         if(count($this->servers) == 0)
             return null;
@@ -69,19 +72,25 @@ class Network
         return $server;
     }
 
-    public function addBot(Bot $bot) {
+    public function addBot(Bot $bot): void {
         $this->bots[] = $bot;
     }
 
-    public function getBots() {
+    /**
+     * @return Collection<int, Bot>
+     */
+    public function getBots(): Collection {
         return $this->bots;
     }
 
-    public function getIgnores() {
+    /**
+     * @return Collection<int, Ignore>
+     */
+    public function getIgnores(): Collection {
         return $this->ignores;
     }
 
-    public function addIgnore(Ignore $ignore) {
+    public function addIgnore(Ignore $ignore): void {
         $this->ignores[] = $ignore;
     }
 

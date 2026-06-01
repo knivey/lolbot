@@ -101,8 +101,8 @@ class Message
             (?<args>.*)                 #The argument string
         $/x', $message, $matches)) {
 
-            $prefix = $matches['prefix'] ?? '';
-            $command = $matches['command'] ?? '';
+            $prefix = $matches['prefix'];
+            $command = $matches['command'];
 
             $spacedArg = false;
             if (!empty($matches['args'])) {

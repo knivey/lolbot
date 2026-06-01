@@ -43,7 +43,10 @@ class ignore_list extends Command
         return Command::SUCCESS;
     }
 
-    function print_ignores($ignores, OutputInterface $output) {
+    /**
+     * @param iterable<Ignore> $ignores
+     */
+    function print_ignores($ignores, OutputInterface $output): void {
         foreach ($ignores as $ignore) {
             $output->writeln($ignore);
         }

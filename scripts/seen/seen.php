@@ -64,6 +64,9 @@ class seen extends script_base
 
 
 
+    /**
+     * @var array<string, entities\seen>
+     */
     private array $updates = [];
 
     function updateSeen(string $action, string $chan, string $nick, string $text): void

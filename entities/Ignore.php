@@ -29,6 +29,9 @@ class Ignore
     #[ORM\Column(updatable: false)]
     public \DateTimeImmutable $created;
 
+    /**
+     * @var Collection<int, Network>
+     */
     #[ORM\ManyToMany(targetEntity: Network::class, inversedBy: 'ignores')]
     #[ORM\JoinTable(name: "Ignore_Network")]
     protected Collection $networks;
@@ -41,12 +44,15 @@ class Ignore
         return $this->networks->contains($network);
     }
 
-    public function addToNetwork(Network $network) {
+    public function addToNetwork(Network $network): void {
         $network->addIgnore($this);
         $this->networks[] = $network;
     }
 
-    public function getNetworks() {
+    /**
+     * @return Collection<int, Network>
+     */
+    public function getNetworks(): Collection {
         return $this->networks;
     }
 

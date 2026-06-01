@@ -33,7 +33,7 @@ class Server
     #[ORM\JoinColumn(name: 'network_id', referencedColumnName: 'id')]
     public Network $network;
 
-    public function setNetwork(Network $network) {
+    public function setNetwork(Network $network): void {
         $this->network = $network;
         $network->addServer($this);
     }

@@ -9,6 +9,9 @@ use Amp\Http\Server\SocketHttpServer;
 use Amp\Http\HttpStatus;
 use Amp\Http\Server\DefaultErrorHandler;
 
+/**
+ * @param string|array<string> $addresses
+ */
 function notifier(\Irc\Client $bot, string|array $addresses, \Psr\Log\LoggerInterface $logger): SocketHttpServer {
     //$cert = new Socket\Certificate(__DIR__ . '/../test/server.pem');
 

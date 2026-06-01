@@ -56,12 +56,15 @@ class Bot
         $this->channels = new ArrayCollection();
     }
 
-    public function addChannel(Channel $channel) {
+    public function addChannel(Channel $channel): void {
         $channel->bot = $this;
         $this->channels[] = $channel;
     }
 
-    public function getChannels() {
+    /**
+     * @return Collection<int, Channel>
+     */
+    public function getChannels(): Collection {
         return $this->channels;
     }
 

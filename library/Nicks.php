@@ -10,15 +10,18 @@ class Nicks {
     /**
      * Stores temporary hosts for PMed commands from no shared chan
      * stored as $tppl['nick'] = 'host'
-     * @var Array
+     * @var array<string, string>
      */
-    public $tppl = Array();
+    public array $tppl = [];
     /**
      * Stores all our known nicks
-     * @var Array
+     * @var array<string, array{host: string|null, channels: array<string, array{modes: array<string, string>, jointime: int|null}>}>
      */
-    public $ppl = Array();
-    static protected $pplTemplate;
+    public array $ppl = [];
+    /**
+     * @var array{host: string|null, channels: array<string, array{modes: array<string, string>, jointime: int|null}>}
+     */
+    static protected array $pplTemplate;
 
     function __construct(\Irc\Client $bot) {
         self::$pplTemplate  = Array(
@@ -33,9 +36,12 @@ class Nicks {
 
     protected \Irc\Client $bot;
 
-    protected $whoHook = [];
+    /**
+     * @var array<int, string|int|null>
+     */
+    protected array $whoHook = [];
 
-    public function setupHooks(\Irc\Client $bot) {
+    public function setupHooks(\Irc\Client $bot): void {
         $bot->on('welcome', function($args, $bot) {
             $this->clearAll();
         });
@@ -89,7 +95,7 @@ class Nicks {
         $bot->on('chat', function($args, $bot) {$this->tpplClear();});
     }
 
-    function mode($args, \Irc\Client $bot) {
+    function mode(object $args, \Irc\Client $bot): void {
         if($args->on[0] != "#") {
             return;
         }
@@ -153,7 +159,7 @@ class Nicks {
     /**
      * Clears all data
      */
-    function clearAll() {
+    function clearAll(): void {
         $this->ppl = Array();
         $this->tppl = Array();
     }
@@ -163,7 +169,7 @@ class Nicks {
      * @param string $nick
      * @param string $host
      */
-    function tppl($nick, $host) {
+    function tppl(string $nick, string $host): void {
         $this->tpplClear();
         //If nick already exists then update the host and don't add to tppl
         $key = get_akey_nc($nick, $this->ppl);
@@ -177,12 +183,12 @@ class Nicks {
     /**
      * Reset the temporary people array
      */
-    function tpplClear() {
+    function tpplClear(): void {
         $this->tppl = Array();
     }
 
 
-    function names($chan, $names) {
+    function names(string $chan, object $names): void {
         $names = $names->names;
         foreach ($names as $n) {
             $chanModes = array_intersect(['+','%','@','&','~'], str_split($n));
@@ -201,7 +207,7 @@ class Nicks {
         }
     }
 
-    function who(\Irc\Message $msg) {
+    function who(\Irc\Message $msg): void {
         $args = $msg->args;
         //              0        1         2          3      4        5      6       7
         //:server 352 <client> <channel> <username> <host> <server> <nick> <flags> :<hopcount> <realname>
@@ -226,7 +232,7 @@ class Nicks {
     /**
      * Handle whox reply
      */
-    function whox(\Irc\Message $msg) {
+    function whox(\Irc\Message $msg): void {
         $args = $msg->args;
         //            0       1         2       3     4    5    6
         //:server 354 ourname customnum channel ident host nick flags
@@ -257,7 +263,7 @@ class Nicks {
      * @param string $host
      * @param string $chan
      */
-    function join($nick, $host, $chan) {
+    function join(string $nick, string $host, string $chan): void {
         $key = get_akey_nc($nick, $this->ppl);
         if ($key != null) {
             //good idea to make sure host is correct
@@ -282,7 +288,7 @@ class Nicks {
      * @param string $oldnick
      * @param string $newnick
      */
-    function nick($oldnick, $newnick) {
+    function nick(string $oldnick, string $newnick): void {
         $key = get_akey_nc($oldnick, $this->ppl);
         if($key == null) {
             return; //should never happen
@@ -296,7 +302,7 @@ class Nicks {
      * @param string $nick
      * @param string $chan
      */
-    function part($nick, $chan) {
+    function part(string $nick, string $chan): void {
         $key = get_akey_nc($nick, $this->ppl);
         if ($key != null) {
             //check their channels if they just parted last one delete them otherwise update chans
@@ -313,7 +319,7 @@ class Nicks {
      * Handle ourself leaving a channel
      * @param string $chan
      */
-    function usPart($chan) {
+    function usPart(string $chan): void {
         //see if its us leaving
         foreach ($this->ppl as $n => &$i) {
             $ckey = get_akey_nc($chan, $i['channels']);
@@ -333,7 +339,7 @@ class Nicks {
      * @param string $nick
      * @param string $chan
      */
-    function kick($nick, $chan) {
+    function kick(string $nick, string $chan): void {
         $this->part($nick, $chan);
     }
 
@@ -341,7 +347,7 @@ class Nicks {
      * Handle Quits
      * @param string $nick
      */
-    function quit($nick) {
+    function quit(string $nick): void {
         $key = get_akey_nc($nick, $this->ppl);
         if($key != null) {
             unset($this->ppl[$key]);
@@ -353,21 +359,21 @@ class Nicks {
      * on failure empty array returned, otherwise Array(nick, chan)
      * @param string $nick
      * @param string $chan
-     * @return Array
+     * @return list<string>
      */
-    function getChanNickKey($nick, $chan) {
+    function getChanNickKey(string $nick, string $chan): array {
         $key = get_akey_nc($nick, $this->ppl);
         if($key == null) {
-            return Array();
+            return [];
         }
         $ckey = get_akey_nc($chan, $this->ppl[$key]['channels']);
         if($ckey == null) {
-            return Array();
+            return [];
         }
-        return Array($key, $ckey);
+        return [$key, $ckey];
     }
 
-    function Owner($nick, $chan) {
+    function Owner(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -376,7 +382,7 @@ class Nicks {
         $this->ppl[$key]['channels'][$ckey]['modes']['~'] = '~';
     }
 
-    function DeOwner($nick, $chan) {
+    function DeOwner(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -385,7 +391,7 @@ class Nicks {
         unset($this->ppl[$key]['channels'][$ckey]['modes']['~']);
     }
 
-    function Admin($nick, $chan) {
+    function Admin(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -394,7 +400,7 @@ class Nicks {
         $this->ppl[$key]['channels'][$ckey]['modes']['&'] = '&';
     }
 
-    function DeAdmin($nick, $chan) {
+    function DeAdmin(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -408,7 +414,7 @@ class Nicks {
      * @param string $nick
      * @param string $chan
      */
-    function Op($nick, $chan) {
+    function Op(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -422,7 +428,7 @@ class Nicks {
      * @param string $nick
      * @param string $chan
      */
-    function DeOp($nick, $chan) {
+    function DeOp(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -431,7 +437,7 @@ class Nicks {
         unset($this->ppl[$key]['channels'][$ckey]['modes']['@']);
     }
 
-    function HalfOp($nick, $chan) {
+    function HalfOp(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -440,7 +446,7 @@ class Nicks {
         $this->ppl[$key]['channels'][$ckey]['modes']['%'] = '%';
     }
 
-    function DeHalfOp($nick, $chan) {
+    function DeHalfOp(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -454,7 +460,7 @@ class Nicks {
      * @param string $nick
      * @param string $chan
      */
-    function Voice($nick, $chan) {
+    function Voice(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -468,7 +474,7 @@ class Nicks {
      * @param string $nick
      * @param string $chan
      */
-    function DeVoice($nick, $chan) {
+    function DeVoice(string $nick, string $chan): void {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return;
@@ -477,7 +483,7 @@ class Nicks {
         unset($this->ppl[$key]['channels'][$ckey]['modes']['+']);
     }
 
-    function isOwner($nick, $chan) {
+    function isOwner(string $nick, string $chan): bool {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return false;
@@ -486,7 +492,7 @@ class Nicks {
         return array_key_exists('~', $this->ppl[$key]['channels'][$ckey]['modes']);
     }
 
-    function isAdmin($nick, $chan) {
+    function isAdmin(string $nick, string $chan): bool {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return false;
@@ -501,7 +507,7 @@ class Nicks {
      * @param string $chan
      * @return boolean
      */
-    function isOp($nick, $chan) {
+    function isOp(string $nick, string $chan): bool {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return false;
@@ -510,7 +516,7 @@ class Nicks {
         return array_key_exists('@', $this->ppl[$key]['channels'][$ckey]['modes']);
     }
 
-    function isHalfOp($nick, $chan) {
+    function isHalfOp(string $nick, string $chan): bool {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return false;
@@ -525,7 +531,7 @@ class Nicks {
      * @param string $chan
      * @return boolean
      */
-    function isVoice($nick, $chan) {
+    function isVoice(string $nick, string $chan): bool {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return false;
@@ -534,7 +540,10 @@ class Nicks {
         return array_key_exists('+', $this->ppl[$key]['channels'][$ckey]['modes']);
     }
 
-    function hasModes($nick, $chan, $modes) {
+    /**
+     * @param array<string> $modes
+     */
+    function hasModes(string $nick, string $chan, array $modes): bool {
         $cnkeys = $this->getChanNickKey($nick, $chan);
         if(empty($cnkeys)) {
             return false;
@@ -547,19 +556,19 @@ class Nicks {
         return false;
     }
 
-    function isVoiceOrHigher($nick, $chan) {
+    function isVoiceOrHigher(string $nick, string $chan): bool {
         return $this->hasModes($nick, $chan, ['+','%','@','&','~']);
     }
 
-    function isHalfOpOrHigher($nick, $chan) {
+    function isHalfOpOrHigher(string $nick, string $chan): bool {
         return $this->hasModes($nick, $chan, ['%','@','&','~']);
     }
 
-    function isOpOrHigher($nick, $chan) {
+    function isOpOrHigher(string $nick, string $chan): bool {
         return $this->hasModes($nick, $chan, ['@','&','~']);
     }
 
-    function isAdminOrHigher($nick, $chan) {
+    function isAdminOrHigher(string $nick, string $chan): bool {
         return $this->hasModes($nick, $chan, ['&','~']);
     }
 
@@ -570,9 +579,9 @@ class Nicks {
      *           'jointime' => time(),
      *       );
      * @param string $nick
-     * @return array
+     * @return array<string, array{modes: array<string, string>, jointime: int|null}>
      */
-    function nickChans($nick) {
+    function nickChans(string $nick): array {
         $key = get_akey_nc($nick, $this->ppl);
         if($key == null) {
             return Array();
@@ -584,9 +593,9 @@ class Nicks {
      * Get the nicks belonging to host, empty array if none found
      * Array('nick1','nick2',...)
      * @param string $host
-     * @return Array
+     * @return list<string>
      */
-    function h2n($host) {
+    function h2n(string $host): array {
         $out = Array();
         $hostRE = \knivey\tools\globToRegex($host) . 'i';
         foreach($this->ppl as $n => $p) {
@@ -607,7 +616,7 @@ class Nicks {
      * @param string $nick
      * @return string|null
      */
-    function n2h($nick) {
+    function n2h(string $nick): ?string {
         $key = get_akey_nc($nick, $this->ppl);
         if($key == null) {
             $key = get_akey_nc($nick, $this->tppl);

@@ -11,6 +11,9 @@ use lolbot\entities\Server;
 
 class script_base
 {
+    /**
+     * @param array<string, mixed> $config
+     */
     public function __construct(
      public readonly Network $network,
      public readonly Bot $bot,

@@ -63,6 +63,9 @@ function translate_cmd(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArg
 
 }
 
+/**
+ * @return array{fromLang: string, toLang: string}|false
+ */
 function validateLanguages(string $languages): array|false
 {
 

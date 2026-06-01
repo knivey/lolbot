@@ -16,6 +16,7 @@ use lolbot\entities\Network;
 #[AsCommand("network:set")]
 class network_set extends Command
 {
+    /** @var array<string> */
     public array $settings = [
         "name"
         ];

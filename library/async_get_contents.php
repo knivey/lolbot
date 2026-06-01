@@ -5,7 +5,7 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 
 class async_get_exception extends Exception {
-    public function getMessageStripped($maxLen = 200): string {
+    public function getMessageStripped(int $maxLen = 200): string {
         $out = $this->getMessage();
         $out = str_replace(["\n", "\r"], " ", $out);
         $out = html_entity_decode($out,  ENT_QUOTES | ENT_HTML5, 'UTF-8');

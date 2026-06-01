@@ -16,6 +16,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand("bot:set")]
 class bot_set extends Command
 {
+    /** @var array<string> */
     public array $settings = [
         "name",
         "trigger",
@@ -66,7 +67,7 @@ class bot_set extends Command
         return Command::SUCCESS;
     }
 
-    function showsets(InputInterface $input, OutputInterface $output, $bot) {
+    function showsets(InputInterface $input, OutputInterface $output, Bot $bot): void {
         $io = new SymfonyStyle($input, $output);
         $rows = [];
         foreach ($this->settings as $setting) {

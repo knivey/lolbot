@@ -76,6 +76,9 @@ class EventEmitter
 
     //TODO the object sent by this is stupid and dumb would like to make better defined objects
 
+    /**
+     * @param array<string, mixed> $args
+     */
     public function emit(string $event, array $args = array()): static
     {
         if (str_contains($event, ',')) {
