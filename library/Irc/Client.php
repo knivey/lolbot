@@ -17,7 +17,6 @@ function stripForTerminal(string $str): string {
 }
 
 /**
- * @extends EventEmitter<Client>
  * @package Irc
  */
 class Client extends EventEmitter

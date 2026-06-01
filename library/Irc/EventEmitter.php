@@ -5,7 +5,6 @@ namespace Irc;
 use Irc\Event\Event;
 
 /**
- * @template T
  * @package Irc
  */
 class EventEmitter
@@ -20,8 +19,7 @@ class EventEmitter
     protected array $onceEventCallbacks = array();
 
     /**
-     * @param string $event
-     * @param callable(object $event, T $eventEmitter): void $callback
+     * @param callable $callback
      * @param int|null $idx
      * @return $this
      */
@@ -41,9 +39,8 @@ class EventEmitter
     }
 
     /**
-     * @param string $event
-     * @param ?callable(object $event, T $eventEmitter): void $callback
-     * @param ?int $idx
+     * @param callable|null $callback
+     * @param int|null $idx
      * @return $this
      */
     public function off(string $event, ?callable $callback, ?int $idx = null): static
@@ -66,8 +63,7 @@ class EventEmitter
     }
 
     /**
-     * @param string $event
-     * @param callable(object $event, T $eventEmitter): void $callback
+     * @param callable $callback
      * @return $this
      */
     public function once(string $event, callable $callback): static
@@ -76,12 +72,10 @@ class EventEmitter
         return $this;
     }
 
-    //TODO the object sent by this is stupid and dumb would like to make better defined objects
-
     /**
-     * @param array<string, mixed>|Event $args
+     * @param Event|null $args
      */
-    public function emit(string $event, array|Event $args = []): static
+    public function emit(string $event, ?Event $args = null): static
     {
         if (str_contains($event, ',')) {
             $events = explode(',', $event);
@@ -91,25 +85,20 @@ class EventEmitter
             return $this;
         }
 
-        if ($args instanceof Event) {
-            $args->event = $event;
-            $evtObj = $args;
-        } else {
-            $args['time'] = time();
-            $args['event'] = $event;
-            $args['sender'] = $this;
-            $evtObj = (object)$args;
+        if ($args === null) {
+            $args = new class(time(), $event, $this) extends Event {};
         }
+        $args->event = $event;
 
         if (!empty($this->onceEventCallbacks[$event])) {
             foreach ($this->onceEventCallbacks[$event] as $callback)
-                call_user_func($callback, $evtObj, $this);
+                call_user_func($callback, $args, $this);
             $this->onceEventCallbacks[$event] = array();
         }
 
         if (!empty($this->eventCallbacks[$event])) {
             foreach ($this->eventCallbacks[$event] as $callback)
-                call_user_func($callback, $evtObj, $this);
+                call_user_func($callback, $args, $this);
         }
 
         return $this;

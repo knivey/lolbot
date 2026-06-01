@@ -4,6 +4,9 @@ namespace Irc\Event;
 
 class ModeEvent extends UserEvent
 {
+    /**
+     * @param array<int|string, string> $args
+     */
     public function __construct(
         int $time,
         string $event,

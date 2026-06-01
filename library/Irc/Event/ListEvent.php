@@ -4,6 +4,9 @@ namespace Irc\Event;
 
 class ListEvent extends Event
 {
+    /**
+     * @param array<string, ListEntry> $items
+     */
     public function __construct(
         int $time,
         string $event,

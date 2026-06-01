@@ -4,6 +4,9 @@ namespace Irc\Event;
 
 class OptionsEvent extends Event
 {
+    /**
+     * @param array<string, mixed> $options
+     */
     public function __construct(
         int $time,
         string $event,
