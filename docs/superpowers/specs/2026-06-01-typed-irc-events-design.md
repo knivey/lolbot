@@ -126,6 +126,7 @@ The following property name changes are applied across all consumers. No aliases
 | PmEvent | `$args->target` | `$args->to` | |
 | NoticeEvent | `$args->from` | `$args->nick` | |
 | NoticeEvent | `$args->target` | `$args->to` | |
+| ModeEvent | `$args->on` | `$args->target` | renamed for clarity |
 | QuitEvent | `$args->msg` | `$args->text` | unified naming |
 | KickEvent | `$args->nick` (kickee) | `$args->target` | `$args->nick` now = kicker from prefix |
 | JoinEvent | n/a | `$args->ident`, `$args->host`, `$args->fullhost` | new fields |
