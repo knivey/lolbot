@@ -265,7 +265,7 @@ class youtube extends script_base
                         file_put_contents($filename, $body);
                         $width = $config['bots'][$this->bot->id]['youtube_thumbwidth'] ?? 40;
                         $filename_safe = escapeshellarg($filename);
-                        $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
+                        $thumbnail = shell_exec("{$config['p2u']} -f m -p x -w $width $filename_safe");
                         unlink($filename);
                     } catch (\Exception $error) {
                         echo "yt thumb $error\n";

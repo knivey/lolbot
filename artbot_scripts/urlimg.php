@@ -65,7 +65,7 @@ function url($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
                 }
             }
             $filename_safe = escapeshellarg($filename);
-            $thumbnail = `$config[p2u] -f m -p x -w $width $filename_safe`;
+            $thumbnail = shell_exec("{$config['p2u']} -f m -p x -w $width $filename_safe");
             unlink($filename);
             if($cmdArgs->optEnabled('--edit')) {
                 if(!isset($config['artdir'])) {

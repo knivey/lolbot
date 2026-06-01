@@ -144,7 +144,7 @@ class linktitles extends script_base
                     else
                         $size = "?b";
 
-                    if (!`which mediainfo`) {
+                    if (!shell_exec('which mediainfo')) {
                         echo "mediainfo not found, only giving basic url info\n";
                         $out = "[ $m[1] {$response->getHeader("content-type")} ]";
                         $bot->pm($chan, "  $out");
@@ -153,7 +153,7 @@ class linktitles extends script_base
                     }
                     $fn = "tmp_" . bin2hex(random_bytes(8)) . ".{$m[1]}";
                     file_put_contents($fn, $body);
-                    $mi = simplexml_load_string(`mediainfo $fn --Output=XML`);
+                    $mi = simplexml_load_string(shell_exec("mediainfo $fn --Output=XML"));
                     unlink($fn);
 
                     if (!isset($mi->media) || !isset($mi->media->track)) {
