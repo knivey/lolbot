@@ -1,4 +1,6 @@
 parameters:
+	universalObjectCratesClasses:
+		- RedBeanPHP\OODBBean
 	fileExtensions:
 		- php
 		- inc
