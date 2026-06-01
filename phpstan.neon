@@ -1,4 +1,5 @@
 parameters:
+	memoryLimit: 1G
 	fileExtensions:
 		- php
 		- inc
