@@ -1,5 +1,4 @@
 <?php
-use function knivey\tools\get_akey_nc;
 use Irc\Event\{ChatEvent, JoinEvent, PartEvent, KickEvent, NickEvent, QuitEvent, ModeEvent, NamesEvent, PmEvent, NamesReply, NumericEvent};
 
 // Just grabbign this from an old bot project i made and making it work here for now
@@ -41,6 +40,20 @@ class Nicks {
      * @var array<int, string|int|null>
      */
     protected array $whoHook = [];
+
+    /**
+     * Case-insensitive string key lookup for $this->ppl / $this->tppl shaped arrays.
+     * Returns the actual key from $haystack whose lowercase matches $needle, or null.
+     *
+     * @param array<string, mixed> $haystack
+     */
+    private static function getKey(string $needle, array $haystack): ?string
+    {
+        foreach ($haystack as $k => $_) {
+            if (strcasecmp($needle, (string)$k) === 0) return (string)$k;
+        }
+        return null;
+    }
 
     public function setupHooks(\Irc\Client $bot): void {
         $bot->on('welcome', function($args, $bot) {
@@ -102,12 +115,36 @@ class Nicks {
         }
         $modeArgs = $args->args;
         $modeString = array_shift($modeArgs);
+        if ($modeString === null) {
+            $this->bot->log->warning("Malformed MODE event: no mode string", [
+                'chan' => $args->target,
+                'rawArgs' => $args->args,
+            ]);
+            throw new \RuntimeException(
+                "Malformed MODE event on {$args->target}: no mode string in args"
+            );
+        }
         $modeArgs = array_values($modeArgs);
         $adding = true;
         //should really use the isupport to determine these but afaik it's pretty universal
         //PREFIX=(qaohv)~&@%+ (owner, admin, op, half-op, voice)
         //have to get all modes that take args and filter out
-        $CHANMODES = $bot->getOption('CHANMODES', []);
+        $rawChanmodes = $bot->getOption('CHANMODES', []);
+        $CHANMODES = [];
+        if (is_array($rawChanmodes)) {
+            foreach ($rawChanmodes as $v) {
+                if (is_string($v)) $CHANMODES[] = $v;
+            }
+        }
+        if (count($CHANMODES) < 3) {
+            $this->bot->log->warning("MODE event but server has no CHANMODES ISUPPORT", [
+                'chan' => $args->target,
+                'rawArgs' => $args->args,
+            ]);
+            throw new \RuntimeException(
+                "Server is missing CHANMODES ISUPPORT; cannot safely parse MODE on {$args->target}"
+            );
+        }
         foreach (str_split($modeString) as $mode) {
             //If a switch is inside a loop, continue 2 will continue with the next iteration of the outer loop.
             switch ($mode) {
@@ -118,41 +155,106 @@ class Nicks {
                     $adding = false;
                     continue 2;
             }
-            if(str_contains(($CHANMODES[0]??'').($CHANMODES[1]??''), $mode) ||
-                (str_contains($CHANMODES[2]??'', $mode) && $adding)) {
+            if(str_contains($CHANMODES[0].$CHANMODES[1], $mode) ||
+                (str_contains($CHANMODES[2], $mode) && $adding)) {
                 array_shift($modeArgs);
                 continue;
             }
             switch ($mode) {
                 case 'q':
+                    $targetNick = array_shift($modeArgs);
+                    if ($targetNick === null) {
+                        $this->bot->log->warning("Malformed MODE event: ran out of args", [
+                            'chan' => $args->target,
+                            'modeString' => $modeString,
+                            'modeChar' => 'q',
+                            'remainingArgs' => $modeArgs,
+                            'rawArgs' => $args->args,
+                        ]);
+                        throw new \RuntimeException(
+                            "Malformed MODE event on {$args->target}: ran out of args at mode char 'q'"
+                        );
+                    }
                     if ($adding)
-                        $this->Owner(array_shift($modeArgs), $args->target);
+                        $this->Owner($targetNick, $args->target);
                     else
-                        $this->DeOwner(array_shift($modeArgs), $args->target);
+                        $this->DeOwner($targetNick, $args->target);
                     break;
                 case 'a':
+                    $targetNick = array_shift($modeArgs);
+                    if ($targetNick === null) {
+                        $this->bot->log->warning("Malformed MODE event: ran out of args", [
+                            'chan' => $args->target,
+                            'modeString' => $modeString,
+                            'modeChar' => 'a',
+                            'remainingArgs' => $modeArgs,
+                            'rawArgs' => $args->args,
+                        ]);
+                        throw new \RuntimeException(
+                            "Malformed MODE event on {$args->target}: ran out of args at mode char 'a'"
+                        );
+                    }
                     if ($adding)
-                        $this->Admin(array_shift($modeArgs), $args->target);
+                        $this->Admin($targetNick, $args->target);
                     else
-                        $this->DeAdmin(array_shift($modeArgs), $args->target);
+                        $this->DeAdmin($targetNick, $args->target);
                     break;
                 case 'o':
+                    $targetNick = array_shift($modeArgs);
+                    if ($targetNick === null) {
+                        $this->bot->log->warning("Malformed MODE event: ran out of args", [
+                            'chan' => $args->target,
+                            'modeString' => $modeString,
+                            'modeChar' => 'o',
+                            'remainingArgs' => $modeArgs,
+                            'rawArgs' => $args->args,
+                        ]);
+                        throw new \RuntimeException(
+                            "Malformed MODE event on {$args->target}: ran out of args at mode char 'o'"
+                        );
+                    }
                     if ($adding)
-                        $this->Op(array_shift($modeArgs), $args->target);
+                        $this->Op($targetNick, $args->target);
                     else
-                        $this->DeOp(array_shift($modeArgs), $args->target);
+                        $this->DeOp($targetNick, $args->target);
                     break;
                 case 'h':
+                    $targetNick = array_shift($modeArgs);
+                    if ($targetNick === null) {
+                        $this->bot->log->warning("Malformed MODE event: ran out of args", [
+                            'chan' => $args->target,
+                            'modeString' => $modeString,
+                            'modeChar' => 'h',
+                            'remainingArgs' => $modeArgs,
+                            'rawArgs' => $args->args,
+                        ]);
+                        throw new \RuntimeException(
+                            "Malformed MODE event on {$args->target}: ran out of args at mode char 'h'"
+                        );
+                    }
                     if ($adding)
-                        $this->HalfOp(array_shift($modeArgs), $args->target);
+                        $this->HalfOp($targetNick, $args->target);
                     else
-                        $this->DeHalfOp(array_shift($modeArgs), $args->target);
+                        $this->DeHalfOp($targetNick, $args->target);
                     break;
                 case 'v':
+                    $targetNick = array_shift($modeArgs);
+                    if ($targetNick === null) {
+                        $this->bot->log->warning("Malformed MODE event: ran out of args", [
+                            'chan' => $args->target,
+                            'modeString' => $modeString,
+                            'modeChar' => 'v',
+                            'remainingArgs' => $modeArgs,
+                            'rawArgs' => $args->args,
+                        ]);
+                        throw new \RuntimeException(
+                            "Malformed MODE event on {$args->target}: ran out of args at mode char 'v'"
+                        );
+                    }
                     if ($adding)
-                        $this->Voice(array_shift($modeArgs), $args->target);
+                        $this->Voice($targetNick, $args->target);
                     else
-                        $this->DeVoice(array_shift($modeArgs), $args->target);
+                        $this->DeVoice($targetNick, $args->target);
             }
         }
     }
@@ -173,7 +275,7 @@ class Nicks {
     function tppl(string $nick, string $host): void {
         $this->tpplClear();
         //If nick already exists then update the host and don't add to tppl
-        $key = get_akey_nc($nick, $this->ppl);
+        $key = self::getKey($nick, $this->ppl);
         if($key) {
             $this->ppl[$key]['host'] = $host;
             return;
@@ -198,7 +300,7 @@ class Nicks {
                 $v = $k;
             }
             $n = ltrim($n, '~&@%+');
-            $key = get_akey_nc($n, $this->ppl);
+            $key = self::getKey($n, $this->ppl);
             if ($key == null) {
                 $this->ppl[$n] = self::$pplTemplate;
                 $this->ppl[$n]['channels'][$chan] = array('modes' => $chanModes, 'jointime' => null);
@@ -212,22 +314,24 @@ class Nicks {
         $args = $msg->args;
         //              0        1         2          3      4        5      6       7
         //:server 352 <client> <channel> <username> <host> <server> <nick> <flags> :<hopcount> <realname>
-        $key = get_akey_nc($args[5], $this->ppl);
+        $key = self::getKey($args[5], $this->ppl);
         if ($key == null) {
             return; //Don't add the user we have no idea how they got here
         }
-        $ckey = get_akey_nc($args[1], $this->ppl[$key]['channels']);
+        $ckey = self::getKey($args[1], $this->ppl[$key]['channels']);
         if($ckey == null) {
             return; //Don't add information that we shouldn't be getting
         }
-        $this->ppl[$key]['host'] = $args[2] . '@' . $args[3];
         //process the rest of their channel mode (@+)
         $chanModes = array_intersect(['+','%','@','&','~'], str_split($args[6]));
         $chanModes = array_flip($chanModes);
         foreach ($chanModes as $k => &$v) {
             $v = $k;
         }
-        $this->ppl[$key]['channels'][$ckey]['modes'] = array_merge($this->ppl[$key]['channels'][$ckey]['modes'], $chanModes);
+        foreach ($chanModes as $cm => $cv) {
+            $this->ppl[$key]['channels'][$ckey]['modes'][$cm] = $cv;
+        }
+        $this->ppl[$key]['host'] = $args[2] . '@' . $args[3];
     }
 
     /**
@@ -240,11 +344,11 @@ class Nicks {
         if ($args[1] != 777) {
             return; // wasn't our number
         }
-        $key = get_akey_nc($args[5], $this->ppl);
+        $key = self::getKey($args[5], $this->ppl);
         if ($key == null) {
             return; //Don't add the user we have no idea how they got here
         }
-        $ckey = get_akey_nc($args[2], $this->ppl[$key]['channels']);
+        $ckey = self::getKey($args[2], $this->ppl[$key]['channels']);
         if($ckey == null) {
             return; //Don't add information that we shouldn't be getting
         }
@@ -265,7 +369,7 @@ class Nicks {
      * @param string $chan
      */
     function join(string $nick, string $host, string $chan): void {
-        $key = get_akey_nc($nick, $this->ppl);
+        $key = self::getKey($nick, $this->ppl);
         if ($key != null) {
             //good idea to make sure host is correct
             $this->ppl[$key]['host'] = $host;
@@ -290,7 +394,7 @@ class Nicks {
      * @param string $newnick
      */
     function nick(string $oldnick, string $newnick): void {
-        $key = get_akey_nc($oldnick, $this->ppl);
+        $key = self::getKey($oldnick, $this->ppl);
         if($key == null) {
             return; //should never happen
         }
@@ -304,14 +408,16 @@ class Nicks {
      * @param string $chan
      */
     function part(string $nick, string $chan): void {
-        $key = get_akey_nc($nick, $this->ppl);
+        $key = self::getKey($nick, $this->ppl);
         if ($key != null) {
             //check their channels if they just parted last one delete them otherwise update chans
             if (count($this->ppl[$key]['channels']) == 1) {
                 unset($this->ppl[$key]);
             } else {
-                $ckey = get_akey_nc($chan, $this->ppl[$key]['channels']);
-                unset($this->ppl[$key]['channels'][$ckey]);
+                $ckey = self::getKey($chan, $this->ppl[$key]['channels']);
+                if ($ckey !== null) {
+                    unset($this->ppl[$key]['channels'][$ckey]);
+                }
             }
         }
     }
@@ -323,7 +429,7 @@ class Nicks {
     function usPart(string $chan): void {
         //see if its us leaving
         foreach ($this->ppl as $n => &$i) {
-            $ckey = get_akey_nc($chan, $i['channels']);
+            $ckey = self::getKey($chan, $i['channels']);
             if ($ckey != null) {
                 //See if that was the only channel we saw them on
                 if (count($i['channels']) == 1) {
@@ -349,7 +455,7 @@ class Nicks {
      * @param string $nick
      */
     function quit(string $nick): void {
-        $key = get_akey_nc($nick, $this->ppl);
+        $key = self::getKey($nick, $this->ppl);
         if($key != null) {
             unset($this->ppl[$key]);
         }
@@ -363,11 +469,11 @@ class Nicks {
      * @return list<string>
      */
     function getChanNickKey(string $nick, string $chan): array {
-        $key = get_akey_nc($nick, $this->ppl);
+        $key = self::getKey($nick, $this->ppl);
         if($key == null) {
             return [];
         }
-        $ckey = get_akey_nc($chan, $this->ppl[$key]['channels']);
+        $ckey = self::getKey($chan, $this->ppl[$key]['channels']);
         if($ckey == null) {
             return [];
         }
@@ -583,7 +689,7 @@ class Nicks {
      * @return array<string, array{modes: array<string, string>, jointime: int|null}>
      */
     function nickChans(string $nick): array {
-        $key = get_akey_nc($nick, $this->ppl);
+        $key = self::getKey($nick, $this->ppl);
         if($key == null) {
             return Array();
         }
@@ -600,7 +706,7 @@ class Nicks {
         $out = Array();
         $hostRE = \knivey\tools\globToRegex($host) . 'i';
         foreach($this->ppl as $n => $p) {
-            if(preg_match($hostRE, $p['host'])) {
+            if ($p['host'] !== null && preg_match($hostRE, $p['host'])) {
                 $out[] = $n;
             }
         }
@@ -618,9 +724,9 @@ class Nicks {
      * @return string|null
      */
     function n2h(string $nick): ?string {
-        $key = get_akey_nc($nick, $this->ppl);
+        $key = self::getKey($nick, $this->ppl);
         if($key == null) {
-            $key = get_akey_nc($nick, $this->tppl);
+            $key = self::getKey($nick, $this->tppl);
             if($key != null) {
                 return $this->tppl[$key];
             }
@@ -629,5 +735,3 @@ class Nicks {
         return $this->ppl[$key]['host'];
     }
 }
-
-
