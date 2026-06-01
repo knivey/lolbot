@@ -41,7 +41,5 @@ function owncast($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         $bot->pm($args->chan, $line);
     } catch (\async_get_exception $e) {
         $bot->pm($args->chan, "owncast exception: {$e->getIRCMsg()}");
-    } catch (\Exception $e) {
-        $bot->pm($args->chan, "owncast exception: {$e->getMessage()}");
     }
 }

@@ -29,7 +29,7 @@ class lastfm extends script_base
         $url = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=$user&api_key=$key&format=json&limit=1";
         try {
             $body = async_get_contents($url);
-        } catch (\Exception $error) {
+        } catch (\async_get_exception $error) {
             $this->logger->error($error->getMessage());
             $bot->pm($args->chan, "\2setlastfm:\2 couldn't lookup that username");
             return;

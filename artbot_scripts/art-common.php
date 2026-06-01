@@ -899,7 +899,7 @@ function a2m($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
                 if (isset($json->sauce->tinfo1)) {
                     $width = $json->sauce->tinfo1;
                 }
-            } catch (\Exception $e) {
+            } catch (\async_get_exception $e) {
             }
 
             $body = async_get_contents("https://16colo.rs/pack/$pack/raw/$pfile");

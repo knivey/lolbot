@@ -61,7 +61,12 @@ class youtube extends script_base
             echo "No gkey set for youtube lookup\n";
             return null;
         }
-        $body = async_get_contents("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key={$config['gkey']}");
+        try {
+            $body = async_get_contents("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key={$config['gkey']}");
+        } catch (\async_get_exception $e) {
+            echo "Youtube getLiveVideos for $channelId: {$e->getMessage()}\n";
+            return null;
+        }
         $data = json_decode($body, false);
 
         if (!is_object($data)) {
@@ -196,10 +201,6 @@ class youtube extends script_base
                 echo $error->getMessage();
                 $event->reply("\2YouTube:\2 {$error->getIRCMsg()}");
                 return;
-            } catch (\Exception $error) {
-                echo $error->getMessage();
-                $event->reply("\2YouTube:\2 {$error->getMessage()}");
-                return;
             }
             //dont want to spam on lots of errors with videos
             if ($v == null)
@@ -267,7 +268,7 @@ class youtube extends script_base
                         $filename_safe = escapeshellarg($filename);
                         $thumbnail = shell_exec("{$config['p2u']} -f m -p x -w $width $filename_safe");
                         unlink($filename);
-                    } catch (\Exception $error) {
+                    } catch (\async_get_exception $error) {
                         echo "yt thumb $error\n";
                         $thumbnail = '';
                     }

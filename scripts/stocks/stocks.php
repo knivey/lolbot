@@ -153,7 +153,7 @@ class stocks extends \scripts\script_base
             }
 
             $chart = self::getCoinChart("dogecoin");
-        } catch (\Exception $e) {
+        } catch (\async_get_exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
         }
@@ -172,7 +172,7 @@ class stocks extends \scripts\script_base
             }
 
             $chart = self::getCoinChart("bitcoin-cash");
-        } catch (\Exception $e) {
+        } catch (\async_get_exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
         }
@@ -191,7 +191,7 @@ class stocks extends \scripts\script_base
             }
 
             $chart = self::getCoinChart("ethereum");
-        } catch (\Exception $e) {
+        } catch (\async_get_exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
         }
@@ -210,7 +210,7 @@ class stocks extends \scripts\script_base
             }
 
             $chart = self::getCoinChart("bitcoin");
-        } catch (\Exception $e) {
+        } catch (\async_get_exception $e) {
             $bot->pm($args->chan, "Error getting data");
             return;
         }

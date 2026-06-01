@@ -64,8 +64,5 @@ function brave($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
     } catch (\async_get_exception $error) {
         echo $error;
         $bot->pm($args->chan, "\2Brave:\2 {$error->getIRCMsg()}");
-    } catch (\Exception $error) {
-        echo $error->getMessage();
-        $bot->pm($args->chan, "\2Brave:\2 {$error->getMessage()}");
     }
 }

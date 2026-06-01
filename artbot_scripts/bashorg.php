@@ -14,7 +14,11 @@ function bash($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs) {
     global $bashdb;
     try {
         populateBash();
-    } catch( \Exception $e) {
+    } catch( \async_get_exception $e) {
+        echo $e->getMessage();
+        $bot->pm($args->chan, "bash.org error: {$e->getMessage()}");
+        return;
+    } catch (\Exception $e) {
         echo $e->getMessage();
         $bot->pm($args->chan, "bash.org error: {$e->getMessage()}");
         return;

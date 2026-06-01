@@ -272,6 +272,8 @@ class tools extends script_base
                 $a = "{$cmdArgs['nick']}, $a";
             }
             $bot->msg($args->chan, $a);
+        } catch (\async_get_exception $error) {
+            echo $error->getMessage();
         } catch (\Exception $error) {
             echo $error->getMessage();
         }
