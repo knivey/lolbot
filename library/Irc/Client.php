@@ -11,8 +11,8 @@ use Monolog\Logger;
 use function Amp\Socket\connect;
 
 function stripForTerminal(string $str): string {
-    $str = preg_replace("/(\x1b\[|\x9b)[^@-_]*[@-_]|\x1b[@-_]/", "", $str);
-    $str = preg_replace("/[\x1-\x1f]/", "", $str);
+    $str = preg_replace("/(\x1b\[|\x9b)[^@-_]*[@-_]|\x1b[@-_]/", "", $str) ?? '';
+    $str = preg_replace("/[\x1-\x1f]/", "", $str) ?? '';
     return $str;
 }
 
@@ -101,13 +101,13 @@ class Client extends EventEmitter
     }
 
     /**
-     * @return \Amp\Future<void>
+     * @return \Amp\Future<mixed>
      */
     public function go(): \Amp\Future
     {
         $this->log->debug("Bot go called");
 
-        return \Amp\async(function() {
+        return \Amp\async(function(): void {
             while ($this->reconnect && !$this->exit) {
                 $this->log->info("connecting to $this->server . ':' . $this->port\n");
                 try {
@@ -626,7 +626,7 @@ class Client extends EventEmitter
     public function names(string|array|null $channel = null, ?string $server = null): static
     {
         $channel = is_array($channel) ? implode(',', $channel) : $channel;
-        $this->send(CMD_NAMES, $channel, $server);
+        $this->send(CMD_NAMES, $channel ?? '', $server ?? '');
         return $this;
     }
 
@@ -650,7 +650,7 @@ class Client extends EventEmitter
     public function listChannels(string|array|null $channel = null, ?string $server = null): static
     {
         $channel = is_array($channel) ? implode(',', $channel) : $channel;
-        $this->send(CMD_LIST, $channel, $server);
+        $this->send(CMD_LIST, $channel ?? '', $server ?? '');
         return $this;
     }
 
@@ -699,7 +699,7 @@ class Client extends EventEmitter
 
     protected bool $waitOnSasl = false;
 
-    protected function handleMessage(object $e): void
+    protected function handleMessage(Event\MessageEvent $e): void
     {
         /* This one handles basic server responses so that the user
            can care about useful functionality instead.
@@ -710,12 +710,7 @@ class Client extends EventEmitter
         if ($this->rawMode)
             return;
 
-        /**
-         * @var Message|null $message
-         */
         $message = $e->message;
-        if($message === null)
-            return;
 
         switch ($message->command) {
             case "ERROR":
@@ -736,7 +731,12 @@ class Client extends EventEmitter
                 break;
             case "CAP":
                 if($message->getArg(1) == "LS") {
-                    $caps = explode(" ", $message->getArg(2));
+                    $capsArg = $message->getArg(2);
+                    if($capsArg === null) {
+                        $this->log->warning("CAP LS reply missing capabilities argument", ['raw' => $e->raw]);
+                        break;
+                    }
+                    $caps = explode(" ", $capsArg);
                     $this->waitOnSasl = false;
                     $req = false;
                     if(in_array('multi-prefix', $caps)) {
@@ -752,7 +752,12 @@ class Client extends EventEmitter
                     }
                 }
                 if($message->getArg(1) == "ACK") {
-                    $this->caps = explode(" ", $message->getArg(2));
+                    $capsArg = $message->getArg(2);
+                    if($capsArg === null) {
+                        $this->log->warning("CAP ACK reply missing capabilities argument", ['raw' => $e->raw]);
+                        break;
+                    }
+                    $this->caps = explode(" ", $capsArg);
                     if(in_array('sasl', $this->caps)) {
                         $this->send("AUTHENTICATE PLAIN");
                         //$this->send("AUTHENTICATE +");
@@ -768,7 +773,11 @@ class Client extends EventEmitter
                 //Emit channel join events
                 $nick = $message->nick ?: $this->nick;
                 $channel = $message->getArg(0);
-                if($nick == $this->getNick() && $channel !== null) {
+                if($channel === null) {
+                    $this->log->warning("Malformed JOIN event: missing channel argument", ['raw' => $e->raw]);
+                    throw new \RuntimeException("Malformed JOIN event: missing channel argument");
+                }
+                if($nick == $this->getNick()) {
                     $this->onChannels[$channel] = $channel;
                 }
 
@@ -783,7 +792,11 @@ class Client extends EventEmitter
                 //Emit channel part events
                 $nick = $message->nick ?: $this->nick;
                 $channel = $message->getArg(0);
-                if($nick == $this->getNick() && $channel !== null) {
+                if($channel === null) {
+                    $this->log->warning("Malformed PART event: missing channel argument", ['raw' => $e->raw]);
+                    throw new \RuntimeException("Malformed PART event: missing channel argument");
+                }
+                if($nick == $this->getNick()) {
                     unset($this->onChannels[$channel]);
                 }
 
@@ -798,7 +811,13 @@ class Client extends EventEmitter
                 //Emit kick events
                 $channel = $message->getArg(0);
                 $nick = $message->getArg(1);
-                if($nick == $this->getNick() && $channel !== null) {
+                if($channel === null || $nick === null) {
+                    $this->log->warning("Malformed KICK event: missing channel or target", [
+                        'raw' => $e->raw, 'chan' => $channel, 'target' => $nick,
+                    ]);
+                    throw new \RuntimeException("Malformed KICK event: missing channel or target");
+                }
+                if($nick == $this->getNick()) {
                     unset($this->onChannels[$channel]);
                 }
 
@@ -814,6 +833,10 @@ class Client extends EventEmitter
                 //Emit notice message events
                 $from = $message->nick;
                 $to = $message->getArg(0);
+                if($to === null) {
+                    $this->log->warning("Malformed NOTICE event: missing target", ['raw' => $e->raw]);
+                    throw new \RuntimeException("Malformed NOTICE event: missing target");
+                }
                 $text = $message->getArg(1, '');
 
                 $this->emit("notice, notice:$to, notice:$to:$from", new Event\NoticeEvent(
@@ -903,7 +926,7 @@ class Client extends EventEmitter
             case RPL_LISTEND:
                 $this->emit('list', new Event\ListEvent(
                     time: time(), event: 'list', sender: $this,
-                    items: $this->listReply
+                    items: $this->listReply ?? []
                 ));
                 $this->listReply = null;
                 break;
@@ -982,14 +1005,21 @@ class Client extends EventEmitter
                 //:knivey!~knivy@2001:bc8:182c:a4e::1 NICK :sludg
             case CMD_NICK:
                 $newNick = $message->getArg(0);
-                if($this->getNick() == $message->nick && $newNick !== null) {
+                $sourceNick = $message->nick;
+                if($newNick === null || $sourceNick === null) {
+                    $this->log->warning("Malformed NICK event: missing source or new nick", [
+                        'raw' => $e->raw, 'source' => $sourceNick, 'new' => $newNick,
+                    ]);
+                    throw new \RuntimeException("Malformed NICK event: missing source or new nick");
+                }
+                if($this->getNick() == $sourceNick) {
                     $this->nick = $newNick;
                 }
                 $this->emit("nick", new Event\NickEvent(
                     time: time(), event: "nick", sender: $this,
-                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
+                    nick: $sourceNick, ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    old: $message->nick, new: $newNick ?? ''
+                    old: $sourceNick, new: $newNick
                 ));
                 break;
             case "QUIT":
