@@ -818,7 +818,7 @@ class Client extends EventEmitter
 
                 $this->emit("notice, notice:$to, notice:$to:$from", new Event\NoticeEvent(
                     time: time(), event: "notice", sender: $this,
-                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
                     to: $to, text: $text
                 ));
@@ -826,7 +826,7 @@ class Client extends EventEmitter
             case CMD_MODE:
                 $this->emit("mode", new Event\ModeEvent(
                     time: time(), event: "mode", sender: $this,
-                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
                     target: $message->getArg(0) ?? '', args: array_splice($message->args, 1)
                 ));
@@ -834,7 +834,7 @@ class Client extends EventEmitter
             case RPL_CHANNELMODEIS:
                 $this->emit(RPL_CHANNELMODEIS, new Event\ChannelModeIsEvent(
                     time: time(), event: RPL_CHANNELMODEIS, sender: $this,
-                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
                     chan: $message->getArg(1) ?? '', args: array_splice($message->args, 2)
                 ));
@@ -850,7 +850,7 @@ class Client extends EventEmitter
                 if ($this->isChannel($to)) {
                     $this->emit("chat, chat:$to, chat:$to:$from", new Event\ChatEvent(
                         time: time(), event: "chat", sender: $this,
-                        nick: $message->nick, ident: $message->name, host: $message->host,
+                        nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                         identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
                         chan: $to, text: $text
                     ));
@@ -859,7 +859,7 @@ class Client extends EventEmitter
 
                 $this->emit("pm, pm:$to, pm:$to:$from", new Event\PmEvent(
                     time: time(), event: "pm", sender: $this,
-                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
                     to: $to, text: $text
                 ));
@@ -995,7 +995,7 @@ class Client extends EventEmitter
             case "QUIT":
                 $this->emit("quit", new Event\QuitEvent(
                     time: time(), event: "quit", sender: $this,
-                    nick: $message->nick, ident: $message->name, host: $message->host,
+                    nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
                     text: $message->getArg(0) ?? ''
                 ));
