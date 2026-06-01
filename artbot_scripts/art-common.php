@@ -392,7 +392,7 @@ function reqart(\Irc\Client $bot, string $chan, string $file, array $opts, objec
         $file = substr($file, 1);
         $art = selectRandFile($file, $ctx);
         if($art !== false)
-            playart($bot, $chan, $art, $file, $opts, $args, $speed);
+            playart($bot, $chan, $art, $file, $opts, $speed);
         else
             $bot->pm($chan, "no matching art found");
         return;
@@ -403,7 +403,7 @@ function reqart(\Irc\Client $bot, string $chan, string $file, array $opts, objec
         if ($file . '.txt' == strtolower(substr($ent, strlen($config['artdir'])))) {
             if($tryEdit($ent) || $tryLink($ent))
                 return;
-            playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
+            playart($bot, $chan, $ent, opts: $opts, speed: $speed);
             return;
         }
     }
@@ -415,7 +415,7 @@ function reqart(\Irc\Client $bot, string $chan, string $file, array $opts, objec
         if($file == strtolower(basename($ent, '.txt'))) {
             if($tryEdit($ent) || $tryLink($ent))
                 return;
-            playart($bot, $chan, $ent, opts: $opts, args: $args, speed: $speed);
+            playart($bot, $chan, $ent, opts: $opts, speed: $speed);
             return;
         }
     }
@@ -733,7 +733,7 @@ function randart(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): vo
     $art = selectRandFile($search, $ctx);
 
     if($art !== false)
-        playart($bot, $chan, $art, $search, $opts, [], $speed);
+        playart($bot, $chan, $art, $search, $opts, $speed);
     else
         $bot->pm($chan, "no matching art found");
 }
@@ -756,7 +756,7 @@ function stop(object $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void 
     }
 }
 
-function playart(\Irc\Client $bot, string $chan, string $file, string|false $searched = false, array $opts = [], object|array $args = [], ?string $speed = null): void
+function playart(\Irc\Client $bot, string $chan, string $file, string|false $searched = false, array $opts = [], ?string $speed = null): void
 {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
