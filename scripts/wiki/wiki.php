@@ -22,9 +22,6 @@ function wiki($args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs)
         }
         $rpl($e->getIRCMsg(), "error");
         return;
-    } catch (\Exception $e) {
-        $rpl($e->getMessage(), "error");
-        return;
     }
     $json = json_decode($body);
     if($json == null) {

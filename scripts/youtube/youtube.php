@@ -363,10 +363,6 @@ class youtube extends script_base
             echo $error;
             $reply($error->getIRCMsg());
             return;
-        } catch (\Exception $error) {
-            echo $error->getMessage();
-            $reply($error->getMessage());
-            return;
         }
         $res = json_decode($body, true);
         if (!isset($res['items']) || count($res['items']) == 0) {

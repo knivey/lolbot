@@ -27,10 +27,6 @@ class tools extends script_base
             else
                 $bot->msg($args->chan, "define error: {$e->getIRCMsg()}");
             return;
-        } catch (\Exception $error) {
-            echo $error->getMessage();
-            $bot->pm($args->chan, "define error: {$error->getMessage()}");
-            return;
         }
         $json = json_decode($body)[0];
         $out = "Define: {$json->word}";

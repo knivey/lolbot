@@ -75,10 +75,6 @@ class lastfm extends script_base
             $this->logger->error($error);
             $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
             return;
-        } catch (\Exception $error) {
-            $this->logger->error($error->getMessage());
-            $bot->pm($args->chan, "\2lastfm:\2 {$error->getMessage()}");
-            return;
         }
         $res = json_decode($body, true);
         if (!isset($res['recenttracks']['track'][0])) {
@@ -129,10 +125,6 @@ class lastfm extends script_base
             $this->logger->error($error);
             $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
             return;
-        } catch (\Exception $error) {
-            $this->logger->error($error->getMessage());
-            $bot->pm($args->chan, "\2lastfm:\2 {$error->getMessage()}");
-            return;
         }
         $res = json_decode($body, true);
         if (!isset($res['recenttracks']['track'][0])) {
@@ -168,10 +160,6 @@ class lastfm extends script_base
         } catch (\async_get_exception $error) {
             $this->logger->error($error);
             $bot->pm($args->chan, "\2lastfm:\2 {$error->getIRCMsg()}");
-            return;
-        } catch (\Exception $error) {
-            $this->logger->error($error->getMessage());
-            $bot->pm($args->chan, "\2lastfm:\2 {$error->getMessage()}");
             return;
         }
         $res = json_decode($body, true);

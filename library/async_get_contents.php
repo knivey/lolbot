@@ -30,9 +30,13 @@ function async_get_contents(string $url, array $headers = []): string {
     $request = new Request($url);
     foreach ($headers as $header => $value)
         $request->setHeader($header, $value);
-    /** @var Response $response */
-    $response = $client->request($request);
-    $body =  $response->getBody()->buffer();
+    try {
+        /** @var Response $response */
+        $response = $client->request($request);
+        $body =  $response->getBody()->buffer();
+    } catch (\Exception $e) {
+        throw new async_get_exception($e->getMessage(), 0, $e);
+    }
     if ($response->getStatus() != 200) {
         throw new async_get_exception($body, $response->getStatus());
     }
