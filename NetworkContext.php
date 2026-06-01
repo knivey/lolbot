@@ -8,21 +8,33 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 class NetworkContext
 {
+    /** @var \SplObjectStorage<\Irc\Client, self> */
     private static \SplObjectStorage $registry;
 
+    /** @var array<string, mixed> */
     public array $config;
+    /** @var list<\Irc\Client> */
     public array $clients = [];
+    /** @var array<string, list<string>> */
     public array $playing = [];
     public ?Nicks $nicks = null;
     public Cmdr $router;
     public ArrayAdapter $ignoreCache;
+    /** @var array<string, mixed> */
     public array $recordings = [];
+    /** @var array<string, mixed> */
     public array $allowedPumps = [];
+    /** @var array<string, mixed> */
     public array $recordTokens = [];
+    /** @var array<string, int> */
     public array $recordLimit = [];
+    /** @var array<string, int> */
     public array $limitWarns = [];
+    /** @var array<string, int> */
     public array $trashLimit = [];
+    /** @var array<string, int> */
     public array $trashLimitWarns = [];
+    /** @var array<string, array{chan: string, lines: list<string>, timeOut: string, keeptimes: bool}> */
     public array $quoteRecordings = [];
     public string $name;
     public int $networkId;
@@ -30,6 +42,7 @@ class NetworkContext
     public string $restUrl = '';
     public bool $quotesDbInit = false;
 
+    /** @param array<string, mixed> $config */
     public function __construct(array $config)
     {
         $this->config = $config;
@@ -54,6 +67,7 @@ class NetworkContext
         return self::$registry[$bot];
     }
 
+    /** @return list<self> */
     public static function getAll(): array
     {
         if (!isset(self::$registry)) {
@@ -69,7 +83,7 @@ class NetworkContext
         return $contexts;
     }
 
-    public function canRun($args): bool
+    public function canRun(object $args): bool
     {
         if (isset($this->config['artMinAccess'])) {
             if (!is_string($this->config['artMinAccess']) ||
@@ -95,7 +109,11 @@ class NetworkContext
         return true;
     }
 
-    public function pumpToChan(string $chan, array $data, $speed = null): ?Future
+    /**
+     * @param list<string> $data
+     * @return Future<void>|null
+     */
+    public function pumpToChan(string $chan, array $data, ?string $speed = null): ?Future
     {
         $chan = strtolower($chan);
         if (isset($this->playing[$chan])) {
@@ -107,7 +125,8 @@ class NetworkContext
         return null;
     }
 
-    public function startPump(string $chan, $speed = null): Future
+    /** @return Future<void> */
+    public function startPump(string $chan, ?string $speed = null): Future
     {
         return async(function () use ($chan, $speed) {
             $chan = strtolower($chan);
@@ -207,6 +226,7 @@ class NetworkContext
         });
     }
 
+    /** @phpstan-impure */
     public function selectBot(string $chan): \Irc\Client|false
     {
         static $current = [];
@@ -238,7 +258,7 @@ class NetworkContext
         return $cnt;
     }
 
-    public function getWrapLength($bot, $chan): int
+    public function getWrapLength(\Irc\Client $bot, string $chan): int
     {
         $size = 0;
         if (!empty($this->clients)) {
@@ -250,6 +270,7 @@ class NetworkContext
         return 500 - $size - strlen(" PRIVMSG $chan :");
     }
 
+    /** @param list<string> $exclude */
     public function getFinder(array $exclude = ['p2u']): \Symfony\Component\Finder\Finder
     {
         $finder = new \Symfony\Component\Finder\Finder();
@@ -271,7 +292,11 @@ class NetworkContext
     }
 }
 
-function pumpToChan(\Irc\Client $bot, string $chan, array $data, $speed = null): ?Future
+/**
+ * @param list<string> $data
+ * @return Future<void>|null
+ */
+function pumpToChan(\Irc\Client $bot, string $chan, array $data, ?string $speed = null): ?Future
 {
     return NetworkContext::get($bot)->pumpToChan($chan, $data, $speed);
 }
