@@ -175,6 +175,9 @@ class youtube extends script_base
             return;
         }
 
+        if (!array_key_exists(5, $m)) { // @phpstan-ignore function.alreadyNarrowedType
+            return;
+        }
         $id = $m[5];
 
         $event->addFuture(\Amp\async(function () use ($event, $id) {
