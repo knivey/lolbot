@@ -199,6 +199,11 @@ class Path
                 $inSubpath = false;
             } else {
                 // Drawing segment: flatten and append vertices
+                if (!$inSubpath) {
+                    // Re-open an implicit subpath starting at the current point
+                    $currentVertices = [[$currentX, $currentY]];
+                    $inSubpath = true;
+                }
                 $vertices = $seg->flatten($currentX, $currentY, $tolerance);
                 foreach ($vertices as $v) {
                     $currentVertices[] = $v;

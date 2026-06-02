@@ -227,7 +227,7 @@ class PathTest extends TestCase
         $this->assertSame([], $path->flatten());
     }
 
-    public function test_flatten_close_path_then_move_to_creates_two_subpaths(): void
+    public function test_flatten_close_path_then_move_to_omits_trailing_degenerate(): void
     {
         $path = new Path();
         $path->moveTo(0.0, 0.0)
@@ -251,5 +251,54 @@ class PathTest extends TestCase
         $this->assertCount(1, $subpaths);
         $this->assertFalse($subpaths[0]['closed']);
         $this->assertCount(3, $subpaths[0]['vertices']);
+    }
+
+    public function test_flatten_drawing_after_close_without_move(): void
+    {
+        $path = new Path();
+        $path->moveTo(0.0, 0.0)
+             ->lineTo(10.0, 0.0)
+             ->closePath()
+             ->lineTo(20.0, 0.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(2, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertFalse($subpaths[1]['closed']);
+        $this->assertSame([0.0, 0.0], $subpaths[1]['vertices'][0]);
+        $this->assertSame([20.0, 0.0], $subpaths[1]['vertices'][1]);
+    }
+
+    public function test_flatten_quadratic_bezier_produces_multiple_vertices(): void
+    {
+        $path = new Path();
+        $path->moveTo(0.0, 0.0)
+             ->quadTo(5.0, 10.0, 10.0, 0.0);
+        $subpaths = $path->flatten(0.5);
+        $this->assertCount(1, $subpaths);
+        $this->assertGreaterThan(2, count($subpaths[0]['vertices']));
+    }
+
+    public function test_flatten_mixed_closed_and_open_subpaths(): void
+    {
+        $path = new Path();
+        $path->moveTo(10.0, 10.0)
+             ->lineTo(20.0, 10.0)
+             ->closePath()
+             ->moveTo(30.0, 30.0)
+             ->lineTo(40.0, 30.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(2, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertFalse($subpaths[1]['closed']);
+    }
+
+    public function test_flatten_implicit_move_to_creates_subpath_at_origin(): void
+    {
+        $path = new Path();
+        $path->lineTo(10.0, 20.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertSame([0.0, 0.0], $subpaths[0]['vertices'][0]);
+        $this->assertSame([10.0, 20.0], $subpaths[0]['vertices'][1]);
     }
 }
