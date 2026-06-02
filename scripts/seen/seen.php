@@ -52,11 +52,37 @@ class seen extends script_base
     function seen(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
-        $nick = u($cmdArgs['nick'])->lower();
+        $nick = (string) u($cmdArgs['nick'])->lower();
         if ($nick == u($bot->getNick())->lower()) {
             $bot->pm($args->chan, "I'm here bb");
             return;
         }
+
+        $invokerNick = (string) u($args->nick)->lower();
+        if ($nick === $invokerNick) {
+            // Self-lookup: use the prior in-memory entry captured before
+            // updateSeen() queued the invoker line, so we don't return the
+            // invoker itself. Do NOT call saveSeens() here.
+            if (isset($this->previousUpdates[$nick])) {
+                $bot->pm($args->chan, $this->formatSeenReply($this->previousUpdates[$nick], $args->chan));
+                return;
+            }
+            // No prior in-memory entry; fall through to DB without flushing,
+            // so the invoker line (still in $this->updates) is not persisted
+            // before the query.
+            $seen = $entityManager->getRepository(entities\seen::class)->findOneBy([
+                "network" => $this->network,
+                "nick" => $nick
+            ]);
+            if (!$seen) {
+                $bot->pm($args->chan, "I've never seen {$cmdArgs['nick']} in my whole life");
+                return;
+            }
+            $entityManager->refresh($seen);
+            $bot->pm($args->chan, $this->formatSeenReply($seen, $args->chan));
+            return;
+        }
+
         $this->saveSeens();
 
         $seen = $entityManager->getRepository(entities\seen::class)->findOneBy([
