@@ -17,6 +17,7 @@
         <file name="multiartbot.php"/>
         <file name="lolbot.php"/>
         <file name="bootstrap.php"/>
+        <directory name="tests" />
 
 
         <ignoreFiles>
