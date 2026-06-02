@@ -4,6 +4,8 @@ namespace artbot_scripts;
 
 use draw\Canvas;
 use draw\Color;
+use draw\LineCap;
+use draw\LineJoin;
 use draw\Path;
 use draw\StrokeStyle;
 
@@ -409,7 +411,7 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes'];
 
 #[Cmd("demo")]
 #[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex). Random if no arg.")]
@@ -434,6 +436,7 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'bubbles' => demoBubbles($art),
         'vortex' => demoVortex($art),
         'transform' => demoTransform($art),
+        'strokes' => demoStrokes($art),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -596,5 +599,44 @@ function demoTransform(Canvas $art): void
         $spoke = Path::rect(-2, -$spokeLen, 4, $spokeLen - 7);
         $art->drawPath($spoke, $fillColor, new StrokeStyle($outlineColor));
         $art->restore();
+    }
+}
+
+function demoStrokes(Canvas $art): void
+{
+    $colors = [4, 7, 8, 9, 11, 12, 13];
+    $y = 3.0;
+    foreach ([1.0, 2.0, 3.0, 4.0, 5.0] as $width) {
+        $color = new Color($colors[array_rand($colors)], null);
+        $art->drawPath(
+            Path::line(5.0, $y, 75.0, $y),
+            null,
+            new StrokeStyle($color, width: $width)
+        );
+        $y += $width + 3;
+    }
+
+    $cy = 34.0;
+    $caps = [LineCap::Butt, LineCap::Round, LineCap::Square];
+    foreach ($caps as $cap) {
+        $color = new Color($colors[array_rand($colors)], null);
+        $art->drawPath(
+            Path::line(10.0, $cy, 30.0, $cy),
+            null,
+            new StrokeStyle($color, width: 4.0, lineCap: $cap)
+        );
+        $cy += 7;
+    }
+
+    $jx = 45.0;
+    $joins = [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel];
+    foreach ($joins as $join) {
+        $color = new Color($colors[array_rand($colors)], null);
+        $path = new Path();
+        $path->moveTo($jx, 34.0);
+        $path->lineTo($jx + 10.0, 34.0);
+        $path->lineTo($jx + 10.0, 42.0);
+        $art->drawPath($path, null, new StrokeStyle($color, width: 3.0, lineJoin: $join));
+        $jx += 14;
     }
 }
