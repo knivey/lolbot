@@ -543,20 +543,21 @@ function demoVortex(Canvas $art): void
     $fgs = [4, 7, 8, 9, 11, 12, 13];
     $cx = rand(25, 55);
     $cy = rand(18, 30);
-    $numArms = rand(6, 14);
+    $numArms = rand(3, 6);
+    $direction = rand(0, 1) ? 1 : -1;
+    $color = new Color($fgs[array_rand($fgs)], 1);
     for ($a = 0; $a < $numArms; $a++) {
-        $angle = (2 * M_PI * $a / $numArms);
-        $length = rand(15, 30);
-        $curvature = ((mt_rand() / mt_getrandmax()) * 2 - 1) * 12;
-        $ex = $cx + cos($angle) * $length;
-        $ey = $cy + sin($angle) * $length;
-        $perpAngle = $angle + M_PI / 2;
-        $cpx = ($cx + $ex) / 2 + cos($perpAngle) * $curvature;
-        $cpy = ($cy + $ey) / 2 + sin($perpAngle) * $curvature;
-        $color = new Color($fgs[array_rand($fgs)], 1);
-        $path = new Path();
-        $path->moveTo($cx, $cy);
-        $path->quadTo($cpx, $cpy, $ex, $ey);
-        $art->drawPath($path, null, $color);
+        $startAngle = (2 * M_PI * $a / $numArms);
+        $points = [];
+        $segs = 60;
+        $maxR = rand(18, 30);
+        $turns = 1.5 + (mt_rand() / mt_getrandmax()) * 1.5;
+        for ($i = 0; $i <= $segs; $i++) {
+            $t = $i / $segs;
+            $angle = $startAngle + $t * $turns * 2 * M_PI * $direction;
+            $r = $t * $maxR;
+            $points[] = [$cx + cos($angle) * $r, $cy + sin($angle) * $r];
+        }
+        $art->drawPath(Path::polyline($points), null, $color);
     }
 }
