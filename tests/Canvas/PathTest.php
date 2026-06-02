@@ -563,4 +563,51 @@ class PathTest extends TestCase
         $this->assertCount(1, $subpaths);
         $this->assertTrue($subpaths[0]['closed']);
     }
+
+    public function test_line_renders_pixels(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $color = new Color(4, 0);
+        $canvas->drawPath(Path::line(0, 0, 9, 9), null, $color);
+        $this->assertSame(4, $canvas->data[0][0]->fg);
+        $this->assertSame(4, $canvas->data[9][9]->fg);
+    }
+
+    public function test_rect_renders_outline(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $color = new Color(4, 0);
+        $canvas->drawPath(Path::rect(1, 1, 8, 8), null, $color);
+        $this->assertSame(4, $canvas->data[1][1]->fg);
+        $this->assertSame(4, $canvas->data[1][9]->fg);
+        $this->assertSame(4, $canvas->data[9][1]->fg);
+        $this->assertSame(4, $canvas->data[9][9]->fg);
+    }
+
+    public function test_rect_renders_fill(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $fill = new Color(4, 0);
+        $canvas->drawPath(Path::rect(2, 2, 6, 6), $fill, null);
+        $this->assertSame(4, $canvas->data[4][4]->fg);
+        $this->assertNull($canvas->data[0][0]->fg);
+    }
+
+    public function test_circle_renders_outline(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $color = new Color(4, 0);
+        $canvas->drawPath(Path::circle(10, 10, 5), null, $color);
+        $this->assertSame(4, $canvas->data[10][15]->fg);
+        $this->assertSame(4, $canvas->data[10][5]->fg);
+    }
+
+    public function test_ellipse_renders_fill(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $fill = new Color(4, 0);
+        $canvas->drawPath(Path::ellipse(10, 10, 8, 5), $fill, null);
+        $this->assertSame(4, $canvas->data[10][10]->fg);
+        $this->assertNull($canvas->data[0][0]->fg);
+    }
 }
