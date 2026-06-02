@@ -433,6 +433,27 @@ class Canvas
             }
             return;
         }
+
+        $halfW = $stroke->width / 2.0;
+
+        $dashSegments = $this->applyDashPattern($vertices, $sp['closed'], $stroke);
+
+        foreach ($dashSegments as $seg) {
+            $segVerts = $seg['vertices'];
+            $segClosed = $seg['closed'];
+            $segN = count($segVerts);
+            if ($segClosed && $segN < 3) {
+                continue;
+            }
+            if ($segN < 2) {
+                continue;
+            }
+
+            $polygon = $this->expandStrokePolygon($segVerts, $segClosed, $halfW, $stroke);
+            if (count($polygon) >= 3) {
+                $this->fillPolygonScanlineMulti([$polygon], $stroke->color, $text, FillRule::NonZero);
+            }
+        }
     }
 
     /**
@@ -466,7 +487,7 @@ class Canvas
             }
         }
 
-        for ($Y = $minY; $Y <= $maxY; $Y++) {
+        for ($Y = (int) ceil($minY); $Y <= (int) floor($maxY); $Y++) {
             $intersections = [];
 
             // Collect (xIntersection, windingDirection) for every edge
@@ -542,5 +563,157 @@ class Canvas
                 }
             }
         }
+    }
+
+    private function expandStrokePolygon(array $vertices, bool $closed, float $halfW, StrokeStyle $stroke): array
+    {
+        $n = count($vertices);
+        $count = $closed ? $n : $n - 1;
+
+        $left = [];
+        $right = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $curr = $vertices[$i];
+            $next = $vertices[($i + 1) % $n];
+
+            $dx = (float) ($next[0] - $curr[0]);
+            $dy = (float) ($next[1] - $curr[1]);
+            $len = sqrt($dx * $dx + $dy * $dy);
+            if ($len < 0.0001) {
+                continue;
+            }
+            $nx = -$dy / $len;
+            $ny = $dx / $len;
+
+            $left[] = [$curr[0] + $nx * $halfW, $curr[1] + $ny * $halfW];
+            $left[] = [$next[0] + $nx * $halfW, $next[1] + $ny * $halfW];
+            $right[] = [$curr[0] - $nx * $halfW, $curr[1] - $ny * $halfW];
+            $right[] = [$next[0] - $nx * $halfW, $next[1] - $ny * $halfW];
+        }
+
+        if (empty($left)) {
+            return [];
+        }
+
+        $leftClean = $this->deduplicateVertices($left);
+        $rightClean = $this->deduplicateVertices($right);
+
+        if ($closed) {
+            $rightReversed = array_reverse($rightClean);
+            return array_merge($leftClean, $rightReversed);
+        }
+
+        $startCap = $this->makeCap($leftClean[0], $rightClean[0], $vertices[0], $vertices[1] ?? $vertices[0], $halfW, $stroke->lineCap, true);
+        $endCap = $this->makeCap($leftClean[count($leftClean) - 1], $rightClean[count($rightClean) - 1], $vertices[$n - 1], $vertices[$n - 2], $halfW, $stroke->lineCap, false);
+
+        $rightReversed = array_reverse($rightClean);
+        return array_merge($leftClean, $endCap, $rightReversed, array_reverse($startCap));
+    }
+
+    private function deduplicateVertices(array $vertices): array
+    {
+        $result = [$vertices[0]];
+        for ($i = 1; $i < count($vertices); $i++) {
+            $prev = $result[count($result) - 1];
+            $dx = $vertices[$i][0] - $prev[0];
+            $dy = $vertices[$i][1] - $prev[1];
+            if ($dx * $dx + $dy * $dy > 0.0001) {
+                $result[] = $vertices[$i];
+            }
+        }
+        return $result;
+    }
+
+    private function lineIntersection(array $p1, array $p2, array $p3, array $p4): ?array
+    {
+        $x1 = $p1[0]; $y1 = $p1[1];
+        $x2 = $p2[0]; $y2 = $p2[1];
+        $x3 = $p3[0]; $y3 = $p3[1];
+        $x4 = $p4[0]; $y4 = $p4[1];
+
+        $denom = ($x1 - $x2) * ($y3 - $y4) - ($y1 - $y2) * ($x3 - $x4);
+        if (abs($denom) < 0.0001) {
+            return null;
+        }
+
+        $t = (($x1 - $x3) * ($y3 - $y4) - ($y1 - $y3) * ($x3 - $x4)) / $denom;
+
+        $x = $x1 + $t * ($x2 - $x1);
+        $y = $y1 + $t * ($y2 - $y1);
+        return [$x, $y];
+    }
+
+    private function arcPoints(array $center, array $from, array $to, float $radius): array
+    {
+        $a1 = atan2($from[1] - $center[1], $from[0] - $center[0]);
+        $a2 = atan2($to[1] - $center[1], $to[0] - $center[0]);
+
+        $diff = $a2 - $a1;
+        while ($diff > M_PI) $diff -= 2 * M_PI;
+        while ($diff < -M_PI) $diff += 2 * M_PI;
+
+        $steps = max(3, (int) ceil(abs($diff) * $radius / 2.0));
+        $pts = [];
+        for ($i = 0; $i <= $steps; $i++) {
+            $angle = $a1 + $diff * $i / $steps;
+            $pts[] = [$center[0] + $radius * cos($angle), $center[1] + $radius * sin($angle)];
+        }
+        return $pts;
+    }
+
+    private function makeCap(array $leftPt, array $rightPt, array $endpoint, array $direction, float $halfW, LineCap $cap, bool $isStart): array
+    {
+        if ($cap === LineCap::Butt) {
+            return [];
+        }
+
+        $dx = (float) ($direction[0] - $endpoint[0]);
+        $dy = (float) ($direction[1] - $endpoint[1]);
+        $len = sqrt($dx * $dx + $dy * $dy);
+        if ($len < 0.0001) {
+            return [];
+        }
+        $dirX = -$dx / $len;
+        $dirY = -$dy / $len;
+
+        if ($cap === LineCap::Square) {
+            $extX = $dirX * $halfW;
+            $extY = $dirY * $halfW;
+            $sq1 = [$leftPt[0] + $extX, $leftPt[1] + $extY];
+            $sq2 = [$rightPt[0] + $extX, $rightPt[1] + $extY];
+            return [$sq1, $sq2];
+        }
+
+        if ($cap === LineCap::Round) {
+            $a1 = atan2($leftPt[1] - $endpoint[1], $leftPt[0] - $endpoint[0]);
+            $a2 = atan2($rightPt[1] - $endpoint[1], $rightPt[0] - $endpoint[0]);
+            $diff = $a2 - $a1;
+            while ($diff > M_PI) $diff -= 2 * M_PI;
+            while ($diff < -M_PI) $diff += 2 * M_PI;
+            $midAngle = $a1 + $diff / 2;
+            $dot = cos($midAngle) * $dirX + sin($midAngle) * $dirY;
+            if ($dot < 0) {
+                if ($diff > 0) {
+                    $diff -= 2 * M_PI;
+                } else {
+                    $diff += 2 * M_PI;
+                }
+            }
+            $steps = max(3, (int) ceil(abs($diff) * $halfW / 2.0));
+            $pts = [];
+            for ($i = 0; $i <= $steps; $i++) {
+                $angle = $a1 + $diff * $i / $steps;
+                $pts[] = [$endpoint[0] + $halfW * cos($angle), $endpoint[1] + $halfW * sin($angle)];
+            }
+            return $pts;
+        }
+
+        return [];
+    }
+
+    private function applyDashPattern(array $vertices, bool $closed, StrokeStyle $stroke): array
+    {
+        return [['vertices' => $vertices, 'closed' => $closed]];
     }
 }

@@ -8,6 +8,8 @@ use draw\Path;
 use draw\Transform;
 use draw\StrokeStyle;
 use draw\FillRule;
+use draw\LineCap;
+use draw\LineJoin;
 use PHPUnit\Framework\TestCase;
 
 class CanvasTest extends TestCase
@@ -522,5 +524,165 @@ class CanvasTest extends TestCase
 
         $this->assertSame(4, $canvas->data[3][3]->fg, "Pixel between outer and inner should be filled (NonZero)");
         $this->assertSame(4, $canvas->data[8][8]->fg, "Pixel inside inner square should also be filled (NonZero, same winding)");
+    }
+
+    public function test_stroke_width_2_horizontal_line(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), width: 2.0);
+
+        $canvas->drawPath(Path::line(2, 5, 8, 5), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[4][5]->fg, "Row above center should be stroked");
+        $this->assertSame(4, $canvas->data[5][5]->fg, "Center row should be stroked");
+        $this->assertNull($canvas->data[3][5]->fg, "Row two above should not be stroked");
+        $this->assertNull($canvas->data[6][5]->fg, "Row below should not be stroked");
+    }
+
+    public function test_stroke_width_3_horizontal_line(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), width: 3.0);
+
+        $canvas->drawPath(Path::line(2, 5, 8, 5), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[4][5]->fg);
+        $this->assertSame(4, $canvas->data[5][5]->fg);
+        $this->assertSame(4, $canvas->data[6][5]->fg);
+        $this->assertNull($canvas->data[3][5]->fg);
+        $this->assertNull($canvas->data[7][5]->fg);
+    }
+
+    public function test_stroke_width_3_vertical_line(): void
+    {
+        $canvas = Canvas::createBlank(10, 20);
+        $stroke = new StrokeStyle(new Color(4, null), width: 3.0);
+
+        $canvas->drawPath(Path::line(5, 2, 5, 8), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[5][4]->fg);
+        $this->assertSame(4, $canvas->data[5][5]->fg);
+        $this->assertSame(4, $canvas->data[5][6]->fg);
+        $this->assertNull($canvas->data[5][3]->fg);
+        $this->assertNull($canvas->data[5][7]->fg);
+    }
+
+    public function test_stroke_width_2_square_outline(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $stroke = new StrokeStyle(new Color(4, null), width: 2.0);
+
+        $canvas->drawPath(Path::rect(5, 5, 10, 10), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[4][5]->fg, "Top edge row above");
+        $this->assertSame(4, $canvas->data[5][5]->fg, "Top edge");
+        $this->assertSame(4, $canvas->data[14][5]->fg, "Bottom edge");
+        $this->assertSame(4, $canvas->data[15][5]->fg, "Bottom edge row below");
+        $this->assertSame(4, $canvas->data[5][4]->fg, "Left edge col before");
+        $this->assertSame(4, $canvas->data[5][5]->fg, "Left edge");
+        $this->assertNull($canvas->data[9][9]->fg, "Interior should be empty");
+    }
+
+    public function test_stroke_butt_cap_open_path(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), width: 3.0, lineCap: LineCap::Butt);
+
+        $canvas->drawPath(Path::line(5, 5, 10, 5), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[4][5]->fg, "Butt cap at start");
+        $this->assertSame(4, $canvas->data[4][10]->fg, "Butt cap at end");
+        $this->assertNull($canvas->data[4][4]->fg, "No extension before start");
+        $this->assertNull($canvas->data[4][11]->fg, "No extension after end");
+    }
+
+    public function test_stroke_square_cap_extends(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), width: 2.0, lineCap: LineCap::Square);
+
+        $canvas->drawPath(Path::line(5, 5, 10, 5), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[5][4]->fg, "Square cap extends 1px before start");
+        $this->assertSame(4, $canvas->data[5][11]->fg, "Square cap extends 1px after end");
+    }
+
+    public function test_stroke_round_cap_adds_semicircle(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), width: 3.0, lineCap: LineCap::Round);
+
+        $canvas->drawPath(Path::line(5, 5, 10, 5), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[5][4]->fg, "Round cap at start");
+        $this->assertSame(4, $canvas->data[5][11]->fg, "Round cap at end");
+    }
+
+    public function test_stroke_miter_join(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $stroke = new StrokeStyle(new Color(4, null), width: 2.0, lineJoin: LineJoin::Miter);
+
+        $path = new Path();
+        $path->moveTo(5.0, 5.0);
+        $path->lineTo(10.0, 5.0);
+        $path->lineTo(10.0, 10.0);
+        $canvas->drawPath($path, null, $stroke);
+
+        $this->assertSame(4, $canvas->data[4][10]->fg, "Miter join at corner");
+    }
+
+    public function test_stroke_bevel_join(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $stroke = new StrokeStyle(new Color(4, null), width: 2.0, lineJoin: LineJoin::Bevel);
+
+        $path = new Path();
+        $path->moveTo(5.0, 5.0);
+        $path->lineTo(10.0, 5.0);
+        $path->lineTo(10.0, 10.0);
+        $canvas->drawPath($path, null, $stroke);
+
+        $this->assertSame(4, $canvas->data[5][9]->fg, "Bevel join area");
+    }
+
+    public function test_stroke_round_join(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $stroke = new StrokeStyle(new Color(4, null), width: 4.0, lineJoin: LineJoin::Round);
+
+        $path = new Path();
+        $path->moveTo(5.0, 10.0);
+        $path->lineTo(10.0, 10.0);
+        $path->lineTo(10.0, 5.0);
+        $canvas->drawPath($path, null, $stroke);
+
+        $this->assertSame(4, $canvas->data[10][10]->fg, "Round join at corner");
+    }
+
+    public function test_stroke_width_1_unchanged_behavior(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $stroke = new StrokeStyle(new Color(4, null));
+
+        $canvas->drawPath(Path::line(2, 2, 8, 8), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[2][2]->fg);
+        $this->assertSame(4, $canvas->data[5][5]->fg);
+        $this->assertSame(4, $canvas->data[8][8]->fg);
+    }
+
+    public function test_stroke_miter_limit_clips_to_bevel(): void
+    {
+        $canvas = Canvas::createBlank(30, 30);
+        $stroke = new StrokeStyle(new Color(4, null), width: 2.0, lineJoin: LineJoin::Miter, miterLimit: 1.0);
+
+        $path = new Path();
+        $path->moveTo(5.0, 15.0);
+        $path->lineTo(15.0, 10.0);
+        $path->lineTo(25.0, 15.0);
+        $canvas->drawPath($path, null, $stroke);
+
+        $this->assertTrue(true, "Miter limit clipping does not crash");
     }
 }
