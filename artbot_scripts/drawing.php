@@ -448,9 +448,21 @@ function demoFlowers(Canvas $art): void
         $centerColor = new Color($fgs[array_rand($fgs)], null);
         for ($p = 0; $p < $numPetals; $p++) {
             $angle = (2 * M_PI * $p / $numPetals);
-            $px = $cx + cos($angle) * $petalLen * 0.5;
-            $py = $cy + sin($angle) * $petalLen * 0.5;
-            $art->drawPath(Path::ellipse($px, $py, $petalWidth, $petalLen), $fillColor, $outlineColor);
+            $perpAngle = $angle + M_PI / 2;
+            $pcx = $cx + cos($angle) * $petalLen * 0.4;
+            $pcy = $cy + sin($angle) * $petalLen * 0.4;
+            $petalPoints = [];
+            $segs = 20;
+            for ($s = 0; $s < $segs; $s++) {
+                $t = ($s / $segs) * 2 * M_PI;
+                $major = sin($t) * $petalLen;
+                $minor = cos($t) * $petalWidth;
+                $petalPoints[] = [
+                    $pcx + cos($angle) * $major + cos($perpAngle) * $minor,
+                    $pcy + sin($angle) * $major + sin($perpAngle) * $minor,
+                ];
+            }
+            $art->drawPath(Path::polygon($petalPoints), $fillColor, $outlineColor);
         }
         $art->drawPath(Path::circle($cx, $cy, 2), $centerColor, null);
     }
