@@ -124,8 +124,8 @@ function stars(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         }
 
         $willFill = random_int(0, 4) > 1;
-        $tart->drawPolygon(
-            $points,
+        $tart->drawPath(
+            Path::polygon($points),
             $willFill ? $fillColor : null,
             $outlineColor,
         );
@@ -177,8 +177,8 @@ function hearts(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
         }
 
         $willFill = random_int(0, 4) > 1;
-        $tart->drawPolygon(
-            $points,
+        $tart->drawPath(
+            Path::polygon($points),
             $willFill ? $fillColor : null,
             $outlineColor,
         );
