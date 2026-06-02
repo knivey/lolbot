@@ -163,6 +163,59 @@ function stars(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
 }
 
 
+#[Cmd("hearts")]
+#[Desc("Draw some random hearts")]
+#[Option("--lines")]
+function hearts(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+{
+    $lines = 48;
+    if ($cmdArgs->optEnabled("--lines")) {
+        $lines = intval($cmdArgs->getOpt("--lines"));
+        if ($lines < 48 || $lines > 300) {
+            $bot->pm($args->chan, "--lines should be from 48 to 300");
+            return;
+        }
+    }
+    $art = Canvas::createBlank(80, $lines, true);
+    $bgs = [1, 2, 3, 5, 6, 10];
+    $fgs = [4, 7, 8, 9, 11, 12, 13];
+    $art->fillColor(0, 0, new Color($bgs[array_rand($bgs)], 0));
+    $numHearts = random_int(intval(3 * ($lines / 48)), intval(8 * ($lines / 48)));
+    for ($i = 0; $i < $numHearts; $i++) {
+        $tart = Canvas::createBlank(80, $lines, true);
+        $fillColor = new Color($fgs[array_rand($fgs)], null);
+        $outlineColor = new Color($fgs[array_rand($fgs)], null);
+        $radius = random_int(7, 25);
+        $x = random_int(0, 80);
+        $y = random_int(0, $lines);
+        $scale = $radius / 16;
+        $rot = deg2rad(random_int(0, 359));
+        $cosR = cos($rot);
+        $sinR = sin($rot);
+        $points = [];
+        $segs = 32;
+        for ($p = 0; $p < $segs; $p++) {
+            $t = ($p / $segs) * 2 * M_PI;
+            $hx = 16 * pow(sin($t), 3);
+            $hy = -(13 * cos($t) - 5 * cos(2 * $t) - 2 * cos(3 * $t) - cos(4 * $t));
+            $px = $hx * $scale;
+            $py = $hy * $scale;
+            $points[] = [$px * $cosR - $py * $sinR + $x, $px * $sinR + $py * $cosR + $y];
+        }
+
+        $willFill = random_int(0, 4) > 1;
+        $tart->drawPolygon(
+            $points,
+            $willFill ? $fillColor : null,
+            $outlineColor,
+        );
+        $art->overlay($tart);
+    }
+
+    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
+}
+
+
 #[Cmd("curves")]
 #[Desc("Draw random flowing Bézier curves (screensaver style)")]
 function curves(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
