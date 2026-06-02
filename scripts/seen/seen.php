@@ -66,11 +66,28 @@ class seen extends script_base
      */
     private array $updates = [];
 
+    /**
+     * Prior in-memory update per nick, captured before being overwritten by
+     * the next updateSeen() for that nick. Used by self-lookup to avoid
+     * returning the invoker's own current line.
+     *
+     * @var array<string, entities\seen>
+     */
+    private array $previousUpdates = [];
+
     function updateSeen(string $action, string $chan, string $nick, string $text): void
     {
         $orig_nick = $nick;
         $nick = strtolower($nick);
         $chan = strtolower($chan);
+
+        // Stash the prior in-memory entry before overwriting, for self-lookup.
+        // Not cleared in saveSeens() so it survives the event-loop race where
+        // the periodic flush fires between the synchronous chat listener and
+        // the deferred command body.
+        if (isset($this->updates[$nick])) {
+            $this->previousUpdates[$nick] = $this->updates[$nick];
+        }
 
         $ent = new entities\seen();
         $ent->nick = $nick;
@@ -105,6 +122,10 @@ class seen extends script_base
         }
         $entityManager->flush();
         $this->updates = [];
+        // Intentionally do NOT clear $this->previousUpdates here. Doing so
+        // would re-introduce the self-lookup bug via the event-loop race
+        // where this periodic flush fires between the chat listener and the
+        // deferred .seen command body.
     }
 
     function init(): void
