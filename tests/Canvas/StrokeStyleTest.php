@@ -41,4 +41,10 @@ class StrokeStyleTest extends TestCase
         $this->assertSame(LineJoin::Bevel, $s->lineJoin);
         $this->assertSame(8.0, $s->miterLimit);
     }
+
+    public function test_negative_dash_array_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new StrokeStyle(new Color(4, null), dashArray: [5.0, -1.0]);
+    }
 }

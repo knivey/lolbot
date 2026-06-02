@@ -412,20 +412,20 @@ class Canvas
                 }
                 for ($i = 1; $i < $segN; $i++) {
                     $this->drawLineInternal(
-                        $segVerts[$i - 1][0],
-                        $segVerts[$i - 1][1],
-                        $segVerts[$i][0],
-                        $segVerts[$i][1],
+                        (int) $segVerts[$i - 1][0],
+                        (int) $segVerts[$i - 1][1],
+                        (int) $segVerts[$i][0],
+                        (int) $segVerts[$i][1],
                         $stroke->color,
                         $text
                     );
                 }
                 if ($seg['closed']) {
                     $this->drawLineInternal(
-                        $segVerts[$segN - 1][0],
-                        $segVerts[$segN - 1][1],
-                        $segVerts[0][0],
-                        $segVerts[0][1],
+                        (int) $segVerts[$segN - 1][0],
+                        (int) $segVerts[$segN - 1][1],
+                        (int) $segVerts[0][0],
+                        (int) $segVerts[0][1],
                         $stroke->color,
                         $text
                     );
