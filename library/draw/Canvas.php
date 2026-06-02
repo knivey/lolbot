@@ -486,6 +486,20 @@ class Canvas
             // Sort by x so we can walk left-to-right.
             usort($intersections, fn ($a, $b) => $a[0] <=> $b[0]);
 
+            $fillSpan = function (float $x0, float $x1) use ($Y, $color, $text): void {
+                $xL = (int) ceil($x0);
+                $xR = (int) floor($x1);
+                for ($xx = $xL; $xx <= $xR; $xx++) {
+                    if (isset($this->data[$Y][$xx])) {
+                        $this->data[$Y][$xx]->fg = $color->fg;
+                        $this->data[$Y][$xx]->bg = $color->bg;
+                        if ($text != '') {
+                            $this->data[$Y][$xx]->text = $text;
+                        }
+                    }
+                }
+            };
+
             if ($fillRule === FillRule::EvenOdd) {
                 $inside = false;
                 $spanStart = null;
@@ -495,17 +509,7 @@ class Canvas
                         $spanStart = $xInt;
                     } else {
                         if ($spanStart !== null) {
-                            $xL = (int) ceil($spanStart);
-                            $xR = (int) floor($xInt);
-                            for ($xx = $xL; $xx <= $xR; $xx++) {
-                                if (isset($this->data[$Y][$xx])) {
-                                    $this->data[$Y][$xx]->fg = $color->fg;
-                                    $this->data[$Y][$xx]->bg = $color->bg;
-                                    if ($text != '') {
-                                        $this->data[$Y][$xx]->text = $text;
-                                    }
-                                }
-                            }
+                            $fillSpan($spanStart, $xInt);
                         }
                         $spanStart = null;
                     }
@@ -520,17 +524,7 @@ class Canvas
                         $spanStart = $xInt;
                     } elseif ($prevWinding !== 0 && $winding === 0) {
                         if ($spanStart !== null) {
-                            $xL = (int) ceil($spanStart);
-                            $xR = (int) floor($xInt);
-                            for ($xx = $xL; $xx <= $xR; $xx++) {
-                                if (isset($this->data[$Y][$xx])) {
-                                    $this->data[$Y][$xx]->fg = $color->fg;
-                                    $this->data[$Y][$xx]->bg = $color->bg;
-                                    if ($text != '') {
-                                        $this->data[$Y][$xx]->text = $text;
-                                    }
-                                }
-                            }
+                            $fillSpan($spanStart, $xInt);
                         }
                         $spanStart = null;
                     }
