@@ -154,47 +154,43 @@ function hearts(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
     $fgs = [4, 7, 8, 9, 11, 12, 13];
     $art->fillColor(0, 0, new Color($bgs[array_rand($bgs)], 0));
 
-    // Draw small hearts first (many), then big ones on top (few)
-    $waves = [
-        ['radius' => [3, 6],  'count' => [15, 25]],
-        ['radius' => [6, 10], 'count' => [5, 12]],
-        ['radius' => [10, 14], 'count' => [1, 2]],
-    ];
-    foreach ($waves as $wave) {
-        $num = random_int(
-            intval($wave['count'][0] * ($lines / 48)),
-            intval($wave['count'][1] * ($lines / 48))
-        );
-        for ($i = 0; $i < $num; $i++) {
-            $tart = Canvas::createBlank(80, $lines, true);
-            $fillColor = new Color($fgs[array_rand($fgs)], null);
-            $outlineColor = new Color($fgs[array_rand($fgs)], null);
-            $radius = random_int($wave['radius'][0], $wave['radius'][1]);
-            $x = random_int(0, 80);
-            $y = random_int(0, $lines);
-            $scale = $radius / 16;
-            $rot = deg2rad(random_int(-30, 30));
-            $cosR = cos($rot);
-            $sinR = sin($rot);
-            $points = [];
-            $segs = 32;
-            for ($p = 0; $p < $segs; $p++) {
-                $t = ($p / $segs) * 2 * M_PI;
-                $hx = 16 * pow(sin($t), 3);
-                $hy = -(13 * cos($t) - 5 * cos(2 * $t) - 2 * cos(3 * $t) - cos(4 * $t));
-                $px = $hx * $scale;
-                $py = $hy * $scale;
-                $points[] = [$px * $cosR - $py * $sinR + $x, $px * $sinR + $py * $cosR + $y];
-            }
+    // Generate all hearts with size, then sort smallest-first so big ones overlay
+    $hearts = [];
+    $baseCount = intval(20 * ($lines / 48));
+    for ($i = 0; $i < $baseCount; $i++) {
+        $radius = random_int(3, 18);
+        $hearts[] = $radius;
+    }
+    sort($hearts);
 
-            $willFill = random_int(0, 4) > 1;
-            $tart->drawPath(
-                Path::polygon($points),
-                $willFill ? $fillColor : null,
-                $outlineColor,
-            );
-            $art->overlay($tart);
+    foreach ($hearts as $radius) {
+        $tart = Canvas::createBlank(80, $lines, true);
+        $fillColor = new Color($fgs[array_rand($fgs)], null);
+        $outlineColor = new Color($fgs[array_rand($fgs)], null);
+        $x = random_int(0, 80);
+        $y = random_int(0, $lines);
+        $scale = $radius / 16;
+        $rot = deg2rad(random_int(-30, 30));
+        $cosR = cos($rot);
+        $sinR = sin($rot);
+        $points = [];
+        $segs = 32;
+        for ($p = 0; $p < $segs; $p++) {
+            $t = ($p / $segs) * 2 * M_PI;
+            $hx = 16 * pow(sin($t), 3);
+            $hy = -(13 * cos($t) - 5 * cos(2 * $t) - 2 * cos(3 * $t) - cos(4 * $t));
+            $px = $hx * $scale;
+            $py = $hy * $scale;
+            $points[] = [$px * $cosR - $py * $sinR + $x, $px * $sinR + $py * $cosR + $y];
         }
+
+        $willFill = random_int(0, 4) > 1;
+        $tart->drawPath(
+            Path::polygon($points),
+            $willFill ? $fillColor : null,
+            $outlineColor,
+        );
+        $art->overlay($tart);
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
