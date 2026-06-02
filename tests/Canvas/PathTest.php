@@ -476,4 +476,91 @@ class PathTest extends TestCase
         // closing line is actually drawn.
         $this->assertSame(5, $canvas->data[5][5]->fg, "Closing line diagonal pixel should be outlined");
     }
+
+    public function test_line_creates_open_path(): void
+    {
+        $path = Path::line(1.0, 2.0, 5.0, 8.0);
+        $this->assertFalse($path->isEmpty());
+        $this->assertSame([5.0, 8.0], $path->getCurrentPoint());
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertFalse($subpaths[0]['closed']);
+        $this->assertSame([1.0, 2.0], $subpaths[0]['vertices'][0]);
+        $this->assertSame([5.0, 8.0], $subpaths[0]['vertices'][1]);
+    }
+
+    public function test_polyline_creates_open_path(): void
+    {
+        $path = Path::polyline([[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]]);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertFalse($subpaths[0]['closed']);
+        $this->assertCount(3, $subpaths[0]['vertices']);
+        $this->assertSame([10.0, 10.0], $path->getCurrentPoint());
+    }
+
+    public function test_polyline_rejects_fewer_than_two_points(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Path::polyline([[0.0, 0.0]]);
+    }
+
+    public function test_polygon_creates_closed_path(): void
+    {
+        $path = Path::polygon([[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertCount(4, $subpaths[0]['vertices']);
+    }
+
+    public function test_polygon_rejects_fewer_than_two_points(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Path::polygon([[5.0, 5.0]]);
+    }
+
+    public function test_circle_creates_closed_path(): void
+    {
+        $path = Path::circle(20.0, 20.0, 10.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertSame([20.0 + 10.0, 20.0], $path->getCurrentPoint());
+    }
+
+    public function test_ellipse_creates_closed_path(): void
+    {
+        $path = Path::ellipse(30.0, 20.0, 15.0, 8.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertSame([30.0 + 15.0, 20.0], $path->getCurrentPoint());
+    }
+
+    public function test_rect_creates_closed_path(): void
+    {
+        $path = Path::rect(5.0, 10.0, 20.0, 15.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertCount(4, $subpaths[0]['vertices']);
+    }
+
+    public function test_rect_with_rounded_corners(): void
+    {
+        $path = Path::rect(0.0, 0.0, 20.0, 10.0, 3.0, 3.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertGreaterThan(4, count($subpaths[0]['vertices']));
+    }
+
+    public function test_rect_clamps_radius_to_half_smallest_dimension(): void
+    {
+        $path = Path::rect(0.0, 0.0, 10.0, 4.0, 100.0, 100.0);
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+    }
 }

@@ -222,6 +222,99 @@ class Path
         return $subpaths;
     }
 
+    public static function line(float $x1, float $y1, float $x2, float $y2): self
+    {
+        return (new self())
+            ->moveTo($x1, $y1)
+            ->lineTo($x2, $y2);
+    }
+
+    /**
+     * @param array<int, array{float, float}> $points
+     */
+    public static function polyline(array $points): self
+    {
+        if (count($points) < 2) {
+            throw new \InvalidArgumentException('polyline requires at least 2 points');
+        }
+        $path = new self();
+        $path->moveTo($points[0][0], $points[0][1]);
+        for ($i = 1; $i < count($points); $i++) {
+            $path->lineTo($points[$i][0], $points[$i][1]);
+        }
+        return $path;
+    }
+
+    /**
+     * @param array<int, array{float, float}> $points
+     */
+    public static function polygon(array $points): self
+    {
+        if (count($points) < 2) {
+            throw new \InvalidArgumentException('polygon requires at least 2 points');
+        }
+        $path = new self();
+        $path->moveTo($points[0][0], $points[0][1]);
+        for ($i = 1; $i < count($points); $i++) {
+            $path->lineTo($points[$i][0], $points[$i][1]);
+        }
+        $path->closePath();
+        return $path;
+    }
+
+    public static function circle(float $cx, float $cy, float $r): self
+    {
+        return self::ellipse($cx, $cy, $r, $r);
+    }
+
+    public static function ellipse(float $cx, float $cy, float $rx, float $ry): self
+    {
+        $path = new self();
+        $path->moveTo($cx + $rx, $cy);
+        $path->arcTo($rx, $ry, 0, false, true, $cx, $cy + $ry);
+        $path->arcTo($rx, $ry, 0, false, true, $cx - $rx, $cy);
+        $path->arcTo($rx, $ry, 0, false, true, $cx, $cy - $ry);
+        $path->arcTo($rx, $ry, 0, false, true, $cx + $rx, $cy);
+        $path->closePath();
+        return $path;
+    }
+
+    public static function rect(float $x, float $y, float $w, float $h, float $rx = 0, float $ry = 0): self
+    {
+        $path = new self();
+
+        if ($rx > 0 || $ry > 0) {
+            $maxRx = $w / 2;
+            $maxRy = $h / 2;
+            if ($rx <= 0) {
+                $rx = $ry;
+            }
+            if ($ry <= 0) {
+                $ry = $rx;
+            }
+            $rx = min($rx, $maxRx);
+            $ry = min($ry, $maxRy);
+
+            $path->moveTo($x + $rx, $y);
+            $path->lineTo($x + $w - $rx, $y);
+            $path->arcTo($rx, $ry, 0, false, true, $x + $w, $y + $ry);
+            $path->lineTo($x + $w, $y + $h - $ry);
+            $path->arcTo($rx, $ry, 0, false, true, $x + $w - $rx, $y + $h);
+            $path->lineTo($x + $rx, $y + $h);
+            $path->arcTo($rx, $ry, 0, false, true, $x, $y + $h - $ry);
+            $path->lineTo($x, $y + $ry);
+            $path->arcTo($rx, $ry, 0, false, true, $x + $rx, $y);
+        } else {
+            $path->moveTo($x, $y);
+            $path->lineTo($x + $w, $y);
+            $path->lineTo($x + $w, $y + $h);
+            $path->lineTo($x, $y + $h);
+        }
+
+        $path->closePath();
+        return $path;
+    }
+
     private function ensureCurrentPoint(): void
     {
         if (!$this->hasCurrentPoint) {
