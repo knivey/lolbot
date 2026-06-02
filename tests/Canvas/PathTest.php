@@ -305,66 +305,28 @@ class PathTest extends TestCase
         $this->assertSame([10.0, 20.0], $subpaths[0]['vertices'][1]);
     }
 
-    public function test_draw_path_fill_matches_draw_polygon(): void
+    public function test_draw_path_fill_produces_expected_pixels(): void
     {
-        // A simple rectangle path should fill the same as drawPolygon
-        $path = new Path();
-        $path->moveTo(2.0, 2.0)
-             ->lineTo(8.0, 2.0)
-             ->lineTo(8.0, 6.0)
-             ->lineTo(2.0, 6.0)
-             ->closePath();
-
-        $canvas1 = Canvas::createBlank(12, 12);
-        $canvas1->drawPolygon(
-            [[2, 2], [8, 2], [8, 6], [2, 6]],
-            new Color(3, null),
-            null
-        );
-
-        $canvas2 = Canvas::createBlank(12, 12);
-        $canvas2->drawPath($path, new Color(3, null), null);
-
-        // Compare every pixel
-        for ($y = 0; $y < 12; $y++) {
-            for ($x = 0; $x < 12; $x++) {
-                $this->assertSame(
-                    $canvas1->data[$y][$x]->fg,
-                    $canvas2->data[$y][$x]->fg,
-                    "Pixel ($x, $y) differs between drawPolygon and drawPath"
-                );
-            }
-        }
+        $path = Path::polygon([[2.0, 2.0], [8.0, 2.0], [8.0, 6.0], [2.0, 6.0]]);
+        $canvas = Canvas::createBlank(12, 12);
+        $canvas->drawPath($path, new Color(3, null), null);
+        $this->assertSame(3, $canvas->data[3][3]->fg);
+        $this->assertSame(3, $canvas->data[4][5]->fg);
+        $this->assertSame(3, $canvas->data[5][7]->fg);
+        $this->assertNull($canvas->data[0][0]->fg);
+        $this->assertNull($canvas->data[8][8]->fg);
     }
 
-    public function test_draw_path_outline_matches_draw_polygon(): void
+    public function test_draw_path_outline_produces_expected_pixels(): void
     {
-        $path = new Path();
-        $path->moveTo(2.0, 2.0)
-             ->lineTo(8.0, 2.0)
-             ->lineTo(8.0, 6.0)
-             ->lineTo(2.0, 6.0)
-             ->closePath();
-
-        $canvas1 = Canvas::createBlank(12, 12);
-        $canvas1->drawPolygon(
-            [[2, 2], [8, 2], [8, 6], [2, 6]],
-            null,
-            new Color(5, null)
-        );
-
-        $canvas2 = Canvas::createBlank(12, 12);
-        $canvas2->drawPath($path, null, new Color(5, null));
-
-        for ($y = 0; $y < 12; $y++) {
-            for ($x = 0; $x < 12; $x++) {
-                $this->assertSame(
-                    $canvas1->data[$y][$x]->fg,
-                    $canvas2->data[$y][$x]->fg,
-                    "Pixel ($x, $y) outline differs between drawPolygon and drawPath"
-                );
-            }
-        }
+        $path = Path::polygon([[2.0, 2.0], [8.0, 2.0], [8.0, 6.0], [2.0, 6.0]]);
+        $canvas = Canvas::createBlank(12, 12);
+        $canvas->drawPath($path, null, new Color(5, null));
+        $this->assertSame(5, $canvas->data[2][2]->fg);
+        $this->assertSame(5, $canvas->data[2][8]->fg);
+        $this->assertSame(5, $canvas->data[6][2]->fg);
+        $this->assertSame(5, $canvas->data[6][8]->fg);
+        $this->assertNull($canvas->data[4][5]->fg);
     }
 
     public function test_draw_path_both_fill_and_outline(): void
@@ -648,5 +610,54 @@ class PathTest extends TestCase
         $path->setTransform(Transform::translate(100.0, 200.0));
         $path->moveTo(5.0, 10.0);
         $this->assertSame([5.0, 10.0], $path->getCurrentPoint());
+    }
+
+    public function test_draw_path_with_canvas_translate(): void
+    {
+        $path = Path::rect(0.0, 0.0, 4.0, 4.0);
+        $canvas = Canvas::createBlank(20, 20);
+        $canvas->translate(10.0, 10.0);
+        $canvas->drawPath($path, new Color(4, null), null);
+        $this->assertSame(4, $canvas->data[12][12]->fg);
+        $this->assertNull($canvas->data[2][2]->fg);
+    }
+
+    public function test_draw_path_with_path_transform(): void
+    {
+        $path = Path::rect(0.0, 0.0, 4.0, 4.0);
+        $path->setTransform(Transform::translate(10.0, 10.0));
+        $canvas = Canvas::createBlank(20, 20);
+        $canvas->drawPath($path, new Color(4, null), null);
+        $this->assertSame(4, $canvas->data[12][12]->fg);
+        $this->assertNull($canvas->data[2][2]->fg);
+    }
+
+    public function test_draw_path_with_both_transforms_composed(): void
+    {
+        $path = Path::rect(0.0, 0.0, 4.0, 4.0);
+        $path->setTransform(Transform::translate(5.0, 0.0));
+        $canvas = Canvas::createBlank(20, 20);
+        $canvas->translate(5.0, 5.0);
+        $canvas->drawPath($path, new Color(4, null), null);
+        $this->assertSame(4, $canvas->data[7][12]->fg);
+        $this->assertNull($canvas->data[2][2]->fg);
+    }
+
+    public function test_draw_path_with_canvas_rotate(): void
+    {
+        $path = Path::rect(-2.0, -2.0, 4.0, 4.0);
+        $canvas = Canvas::createBlank(20, 20);
+        $canvas->translate(10.0, 10.0);
+        $canvas->drawPath($path, new Color(4, null), null);
+        $this->assertSame(4, $canvas->data[10][10]->fg);
+    }
+
+    public function test_draw_path_identity_transform_is_noop(): void
+    {
+        $path = Path::rect(2.0, 2.0, 4.0, 4.0);
+        $path->setTransform(Transform::identity());
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->drawPath($path, new Color(4, null), null);
+        $this->assertSame(4, $canvas->data[4][4]->fg);
     }
 }

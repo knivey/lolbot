@@ -216,8 +216,13 @@ class Canvas
         $this->concatTransform(Transform::skewY($angle));
     }
 
-    public function drawPoint(int $x, int $y, Color $color, string $text = ''): void
+    public function drawPoint(int|float $x, int|float $y, Color $color, string $text = ''): void
     {
+        if (!$this->isIdentity($this->ctm)) {
+            [$x, $y] = $this->ctm->apply((float) $x, (float) $y);
+        }
+        $x = (int) round($x);
+        $y = (int) round($y);
         if (isset($this->data[$y][$x])) {
             $this->data[$y][$x]->fg = $color->fg;
             $this->data[$y][$x]->bg = $color->bg;
@@ -258,35 +263,6 @@ class Canvas
         }
     }
 
-    public function drawLine(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = ''): void
-    {
-        $dx = abs($endX - $startX);
-        $dy = abs($endY - $startY);
-        $sx = ($startX < $endX ? 1 : -1);
-        $sy = ($startY < $endY ? 1 : -1);
-        $error = ($dx > $dy ? $dx : - $dy) / 2;
-        $e2 = 0;
-        $x = $startX;
-        $y = $startY;
-        $cnt = 0;
-        while ($cnt++ < 1000) {
-            $this->drawPoint($x, $y, $color, $text);
-            if ($x == $endX && $y == $endY) {
-                break;
-            }
-            $e2 = $error;
-            if ($e2 > -$dx) {
-                $error -= $dy;
-                $x += $sx;
-            }
-            if ($e2 < $dy) {
-                $error += $dx;
-                $y += $sy;
-            }
-        }
-    }
-
-
 
     //for now force to be same size, can add another function for copying rects later
     public function overlay(Canvas $art): void
@@ -312,63 +288,43 @@ class Canvas
         }
     }
 
-    /**
-     * Draw a closed polygon with optional fill and outline.
-     *
-     * Fill is applied first via scanline conversion using the non-zero winding
-     * rule; outline is drawn on top via drawLine so it cleanly covers the fill
-     * boundary. The polygon is implicitly closed (last vertex connects to first).
-     *
-     * Vertices are snapped to the integer pixel grid before rasterization so
-     * that fill and outline operate on the same polygon.
-     *
-     * @param array<int, array{0: int|float, 1: int|float}> $points [[$x, $y], ...]
-     */
-    public function drawPolygon(
-        array $points,
-        ?Color $fillColor,
-        ?Color $outlineColor,
-        string $text = ''
-    ): void {
-        if (count($points) < 3) {
-            return;
-        }
-        if ($fillColor === null && $outlineColor === null) {
-            return;
-        }
 
-        // Snap vertices to the integer pixel grid ONCE so that fill and
-        // outline operate on the same polygon. Without this, the scanline
-        // fill would use the float vertices while the outline rounded each
-        // vertex independently — two slightly different polygons that
-        // produce visible gaps between fill boundary and outline.
-        $snapped = [];
-        foreach ($points as $point) {
-            $snapped[] = [(int) round($point[0]), (int) round($point[1])];
-        }
+    private function isIdentity(Transform $t): bool
+    {
+        $e = $t->getElements();
+        return $e[0] === 1.0 && $e[1] === 0.0 && $e[2] === 0.0
+            && $e[3] === 1.0 && $e[4] === 0.0 && $e[5] === 0.0;
+    }
 
-        if ($fillColor !== null) {
-            $this->fillPolygonScanline($snapped, $fillColor, $text);
-        }
-
-        if ($outlineColor !== null) {
-            $firstX = null;
-            $firstY = null;
-            $prevX = null;
-            $prevY = null;
-            foreach ($snapped as [$x, $y]) {
-                if ($firstX === null) {
-                    $firstX = $x;
-                    $firstY = $y;
-                } else {
-                    $this->drawLine($prevX, $prevY, $x, $y, $outlineColor, $text);
+    private function drawLineInternal(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = ''): void
+    {
+        $dx = abs($endX - $startX);
+        $dy = abs($endY - $startY);
+        $sx = ($startX < $endX ? 1 : -1);
+        $sy = ($startY < $endY ? 1 : -1);
+        $error = ($dx > $dy ? $dx : - $dy) / 2;
+        $x = $startX;
+        $y = $startY;
+        $cnt = 0;
+        while ($cnt++ < 1000) {
+            if (isset($this->data[$y][$x])) {
+                $this->data[$y][$x]->fg = $color->fg;
+                $this->data[$y][$x]->bg = $color->bg;
+                if ($text != '') {
+                    $this->data[$y][$x]->text = $text;
                 }
-                $prevX = $x;
-                $prevY = $y;
             }
-            // Close the polygon: last vertex back to first.
-            if ($prevX !== $firstX || $prevY !== $firstY) {
-                $this->drawLine($prevX, $prevY, $firstX, $firstY, $outlineColor, $text);
+            if ($x == $endX && $y == $endY) {
+                break;
+            }
+            $e2 = $error;
+            if ($e2 > -$dx) {
+                $error -= $dy;
+                $x += $sx;
+            }
+            if ($e2 < $dy) {
+                $error += $dx;
+                $y += $sy;
             }
         }
     }
@@ -397,15 +353,6 @@ class Canvas
     }
 
     /**
-     * Draw a Path with optional fill and outline.
-     *
-     * The path is flattened to polygon vertices, snapped to the integer pixel
-     * grid, then filled (multi-subpath scanline with non-zero winding rule)
-     * and outlined (Bresenham lines per subpath).
-     *
-     * Outline is drawn on top of fill. Each subpath is outlined separately;
-     * closed subpaths get a closing line, open subpaths do not.
-     *
      * @param Path $path The path to render.
      * @param ?Color $fillColor Fill color, or null for no fill.
      * @param ?Color $outlineColor Outline color, or null for no outline.
@@ -425,17 +372,26 @@ class Canvas
             return;
         }
 
-        // Snap all vertices to integers
+        $effective = $this->ctm;
+        $pathTransform = $path->getTransform();
+        if ($pathTransform !== null) {
+            $effective = $effective->multiply($pathTransform);
+        }
+
+        $needTransform = !$this->isIdentity($effective);
+
         $snappedSubpaths = [];
         foreach ($subpaths as $sp) {
             $snapped = [];
             foreach ($sp['vertices'] as $v) {
+                if ($needTransform) {
+                    $v = $effective->apply($v[0], $v[1]);
+                }
                 $snapped[] = [(int) round($v[0]), (int) round($v[1])];
             }
             $snappedSubpaths[] = ['vertices' => $snapped, 'closed' => $sp['closed']];
         }
 
-        // Fill: all subpaths contribute to winding rule
         if ($fillColor !== null) {
             $polygonArrays = [];
             foreach ($snappedSubpaths as $sp) {
@@ -448,16 +404,18 @@ class Canvas
             }
         }
 
-        // Outline: draw each subpath separately
         if ($outlineColor !== null) {
             foreach ($snappedSubpaths as $sp) {
                 $vertices = $sp['vertices'];
                 $n = count($vertices);
+                if ($sp['closed'] && $n < 3) {
+                    continue;
+                }
                 if ($n < 2) {
                     continue;
                 }
                 for ($i = 1; $i < $n; $i++) {
-                    $this->drawLine(
+                    $this->drawLineInternal(
                         $vertices[$i - 1][0],
                         $vertices[$i - 1][1],
                         $vertices[$i][0],
@@ -466,9 +424,8 @@ class Canvas
                         $text
                     );
                 }
-                // Closing line for closed subpaths
                 if ($sp['closed']) {
-                    $this->drawLine(
+                    $this->drawLineInternal(
                         $vertices[$n - 1][0],
                         $vertices[$n - 1][1],
                         $vertices[0][0],
@@ -559,7 +516,13 @@ class Canvas
                         $xL = (int) ceil($spanStart);
                         $xR = (int) floor($spanEnd);
                         for ($xx = $xL; $xx <= $xR; $xx++) {
-                            $this->drawPoint($xx, $Y, $color, $text);
+                            if (isset($this->data[$Y][$xx])) {
+                                $this->data[$Y][$xx]->fg = $color->fg;
+                                $this->data[$Y][$xx]->bg = $color->bg;
+                                if ($text != '') {
+                                    $this->data[$Y][$xx]->text = $text;
+                                }
+                            }
                         }
                     }
                     $spanStart = null;

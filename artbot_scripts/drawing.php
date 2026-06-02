@@ -39,7 +39,7 @@ function lines(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         $sy = rand(0, 48);
         $ex = rand(0, 80);
         $ey = rand(0, 48);
-        $art->drawLine($sx, $sy, $ex, $ey, $color);
+        $art->drawPath(Path::line($sx, $sy, $ex, $ey), null, $color);
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));

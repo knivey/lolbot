@@ -4,6 +4,7 @@ namespace Tests\Canvas;
 
 use draw\Canvas;
 use draw\Color;
+use draw\Path;
 use draw\Transform;
 use PHPUnit\Framework\TestCase;
 
@@ -13,11 +14,7 @@ class CanvasTest extends TestCase
     {
         $canvas = Canvas::createBlank(10, 10);
 
-        $canvas->drawPolygon(
-            [[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]],
-            null,
-            null
-        );
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), null, null);
 
         // Every pixel in a blank canvas has null fg and bg; nothing should have changed.
         for ($y = 0; $y < 10; $y++) {
@@ -40,11 +37,7 @@ class CanvasTest extends TestCase
         $outline = new Color(5, null);
 
         // Square (1,1)-(5,1)-(5,5)-(1,5)
-        $canvas->drawPolygon(
-            [[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]],
-            null,
-            $outline
-        );
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), null, $outline);
 
         // Corners must have the outline color.
         $this->assertSame(5, $canvas->data[1][1]->fg);
@@ -69,11 +62,7 @@ class CanvasTest extends TestCase
         $fill = new Color(3, null);
 
         // Square (1,1)-(5,1)-(5,5)-(1,5)
-        $canvas->drawPolygon(
-            [[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]],
-            $fill,
-            null
-        );
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), $fill, null);
 
         // Interior pixels must be filled.
         $this->assertSame(3, $canvas->data[2][2]->fg);
@@ -94,11 +83,7 @@ class CanvasTest extends TestCase
         $outline = new Color(5, null);
 
         // Square (1,1)-(5,1)-(5,5)-(1,5)
-        $canvas->drawPolygon(
-            [[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]],
-            $fill,
-            $outline
-        );
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), $fill, $outline);
 
         // Corners are on the outline, so they must show the outline color
         // (outline is drawn on top of fill).
@@ -128,7 +113,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(5, null);
 
-        $canvas->drawPolygon([[1.0, 1.0], [5.0, 5.0]], $color, $color);
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 5.0]]), $color, $color);
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -142,7 +127,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(5, null);
 
-        $canvas->drawPolygon([[5.0, 5.0]], $color, $color);
+        $canvas->drawPath(Path::polygon([[5.0, 5.0], [5.0, 5.0]]), $color, $color);
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -156,7 +141,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(5, null);
 
-        $canvas->drawPolygon([], $color, $color);
+        $canvas->drawPath(new Path(), $color, $color);
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -202,7 +187,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(80, 48, true);
         $fill = new Color(7, null);
         $outline = new Color(4, null);
-        $canvas->drawPolygon($points, $fill, $outline);
+        $canvas->drawPath(Path::polygon($points), $fill, $outline);
 
         // Bounding box of the snapped star.
         $xs = array_column($snapped, 0);
@@ -295,7 +280,7 @@ class CanvasTest extends TestCase
         $points = [[10.3, 5.7], [30.8, 5.2], [20.1, 25.9]];
 
         $canvas = Canvas::createBlank(40, 30, true);
-        $canvas->drawPolygon($points, new Color(3, null), new Color(5, null));
+        $canvas->drawPath(Path::polygon($points), new Color(3, null), new Color(5, null));
 
         // For every row that has any non-null pixel, all pixels between the
         // leftmost and rightmost non-null pixel must also be non-null.
@@ -329,18 +314,10 @@ class CanvasTest extends TestCase
         $color = new Color(5, null);
 
         // Polygon entirely up-and-left of the canvas.
-        $canvas->drawPolygon(
-            [[-20.0, -20.0], [-10.0, -20.0], [-10.0, -10.0], [-20.0, -10.0]],
-            $color,
-            $color
-        );
+        $canvas->drawPath(Path::polygon([[-20.0, -20.0], [-10.0, -20.0], [-10.0, -10.0], [-20.0, -10.0]]), $color, $color);
 
         // Polygon entirely down-and-right of the canvas.
-        $canvas->drawPolygon(
-            [[50.0, 50.0], [60.0, 50.0], [60.0, 60.0], [50.0, 60.0]],
-            $color,
-            $color
-        );
+        $canvas->drawPath(Path::polygon([[50.0, 50.0], [60.0, 50.0], [60.0, 60.0], [50.0, 60.0]]), $color, $color);
 
         // Canvas must be untouched (drawPoint's isset check rejected every write).
         for ($y = 0; $y < 10; $y++) {
@@ -438,5 +415,36 @@ class CanvasTest extends TestCase
         [$x, $y] = $canvas->getTransform()->apply(1.0, 1.0);
         $this->assertEqualsWithDelta(2.0, $x, 0.0001);
         $this->assertEqualsWithDelta(3.0, $y, 0.0001);
+    }
+
+    public function test_draw_point_with_transform(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $canvas->translate(10.0, 5.0);
+        $canvas->drawPoint(2, 3, new Color(4, null));
+        $this->assertSame(4, $canvas->data[8][12]->fg);
+        $this->assertNull($canvas->data[3][2]->fg);
+    }
+
+    public function test_draw_path_line_with_transform(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $canvas->translate(10.0, 0.0);
+        $canvas->drawPath(Path::line(0, 5, 5, 5), null, new Color(4, null));
+        $this->assertSame(4, $canvas->data[5][10]->fg);
+        $this->assertSame(4, $canvas->data[5][15]->fg);
+    }
+
+    public function test_draw_path_polygon_with_transform(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $canvas->translate(5.0, 5.0);
+        $canvas->drawPath(
+            Path::polygon([[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]]),
+            new Color(4, null),
+            null
+        );
+        $this->assertSame(4, $canvas->data[7][7]->fg);
+        $this->assertNull($canvas->data[2][2]->fg);
     }
 }
