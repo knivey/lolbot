@@ -269,7 +269,7 @@ tracking winding count, toggle a boolean at each intersection.
 2. ~~**Basic shapes** — rect, circle, ellipse as convenience methods on Path~~ **DONE**
 3. ~~**Transform** — affine matrix, transform stack on Canvas~~ **DONE**
 4. ~~**EvenOdd fill rule** — add to scanline converter~~ **DONE**
-5. ~~**StrokeStyle** — width, dash, caps, joins (strokes > 1px)~~ **DONE**
+5. ~~**StrokeStyle** — width, dash, caps, joins (strokes > 1px)~~ **DONE** (stroke-opacity deferred; no compositing infrastructure yet)
 6. **Gradient Paint** — linear, radial, color stops, stop interpolation
 7. **SVG parser** — XML parser mapping SVG elements to scene tree
 8. **Clip/Mask** — clipping regions and masks
