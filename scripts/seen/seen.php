@@ -16,6 +16,36 @@ use function Symfony\Component\String\u;
 
 class seen extends script_base
 {
+    /**
+     * Format a seen entity as the reply line for a given target channel.
+     */
+    private function formatSeenReply(entities\seen $seen, string $targetChan): string
+    {
+        try {
+            $ago = (new Carbon($seen->time))->diffForHumans(
+                Carbon::now(),
+                CarbonInterface::DIFF_RELATIVE_TO_NOW,
+                true,
+                3
+            );
+        } catch (\Exception $e) {
+            echo $e->getMessage();
+            $ago = "??? ago";
+        }
+        if ($targetChan != $seen->chan) {
+            return "{$seen->orig_nick} was last active in another channel {$ago}";
+        }
+        $n = "<{$seen->orig_nick}>";
+        if ($seen->action == "action") {
+            $n = "* {$seen->orig_nick}";
+        }
+        if ($seen->action == "notice") {
+            $n = "[{$seen->orig_nick}]";
+        }
+        $text = $seen->getText();
+        return "seen {$ago}: $n {$text}";
+    }
+
     #[Cmd("seen")]
     #[Desc("check when bot last saw someone chat")]
     #[Syntax("<nick>")]
@@ -38,25 +68,7 @@ class seen extends script_base
             return;
         }
         $entityManager->refresh($seen);
-        try {
-            $ago = (new Carbon($seen->time))->diffForHumans(Carbon::now(), CarbonInterface::DIFF_RELATIVE_TO_NOW, true, 3);
-        } catch (\Exception $e) {
-            echo $e->getMessage();
-            $ago = "??? ago";
-        }
-        if ($args->chan != $seen->chan) {
-            $bot->pm($args->chan, "{$seen->orig_nick} was last active in another channel $ago");
-            return;
-        }
-        $n = "<{$seen->orig_nick}>";
-        if ($seen->action == "action") {
-            $n = "* {$seen->orig_nick}";
-        }
-        if ($seen->action == "notice") {
-            $n = "[{$seen->orig_nick}]";
-        }
-        $text = $seen->getText();
-        $bot->pm($args->chan, "seen {$ago}: $n {$text}");
+        $bot->pm($args->chan, $this->formatSeenReply($seen, $args->chan));
     }
 
 
