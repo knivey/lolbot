@@ -340,9 +340,10 @@ class Canvas
      * non-zero winding rule. Vertices must be in order around the polygon
      * (clockwise or counter-clockwise); the polygon is implicitly closed.
      *
-     * Uses the half-open convention `min(y0, y1) <= Y < max(y0, y1)` so that
-     * horizontal edges and vertices exactly on a scanline are handled
-     * uniformly without double-counting.
+     * Uses the half-open convention `min(y0, y1) <= ySample < max(y0, y1)`
+     * (where ySample = Y + 0.5) so that horizontal edges and vertices exactly
+     * on a scanline are handled uniformly without double-counting. Pixels are
+     * sampled at their centers (pixel-center rasterization).
      *
      * @param array<int, array{0: int|float, 1: int|float}> $points
      */
@@ -365,6 +366,7 @@ class Canvas
         $yEnd = (int) ceil($maxY);
 
         for ($Y = $yStart; $Y <= $yEnd; $Y++) {
+            $ySample = $Y + 0.5;
             // Collect (xIntersection, windingDirection) for every edge
             // crossing this scanline under the half-open convention.
             $intersections = [];
@@ -377,13 +379,13 @@ class Canvas
                 $yLo = $y1 < $y2 ? $y1 : $y2;
                 $yHi = $y1 < $y2 ? $y2 : $y1;
 
-                // Half-open: include edge iff yLo <= Y < yHi.
-                if ($Y < $yLo || $Y >= $yHi) {
+                // Half-open: include edge iff yLo <= ySample < yHi.
+                if ($ySample < $yLo || $ySample >= $yHi) {
                     continue;
                 }
 
-                // x at scanline Y by linear interpolation along the edge.
-                $xInt = $x1 + ($x2 - $x1) * ($Y - $y1) / ($y2 - $y1);
+                // x at scanline ySample by linear interpolation along the edge.
+                $xInt = $x1 + ($x2 - $x1) * ($ySample - $y1) / ($y2 - $y1);
                 $dir = ($y2 > $y1) ? 1 : -1;
                 $intersections[] = [$xInt, $dir];
             }
@@ -404,8 +406,8 @@ class Canvas
                 } elseif ($prevWinding !== 0 && $winding === 0) {
                     $spanEnd = $xInt;
                     if ($spanStart !== null) {
-                        $xL = (int) ceil($spanStart);
-                        $xR = (int) floor($spanEnd);
+                        $xL = (int) ceil($spanStart - 0.5);
+                        $xR = (int) floor($spanEnd - 0.5);
                         for ($xx = $xL; $xx <= $xR; $xx++) {
                             $this->drawPoint($xx, $Y, $color, $text);
                         }
