@@ -5,6 +5,7 @@ namespace artbot_scripts;
 use draw\Canvas;
 use draw\Color;
 use draw\Path;
+use draw\StrokeStyle;
 
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
@@ -21,7 +22,7 @@ function lineTest(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
     $ex = $cmdArgs['ex'];
     $ey = $cmdArgs['ey'];
 
-    $art->drawPath(Path::line($sx, $sy, $ex, $ey), null, new Color(04, 0), "x");
+    $art->drawPath(Path::line($sx, $sy, $ex, $ey), null, new StrokeStyle(new Color(04, 0)), "x");
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
@@ -39,7 +40,7 @@ function lines(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         $sy = rand(0, 48);
         $ex = rand(0, 80);
         $ey = rand(0, 48);
-        $art->drawPath(Path::line($sx, $sy, $ex, $ey), null, $color);
+        $art->drawPath(Path::line($sx, $sy, $ex, $ey), null, new StrokeStyle($color));
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -58,7 +59,7 @@ function circles(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
         $h = rand($w - 3, $w + 3) + 5;
         $cx = rand(-5, 90);
         $cy = rand(-5, 55);
-        $art->drawPath(Path::ellipse($cx, $cy, $w / 2, $h / 2), null, $color);
+        $art->drawPath(Path::ellipse($cx, $cy, $w / 2, $h / 2), null, new StrokeStyle($color));
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -82,7 +83,7 @@ function pentagons(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Ar
             $angle = (2 * M_PI * $p / 5) + $rot;
             $points[] = [$cx + $radius * cos($angle), $cy + $radius * sin($angle)];
         }
-        $art->drawPath(Path::polygon($points), null, $color);
+        $art->drawPath(Path::polygon($points), null, new StrokeStyle($color));
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -127,7 +128,7 @@ function stars(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         $tart->drawPath(
             Path::polygon($points),
             $willFill ? $fillColor : null,
-            $outlineColor,
+            new StrokeStyle($outlineColor),
         );
         $art->overlay($tart);
     }
@@ -190,7 +191,7 @@ function hearts(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
         $tart->drawPath(
             Path::polygon($points),
             $willFill ? $fillColor : null,
-            $outlineColor,
+            new StrokeStyle($outlineColor),
         );
         $art->overlay($tart);
     }
@@ -252,7 +253,7 @@ function curves(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
         $outlineColor = new Color($fgs[array_rand($fgs)], null);
         $willFill = rand(0, 3) > 1;
         $fillColor = $willFill ? new Color($fgs[array_rand($fgs)], null) : null;
-        $art->drawPath($path, $fillColor, $outlineColor);
+        $art->drawPath($path, $fillColor, new StrokeStyle($outlineColor));
     }
 
     $numRibbons = rand(2, 5);
@@ -270,7 +271,7 @@ function curves(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
         $path->moveTo($sx, $sy);
         $path->cubicTo($c1x, $c1y, $c2x, $c2y, $ex, $ey);
         $color = new Color($fgs[array_rand($fgs)], null);
-        $art->drawPath($path, null, $color);
+        $art->drawPath($path, null, new StrokeStyle($color));
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -401,7 +402,7 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
             $c2y = $v2[1] - $tangents[$v + 1][1] * $dist * $tension;
             $path->cubicTo($c1x, $c1y, $c2x, $c2y, $v2[0], $v2[1]);
         }
-        $art->drawPath($path, null, $color);
+        $art->drawPath($path, null, new StrokeStyle($color));
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -466,7 +467,7 @@ function demoFlowers(Canvas $art): void
             $path->cubicTo($tipX, $tipY, $cp2x, $cp2y, $cx, $cy);
         }
         $path->closePath();
-        $art->drawPath($path, $fillColor, $outlineColor);
+        $art->drawPath($path, $fillColor, new StrokeStyle($outlineColor));
         $art->drawPath(Path::circle($cx, $cy, 2), $centerColor, null);
     }
 }
@@ -489,7 +490,7 @@ function demoSpiral(Canvas $art): void
             $points[] = [$cx + cos($angle) * $r, $cy + sin($angle) * $r];
         }
         $color = new Color($fgs[array_rand($fgs)], 1);
-        $art->drawPath(Path::polyline($points), null, $color);
+        $art->drawPath(Path::polyline($points), null, new StrokeStyle($color));
     }
 }
 
@@ -534,7 +535,7 @@ function demoMondrian(Canvas $art): void
         } else {
             $fill = new Color(0, null);
         }
-        $art->drawPath(Path::rect($x, $y, $w, $h), $fill, $black);
+        $art->drawPath(Path::rect($x, $y, $w, $h), $fill, new StrokeStyle($black));
     }
 }
 
@@ -547,7 +548,7 @@ function demoBubbles(Canvas $art): void
         $cy = rand(5, 43);
         $r = rand(3, 12);
         $color = new Color($fgs[array_rand($fgs)], 1);
-        $art->drawPath(Path::circle($cx, $cy, $r), null, $color);
+        $art->drawPath(Path::circle($cx, $cy, $r), null, new StrokeStyle($color));
         $highlight = new Color(0, null);
         $art->drawPath(Path::circle($cx - $r * 0.3, $cy - $r * 0.3, $r * 0.25), $highlight, null);
     }
@@ -573,7 +574,7 @@ function demoVortex(Canvas $art): void
             $r = $t * $maxR;
             $points[] = [$cx + cos($angle) * $r, $cy + sin($angle) * $r];
         }
-        $art->drawPath(Path::polyline($points), null, $color);
+        $art->drawPath(Path::polyline($points), null, new StrokeStyle($color));
     }
 }
 
@@ -593,7 +594,7 @@ function demoTransform(Canvas $art): void
         $art->translate((float) $cx, (float) $cy);
         $art->rotate((2.0 * M_PI * $i) / $numSpokes);
         $spoke = Path::rect(-2, -$spokeLen, 4, $spokeLen - 7);
-        $art->drawPath($spoke, $fillColor, $outlineColor);
+        $art->drawPath($spoke, $fillColor, new StrokeStyle($outlineColor));
         $art->restore();
     }
 }

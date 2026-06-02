@@ -340,13 +340,13 @@ class Canvas
     /**
      * @param Path $path The path to render.
      * @param ?Color $fillColor Fill color, or null for no fill.
-     * @param ?Color $outlineColor Outline color, or null for no outline.
+     * @param ?StrokeStyle $stroke Stroke style, or null for no outline.
      * @param string $text Optional text for rendered pixels.
      */
     public function drawPath(
         Path $path,
         ?Color $fillColor,
-        ?Color $outlineColor,
+        ?StrokeStyle $stroke,
         string $text = '',
         FillRule $fillRule = FillRule::NonZero
     ): void {
@@ -354,7 +354,7 @@ class Canvas
         if (count($subpaths) === 0) {
             return;
         }
-        if ($fillColor === null && $outlineColor === null) {
+        if ($fillColor === null && $stroke === null) {
             return;
         }
 
@@ -390,37 +390,48 @@ class Canvas
             }
         }
 
-        if ($outlineColor !== null) {
+        if ($stroke !== null) {
             foreach ($snappedSubpaths as $sp) {
-                $vertices = $sp['vertices'];
-                $n = count($vertices);
-                if ($sp['closed'] && $n < 3) {
-                    continue;
-                }
-                if ($n < 2) {
-                    continue;
-                }
-                for ($i = 1; $i < $n; $i++) {
-                    $this->drawLineInternal(
-                        $vertices[$i - 1][0],
-                        $vertices[$i - 1][1],
-                        $vertices[$i][0],
-                        $vertices[$i][1],
-                        $outlineColor,
-                        $text
-                    );
-                }
-                if ($sp['closed']) {
-                    $this->drawLineInternal(
-                        $vertices[$n - 1][0],
-                        $vertices[$n - 1][1],
-                        $vertices[0][0],
-                        $vertices[0][1],
-                        $outlineColor,
-                        $text
-                    );
-                }
+                $this->strokeSubpath($sp, $stroke, $text);
             }
+        }
+    }
+
+    /**
+     * @param array{vertices: array<int, array{int, int}>, closed: bool} $sp
+     */
+    private function strokeSubpath(array $sp, StrokeStyle $stroke, string $text): void
+    {
+        $vertices = $sp['vertices'];
+        $n = count($vertices);
+        if ($sp['closed'] && $n < 3) {
+            return;
+        }
+        if ($n < 2) {
+            return;
+        }
+        if ($stroke->width <= 1.0) {
+            for ($i = 1; $i < $n; $i++) {
+                $this->drawLineInternal(
+                    $vertices[$i - 1][0],
+                    $vertices[$i - 1][1],
+                    $vertices[$i][0],
+                    $vertices[$i][1],
+                    $stroke->color,
+                    $text
+                );
+            }
+            if ($sp['closed']) {
+                $this->drawLineInternal(
+                    $vertices[$n - 1][0],
+                    $vertices[$n - 1][1],
+                    $vertices[0][0],
+                    $vertices[0][1],
+                    $stroke->color,
+                    $text
+                );
+            }
+            return;
         }
     }
 

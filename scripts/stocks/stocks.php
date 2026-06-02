@@ -241,10 +241,10 @@ class stocks extends \scripts\script_base
 
         //box
 
-        $canvas->drawPath(draw\Path::line(      0,        0,       0, $h - 1), null, new draw\Color(14));
-        $canvas->drawPath(draw\Path::line( $w - 1,        0,  $w - 1, $h - 1), null, new draw\Color(14));
-        $canvas->drawPath(draw\Path::line(      0,        0,  $w - 1,      0), null, new draw\Color(14));
-        $canvas->drawPath(draw\Path::line(      0,   $h - 1,  $w - 1, $h - 1), null, new draw\Color(14));
+        $canvas->drawPath(draw\Path::line(      0,        0,       0, $h - 1), null, new draw\StrokeStyle(new draw\Color(14)));
+        $canvas->drawPath(draw\Path::line( $w - 1,        0,  $w - 1, $h - 1), null, new draw\StrokeStyle(new draw\Color(14)));
+        $canvas->drawPath(draw\Path::line(      0,        0,  $w - 1,      0), null, new draw\StrokeStyle(new draw\Color(14)));
+        $canvas->drawPath(draw\Path::line(      0,   $h - 1,  $w - 1, $h - 1), null, new draw\StrokeStyle(new draw\Color(14)));
         for($x = 0; $x < $w; $x+=12) {
             $canvas->drawPoint($x, 0, new draw\Color(15));
             $canvas->drawPoint($x, $h - 1, new draw\Color(15));
@@ -283,7 +283,7 @@ class stocks extends \scripts\script_base
                     $color = $red;
                 if($ly < $y)
                     $color = $green;
-                $canvas->drawPath(draw\Path::line($i+1, $ly, $i, $y), null, $color);
+                $canvas->drawPath(draw\Path::line($i+1, $ly, $i, $y), null, new draw\StrokeStyle($color));
             }
             $ly = $y;
             $i--;

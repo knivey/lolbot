@@ -5,6 +5,7 @@ use draw\Canvas;
 use draw\Color;
 use draw\Path;
 use draw\Transform;
+use draw\StrokeStyle;
 use PHPUnit\Framework\TestCase;
 
 class PathTest extends TestCase
@@ -321,7 +322,7 @@ class PathTest extends TestCase
     {
         $path = Path::polygon([[2.0, 2.0], [8.0, 2.0], [8.0, 6.0], [2.0, 6.0]]);
         $canvas = Canvas::createBlank(12, 12);
-        $canvas->drawPath($path, null, new Color(5, null));
+        $canvas->drawPath($path, null, new StrokeStyle(new Color(5, null)));
         $this->assertSame(5, $canvas->data[2][2]->fg);
         $this->assertSame(5, $canvas->data[2][8]->fg);
         $this->assertSame(5, $canvas->data[6][2]->fg);
@@ -339,7 +340,7 @@ class PathTest extends TestCase
              ->closePath();
 
         $canvas = Canvas::createBlank(12, 12);
-        $canvas->drawPath($path, new Color(3, null), new Color(5, null));
+        $canvas->drawPath($path, new Color(3, null), new StrokeStyle(new Color(5, null)));
 
         // Interior should be fill color
         $this->assertSame(3, $canvas->data[4][5]->fg);
@@ -351,7 +352,7 @@ class PathTest extends TestCase
     {
         $canvas = Canvas::createBlank(10, 10);
         $path = new Path();
-        $canvas->drawPath($path, new Color(3, null), new Color(5, null));
+        $canvas->drawPath($path, new Color(3, null), new StrokeStyle(new Color(5, null)));
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -394,7 +395,7 @@ class PathTest extends TestCase
              ->closePath();
 
         $canvas = Canvas::createBlank(10, 10);
-        $canvas->drawPath($path, new Color(3, null), new Color(5, null));
+        $canvas->drawPath($path, new Color(3, null), new StrokeStyle(new Color(5, null)));
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -413,7 +414,7 @@ class PathTest extends TestCase
         // No closePath → open
 
         $canvas = Canvas::createBlank(12, 12);
-        $canvas->drawPath($path, null, new Color(5, null));
+        $canvas->drawPath($path, null, new StrokeStyle(new Color(5, null)));
 
         // The closing line from (8,8) back to (2,2) should NOT be drawn
         // Point on the closing diagonal: (5,5) — should not have outline
@@ -432,7 +433,7 @@ class PathTest extends TestCase
              ->closePath();
 
         $canvas = Canvas::createBlank(12, 12);
-        $canvas->drawPath($path, null, new Color(5, null));
+        $canvas->drawPath($path, null, new StrokeStyle(new Color(5, null)));
 
         // Pixel (5,5) lies on the closing diagonal from (8,8) to (2,2),
         // not on any other segment — it should only be colored if the
@@ -531,7 +532,7 @@ class PathTest extends TestCase
     {
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(4, 0);
-        $canvas->drawPath(Path::line(0, 0, 9, 9), null, $color);
+        $canvas->drawPath(Path::line(0, 0, 9, 9), null, new StrokeStyle($color));
         $this->assertSame(4, $canvas->data[0][0]->fg);
         $this->assertSame(4, $canvas->data[9][9]->fg);
     }
@@ -540,7 +541,7 @@ class PathTest extends TestCase
     {
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(4, 0);
-        $canvas->drawPath(Path::rect(1, 1, 8, 8), null, $color);
+        $canvas->drawPath(Path::rect(1, 1, 8, 8), null, new StrokeStyle($color));
         $this->assertSame(4, $canvas->data[1][1]->fg);
         $this->assertSame(4, $canvas->data[1][9]->fg);
         $this->assertSame(4, $canvas->data[9][1]->fg);
@@ -560,7 +561,7 @@ class PathTest extends TestCase
     {
         $canvas = Canvas::createBlank(20, 20);
         $color = new Color(4, 0);
-        $canvas->drawPath(Path::circle(10, 10, 5), null, $color);
+        $canvas->drawPath(Path::circle(10, 10, 5), null, new StrokeStyle($color));
         $this->assertSame(4, $canvas->data[10][15]->fg);
         $this->assertSame(4, $canvas->data[10][5]->fg);
     }

@@ -6,6 +6,7 @@ use draw\Canvas;
 use draw\Color;
 use draw\Path;
 use draw\Transform;
+use draw\StrokeStyle;
 use draw\FillRule;
 use PHPUnit\Framework\TestCase;
 
@@ -38,7 +39,7 @@ class CanvasTest extends TestCase
         $outline = new Color(5, null);
 
         // Square (1,1)-(5,1)-(5,5)-(1,5)
-        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), null, $outline);
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), null, new StrokeStyle($outline));
 
         // Corners must have the outline color.
         $this->assertSame(5, $canvas->data[1][1]->fg);
@@ -84,7 +85,7 @@ class CanvasTest extends TestCase
         $outline = new Color(5, null);
 
         // Square (1,1)-(5,1)-(5,5)-(1,5)
-        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), $fill, $outline);
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), $fill, new StrokeStyle($outline));
 
         // Corners are on the outline, so they must show the outline color
         // (outline is drawn on top of fill).
@@ -114,7 +115,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(5, null);
 
-        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 5.0]]), $color, $color);
+        $canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 5.0]]), $color, new StrokeStyle($color));
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -128,7 +129,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(5, null);
 
-        $canvas->drawPath(Path::polygon([[5.0, 5.0], [5.0, 5.0]]), $color, $color);
+        $canvas->drawPath(Path::polygon([[5.0, 5.0], [5.0, 5.0]]), $color, new StrokeStyle($color));
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -142,7 +143,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(10, 10);
         $color = new Color(5, null);
 
-        $canvas->drawPath(new Path(), $color, $color);
+        $canvas->drawPath(new Path(), $color, new StrokeStyle($color));
 
         for ($y = 0; $y < 10; $y++) {
             for ($x = 0; $x < 10; $x++) {
@@ -188,7 +189,7 @@ class CanvasTest extends TestCase
         $canvas = Canvas::createBlank(80, 48, true);
         $fill = new Color(7, null);
         $outline = new Color(4, null);
-        $canvas->drawPath(Path::polygon($points), $fill, $outline);
+        $canvas->drawPath(Path::polygon($points), $fill, new StrokeStyle($outline));
 
         // Bounding box of the snapped star.
         $xs = array_column($snapped, 0);
@@ -281,7 +282,7 @@ class CanvasTest extends TestCase
         $points = [[10.3, 5.7], [30.8, 5.2], [20.1, 25.9]];
 
         $canvas = Canvas::createBlank(40, 30, true);
-        $canvas->drawPath(Path::polygon($points), new Color(3, null), new Color(5, null));
+        $canvas->drawPath(Path::polygon($points), new Color(3, null), new StrokeStyle(new Color(5, null)));
 
         // For every row that has any non-null pixel, all pixels between the
         // leftmost and rightmost non-null pixel must also be non-null.
@@ -315,10 +316,10 @@ class CanvasTest extends TestCase
         $color = new Color(5, null);
 
         // Polygon entirely up-and-left of the canvas.
-        $canvas->drawPath(Path::polygon([[-20.0, -20.0], [-10.0, -20.0], [-10.0, -10.0], [-20.0, -10.0]]), $color, $color);
+        $canvas->drawPath(Path::polygon([[-20.0, -20.0], [-10.0, -20.0], [-10.0, -10.0], [-20.0, -10.0]]), $color, new StrokeStyle($color));
 
         // Polygon entirely down-and-right of the canvas.
-        $canvas->drawPath(Path::polygon([[50.0, 50.0], [60.0, 50.0], [60.0, 60.0], [50.0, 60.0]]), $color, $color);
+        $canvas->drawPath(Path::polygon([[50.0, 50.0], [60.0, 50.0], [60.0, 60.0], [50.0, 60.0]]), $color, new StrokeStyle($color));
 
         // Canvas must be untouched (drawPoint's isset check rejected every write).
         for ($y = 0; $y < 10; $y++) {
@@ -431,7 +432,7 @@ class CanvasTest extends TestCase
     {
         $canvas = Canvas::createBlank(20, 20);
         $canvas->translate(10.0, 0.0);
-        $canvas->drawPath(Path::line(0, 5, 5, 5), null, new Color(4, null));
+        $canvas->drawPath(Path::line(0, 5, 5, 5), null, new StrokeStyle(new Color(4, null)));
         $this->assertSame(4, $canvas->data[5][10]->fg);
         $this->assertSame(4, $canvas->data[5][15]->fg);
     }
