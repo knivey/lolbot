@@ -285,4 +285,28 @@ class Canvas
             $y++;
         }
     }
+
+    /**
+     * Draw a closed polygon with optional fill and outline.
+     *
+     * Fill is applied first via scanline conversion using the non-zero winding
+     * rule; outline is drawn on top via drawLine so it cleanly covers the fill
+     * boundary. The polygon is implicitly closed (last vertex connects to first).
+     *
+     * @param array<int, array{0: int|float, 1: int|float}> $points [[$x, $y], ...]
+     */
+    public function drawPolygon(
+        array $points,
+        ?Color $fillColor,
+        ?Color $outlineColor,
+        string $text = ''
+    ): void {
+        if (count($points) < 3) {
+            return;
+        }
+        if ($fillColor === null && $outlineColor === null) {
+            return;
+        }
+        // Fill + outline bodies are added in Tasks 3 and 4.
+    }
 }
