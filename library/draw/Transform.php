@@ -41,6 +41,33 @@ class Transform
         return new self($cos, $sin, -$sin, $cos, $tx, $ty);
     }
 
+    public static function skewX(float $angle): self
+    {
+        return new self(1.0, 0.0, tan($angle), 1.0, 0.0, 0.0);
+    }
+
+    public static function skewY(float $angle): self
+    {
+        return new self(1.0, tan($angle), 0.0, 1.0, 0.0, 0.0);
+    }
+
+    public static function matrix(float $a, float $b, float $c, float $d, float $e, float $f): self
+    {
+        return new self($a, $b, $c, $d, $e, $f);
+    }
+
+    public function multiply(Transform $other): self
+    {
+        return new self(
+            $this->a * $other->a + $this->c * $other->b,
+            $this->b * $other->a + $this->d * $other->b,
+            $this->a * $other->c + $this->c * $other->d,
+            $this->b * $other->c + $this->d * $other->d,
+            $this->a * $other->e + $this->c * $other->f + $this->e,
+            $this->b * $other->e + $this->d * $other->f + $this->f,
+        );
+    }
+
     /**
      * @return array{float, float, float, float, float, float}
      */
