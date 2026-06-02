@@ -551,12 +551,13 @@ function getClosestMatchEuclideanRGB(Color $color, bool $limit = false): int {
 function render(float $lum): string
 {
     $chars = ['.', ':', '-', '~', '+', '*', '=', '>', '%', '$', '&', '#', '@'];
-    return $chars[(int)round($lum * (count($chars) -1))];
+    $idx = (int)round(max(0, min($lum, 1)) * (count($chars) - 1));
+    return $chars[min($idx, count($chars) - 1)];
 }
 
 function render2(float $lum): string {
     $chars = [' ','@','8','%','#','*','!','+','=','-',';',':',',','.', '$'];
-    $total = $lum * 256;
+    $total = max(0, min($lum, 1)) * 256;
     switch($total) {
         case $total > 238:
             return $chars[14];
