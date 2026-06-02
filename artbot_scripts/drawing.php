@@ -438,20 +438,21 @@ function demoFlowers(Canvas $art): void
     $fgs = [4, 7, 8, 9, 11, 12, 13];
     $numFlowers = rand(3, 7);
     for ($f = 0; $f < $numFlowers; $f++) {
-        $cx = rand(10, 70);
-        $cy = rand(10, 38);
+        $cx = rand(15, 65);
+        $cy = rand(12, 36);
         $numPetals = rand(5, 8);
-        $petalRx = rand(4, 10);
-        $petalRy = rand(8, 18);
-        $petalColor = new Color($fgs[array_rand($fgs)], null);
+        $petalLen = rand(8, 16);
+        $petalWidth = rand(2, 5);
+        $fillColor = new Color($fgs[array_rand($fgs)], null);
+        $outlineColor = new Color($fgs[array_rand($fgs)], null);
         $centerColor = new Color($fgs[array_rand($fgs)], null);
         for ($p = 0; $p < $numPetals; $p++) {
             $angle = (2 * M_PI * $p / $numPetals);
-            $px = $cx + cos($angle) * $petalRy * 0.4;
-            $py = $cy + sin($angle) * $petalRy * 0.4;
-            $art->drawPath(Path::ellipse($px, $py, $petalRx, $petalRy), $petalColor, null);
+            $px = $cx + cos($angle) * $petalLen * 0.5;
+            $py = $cy + sin($angle) * $petalLen * 0.5;
+            $art->drawPath(Path::ellipse($px, $py, $petalWidth, $petalLen), $fillColor, $outlineColor);
         }
-        $art->drawPath(Path::circle($cx, $cy, 3), $centerColor, null);
+        $art->drawPath(Path::circle($cx, $cy, 2), $centerColor, null);
     }
 }
 
