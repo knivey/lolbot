@@ -18,6 +18,29 @@ class Transform
         return new self(1.0, 0.0, 0.0, 1.0, 0.0, 0.0);
     }
 
+    public static function translate(float $tx, float $ty): self
+    {
+        return new self(1.0, 0.0, 0.0, 1.0, $tx, $ty);
+    }
+
+    public static function scale(float $sx, ?float $sy = null): self
+    {
+        $sy ??= $sx;
+        return new self($sx, 0.0, 0.0, $sy, 0.0, 0.0);
+    }
+
+    public static function rotate(float $angle, float $cx = 0.0, float $cy = 0.0): self
+    {
+        $cos = cos($angle);
+        $sin = sin($angle);
+        if ($cx == 0.0 && $cy == 0.0) {
+            return new self($cos, $sin, -$sin, $cos, 0.0, 0.0);
+        }
+        $tx = $cx - $cos * $cx + $sin * $cy;
+        $ty = $cy - $sin * $cx - $cos * $cy;
+        return new self($cos, $sin, -$sin, $cos, $tx, $ty);
+    }
+
     /**
      * @return array{float, float, float, float, float, float}
      */
