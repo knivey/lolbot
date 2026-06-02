@@ -410,33 +410,41 @@ class Canvas
         if ($n < 2) {
             return;
         }
+
+        $dashSegments = $this->applyDashPattern($vertices, $sp['closed'], $stroke);
+
         if ($stroke->width <= 1.0) {
-            for ($i = 1; $i < $n; $i++) {
-                $this->drawLineInternal(
-                    $vertices[$i - 1][0],
-                    $vertices[$i - 1][1],
-                    $vertices[$i][0],
-                    $vertices[$i][1],
-                    $stroke->color,
-                    $text
-                );
-            }
-            if ($sp['closed']) {
-                $this->drawLineInternal(
-                    $vertices[$n - 1][0],
-                    $vertices[$n - 1][1],
-                    $vertices[0][0],
-                    $vertices[0][1],
-                    $stroke->color,
-                    $text
-                );
+            foreach ($dashSegments as $seg) {
+                $segVerts = $seg['vertices'];
+                $segN = count($segVerts);
+                if ($segN < 2) {
+                    continue;
+                }
+                for ($i = 1; $i < $segN; $i++) {
+                    $this->drawLineInternal(
+                        $segVerts[$i - 1][0],
+                        $segVerts[$i - 1][1],
+                        $segVerts[$i][0],
+                        $segVerts[$i][1],
+                        $stroke->color,
+                        $text
+                    );
+                }
+                if ($seg['closed']) {
+                    $this->drawLineInternal(
+                        $segVerts[$segN - 1][0],
+                        $segVerts[$segN - 1][1],
+                        $segVerts[0][0],
+                        $segVerts[0][1],
+                        $stroke->color,
+                        $text
+                    );
+                }
             }
             return;
         }
 
         $halfW = $stroke->width / 2.0;
-
-        $dashSegments = $this->applyDashPattern($vertices, $sp['closed'], $stroke);
 
         foreach ($dashSegments as $seg) {
             $segVerts = $seg['vertices'];
@@ -777,6 +785,119 @@ class Canvas
 
     private function applyDashPattern(array $vertices, bool $closed, StrokeStyle $stroke): array
     {
-        return [['vertices' => $vertices, 'closed' => $closed]];
+        if ($stroke->dashArray === null || count($stroke->dashArray) === 0) {
+            return [['vertices' => $vertices, 'closed' => $closed]];
+        }
+
+        $totalLen = 0.0;
+        $segments = [];
+        for ($i = 0; $i < count($vertices) - 1; $i++) {
+            $dx = (float) ($vertices[$i + 1][0] - $vertices[$i][0]);
+            $dy = (float) ($vertices[$i + 1][1] - $vertices[$i][1]);
+            $segLen = sqrt($dx * $dx + $dy * $dy);
+            $segments[] = ['start' => $vertices[$i], 'end' => $vertices[$i + 1], 'len' => $segLen, 'offset' => $totalLen];
+            $totalLen += $segLen;
+        }
+        if ($closed && count($vertices) >= 2) {
+            $lastIdx = count($vertices) - 1;
+            $dx = (float) ($vertices[0][0] - $vertices[$lastIdx][0]);
+            $dy = (float) ($vertices[0][1] - $vertices[$lastIdx][1]);
+            $segLen = sqrt($dx * $dx + $dy * $dy);
+            $segments[] = [
+                'start' => $vertices[$lastIdx],
+                'end' => $vertices[0],
+                'len' => $segLen,
+                'offset' => $totalLen
+            ];
+            $totalLen += $segLen;
+        }
+
+        $dashLen = array_sum($stroke->dashArray);
+        if ($dashLen <= 0) {
+            return [['vertices' => $vertices, 'closed' => $closed]];
+        }
+
+        $result = [];
+        $currentDashVerts = [];
+        $pos = -$stroke->dashOffset;
+        $patternIdx = 0;
+        $patternPos = 0.0;
+        $drawing = true;
+
+        while ($pos < $totalLen) {
+            if ($pos < 0) {
+                $currentDash = $stroke->dashArray[$patternIdx % count($stroke->dashArray)];
+                $advance = min(-$pos, $currentDash - $patternPos);
+                $patternPos += $advance;
+                $pos += $advance;
+                if ($patternPos >= $currentDash - 0.0001) {
+                    $patternPos = 0.0;
+                    $patternIdx++;
+                    $drawing = !$drawing;
+                }
+                continue;
+            }
+
+            $currentDash = $stroke->dashArray[$patternIdx % count($stroke->dashArray)];
+            $remainingInDash = $currentDash - $patternPos;
+            $remainingInPath = $totalLen - $pos;
+            $advance = min($remainingInDash, $remainingInPath);
+
+            $fromPos = $pos;
+            $toPos = $pos + $advance;
+
+            if ($drawing) {
+                $fromPt = $this->pointAtLength($segments, $fromPos);
+                $toPt = $this->pointAtLength($segments, min($toPos, $totalLen) - 0.0001);
+                if ($fromPt !== null && $toPt !== null) {
+                    if (empty($currentDashVerts)) {
+                        $currentDashVerts[] = $fromPt;
+                    }
+                    $currentDashVerts[] = $toPt;
+                }
+            }
+
+            $pos = $toPos;
+            $patternPos += $advance;
+
+            if ($patternPos >= $currentDash - 0.0001) {
+                $patternPos = 0.0;
+                $patternIdx++;
+                $drawing = !$drawing;
+                if (!empty($currentDashVerts) && count($currentDashVerts) >= 2) {
+                    $result[] = ['vertices' => $currentDashVerts, 'closed' => false];
+                    $currentDashVerts = [];
+                }
+            }
+        }
+
+        if (!empty($currentDashVerts) && count($currentDashVerts) >= 2) {
+            $result[] = ['vertices' => $currentDashVerts, 'closed' => false];
+        }
+
+        if (empty($result)) {
+            return [];
+        }
+
+        return $result;
+    }
+
+    private function pointAtLength(array $segments, float $length): ?array
+    {
+        foreach ($segments as $seg) {
+            if ($length <= $seg['offset'] + $seg['len'] + 0.0001) {
+                $t = $seg['len'] > 0.0001 ? ($length - $seg['offset']) / $seg['len'] : 0.0;
+                $t = max(0.0, min(1.0, $t));
+                return [
+                    $seg['start'][0] + $t * ($seg['end'][0] - $seg['start'][0]),
+                    $seg['start'][1] + $t * ($seg['end'][1] - $seg['start'][1])
+                ];
+            }
+        }
+        if (!empty($segments)) {
+            $last = $segments[count($segments) - 1];
+            return [$last['end'][0], $last['end'][1]];
+        }
+        return null;
     }
 }

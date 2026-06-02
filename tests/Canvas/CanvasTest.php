@@ -685,4 +685,60 @@ class CanvasTest extends TestCase
 
         $this->assertTrue(true, "Miter limit clipping does not crash");
     }
+
+    public function test_dash_pattern_simple(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), dashArray: [3.0, 2.0]);
+
+        $canvas->drawPath(Path::line(0, 5, 10, 5), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[5][0]->fg, "First dash pixel 0");
+        $this->assertSame(4, $canvas->data[5][1]->fg, "First dash pixel 1");
+        $this->assertSame(4, $canvas->data[5][2]->fg, "First dash pixel 2");
+        $this->assertNull($canvas->data[5][3]->fg, "Gap pixel 3");
+        $this->assertNull($canvas->data[5][4]->fg, "Gap pixel 4");
+        $this->assertSame(4, $canvas->data[5][5]->fg, "Second dash pixel 5");
+        $this->assertSame(4, $canvas->data[5][6]->fg, "Second dash pixel 6");
+        $this->assertSame(4, $canvas->data[5][7]->fg, "Second dash pixel 7");
+        $this->assertNull($canvas->data[5][8]->fg, "Gap pixel 8");
+    }
+
+    public function test_dash_pattern_with_offset(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), dashArray: [3.0, 2.0], dashOffset: 3.0);
+
+        $canvas->drawPath(Path::line(0, 5, 10, 5), null, $stroke);
+
+        $this->assertNull($canvas->data[5][0]->fg, "Offset shifts start into gap");
+        $this->assertNull($canvas->data[5][1]->fg, "Still in gap");
+        $this->assertSame(4, $canvas->data[5][2]->fg, "Dash starts at offset");
+    }
+
+    public function test_dash_pattern_with_thick_stroke(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), width: 3.0, dashArray: [4.0, 3.0]);
+
+        $canvas->drawPath(Path::line(0, 5, 10, 5), null, $stroke);
+
+        $this->assertSame(4, $canvas->data[4][0]->fg, "Thick dash fills rows");
+        $this->assertSame(4, $canvas->data[5][0]->fg, "Thick dash fills center");
+        $this->assertSame(4, $canvas->data[6][0]->fg, "Thick dash fills rows");
+        $this->assertNull($canvas->data[4][4]->fg, "Gap in thick dash");
+        $this->assertNull($canvas->data[5][4]->fg, "Gap center");
+    }
+
+    public function test_dash_pattern_null_means_solid(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null));
+
+        $canvas->drawPath(Path::line(0, 5, 10, 5), null, $stroke);
+
+        for ($x = 0; $x <= 10; $x++) {
+            $this->assertSame(4, $canvas->data[5][$x]->fg, "Solid line pixel $x");
+        }
+    }
 }
