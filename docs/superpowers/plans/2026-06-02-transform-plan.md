@@ -4,7 +4,7 @@
 
 **Goal:** Add a 2×3 affine Transform class with Canvas transform stack (save/restore) and per-Path transform support.
 
-**Architecture:** Immutable `Transform` value object. Canvas holds a CTM (current transform matrix) with save/restore stack. Path carries an optional transform. Drawing methods compose `CTM × pathTransform` and apply to all vertices before rasterization.
+**Architecture:** Immutable `Transform` value object. Canvas holds a CTM (current transform matrix) with save/restore stack. Path carries an optional transform. `drawPath` composes `CTM × pathTransform` and applies to all vertices before rasterization. Public `drawLine` and `drawPolygon` are removed — all drawing goes through `drawPath`. `drawLineInternal` is a private Bresenham helper used for outlines.
 
 **Tech Stack:** PHP 8.1+, PHPUnit 10, existing `draw\` namespace classes.
 
@@ -17,10 +17,13 @@
 | File | Responsibility |
 |------|---------------|
 | `library/draw/Transform.php` | Immutable 2×3 affine matrix value object |
-| `library/draw/Canvas.php` | Add CTM, transform stack, apply transforms in draw methods |
+| `library/draw/Canvas.php` | Add CTM, transform stack, integrate into drawPath/drawPoint, remove drawLine/drawPolygon |
 | `library/draw/Path.php` | Add `setTransform`/`getTransform` |
 | `tests/Canvas/TransformTest.php` | Unit tests for Transform class |
-| `tests/Canvas/CanvasTest.php` | Add transform integration tests |
+| `tests/Canvas/CanvasTest.php` | Migrate to drawPath, add transform integration tests |
+| `tests/Canvas/PathTest.php` | Add transform tests |
+| `artbot_scripts/drawing.php` | Migrate drawLine callers to drawPath |
+| `scripts/stocks/stocks.php` | Migrate drawLine callers to drawPath |
 
 ---
 
@@ -687,10 +690,17 @@ git commit -m "Add translate, rotate, scale, skewX, skewY convenience methods to
 
 ---
 
-### Task 7: Integrate transforms into drawing methods
+### Task 7: Integrate transforms into drawing methods + remove drawLine/drawPolygon
+
+This task does three things:
+1. Add transform support to `drawPath` and `drawPoint`
+2. Remove public `drawLine` and `drawPolygon` (replaced by `drawLineInternal` private helper)
+3. Update all tests that used `drawLine`/`drawPolygon` to use `drawPath` + Path factories
 
 **Files:**
 - Modify: `library/draw/Canvas.php`
+- Modify: `tests/Canvas/CanvasTest.php`
+- Modify: `tests/Canvas/PathTest.php`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -759,21 +769,21 @@ Append to `tests/Canvas/CanvasTest.php` (add `use draw\Path;` and `use draw\Tran
         $this->assertNull($canvas->data[3][2]->fg);
     }
 
-    public function test_draw_line_with_transform(): void
+    public function test_draw_path_line_with_transform(): void
     {
         $canvas = Canvas::createBlank(20, 20);
         $canvas->translate(10.0, 0.0);
-        $canvas->drawLine(0, 5, 5, 5, new Color(4, null));
+        $canvas->drawPath(Path::line(0, 5, 5, 5), null, new Color(4, null));
         $this->assertSame(4, $canvas->data[5][10]->fg);
         $this->assertSame(4, $canvas->data[5][15]->fg);
     }
 
-    public function test_draw_polygon_with_transform(): void
+    public function test_draw_path_polygon_with_transform(): void
     {
         $canvas = Canvas::createBlank(20, 20);
         $canvas->translate(5.0, 5.0);
-        $canvas->drawPolygon(
-            [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]],
+        $canvas->drawPath(
+            Path::polygon([[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]]),
             new Color(4, null),
             null
         );
@@ -782,14 +792,120 @@ Append to `tests/Canvas/CanvasTest.php` (add `use draw\Path;` and `use draw\Tran
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Migrate existing tests from drawPolygon to drawPath(Path::polygon(...))**
+
+In `tests/Canvas/CanvasTest.php`, replace every `$canvas->drawPolygon($points, ...)` call with `$canvas->drawPath(Path::polygon($points), ...)`. Add `use draw\Path;` to imports.
+
+Specific replacements (each `drawPolygon` call site):
+
+- `test_draw_polygon_with_both_colors_null_is_noop`: `$canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), null, null)`
+- `test_draw_polygon_outline_only_square`: `$canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), null, $outline)`
+- `test_draw_polygon_fill_only_square`: `$canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), $fill, null)`
+- `test_draw_polygon_fill_plus_outline_square`: `$canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]]), $fill, $outline)`
+- `test_draw_polygon_with_two_vertices_is_noop`: `$canvas->drawPath(Path::polygon([[1.0, 1.0], [5.0, 5.0]]), $color, $color)` — note: `Path::polygon` requires 2+ points so this still works, but drawPath with < 3 vertices won't fill or outline. Test behavior stays the same.
+- `test_draw_polygon_with_one_vertex_is_noop`: This needs a different approach — `Path::polygon` rejects < 2 points. Replace with `Path::polygon([[5.0, 5.0], [5.0, 5.0]])` (degenerate 2-point polygon that drawPath won't render).
+- `test_draw_polygon_with_zero_vertices_is_noop`: Create an empty Path — `$canvas->drawPath(new Path(), $color, $color)`
+- `test_draw_polygon_star_corner_stranding_regression`: Replace `$canvas->drawPolygon($points, $fill, $outline)` with `$canvas->drawPath(Path::polygon($points), $fill, $outline)`
+- `test_draw_polygon_outline_aligns_with_fill_no_horizontal_gaps`: Replace `$canvas->drawPolygon($points, new Color(3, null), new Color(5, null))` with `$canvas->drawPath(Path::polygon($points), new Color(3, null), new Color(5, null))`
+- `test_draw_polygon_fully_outside_canvas_does_not_throw`: Replace both `drawPolygon` calls with `$canvas->drawPath(Path::polygon($points), $color, $color)`
+
+In `tests/Canvas/PathTest.php`, rename the two tests that compare `drawPolygon` vs `drawPath` to just verify `drawPath`:
+
+- `test_draw_path_fill_matches_draw_polygon`: This test compared drawPolygon output with drawPath. Since drawPolygon is being removed, change this test to verify drawPath produces expected fill pixels directly instead of comparing against drawPolygon.
+- `test_draw_path_outline_matches_draw_polygon`: Same — verify drawPath outline directly.
+
+Replace the bodies:
+
+```php
+    public function test_draw_path_fill_produces_expected_pixels(): void
+    {
+        $path = Path::polygon([[2.0, 2.0], [8.0, 2.0], [8.0, 6.0], [2.0, 6.0]]);
+        $canvas = Canvas::createBlank(12, 12);
+        $canvas->drawPath($path, new Color(3, null), null);
+        $this->assertSame(3, $canvas->data[3][3]->fg);
+        $this->assertSame(3, $canvas->data[4][5]->fg);
+        $this->assertSame(3, $canvas->data[5][7]->fg);
+        $this->assertNull($canvas->data[0][0]->fg);
+        $this->assertNull($canvas->data[8][8]->fg);
+    }
+
+    public function test_draw_path_outline_produces_expected_pixels(): void
+    {
+        $path = Path::polygon([[2.0, 2.0], [8.0, 2.0], [8.0, 6.0], [2.0, 6.0]]);
+        $canvas = Canvas::createBlank(12, 12);
+        $canvas->drawPath($path, null, new Color(5, null));
+        $this->assertSame(5, $canvas->data[2][2]->fg);
+        $this->assertSame(5, $canvas->data[2][8]->fg);
+        $this->assertSame(5, $canvas->data[6][2]->fg);
+        $this->assertSame(5, $canvas->data[6][8]->fg);
+        $this->assertNull($canvas->data[4][5]->fg);
+    }
+```
+
+- [ ] **Step 3: Migrate external callers — artbot_scripts/drawing.php**
+
+In the `lines` function (line 42), replace:
+```php
+$art->drawLine($sx, $sy, $ex, $ey, $color);
+```
+with:
+```php
+$art->drawPath(Path::line($sx, $sy, $ex, $ey), null, $color);
+```
+
+- [ ] **Step 4: Migrate external callers — scripts/stocks/stocks.php**
+
+Replace the box border (lines 244-247):
+```php
+$canvas->drawLine(      0,        0,       0, $h - 1, new draw\Color(14));
+$canvas->drawLine( $w - 1,        0,  $w - 1, $h - 1, new draw\Color(14));
+$canvas->drawLine(      0,        0,  $w - 1,      0, new draw\Color(14));
+$canvas->drawLine(      0,   $h - 1,  $w - 1, $h - 1, new draw\Color(14));
+```
+with:
+```php
+$canvas->drawPath(draw\Path::line(      0,        0,       0, $h - 1), null, new draw\Color(14));
+$canvas->drawPath(draw\Path::line( $w - 1,        0,  $w - 1, $h - 1), null, new draw\Color(14));
+$canvas->drawPath(draw\Path::line(      0,        0,  $w - 1,      0), null, new draw\Color(14));
+$canvas->drawPath(draw\Path::line(      0,   $h - 1,  $w - 1, $h - 1), null, new draw\Color(14));
+```
+
+Replace the price line (line 286):
+```php
+$canvas->drawLine($i+1,$ly,$i,$y, $color);
+```
+with:
+```php
+$canvas->drawPath(draw\Path::line($i+1, $ly, $i, $y), null, $color);
+```
+
+Add `use draw\Path;` is not needed — already using `draw\` namespace prefix. Use `draw\Path::line(...)`.
+
+- [ ] **Step 5: Run test to verify tests fail before implementation**
 
 Run: `composer test -- tests/Canvas/PathTest.php --filter test_draw_path_with_canvas_translate`
 Expected: FAIL — drawPath ignores the CTM
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 6: Write implementation — rewrite Canvas.php**
 
-Modify `library/draw/Canvas.php` — replace the body of `drawPoint`:
+The full `Canvas.php` after this task has these public methods:
+- `createBlank`, `createFromArt`, `__toString`
+- `save`, `restore`, `getTransform`, `setTransform`, `concatTransform`
+- `translate`, `rotate`, `scale`, `skewX`, `skewY`
+- `drawPoint` — applies CTM, rounds to int, sets pixel
+- `fillColor` — unchanged (flood fill)
+- `overlay` — unchanged
+- `drawPath` — composes CTM × pathTransform, flattens, transforms vertices, rasterizes
+
+Private methods:
+- `drawLineInternal` — Bresenham without transform
+- `isIdentity` — checks if Transform is identity
+- `fillPolygonScanline` — unchanged
+- `fillPolygonScanlineMulti` — unchanged
+
+**Delete** public `drawLine` and `drawPolygon` methods entirely.
+
+Replace the body of `drawPoint`:
 
 ```php
     public function drawPoint(int|float $x, int|float $y, Color $color, string $text = ''): void
@@ -809,151 +925,7 @@ Modify `library/draw/Canvas.php` — replace the body of `drawPoint`:
     }
 ```
 
-Modify `drawLine` — transform the endpoints then call drawPoint-style logic (but keep Bresenham working with integer coords after transform). Replace the body of `drawLine`:
-
-```php
-    public function drawLine(int|float $startX, int|float $startY, int|float $endX, int|float $endY, Color $color, string $text = ''): void
-    {
-        if (!$this->isIdentity($this->ctm)) {
-            [$startX, $startY] = $this->ctm->apply((float) $startX, (float) $startY);
-            [$endX, $endY] = $this->ctm->apply((float) $endX, (float) $endY);
-        }
-        $startX = (int) round($startX);
-        $startY = (int) round($startY);
-        $endX = (int) round($endX);
-        $endY = (int) round($endY);
-        $dx = abs($endX - $startX);
-        $dy = abs($endY - $startY);
-        $sx = ($startX < $endX ? 1 : -1);
-        $sy = ($startY < $endY ? 1 : -1);
-        $error = ($dx > $dy ? $dx : - $dy) / 2;
-        $x = $startX;
-        $y = $startY;
-        $cnt = 0;
-        while ($cnt++ < 1000) {
-            if (isset($this->data[$y][$x])) {
-                $this->data[$y][$x]->fg = $color->fg;
-                $this->data[$y][$x]->bg = $color->bg;
-                if ($text != '') {
-                    $this->data[$y][$x]->text = $text;
-                }
-            }
-            if ($x == $endX && $y == $endY) {
-                break;
-            }
-            $e2 = $error;
-            if ($e2 > -$dx) {
-                $error -= $dy;
-                $x += $sx;
-            }
-            if ($e2 < $dy) {
-                $error += $dx;
-                $y += $sy;
-            }
-        }
-    }
-```
-
-Modify `drawPolygon` — transform points before snapping:
-
-```php
-    public function drawPolygon(
-        array $points,
-        ?Color $fillColor,
-        ?Color $outlineColor,
-        string $text = ''
-    ): void {
-        if (count($points) < 3) {
-            return;
-        }
-        if ($fillColor === null && $outlineColor === null) {
-            return;
-        }
-
-        if (!$this->isIdentity($this->ctm)) {
-            $transformed = [];
-            foreach ($points as $point) {
-                $transformed[] = $this->ctm->apply((float) $point[0], (float) $point[1]);
-            }
-            $points = $transformed;
-        }
-
-        $snapped = [];
-        foreach ($points as $point) {
-            $snapped[] = [(int) round($point[0]), (int) round($point[1])];
-        }
-
-        if ($fillColor !== null) {
-            $this->fillPolygonScanline($snapped, $fillColor, $text);
-        }
-
-        if ($outlineColor !== null) {
-            $firstX = null;
-            $firstY = null;
-            $prevX = null;
-            $prevY = null;
-            foreach ($snapped as [$x, $y]) {
-                if ($firstX === null) {
-                    $firstX = $x;
-                    $firstY = $y;
-                } else {
-                    $this->drawLineInternal($prevX, $prevY, $x, $y, $outlineColor, $text);
-                }
-                $prevX = $x;
-                $prevY = $y;
-            }
-            if ($prevX !== $firstX || $prevY !== $firstY) {
-                $this->drawLineInternal($prevX, $prevY, $firstX, $firstY, $outlineColor, $text);
-            }
-        }
-    }
-```
-
-Add private helpers `isIdentity` (checks if a Transform is identity) and `drawLineInternal` (Bresenham without transform, used by drawPolygon and drawPath after points are already transformed):
-
-```php
-    private function isIdentity(Transform $t): bool
-    {
-        $e = $t->getElements();
-        return $e[0] === 1.0 && $e[1] === 0.0 && $e[2] === 0.0
-            && $e[3] === 1.0 && $e[4] === 0.0 && $e[5] === 0.0;
-    }
-
-    private function drawLineInternal(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = ''): void
-    {
-        $dx = abs($endX - $startX);
-        $dy = abs($endY - $startY);
-        $sx = ($startX < $endX ? 1 : -1);
-        $sy = ($startY < $endY ? 1 : -1);
-        $error = ($dx > $dy ? $dx : - $dy) / 2;
-        $x = $startX;
-        $y = $startY;
-        $cnt = 0;
-        while ($cnt++ < 1000) {
-            if (isset($this->data[$y][$x])) {
-                $this->data[$y][$x]->fg = $color->fg;
-                $this->data[$y][$x]->bg = $color->bg;
-                if ($text != '') {
-                    $this->data[$y][$x]->text = $text;
-                }
-            }
-            if ($x == $endX && $y == $endY) {
-                break;
-            }
-            $e2 = $error;
-            if ($e2 > -$dx) {
-                $error -= $dy;
-                $x += $sx;
-            }
-            if ($e2 < $dy) {
-                $error += $dx;
-                $y += $sy;
-            }
-        }
-    }
-```
-
-Modify `drawPath` — compose CTM × pathTransform, apply to all vertices:
+Replace `drawPath` — compose CTM × pathTransform, apply to all vertices, use `drawLineInternal` for outline:
 
 ```php
     public function drawPath(
@@ -1034,16 +1006,60 @@ Modify `drawPath` — compose CTM × pathTransform, apply to all vertices:
     }
 ```
 
-- [ ] **Step 4: Run all tests to verify they pass**
+Add private helpers:
+
+```php
+    private function isIdentity(Transform $t): bool
+    {
+        $e = $t->getElements();
+        return $e[0] === 1.0 && $e[1] === 0.0 && $e[2] === 0.0
+            && $e[3] === 1.0 && $e[4] === 0.0 && $e[5] === 0.0;
+    }
+
+    private function drawLineInternal(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = ''): void
+    {
+        $dx = abs($endX - $startX);
+        $dy = abs($endY - $startY);
+        $sx = ($startX < $endX ? 1 : -1);
+        $sy = ($startY < $endY ? 1 : -1);
+        $error = ($dx > $dy ? $dx : - $dy) / 2;
+        $x = $startX;
+        $y = $startY;
+        $cnt = 0;
+        while ($cnt++ < 1000) {
+            if (isset($this->data[$y][$x])) {
+                $this->data[$y][$x]->fg = $color->fg;
+                $this->data[$y][$x]->bg = $color->bg;
+                if ($text != '') {
+                    $this->data[$y][$x]->text = $text;
+                }
+            }
+            if ($x == $endX && $y == $endY) {
+                break;
+            }
+            $e2 = $error;
+            if ($e2 > -$dx) {
+                $error -= $dy;
+                $x += $sx;
+            }
+            if ($e2 < $dy) {
+                $error += $dx;
+                $y += $sy;
+            }
+        }
+    }
+```
+
+- [ ] **Step 7: Run all tests to verify they pass**
 
 Run: `composer test`
-Expected: All tests PASS (83 existing + new transform tests)
+Expected: All tests PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add library/draw/Canvas.php tests/Canvas/CanvasTest.php tests/Canvas/PathTest.php
-git commit -m "Integrate transforms into drawPoint, drawLine, drawPolygon, drawPath"
+git add library/draw/Canvas.php tests/Canvas/CanvasTest.php tests/Canvas/PathTest.php artbot_scripts/drawing.php scripts/stocks/stocks.php
+git commit -m "Integrate transforms, remove drawLine/drawPolygon, migrate callers to drawPath"
 ```
 
 ---
