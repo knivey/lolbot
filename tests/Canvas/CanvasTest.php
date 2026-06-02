@@ -61,4 +61,28 @@ class CanvasTest extends TestCase
             }
         }
     }
+
+    public function test_draw_polygon_fill_only_square(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $fill = new Color(3, null);
+
+        // Square (1,1)-(5,1)-(5,5)-(1,5)
+        $canvas->drawPolygon(
+            [[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]],
+            $fill,
+            null
+        );
+
+        // Interior pixels must be filled.
+        $this->assertSame(3, $canvas->data[2][2]->fg);
+        $this->assertSame(3, $canvas->data[3][3]->fg);
+        $this->assertSame(3, $canvas->data[4][2]->fg);
+        $this->assertSame(3, $canvas->data[2][4]->fg);
+
+        // Outside pixels must NOT be filled.
+        $this->assertNull($canvas->data[0][0]->fg);
+        $this->assertNull($canvas->data[6][6]->fg);
+        $this->assertNull($canvas->data[9][9]->fg);
+    }
 }
