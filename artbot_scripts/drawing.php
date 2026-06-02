@@ -135,34 +135,26 @@ function stars(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
     $numstars = random_int(3 * ($lines / 48), 8 * ($lines / 48));
     for ($i = 0; $i < $numstars; $i++) {
         $tart = Canvas::createBlank(80, $lines, true);
-        $color = new Color($fgs[array_rand($fgs)], null);
+        $fillColor = new Color($fgs[array_rand($fgs)], null);
+        $outlineColor = new Color($fgs[array_rand($fgs)], null);
         $alpha = (2 * M_PI) / 10;
         $radius = random_int(7, 25);
         $x = random_int(0, 80);
         $y = random_int(0, $lines);
         $points = [];
         $rot = deg2rad(random_int(0, intval(360 / 5)));
-        $lx = null;
-        $ly = null;
         for ($p = 11; $p != 0; $p--) {
             $omega = ($alpha * $p) + $rot;
             $r = $radius * ($p % 2 + 1) / 2;
             $points[] = [$r * sin($omega) + $x, $r * cos($omega) + $y];
         }
 
-        foreach ($points as $point) {
-            if ($lx === null) {
-                $lx = $point[0];
-                $ly = $point[1];
-                continue;
-            }
-            $tart->drawLine((int)round($lx), (int)round($ly), (int)round($point[0]), (int)round($point[1]), $color);
-            $lx = $point[0];
-            $ly = $point[1];
-        }
-        if (random_int(0, 4) > 1) {
-            $tart->fillColor($x, $y, new Color($fgs[array_rand($fgs)], null));
-        }
+        $willFill = random_int(0, 4) > 1;
+        $tart->drawPolygon(
+            $points,
+            $willFill ? $fillColor : null,
+            $outlineColor,
+        );
         $art->overlay($tart);
     }
 

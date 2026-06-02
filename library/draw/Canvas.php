@@ -285,4 +285,136 @@ class Canvas
             $y++;
         }
     }
+
+    /**
+     * Draw a closed polygon with optional fill and outline.
+     *
+     * Fill is applied first via scanline conversion using the non-zero winding
+     * rule; outline is drawn on top via drawLine so it cleanly covers the fill
+     * boundary. The polygon is implicitly closed (last vertex connects to first).
+     *
+     * @param array<int, array{0: int|float, 1: int|float}> $points [[$x, $y], ...]
+     */
+    public function drawPolygon(
+        array $points,
+        ?Color $fillColor,
+        ?Color $outlineColor,
+        string $text = ''
+    ): void {
+        if (count($points) < 3) {
+            return;
+        }
+        if ($fillColor === null && $outlineColor === null) {
+            return;
+        }
+        if ($fillColor !== null) {
+            $this->fillPolygonScanline($points, $fillColor, $text);
+        }
+
+        if ($outlineColor !== null) {
+            $firstX = null;
+            $firstY = null;
+            $prevX = null;
+            $prevY = null;
+            foreach ($points as $point) {
+                $x = (int) round($point[0]);
+                $y = (int) round($point[1]);
+                if ($firstX === null) {
+                    $firstX = $x;
+                    $firstY = $y;
+                } else {
+                    $this->drawLine($prevX, $prevY, $x, $y, $outlineColor, $text);
+                }
+                $prevX = $x;
+                $prevY = $y;
+            }
+            // Close the polygon: last vertex back to first.
+            if ($prevX !== $firstX || $prevY !== $firstY) {
+                $this->drawLine($prevX, $prevY, $firstX, $firstY, $outlineColor, $text);
+            }
+        }
+    }
+
+    /**
+     * Fill the interior of a polygon using scanline conversion with the
+     * non-zero winding rule. Vertices must be in order around the polygon
+     * (clockwise or counter-clockwise); the polygon is implicitly closed.
+     *
+     * Uses the half-open convention `min(y0, y1) <= ySample < max(y0, y1)`
+     * (where ySample = Y + 0.5) so that horizontal edges and vertices exactly
+     * on a scanline are handled uniformly without double-counting. Pixels are
+     * sampled at their centers (pixel-center rasterization).
+     *
+     * @param array<int, array{0: int|float, 1: int|float}> $points
+     */
+    private function fillPolygonScanline(array $points, Color $color, string $text): void
+    {
+        $n = count($points);
+
+        // Compute integer bounding box of scanlines to visit.
+        $minY = $points[0][1];
+        $maxY = $points[0][1];
+        for ($i = 1; $i < $n; $i++) {
+            if ($points[$i][1] < $minY) {
+                $minY = $points[$i][1];
+            }
+            if ($points[$i][1] > $maxY) {
+                $maxY = $points[$i][1];
+            }
+        }
+        $yStart = (int) floor($minY);
+        $yEnd = (int) ceil($maxY);
+
+        for ($Y = $yStart; $Y <= $yEnd; $Y++) {
+            $ySample = $Y + 0.5;
+            // Collect (xIntersection, windingDirection) for every edge
+            // crossing this scanline under the half-open convention.
+            $intersections = [];
+            for ($i = 0; $i < $n; $i++) {
+                $x1 = $points[$i][0];
+                $y1 = $points[$i][1];
+                $x2 = $points[($i + 1) % $n][0];
+                $y2 = $points[($i + 1) % $n][1];
+
+                $yLo = $y1 < $y2 ? $y1 : $y2;
+                $yHi = $y1 < $y2 ? $y2 : $y1;
+
+                // Half-open: include edge iff yLo <= ySample < yHi.
+                if ($ySample < $yLo || $ySample >= $yHi) {
+                    continue;
+                }
+
+                // x at scanline ySample by linear interpolation along the edge.
+                $xInt = $x1 + ($x2 - $x1) * ($ySample - $y1) / ($y2 - $y1);
+                $dir = ($y2 > $y1) ? 1 : -1;
+                $intersections[] = [$xInt, $dir];
+            }
+
+            // Sort by x so we can walk left-to-right.
+            usort($intersections, fn ($a, $b) => $a[0] <=> $b[0]);
+
+            // Walk intersections, tracking running winding count.
+            // A fill span opens when winding becomes non-zero and closes
+            // when it returns to zero.
+            $winding = 0;
+            $spanStart = null;
+            foreach ($intersections as [$xInt, $dir]) {
+                $prevWinding = $winding;
+                $winding += $dir;
+                if ($prevWinding === 0 && $winding !== 0) {
+                    $spanStart = $xInt;
+                } elseif ($prevWinding !== 0 && $winding === 0) {
+                    $spanEnd = $xInt;
+                    if ($spanStart !== null) {
+                        $xL = (int) ceil($spanStart - 0.5);
+                        $xR = (int) floor($spanEnd - 0.5);
+                        for ($xx = $xL; $xx <= $xR; $xx++) {
+                            $this->drawPoint($xx, $Y, $color, $text);
+                        }
+                    }
+                    $spanStart = null;
+                }
+            }
+        }
+    }
 }

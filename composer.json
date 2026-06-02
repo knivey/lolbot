@@ -60,13 +60,20 @@
             "library/Irc/Consts.php"
         ]
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
     "require-dev": {
         "ramsey/composer-repl": "^1.5",
         "phpstan/phpstan": "^2.0",
-        "friendsofphp/php-cs-fixer": "^3.64"
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "phpunit/phpunit": "^10"
     },
     "scripts": {
-        "phpstan": "php -d memory_limit=1G vendor/bin/phpstan analyse"
+        "phpstan": "php -d memory_limit=1G vendor/bin/phpstan analyse",
+        "test": "vendor/bin/phpunit"
     },
     "config": {
         "allow-plugins": {
