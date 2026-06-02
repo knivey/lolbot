@@ -418,6 +418,11 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
     global $demos;
     $name = $cmdArgs['name'] ?? $demos[array_rand($demos)];
 
+    if (!in_array($name, $demos)) {
+        $bot->pm($args->chan, "unknown demo: $name  try: " . implode(', ', $demos));
+        return;
+    }
+
     $art = Canvas::createBlank(80, 48, true);
     $art->fillColor(0, 0, new Color(1, 1));
 
@@ -428,7 +433,6 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'bubbles' => demoBubbles($art),
         'vortex' => demoVortex($art),
         'transform' => demoTransform($art),
-        default => $bot->pm($args->chan, "unknown demo: $name  try: " . implode(', ', $demos)),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -579,17 +583,17 @@ function demoTransform(Canvas $art): void
     $cx = 40;
     $cy = 20;
     $numSpokes = rand(6, 12);
-    $spokeLen = rand(10, 18);
-    $spokeWidth = rand(2, 4);
+    $spokeLen = rand(15, 22);
     $fillColor = new Color($colors[array_rand($colors)], null);
-    $outlineColor = new Color($colors[array_rand($colors)], null);
+    do {
+        $outlineColor = new Color($colors[array_rand($colors)], null);
+    } while ($outlineColor->fg === $fillColor->fg);
     for ($i = 0; $i < $numSpokes; $i++) {
         $art->save();
         $art->translate((float) $cx, (float) $cy);
         $art->rotate((2.0 * M_PI * $i) / $numSpokes);
-        $spoke = Path::rect(-$spokeWidth, -$spokeLen, $spokeWidth * 2, $spokeLen);
+        $spoke = Path::rect(-1, -$spokeLen, 2, $spokeLen);
         $art->drawPath($spoke, $fillColor, $outlineColor);
         $art->restore();
     }
-    $art->drawPath(Path::circle($cx, $cy, 3), new Color($colors[array_rand($colors)], null), null);
 }
