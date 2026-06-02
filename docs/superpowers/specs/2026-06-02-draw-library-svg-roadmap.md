@@ -1,0 +1,279 @@
+# Drawing Library SVG-Compatible Roadmap
+
+## Goal
+
+Evolve `library/draw/` from its current set of canvas primitives (`drawLine`,
+`drawFilledEllipse`, `drawPolygon`, etc.) into a structured 2D graphics library
+that can partially render SVG documents on a terminal character-cell canvas.
+
+The guiding principle is **SVG compatibility**: wherever the SVG spec defines a
+concept, we adopt that concept's semantics and naming. This gives us a
+well-defined target rather than designing an API from scratch, and opens the
+door to an SVG parser layer that maps directly onto our types.
+
+## Current State
+
+Three files in `library/draw/`:
+
+- **`Canvas.php`** — character-cell pixel grid with `drawPoint`, `drawLine`,
+  `drawFilledEllipse`, `drawEllipse`, `drawPolygon` (scanline fill + outline),
+  `fillColor` (flood fill), `overlay`. Supports half-block rendering for 2x
+  vertical resolution. Output is IRC color-coded text (`\x03` codes).
+- **`Color.php`** — IRC color constants (16-color palette), fg/bg pair,
+  gradient stubs.
+- **`Pixel.php`** — single cell: fg, bg, text character.
+
+The `drawPolygon` method already implements non-zero winding rule scanline
+fill with top-left pixel sampling that aligns with Bresenham outlines.
+
+## Target Architecture
+
+```
+SVG string ──► SVGParser ──► Scene Tree ──► Renderer ──► Canvas
+                                 ▲
+                                 │ built from
+                                 │
+                          Generic Drawing API
+                          (Path, Paint, StrokeStyle, Transform, ...)
+                          usable without SVG
+```
+
+The generic drawing API is the library's core. The SVG parser is a thin layer
+on top that maps SVG XML elements and attributes to these types. The renderer
+rasterizes the scene tree onto a `Canvas`.
+
+### Core Types (to be built)
+
+| Type | SVG counterpart | Purpose |
+|------|----------------|---------|
+| `Path` | `<path d="...">` | Ordered list of path segments; can be filled or stroked |
+| `PathSegment` | M/L/C/Q/A/Z commands | Individual path command (MoveTo, LineTo, CubicBezier, etc.) |
+| `Paint` | `fill`/`stroke` attribute values | Solid color, gradient, pattern, or none |
+| `StrokeStyle` | `stroke-*` attributes | Width, dash array, line cap, line join, miter limit |
+| `Transform` | `transform` attribute | 2x3 affine matrix (translate, rotate, scale, skew, matrix) |
+| `FillRule` | `fill-rule` attribute | Enum: NonZero, EvenOdd |
+| `Gradient` | `<linearGradient>`, `<radialGradient>` | Color stops along a vector or radius |
+| `ClipPath` | `<clipPath>` | A path used as a clipping region |
+| `Mask` | `<mask>` | A luminance or alpha mask |
+| `Scene` / `Group` | `<svg>`, `<g>` | Container of renderable elements with inherited properties |
+
+### Rendering Pipeline
+
+1. **Parse** — SVG XML → typed objects (Path, Paint, Transform, etc.)
+2. **Build scene tree** — groups with inherited paint/transform properties
+3. **Flatten transforms** — apply transform stack to get canvas-space coordinates
+4. **Flatten Béziers/arcs** — convert curves to line segments at a tolerance
+   derived from viewBox-to-canvas scale
+5. **Rasterize** — for each element:
+   - Fill: scanline convert the flattened polygon with the fill rule
+   - Stroke: expand stroked path to a fillable region (or Bresenham for width=1)
+   - Apply clip/mask
+6. **Composite** — blend onto the Canvas
+
+## Feature Tiers
+
+### Tier 1 — Foundation (essential for basic SVGs)
+
+**Path API and SVG path commands:**
+- `Path` class: an ordered list of segments with a current-point cursor
+- SVG path `d` commands: `M`, `L`, `H`, `V`, `C`, `Q`, `S`, `T`, `A`, `Z`
+  (absolute and relative variants)
+- Smooth shorthand commands (`S`/`T`) that infer control points from the
+  previous curve
+- Arc command (`A`) — elliptical arc-to, flattened to line segments
+- `Path::flatten(float $tolerance): array<array{float, float}>` — convert all
+  segments to a polygon vertex array for fill/outline rasterization
+
+**Basic shapes (mapped to Path internally):**
+- `<rect>` — including rounded corners (`rx`, `ry`)
+- `<circle>` — flattened to polygon at appropriate segment count
+- `<ellipse>` — same
+- `<line>`, `<polyline>`, `<polygon>`
+
+**Transforms:**
+- `Transform` class: 2x3 affine matrix `[a b c d e f]` representing
+  `[[a c e], [b d f], [0 0 1]]`
+- Operations: `translate(tx, ty)`, `rotate(angle, [cx, cy])`,
+  `scale(sx, [sy])`, `skewX(angle)`, `skewY(angle)`, `matrix(a,b,c,d,e,f)`
+- Transform stack: methods to push/pop a transform stack on Canvas
+- Transform composition: `Transform::multiply(a, b)`
+
+**Coordinate system:**
+- `viewBox` mapping: affine transform from SVG user coordinates to terminal
+  character cells
+- `preserveAspectRatio` handling
+
+**Paint:**
+- Solid colors: named CSS colors, `#rgb`, `#rrggbb`, `rgb()`, `rgba()`
+  mapped to the IRC 16-color palette (nearest-color matching)
+- `fill="none"`, `stroke="none"`
+
+**Fill rules:**
+- `nonzero` (already implemented in `fillPolygonScanline`)
+- `evenodd` — alternate span open/close logic in scanline converter
+
+### Tier 2 — Rich Rendering
+
+**Gradients:**
+- `LinearGradient`: color stops along a vector (`x1, y1, x2, y2`)
+- `RadialGradient`: color stops along a radius (`cx, cy, r, [fx, fy]`)
+- Stop interpolation: linear RGB blend between adjacent stops
+- Gradient spread methods: `pad`, `reflect`, `repeat`
+- Applied per-pixel during scanline fill (compute gradient position,
+  interpolate stop colors, map to nearest IRC color)
+
+**Advanced strokes:**
+- `stroke-width` > 1: convert to polygon by offsetting both sides of the path
+  (Minkowski sum of path + disc of radius width/2)
+- `stroke-dasharray` / `stroke-dashoffset`: dash pattern along path length
+- `stroke-linecap`: `butt`, `round`, `square`
+- `stroke-linejoin`: `miter`, `round`, `bevel`
+- `stroke-miterlimit`
+- `stroke-opacity`
+
+**Groups and inheritance:**
+- `<g>` elements with child elements inheriting `fill`, `stroke`, `transform`,
+  `opacity`, etc.
+- Scene tree with property cascading (child overrides parent)
+
+**Opacity:**
+- `opacity`, `fill-opacity`, `stroke-opacity`
+- Render to an offscreen buffer, then composite with alpha
+
+**Clipping and masking:**
+- `clip-path` referencing a `<clipPath>` element — restricts drawing to the
+  clip region (implemented as a per-pixel test during rasterization)
+- `<mask>` — luminance or alpha mask controlling per-pixel visibility
+
+### Tier 3 — Polish and Effects
+
+**Filters:**
+- `<filter>` element with filter primitives:
+  - `feGaussianBlur` — box blur or Gaussian approximation on character grid
+  - `feDropShadow` — offset + blurred copy
+  - `feOffset` — translate the source graphic
+  - `feColorMatrix` — per-pixel color matrix multiplication
+  - `feMerge` — composite multiple filter results
+- Filters operate on offscreen buffers
+
+**Text:**
+- `<text>` and `<tspan>` elements
+- Font properties: `font-family`, `font-size`, `font-weight`, `font-style`,
+  `text-anchor`, `dominant-baseline`
+- Text layout within a bounding box (alignment, wrapping)
+- Text on path (`<textPath>`)
+- For the terminal: map to existing ASCII art fonts or terminal text
+
+**Use/Symbol/Defs:**
+- `<defs>` — non-rendering container for reusable definitions
+- `<use href="#id">` — instantiate a defined element
+- `<symbol>` — reusable graphic template with its own viewBox
+
+**Markers:**
+- `<marker>` elements referenced by `marker-start`, `marker-mid`, `marker-end`
+- Render arrowheads, dots, etc. at path vertices
+
+### Tier 4 — Terminal-Specific Enhancements
+
+**Higher effective resolution:**
+- Half-block characters (`▀▄`) for 2x vertical resolution (already partially
+  supported in Canvas)
+- Quarter-block characters (`▖▗▘▙▚▛▜▝▞▟`) for 2x2 sub-cell resolution
+- Block element shading (`▔▁▂▃▄▅▆▇█`) as a brightness/density scale
+
+**Color:**
+- 256-color terminal palette (xterm 216-color cube + 24 grayscale)
+- Truecolor (24-bit RGB) escape codes for supporting terminals
+- Color quantization: map SVG RGB values to nearest terminal palette color
+- Floyd-Steinberg dithering or ordered dithering for smooth gradients
+
+**Unicode line drawing:**
+- Box drawing characters (`─│┌┐└┘├┤┬┴┼`) for thin/thick strokes
+- Double-line variants (`═║╔╗╚╝╠╣╦╩╬`)
+- Auto-selection of appropriate joining characters at line intersections
+
+**Advanced output:**
+- Kitty graphics protocol — inline raster images in supporting terminals
+- Sixel — inline images for VT340-compatible terminals
+- ANSI rendering with cursor movement (for animation)
+
+### Tier 5 — Animation (future)
+
+- SVG `<animate>`, `<animateTransform>`, `<animateMotion>` elements
+- Keyframe timeline with interpolation
+- Easing functions: linear, ease-in/out, bounce, elastic
+- Render-to-buffer + cell-diff for smooth partial redraws
+- Frame rate control and timing
+
+## Design Decisions
+
+### Bézier flattening
+
+Cubic and quadratic Béziers are flattened to line segments using recursive
+subdivision. The tolerance (maximum deviation from the true curve) is derived
+from the viewBox-to-canvas scale: a curve that maps to 2 pixels on the canvas
+needs far fewer segments than one that maps to 200 pixels.
+
+```
+tolerance = 0.5 pixels (in canvas space)
+segments  = estimated from curve flatness + canvas scale
+```
+
+### Arc flattening
+
+SVG arc (`A`) commands are converted to cubic Béziers first (using the
+approach from the SVG spec's implementation notes: endpoint to center
+parameterization), then flattened to line segments.
+
+### Stroke expansion
+
+For `stroke-width > 1`, the stroked path is expanded into a fillable polygon
+by computing the parallel offset curves on both sides of the path. This is the
+hardest part — offset curves of Béziers are not Béziers, so they must be
+approximated. Common approach: flatten the path to line segments, offset each
+segment perpendicular by `width/2`, join with miter/bevel/round at corners,
+then fill the resulting polygon.
+
+For `stroke-width == 1`, keep the fast Bresenham line path.
+
+### Color quantization
+
+SVG allows arbitrary RGB colors. The terminal canvas has a fixed palette
+(16-color IRC, 256-color xterm, or 24-bit truecolor). Strategy:
+
+1. If the terminal supports truecolor, use it directly
+2. Otherwise, map each RGB value to the nearest palette color using
+   perceptual distance (e.g., weighted Euclidean in Lab color space)
+3. For gradients, optionally dither to reduce banding
+
+### Fill rule implementation
+
+The current `fillPolygonScanline` uses a winding counter (non-zero rule).
+Even-odd support requires only changing the span-tracking logic: instead of
+tracking winding count, toggle a boolean at each intersection.
+
+## Non-Goals
+
+- **Full SVG compliance** — we target a useful subset, not the entire spec
+- **Font rendering** — terminal fonts differ from SVG font metrics; we rely on
+  terminal text rendering or ASCII art fonts
+- **CSS styling** — inline `style` attributes and external stylesheets are
+  out of scope for the foreseeable future
+- **JavaScript / SMIL animation** — static rendering only (until Tier 5)
+- **SVG namespaced extensions** — no foreignObject, no RDF metadata, etc.
+
+## Milestone Order
+
+1. **Path API** — Path class, path segments, SVG `d` string parser,
+   Béziers + arc flattening, `Canvas::drawPath()`
+2. **Basic shapes** — rect, circle, ellipse as convenience methods on Path
+3. **Transform** — affine matrix, transform stack on Canvas
+4. **EvenOdd fill rule** — add to scanline converter
+5. **StrokeStyle** — width, dash, caps, joins (strokes > 1px)
+6. **Gradient Paint** — linear, radial, color stops, stop interpolation
+7. **SVG parser** — XML parser mapping SVG elements to scene tree
+8. **Clip/Mask** — clipping regions and masks
+9. **Filters** — blur, shadow, color matrix
+10. **Text** — SVG text elements
+11. **Use/Symbol/Defs** — reusable elements
+12. **Terminal enhancements** — higher resolution, better color, Unicode lines
