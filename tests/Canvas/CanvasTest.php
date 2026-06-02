@@ -6,6 +6,7 @@ use draw\Canvas;
 use draw\Color;
 use draw\Path;
 use draw\Transform;
+use draw\FillRule;
 use PHPUnit\Framework\TestCase;
 
 class CanvasTest extends TestCase
@@ -446,5 +447,79 @@ class CanvasTest extends TestCase
         );
         $this->assertSame(4, $canvas->data[7][7]->fg);
         $this->assertNull($canvas->data[2][2]->fg);
+    }
+
+    public function test_evenodd_concentric_squares_hole(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $fill = new Color(4, null);
+
+        $outer = Path::polygon([[1.0, 1.0], [15.0, 1.0], [15.0, 15.0], [1.0, 15.0]]);
+        $inner = Path::polygon([[5.0, 5.0], [11.0, 5.0], [11.0, 11.0], [5.0, 11.0]]);
+
+        $path = new Path();
+        foreach ($outer->flatten() as $sp) {
+            $path->moveTo($sp['vertices'][0][0], $sp['vertices'][0][1]);
+            $n = count($sp['vertices']);
+            for ($i = 1; $i < $n; $i++) {
+                $path->lineTo($sp['vertices'][$i][0], $sp['vertices'][$i][1]);
+            }
+            if ($sp['closed']) {
+                $path->closePath();
+            }
+        }
+        foreach ($inner->flatten() as $sp) {
+            $path->moveTo($sp['vertices'][0][0], $sp['vertices'][0][1]);
+            $n = count($sp['vertices']);
+            for ($i = 1; $i < $n; $i++) {
+                $path->lineTo($sp['vertices'][$i][0], $sp['vertices'][$i][1]);
+            }
+            if ($sp['closed']) {
+                $path->closePath();
+            }
+        }
+
+        $canvas->drawPath($path, $fill, null, '', FillRule::EvenOdd);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg, "Pixel between outer and inner boundary should be filled (EvenOdd)");
+        $this->assertSame(4, $canvas->data[3][8]->fg, "Pixel between outer and inner boundary should be filled (EvenOdd)");
+        $this->assertNull($canvas->data[8][8]->fg, "Pixel inside inner square should NOT be filled (EvenOdd hole)");
+        $this->assertNull($canvas->data[6][6]->fg, "Pixel inside inner square should NOT be filled (EvenOdd hole)");
+    }
+
+    public function test_nonzero_concentric_squares_no_hole(): void
+    {
+        $canvas = Canvas::createBlank(20, 20);
+        $fill = new Color(4, null);
+
+        $outer = Path::polygon([[1.0, 1.0], [15.0, 1.0], [15.0, 15.0], [1.0, 15.0]]);
+        $inner = Path::polygon([[5.0, 5.0], [11.0, 5.0], [11.0, 11.0], [5.0, 11.0]]);
+
+        $path = new Path();
+        foreach ($outer->flatten() as $sp) {
+            $path->moveTo($sp['vertices'][0][0], $sp['vertices'][0][1]);
+            $n = count($sp['vertices']);
+            for ($i = 1; $i < $n; $i++) {
+                $path->lineTo($sp['vertices'][$i][0], $sp['vertices'][$i][1]);
+            }
+            if ($sp['closed']) {
+                $path->closePath();
+            }
+        }
+        foreach ($inner->flatten() as $sp) {
+            $path->moveTo($sp['vertices'][0][0], $sp['vertices'][0][1]);
+            $n = count($sp['vertices']);
+            for ($i = 1; $i < $n; $i++) {
+                $path->lineTo($sp['vertices'][$i][0], $sp['vertices'][$i][1]);
+            }
+            if ($sp['closed']) {
+                $path->closePath();
+            }
+        }
+
+        $canvas->drawPath($path, $fill, null, '', FillRule::NonZero);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg, "Pixel between outer and inner should be filled (NonZero)");
+        $this->assertSame(4, $canvas->data[8][8]->fg, "Pixel inside inner square should also be filled (NonZero, same winding)");
     }
 }

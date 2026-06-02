@@ -347,7 +347,8 @@ class Canvas
         Path $path,
         ?Color $fillColor,
         ?Color $outlineColor,
-        string $text = ''
+        string $text = '',
+        FillRule $fillRule = FillRule::NonZero
     ): void {
         $subpaths = $path->flatten();
         if (count($subpaths) === 0) {
@@ -385,7 +386,7 @@ class Canvas
                 }
             }
             if (count($polygonArrays) > 0) {
-                $this->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text);
+                $this->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text, $fillRule);
             }
         }
 
@@ -433,7 +434,7 @@ class Canvas
      *
      * @param array<int, array<int, array{int, int}>> $subpaths
      */
-    private function fillPolygonScanlineMulti(array $subpaths, Color $color, string $text): void
+    private function fillPolygonScanlineMulti(array $subpaths, Color $color, string $text, FillRule $fillRule): void
     {
         if (count($subpaths) === 0) {
             return;
@@ -485,32 +486,54 @@ class Canvas
             // Sort by x so we can walk left-to-right.
             usort($intersections, fn ($a, $b) => $a[0] <=> $b[0]);
 
-            // Walk intersections, tracking running winding count.
-            // A fill span opens when winding becomes non-zero and closes
-            // when it returns to zero.
-            $winding = 0;
-            $spanStart = null;
-            foreach ($intersections as [$xInt, $dir]) {
-                $prevWinding = $winding;
-                $winding += $dir;
-                if ($prevWinding === 0 && $winding !== 0) {
-                    $spanStart = $xInt;
-                } elseif ($prevWinding !== 0 && $winding === 0) {
-                    $spanEnd = $xInt;
-                    if ($spanStart !== null) {
-                        $xL = (int) ceil($spanStart);
-                        $xR = (int) floor($spanEnd);
-                        for ($xx = $xL; $xx <= $xR; $xx++) {
-                            if (isset($this->data[$Y][$xx])) {
-                                $this->data[$Y][$xx]->fg = $color->fg;
-                                $this->data[$Y][$xx]->bg = $color->bg;
-                                if ($text != '') {
-                                    $this->data[$Y][$xx]->text = $text;
+            if ($fillRule === FillRule::EvenOdd) {
+                $inside = false;
+                $spanStart = null;
+                foreach ($intersections as [$xInt]) {
+                    $inside = !$inside;
+                    if ($inside) {
+                        $spanStart = $xInt;
+                    } else {
+                        if ($spanStart !== null) {
+                            $xL = (int) ceil($spanStart);
+                            $xR = (int) floor($xInt);
+                            for ($xx = $xL; $xx <= $xR; $xx++) {
+                                if (isset($this->data[$Y][$xx])) {
+                                    $this->data[$Y][$xx]->fg = $color->fg;
+                                    $this->data[$Y][$xx]->bg = $color->bg;
+                                    if ($text != '') {
+                                        $this->data[$Y][$xx]->text = $text;
+                                    }
                                 }
                             }
                         }
+                        $spanStart = null;
                     }
-                    $spanStart = null;
+                }
+            } else {
+                $winding = 0;
+                $spanStart = null;
+                foreach ($intersections as [$xInt, $dir]) {
+                    $prevWinding = $winding;
+                    $winding += $dir;
+                    if ($prevWinding === 0 && $winding !== 0) {
+                        $spanStart = $xInt;
+                    } elseif ($prevWinding !== 0 && $winding === 0) {
+                        if ($spanStart !== null) {
+                            $xL = (int) ceil($spanStart);
+                            $xR = (int) floor($xInt);
+                            for ($xx = $xL; $xx <= $xR; $xx++) {
+                                if (isset($this->data[$Y][$xx])) {
+                                    $this->data[$Y][$xx]->fg = $color->fg;
+                                    $this->data[$Y][$xx]->bg = $color->bg;
+                                    if ($text != '') {
+                                        $this->data[$Y][$xx]->text = $text;
+                                    }
+                                }
+                            }
+                        }
+                        $spanStart = null;
+                    }
                 }
             }
         }
