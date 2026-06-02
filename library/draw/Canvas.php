@@ -404,7 +404,8 @@ class Canvas
         for ($Y = $minY; $Y <= $maxY; $Y++) {
             $intersections = [];
 
-            // Collect intersections from ALL subpaths
+            // Collect (xIntersection, windingDirection) for every edge
+            // crossing this scanline under the half-open convention.
             foreach ($subpaths as $polygon) {
                 $n = count($polygon);
                 for ($i = 0; $i < $n; $i++) {
@@ -416,18 +417,24 @@ class Canvas
                     $yLo = $y1 < $y2 ? $y1 : $y2;
                     $yHi = $y1 < $y2 ? $y2 : $y1;
 
+                    // Half-open: include edge iff yLo <= Y < yHi.
                     if ($Y < $yLo || $Y >= $yHi) {
                         continue;
                     }
 
+                    // x at scanline Y by linear interpolation along the edge.
                     $xInt = $x1 + ($x2 - $x1) * ($Y - $y1) / ($y2 - $y1);
                     $dir = ($y2 > $y1) ? 1 : -1;
                     $intersections[] = [$xInt, $dir];
                 }
             }
 
+            // Sort by x so we can walk left-to-right.
             usort($intersections, fn ($a, $b) => $a[0] <=> $b[0]);
 
+            // Walk intersections, tracking running winding count.
+            // A fill span opens when winding becomes non-zero and closes
+            // when it returns to zero.
             $winding = 0;
             $spanStart = null;
             foreach ($intersections as [$xInt, $dir]) {
