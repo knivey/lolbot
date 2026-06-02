@@ -13,8 +13,13 @@ class Canvas
     public int $w = 0;
     public int $h = 0;
 
+    private Transform $ctm;
+    /** @var array<int, Transform> */
+    private array $transformStack = [];
+
     private function __construct(readonly public bool $halfblocks = false)
     {
+        $this->ctm = Transform::identity();
     }
 
     /**
@@ -156,6 +161,34 @@ class Canvas
             }
         }
         return $out;
+    }
+
+    public function save(): void
+    {
+        $this->transformStack[] = $this->ctm;
+    }
+
+    public function restore(): void
+    {
+        if (count($this->transformStack) === 0) {
+            throw new \LogicException('Cannot restore: transform stack is empty');
+        }
+        $this->ctm = array_pop($this->transformStack);
+    }
+
+    public function getTransform(): Transform
+    {
+        return $this->ctm;
+    }
+
+    public function setTransform(Transform $t): void
+    {
+        $this->ctm = $t;
+    }
+
+    public function concatTransform(Transform $t): void
+    {
+        $this->ctm = $this->ctm->multiply($t);
     }
 
     public function drawPoint(int $x, int $y, Color $color, string $text = ''): void

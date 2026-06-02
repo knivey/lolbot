@@ -4,6 +4,7 @@ namespace Tests\Canvas;
 
 use draw\Canvas;
 use draw\Color;
+use draw\Transform;
 use PHPUnit\Framework\TestCase;
 
 class CanvasTest extends TestCase
@@ -347,5 +348,68 @@ class CanvasTest extends TestCase
                 $this->assertNull($canvas->data[$y][$x]->fg);
             }
         }
+    }
+
+    public function test_canvas_default_transform_is_identity(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $this->assertSame([1.0, 0.0, 0.0, 1.0, 0.0, 0.0], $canvas->getTransform()->getElements());
+    }
+
+    public function test_canvas_set_transform_replaces_ctm(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $t = Transform::translate(5.0, 10.0);
+        $canvas->setTransform($t);
+        $this->assertSame($t, $canvas->getTransform());
+    }
+
+    public function test_canvas_concat_transform_composes(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->concatTransform(Transform::translate(10.0, 0.0));
+        $canvas->concatTransform(Transform::scale(2.0));
+        [$x, $y] = $canvas->getTransform()->apply(5.0, 0.0);
+        $this->assertEqualsWithDelta(20.0, $x, 0.0001);
+    }
+
+    public function test_canvas_save_restore(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->concatTransform(Transform::translate(5.0, 5.0));
+        $canvas->save();
+        $canvas->concatTransform(Transform::scale(2.0));
+        $this->assertNotEquals(
+            [1.0, 0.0, 0.0, 1.0, 5.0, 5.0],
+            $canvas->getTransform()->getElements()
+        );
+        $canvas->restore();
+        $this->assertSame(
+            [1.0, 0.0, 0.0, 1.0, 5.0, 5.0],
+            $canvas->getTransform()->getElements()
+        );
+    }
+
+    public function test_canvas_restore_throws_on_empty_stack(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $this->expectException(\LogicException::class);
+        $canvas->restore();
+    }
+
+    public function test_canvas_save_restore_nested(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->concatTransform(Transform::translate(1.0, 0.0));
+        $canvas->save();
+        $canvas->concatTransform(Transform::translate(2.0, 0.0));
+        $canvas->save();
+        $canvas->concatTransform(Transform::translate(3.0, 0.0));
+        $canvas->restore();
+        [$x, $y] = $canvas->getTransform()->apply(0.0, 0.0);
+        $this->assertEqualsWithDelta(3.0, $x, 0.0001);
+        $canvas->restore();
+        [$x, $y] = $canvas->getTransform()->apply(0.0, 0.0);
+        $this->assertEqualsWithDelta(1.0, $x, 0.0001);
     }
 }
