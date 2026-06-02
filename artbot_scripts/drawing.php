@@ -408,7 +408,7 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform'];
 
 #[Cmd("demo")]
 #[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex). Random if no arg.")]
@@ -427,6 +427,7 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'mondrian' => demoMondrian($art),
         'bubbles' => demoBubbles($art),
         'vortex' => demoVortex($art),
+        'transform' => demoTransform($art),
         default => $bot->pm($args->chan, "unknown demo: $name  try: " . implode(', ', $demos)),
     };
 
@@ -570,4 +571,25 @@ function demoVortex(Canvas $art): void
         }
         $art->drawPath(Path::polyline($points), null, $color);
     }
+}
+
+function demoTransform(Canvas $art): void
+{
+    $colors = [4, 7, 8, 9, 11, 12, 13];
+    $cx = 40;
+    $cy = 20;
+    $numSpokes = rand(6, 12);
+    $spokeLen = rand(10, 18);
+    $spokeWidth = rand(2, 4);
+    $fillColor = new Color($colors[array_rand($colors)], null);
+    $outlineColor = new Color($colors[array_rand($colors)], null);
+    for ($i = 0; $i < $numSpokes; $i++) {
+        $art->save();
+        $art->translate((float) $cx, (float) $cy);
+        $art->rotate((2.0 * M_PI * $i) / $numSpokes);
+        $spoke = Path::rect(-$spokeWidth, -$spokeLen, $spokeWidth * 2, $spokeLen);
+        $art->drawPath($spoke, $fillColor, $outlineColor);
+        $art->restore();
+    }
+    $art->drawPath(Path::circle($cx, $cy, 3), new Color($colors[array_rand($colors)], null), null);
 }
