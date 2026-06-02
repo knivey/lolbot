@@ -367,52 +367,67 @@ class Canvas
      */
     private function fillPolygonScanline(array $points, Color $color, string $text): void
     {
-        $n = count($points);
+        $this->fillPolygonScanlineMulti([$points], $color, $text);
+    }
 
-        // Compute integer bounding box of scanlines to visit.
-        $minY = $points[0][1];
-        $maxY = $points[0][1];
-        for ($i = 1; $i < $n; $i++) {
-            if ($points[$i][1] < $minY) {
-                $minY = $points[$i][1];
-            }
-            if ($points[$i][1] > $maxY) {
-                $maxY = $points[$i][1];
+    /**
+     * Fill the interior of multiple subpaths using scanline conversion with the
+     * non-zero winding rule. All subpaths contribute edges to the intersection
+     * list, so overlapping or nested subpaths interact correctly (e.g., a
+     * clockwise outer + counter-clockwise inner creates a hole).
+     *
+     * Uses the same half-open / top-left convention as fillPolygonScanline.
+     *
+     * @param array<int, array<int, array{int, int}>> $subpaths
+     */
+    private function fillPolygonScanlineMulti(array $subpaths, Color $color, string $text): void
+    {
+        if (count($subpaths) === 0) {
+            return;
+        }
+
+        // Compute bounding box across all subpaths
+        $minY = PHP_INT_MAX;
+        $maxY = PHP_INT_MIN;
+        foreach ($subpaths as $polygon) {
+            $n = count($polygon);
+            for ($i = 0; $i < $n; $i++) {
+                if ($polygon[$i][1] < $minY) {
+                    $minY = $polygon[$i][1];
+                }
+                if ($polygon[$i][1] > $maxY) {
+                    $maxY = $polygon[$i][1];
+                }
             }
         }
-        $yStart = (int) floor($minY);
-        $yEnd = (int) ceil($maxY);
 
-        for ($Y = $yStart; $Y <= $yEnd; $Y++) {
-            // Collect (xIntersection, windingDirection) for every edge
-            // crossing this scanline under the half-open convention.
+        for ($Y = $minY; $Y <= $maxY; $Y++) {
             $intersections = [];
-            for ($i = 0; $i < $n; $i++) {
-                $x1 = $points[$i][0];
-                $y1 = $points[$i][1];
-                $x2 = $points[($i + 1) % $n][0];
-                $y2 = $points[($i + 1) % $n][1];
 
-                $yLo = $y1 < $y2 ? $y1 : $y2;
-                $yHi = $y1 < $y2 ? $y2 : $y1;
+            // Collect intersections from ALL subpaths
+            foreach ($subpaths as $polygon) {
+                $n = count($polygon);
+                for ($i = 0; $i < $n; $i++) {
+                    $x1 = $polygon[$i][0];
+                    $y1 = $polygon[$i][1];
+                    $x2 = $polygon[($i + 1) % $n][0];
+                    $y2 = $polygon[($i + 1) % $n][1];
 
-                // Half-open: include edge iff yLo <= Y < yHi.
-                if ($Y < $yLo || $Y >= $yHi) {
-                    continue;
+                    $yLo = $y1 < $y2 ? $y1 : $y2;
+                    $yHi = $y1 < $y2 ? $y2 : $y1;
+
+                    if ($Y < $yLo || $Y >= $yHi) {
+                        continue;
+                    }
+
+                    $xInt = $x1 + ($x2 - $x1) * ($Y - $y1) / ($y2 - $y1);
+                    $dir = ($y2 > $y1) ? 1 : -1;
+                    $intersections[] = [$xInt, $dir];
                 }
-
-                // x at scanline Y by linear interpolation along the edge.
-                $xInt = $x1 + ($x2 - $x1) * ($Y - $y1) / ($y2 - $y1);
-                $dir = ($y2 > $y1) ? 1 : -1;
-                $intersections[] = [$xInt, $dir];
             }
 
-            // Sort by x so we can walk left-to-right.
             usort($intersections, fn ($a, $b) => $a[0] <=> $b[0]);
 
-            // Walk intersections, tracking running winding count.
-            // A fill span opens when winding becomes non-zero and closes
-            // when it returns to zero.
             $winding = 0;
             $spanStart = null;
             foreach ($intersections as [$xInt, $dir]) {
