@@ -4,6 +4,7 @@ namespace Tests\Canvas;
 use draw\Canvas;
 use draw\Color;
 use draw\Path;
+use draw\Transform;
 use PHPUnit\Framework\TestCase;
 
 class PathTest extends TestCase
@@ -609,5 +610,43 @@ class PathTest extends TestCase
         $canvas->drawPath(Path::ellipse(10, 10, 8, 5), $fill, null);
         $this->assertSame(4, $canvas->data[10][10]->fg);
         $this->assertNull($canvas->data[0][0]->fg);
+    }
+
+    public function test_path_default_transform_is_null(): void
+    {
+        $path = new Path();
+        $this->assertNull($path->getTransform());
+    }
+
+    public function test_path_set_transform_returns_self(): void
+    {
+        $path = new Path();
+        $t = Transform::translate(5.0, 10.0);
+        $result = $path->setTransform($t);
+        $this->assertSame($path, $result);
+    }
+
+    public function test_path_get_transform_returns_set_transform(): void
+    {
+        $path = new Path();
+        $t = Transform::translate(5.0, 10.0);
+        $path->setTransform($t);
+        $this->assertSame($t, $path->getTransform());
+    }
+
+    public function test_path_set_transform_null_clears(): void
+    {
+        $path = new Path();
+        $path->setTransform(Transform::identity());
+        $path->setTransform(null);
+        $this->assertNull($path->getTransform());
+    }
+
+    public function test_path_transform_does_not_affect_builder(): void
+    {
+        $path = new Path();
+        $path->setTransform(Transform::translate(100.0, 200.0));
+        $path->moveTo(5.0, 10.0);
+        $this->assertSame([5.0, 10.0], $path->getCurrentPoint());
     }
 }

@@ -11,6 +11,7 @@ class Path
     private float $subpathStartX = 0.0;
     private float $subpathStartY = 0.0;
     private bool $hasCurrentPoint = false;
+    private ?Transform $transform = null;
 
     // Previous curve control point for smooth-curve reflection.
     // Only set when the previous segment was a cubic or quadratic.
@@ -313,6 +314,17 @@ class Path
 
         $path->closePath();
         return $path;
+    }
+
+    public function setTransform(?Transform $t): self
+    {
+        $this->transform = $t;
+        return $this;
+    }
+
+    public function getTransform(): ?Transform
+    {
+        return $this->transform;
     }
 
     private function ensureCurrentPoint(): void
