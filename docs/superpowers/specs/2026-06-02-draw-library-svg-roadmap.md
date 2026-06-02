@@ -264,12 +264,12 @@ tracking winding count, toggle a boolean at each intersection.
 
 ## Milestone Order
 
-1. **Path API** — Path class, path segments, SVG `d` string parser,
-   Béziers + arc flattening, `Canvas::drawPath()`
-2. **Basic shapes** — rect, circle, ellipse as convenience methods on Path
-3. **Transform** — affine matrix, transform stack on Canvas
-4. **EvenOdd fill rule** — add to scanline converter
-5. **StrokeStyle** — width, dash, caps, joins (strokes > 1px)
+1. ~~**Path API** — Path class, path segments, SVG `d` string parser,
+   Béziers + arc flattening, `Canvas::drawPath()`~~ **DONE**
+2. ~~**Basic shapes** — rect, circle, ellipse as convenience methods on Path~~ **DONE**
+3. ~~**Transform** — affine matrix, transform stack on Canvas~~ **DONE**
+4. ~~**EvenOdd fill rule** — add to scanline converter~~ **DONE**
+5. ~~**StrokeStyle** — width, dash, caps, joins (strokes > 1px)~~ **DONE**
 6. **Gradient Paint** — linear, radial, color stops, stop interpolation
 7. **SVG parser** — XML parser mapping SVG elements to scene tree
 8. **Clip/Mask** — clipping regions and masks
