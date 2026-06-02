@@ -155,6 +155,68 @@ class Path
         return count($this->segments) === 0;
     }
 
+    /**
+     * Flatten all segments into polygon vertices grouped by subpath.
+     *
+     * Each subpath is an array with keys:
+     * - 'vertices': list of [x, y] float pairs
+     * - 'closed': bool (true if the subpath ended with ClosePath)
+     *
+     * Degenerate subpaths (single MoveTo with no drawing commands) are omitted.
+     *
+     * @param float $tolerance Maximum deviation from true curve, in canvas units.
+     * @return array<int, array{vertices: array<int, array{float, float}>, closed: bool}>
+     */
+    public function flatten(float $tolerance = 0.5): array
+    {
+        /** @var array<int, array{float, float}> $currentVertices */
+        $currentVertices = [];
+        $subpaths = [];
+        $currentX = 0.0;
+        $currentY = 0.0;
+        $inSubpath = false;
+
+        foreach ($this->segments as $seg) {
+            if ($seg instanceof MoveTo) {
+                // Finish previous subpath if it has vertices
+                if ($inSubpath && count($currentVertices) >= 2) {
+                    $subpaths[] = ['vertices' => $currentVertices, 'closed' => false];
+                }
+                // Start new subpath
+                $ep = $seg->endPoint();
+                $currentX = $ep[0];
+                $currentY = $ep[1];
+                $currentVertices = [[$currentX, $currentY]];
+                $inSubpath = true;
+            } elseif ($seg instanceof ClosePath) {
+                if ($inSubpath && count($currentVertices) >= 2) {
+                    $subpaths[] = ['vertices' => $currentVertices, 'closed' => true];
+                }
+                $ep = $seg->endPoint();
+                $currentX = $ep[0];
+                $currentY = $ep[1];
+                $currentVertices = [];
+                $inSubpath = false;
+            } else {
+                // Drawing segment: flatten and append vertices
+                $vertices = $seg->flatten($currentX, $currentY, $tolerance);
+                foreach ($vertices as $v) {
+                    $currentVertices[] = $v;
+                }
+                $ep = $seg->endPoint();
+                $currentX = $ep[0];
+                $currentY = $ep[1];
+            }
+        }
+
+        // Handle trailing open subpath
+        if ($inSubpath && count($currentVertices) >= 2) {
+            $subpaths[] = ['vertices' => $currentVertices, 'closed' => false];
+        }
+
+        return $subpaths;
+    }
+
     private function ensureCurrentPoint(): void
     {
         if (!$this->hasCurrentPoint) {

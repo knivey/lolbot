@@ -137,4 +137,119 @@ class PathTest extends TestCase
         $this->assertSame($path, $path->quadTo(5.0, 5.0, 10.0, 10.0));
         $this->assertSame($path, $path->closePath());
     }
+
+    public function test_flatten_rectangle_path(): void
+    {
+        $path = new Path();
+        $path->moveTo(10.0, 10.0)
+             ->lineTo(50.0, 10.0)
+             ->lineTo(50.0, 30.0)
+             ->lineTo(10.0, 30.0)
+             ->closePath();
+
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $vertices = $subpaths[0]['vertices'];
+        $this->assertCount(4, $vertices);
+        $this->assertSame([10.0, 10.0], $vertices[0]);
+        $this->assertSame([50.0, 10.0], $vertices[1]);
+        $this->assertSame([50.0, 30.0], $vertices[2]);
+        $this->assertSame([10.0, 30.0], $vertices[3]);
+    }
+
+    public function test_flatten_open_path_is_not_closed(): void
+    {
+        $path = new Path();
+        $path->moveTo(10.0, 10.0)
+             ->lineTo(50.0, 10.0)
+             ->lineTo(50.0, 30.0);
+
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertFalse($subpaths[0]['closed']);
+    }
+
+    public function test_flatten_multi_subpath(): void
+    {
+        $path = new Path();
+        $path->moveTo(10.0, 10.0)
+             ->lineTo(20.0, 10.0)
+             ->closePath()
+             ->moveTo(30.0, 30.0)
+             ->lineTo(40.0, 30.0)
+             ->closePath();
+
+        $subpaths = $path->flatten();
+        $this->assertCount(2, $subpaths);
+        $this->assertTrue($subpaths[0]['closed']);
+        $this->assertTrue($subpaths[1]['closed']);
+        $this->assertSame([10.0, 10.0], $subpaths[0]['vertices'][0]);
+        $this->assertSame([30.0, 30.0], $subpaths[1]['vertices'][0]);
+    }
+
+    public function test_flatten_cubic_bezier_produces_multiple_vertices(): void
+    {
+        $path = new Path();
+        $path->moveTo(0.0, 0.0)
+             ->cubicTo(0.0, 10.0, 10.0, 0.0, 10.0, 10.0);
+
+        $subpaths = $path->flatten(0.5);
+        $this->assertCount(1, $subpaths);
+        $vertices = $subpaths[0]['vertices'];
+        $this->assertGreaterThan(2, count($vertices), 'Curved cubic should produce multiple vertices');
+        $last = $vertices[count($vertices) - 1];
+        $this->assertEqualsWithDelta(10.0, $last[0], 0.01);
+        $this->assertEqualsWithDelta(10.0, $last[1], 0.01);
+    }
+
+    public function test_flatten_arc_produces_multiple_vertices(): void
+    {
+        $path = new Path();
+        $path->moveTo(0.0, 0.0)
+             ->arcTo(10.0, 10.0, 0.0, false, true, 20.0, 0.0);
+
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertGreaterThan(2, count($subpaths[0]['vertices']));
+    }
+
+    public function test_flatten_empty_path_returns_empty(): void
+    {
+        $path = new Path();
+        $this->assertSame([], $path->flatten());
+    }
+
+    public function test_flatten_single_move_to_omitted(): void
+    {
+        $path = new Path();
+        $path->moveTo(10.0, 10.0);
+        $this->assertSame([], $path->flatten());
+    }
+
+    public function test_flatten_close_path_then_move_to_creates_two_subpaths(): void
+    {
+        $path = new Path();
+        $path->moveTo(0.0, 0.0)
+             ->lineTo(10.0, 0.0)
+             ->closePath()
+             ->moveTo(20.0, 20.0);
+
+        $subpaths = $path->flatten();
+        // Second subpath is just a MoveTo → omitted
+        $this->assertCount(1, $subpaths);
+    }
+
+    public function test_flatten_open_subpath_at_end_included(): void
+    {
+        $path = new Path();
+        $path->moveTo(10.0, 10.0)
+             ->lineTo(20.0, 10.0)
+             ->lineTo(20.0, 20.0);
+
+        $subpaths = $path->flatten();
+        $this->assertCount(1, $subpaths);
+        $this->assertFalse($subpaths[0]['closed']);
+        $this->assertCount(3, $subpaths[0]['vertices']);
+    }
 }
