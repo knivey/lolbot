@@ -412,7 +412,7 @@ $demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex'];
 
 #[Cmd("demo")]
 #[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex). Random if no arg.")]
-#[Syntax('[name: string]')]
+#[Syntax('[name]')]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $demos;
