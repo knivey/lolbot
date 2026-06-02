@@ -592,7 +592,7 @@ function demoTransform(Canvas $art): void
         $art->save();
         $art->translate((float) $cx, (float) $cy);
         $art->rotate((2.0 * M_PI * $i) / $numSpokes);
-        $spoke = Path::rect(-2, -$spokeLen, 4, $spokeLen - 3);
+        $spoke = Path::rect(-2, -$spokeLen, 4, $spokeLen - 7);
         $art->drawPath($spoke, $fillColor, $outlineColor);
         $art->restore();
     }
