@@ -441,29 +441,27 @@ function demoFlowers(Canvas $art): void
         $cx = rand(15, 65);
         $cy = rand(12, 36);
         $numPetals = rand(5, 8);
-        $petalLen = rand(8, 16);
-        $petalWidth = rand(2, 5);
+        $petalLen = rand(10, 20);
+        $petalWidth = rand(3, 7);
         $fillColor = new Color($fgs[array_rand($fgs)], null);
         $outlineColor = new Color($fgs[array_rand($fgs)], null);
         $centerColor = new Color($fgs[array_rand($fgs)], null);
+        $path = new Path();
+        $path->moveTo($cx, $cy);
         for ($p = 0; $p < $numPetals; $p++) {
             $angle = (2 * M_PI * $p / $numPetals);
             $perpAngle = $angle + M_PI / 2;
-            $pcx = $cx + cos($angle) * $petalLen * 0.4;
-            $pcy = $cy + sin($angle) * $petalLen * 0.4;
-            $petalPoints = [];
-            $segs = 20;
-            for ($s = 0; $s < $segs; $s++) {
-                $t = ($s / $segs) * 2 * M_PI;
-                $major = sin($t) * $petalLen;
-                $minor = cos($t) * $petalWidth;
-                $petalPoints[] = [
-                    $pcx + cos($angle) * $major + cos($perpAngle) * $minor,
-                    $pcy + sin($angle) * $major + sin($perpAngle) * $minor,
-                ];
-            }
-            $art->drawPath(Path::polygon($petalPoints), $fillColor, $outlineColor);
+            $tipX = $cx + cos($angle) * $petalLen;
+            $tipY = $cy + sin($angle) * $petalLen;
+            $cp1x = $cx + cos($angle) * $petalLen * 0.5 + cos($perpAngle) * $petalWidth;
+            $cp1y = $cy + sin($angle) * $petalLen * 0.5 + sin($perpAngle) * $petalWidth;
+            $cp2x = $cx + cos($angle) * $petalLen * 0.5 - cos($perpAngle) * $petalWidth;
+            $cp2y = $cy + sin($angle) * $petalLen * 0.5 - sin($perpAngle) * $petalWidth;
+            $path->cubicTo($cp1x, $cp1y, $tipX, $tipY, $tipX, $tipY);
+            $path->cubicTo($tipX, $tipY, $cp2x, $cp2y, $cx, $cy);
         }
+        $path->closePath();
+        $art->drawPath($path, $fillColor, $outlineColor);
         $art->drawPath(Path::circle($cx, $cy, 2), $centerColor, null);
     }
 }
