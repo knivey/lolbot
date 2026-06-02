@@ -17,3 +17,4 @@ composer-dev.lock
 AGENTS.md
 opencode.json
 .worktrees/
+.phpunit.cache
