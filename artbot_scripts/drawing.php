@@ -162,7 +162,7 @@ function hearts(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
         $x = random_int(0, 80);
         $y = random_int(0, $lines);
         $scale = $radius / 16;
-        $rot = deg2rad(random_int(0, 359));
+        $rot = deg2rad(random_int(-30, 30));
         $cosR = cos($rot);
         $sinR = sin($rot);
         $points = [];
