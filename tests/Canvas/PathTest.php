@@ -471,7 +471,9 @@ class PathTest extends TestCase
         $canvas = Canvas::createBlank(12, 12);
         $canvas->drawPath($path, null, new Color(5, null));
 
-        // The closing line from (8,8) back to (2,2) SHOULD be drawn
-        $this->assertSame(5, $canvas->data[2][2]->fg, "Closing line endpoint should be outlined");
+        // Pixel (5,5) lies on the closing diagonal from (8,8) to (2,2),
+        // not on any other segment — it should only be colored if the
+        // closing line is actually drawn.
+        $this->assertSame(5, $canvas->data[5][5]->fg, "Closing line diagonal pixel should be outlined");
     }
 }
