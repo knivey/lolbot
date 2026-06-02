@@ -337,21 +337,6 @@ class Canvas
      * Uses the half-open convention `min(y0, y1) <= Y < max(y0, y1)` so that
      * horizontal edges and vertices exactly on a scanline are handled
      * uniformly without double-counting. Uses top-left pixel sampling:
-     * a pixel (X, Y) is filled iff its top-left corner is inside the polygon,
-     * with fill range `[ceil(spanStart), floor(spanEnd)]` inclusive.
-     *
-     * This top-left convention matches the integer Bresenham line drawing
-     * used by the outline, so fill and outline align at the pixel boundary.
-     *
-     * Must receive pre-snapped integer vertices for correct outline alignment.
-     *
-     * @param array<int, array{0: int, 1: int}> $points
-     */
-    private function fillPolygonScanline(array $points, Color $color, string $text): void
-    {
-        $this->fillPolygonScanlineMulti([$points], $color, $text);
-    }
-
     /**
      * @param Path $path The path to render.
      * @param ?Color $fillColor Fill color, or null for no fill.
