@@ -293,6 +293,9 @@ class Canvas
      * rule; outline is drawn on top via drawLine so it cleanly covers the fill
      * boundary. The polygon is implicitly closed (last vertex connects to first).
      *
+     * Vertices are snapped to the integer pixel grid before rasterization so
+     * that fill and outline operate on the same polygon.
+     *
      * @param array<int, array{0: int|float, 1: int|float}> $points [[$x, $y], ...]
      */
     public function drawPolygon(
@@ -307,8 +310,19 @@ class Canvas
         if ($fillColor === null && $outlineColor === null) {
             return;
         }
+
+        // Snap vertices to the integer pixel grid ONCE so that fill and
+        // outline operate on the same polygon. Without this, the scanline
+        // fill would use the float vertices while the outline rounded each
+        // vertex independently — two slightly different polygons that
+        // produce visible gaps between fill boundary and outline.
+        $snapped = [];
+        foreach ($points as $point) {
+            $snapped[] = [(int) round($point[0]), (int) round($point[1])];
+        }
+
         if ($fillColor !== null) {
-            $this->fillPolygonScanline($points, $fillColor, $text);
+            $this->fillPolygonScanline($snapped, $fillColor, $text);
         }
 
         if ($outlineColor !== null) {
@@ -316,9 +330,7 @@ class Canvas
             $firstY = null;
             $prevX = null;
             $prevY = null;
-            foreach ($points as $point) {
-                $x = (int) round($point[0]);
-                $y = (int) round($point[1]);
+            foreach ($snapped as [$x, $y]) {
                 if ($firstX === null) {
                     $firstX = $x;
                     $firstY = $y;
@@ -340,12 +352,18 @@ class Canvas
      * non-zero winding rule. Vertices must be in order around the polygon
      * (clockwise or counter-clockwise); the polygon is implicitly closed.
      *
-     * Uses the half-open convention `min(y0, y1) <= ySample < max(y0, y1)`
-     * (where ySample = Y + 0.5) so that horizontal edges and vertices exactly
-     * on a scanline are handled uniformly without double-counting. Pixels are
-     * sampled at their centers (pixel-center rasterization).
+     * Uses the half-open convention `min(y0, y1) <= Y < max(y0, y1)` so that
+     * horizontal edges and vertices exactly on a scanline are handled
+     * uniformly without double-counting. Uses top-left pixel sampling:
+     * a pixel (X, Y) is filled iff its top-left corner is inside the polygon,
+     * with fill range `[ceil(spanStart), floor(spanEnd)]` inclusive.
      *
-     * @param array<int, array{0: int|float, 1: int|float}> $points
+     * This top-left convention matches the integer Bresenham line drawing
+     * used by the outline, so fill and outline align at the pixel boundary.
+     *
+     * Must receive pre-snapped integer vertices for correct outline alignment.
+     *
+     * @param array<int, array{0: int, 1: int}> $points
      */
     private function fillPolygonScanline(array $points, Color $color, string $text): void
     {
@@ -366,7 +384,6 @@ class Canvas
         $yEnd = (int) ceil($maxY);
 
         for ($Y = $yStart; $Y <= $yEnd; $Y++) {
-            $ySample = $Y + 0.5;
             // Collect (xIntersection, windingDirection) for every edge
             // crossing this scanline under the half-open convention.
             $intersections = [];
@@ -379,13 +396,13 @@ class Canvas
                 $yLo = $y1 < $y2 ? $y1 : $y2;
                 $yHi = $y1 < $y2 ? $y2 : $y1;
 
-                // Half-open: include edge iff yLo <= ySample < yHi.
-                if ($ySample < $yLo || $ySample >= $yHi) {
+                // Half-open: include edge iff yLo <= Y < yHi.
+                if ($Y < $yLo || $Y >= $yHi) {
                     continue;
                 }
 
-                // x at scanline ySample by linear interpolation along the edge.
-                $xInt = $x1 + ($x2 - $x1) * ($ySample - $y1) / ($y2 - $y1);
+                // x at scanline Y by linear interpolation along the edge.
+                $xInt = $x1 + ($x2 - $x1) * ($Y - $y1) / ($y2 - $y1);
                 $dir = ($y2 > $y1) ? 1 : -1;
                 $intersections[] = [$xInt, $dir];
             }
@@ -406,8 +423,8 @@ class Canvas
                 } elseif ($prevWinding !== 0 && $winding === 0) {
                     $spanEnd = $xInt;
                     if ($spanStart !== null) {
-                        $xL = (int) ceil($spanStart - 0.5);
-                        $xR = (int) floor($spanEnd - 0.5);
+                        $xL = (int) ceil($spanStart);
+                        $xR = (int) floor($spanEnd);
                         for ($xx = $xL; $xx <= $xR; $xx++) {
                             $this->drawPoint($xx, $Y, $color, $text);
                         }
