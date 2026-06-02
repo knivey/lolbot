@@ -21,7 +21,7 @@ class invidious extends script_base
             return;
         if (!preg_match("@^https?://[^/]+/watch\?v=.*$@i", $event->url, $m))
             return;
-        $URL = '@^((?:https?:)?//)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(/(?:[\w\-]+\?v=|shorts/|embed/|v/)?)([\w\-]+)(\S+)?$@i';
+        $URL = '@^((?:https?:)?//)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be))(/(?:[\w\-]+\?v=|shorts/|embed/|v/)?)([\w\-]+)(\S+)?$@i';
         if (preg_match($URL, $event->url, $m)) {
             return;
         }

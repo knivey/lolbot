@@ -170,7 +170,7 @@ class youtube extends script_base
             return;
         }
         //TODO good god what a complicated regex, maybe i should use the Uri parser instead
-        $URL = '@^((?:https?:)?//)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(/(?:[\w\-]+\?v=|shorts/|embed/|v/)?)([\w\-]+)(\S+)?$@i';
+        $URL = '@^((?:https?:)?//)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be))(/(?:[\w\-]+\?v=|shorts/|embed/|v/)?)([\w\-]+)(\S+)?$@i';
         if (!preg_match($URL, $event->url, $m)) {
             return;
         }
