@@ -268,19 +268,17 @@ class Canvas
     public function overlay(Canvas $art): void
     {
         if ($art->w != $this->w) {
-            echo "art overlay widths mismatch\n";
-            return;
+            throw new \InvalidArgumentException("art overlay widths mismatch: {$this->w} vs {$art->w}");
         }
         if ($art->h != $this->h) {
-            echo "art overlay heights mismatch\n";
-            return;
+            throw new \InvalidArgumentException("art overlay heights mismatch: {$this->h} vs {$art->h}");
         }
         $y = 0;
         foreach ($art->data as $col) {
             $x = 0;
             foreach ($col as $p) {
                 if ($p->fg != null || $p->bg != null) {
-                    $this->data[$y][$x] = $p;
+                    $this->data[$y][$x] = clone $p;
                 }
                 $x++;
             }
@@ -329,14 +327,6 @@ class Canvas
         }
     }
 
-    /**
-     * Fill the interior of a polygon using scanline conversion with the
-     * non-zero winding rule. Vertices must be in order around the polygon
-     * (clockwise or counter-clockwise); the polygon is implicitly closed.
-     *
-     * Uses the half-open convention `min(y0, y1) <= Y < max(y0, y1)` so that
-     * horizontal edges and vertices exactly on a scanline are handled
-     * uniformly without double-counting. Uses top-left pixel sampling:
     /**
      * @param Path $path The path to render.
      * @param ?Color $fillColor Fill color, or null for no fill.
@@ -756,31 +746,27 @@ class Canvas
             return [$sq1, $sq2];
         }
 
-        if ($cap === LineCap::Round) {
-            $a1 = atan2($leftPt[1] - $endpoint[1], $leftPt[0] - $endpoint[0]);
-            $a2 = atan2($rightPt[1] - $endpoint[1], $rightPt[0] - $endpoint[0]);
-            $diff = $a2 - $a1;
-            while ($diff > M_PI) $diff -= 2 * M_PI;
-            while ($diff < -M_PI) $diff += 2 * M_PI;
-            $midAngle = $a1 + $diff / 2;
-            $dot = cos($midAngle) * $dirX + sin($midAngle) * $dirY;
-            if ($dot < 0) {
-                if ($diff > 0) {
-                    $diff -= 2 * M_PI;
-                } else {
-                    $diff += 2 * M_PI;
-                }
+        $a1 = atan2($leftPt[1] - $endpoint[1], $leftPt[0] - $endpoint[0]);
+        $a2 = atan2($rightPt[1] - $endpoint[1], $rightPt[0] - $endpoint[0]);
+        $diff = $a2 - $a1;
+        while ($diff > M_PI) $diff -= 2 * M_PI;
+        while ($diff < -M_PI) $diff += 2 * M_PI;
+        $midAngle = $a1 + $diff / 2;
+        $dot = cos($midAngle) * $dirX + sin($midAngle) * $dirY;
+        if ($dot < 0) {
+            if ($diff > 0) {
+                $diff -= 2 * M_PI;
+            } else {
+                $diff += 2 * M_PI;
             }
-            $steps = max(3, (int) ceil(abs($diff) * $halfW / 2.0));
-            $pts = [];
-            for ($i = 0; $i <= $steps; $i++) {
-                $angle = $a1 + $diff * $i / $steps;
-                $pts[] = [$endpoint[0] + $halfW * cos($angle), $endpoint[1] + $halfW * sin($angle)];
-            }
-            return $pts;
         }
-
-        return [];
+        $steps = max(3, (int) ceil(abs($diff) * $halfW / 2.0));
+        $pts = [];
+        for ($i = 0; $i <= $steps; $i++) {
+            $angle = $a1 + $diff * $i / $steps;
+            $pts[] = [$endpoint[0] + $halfW * cos($angle), $endpoint[1] + $halfW * sin($angle)];
+        }
+        return $pts;
     }
 
     private function applyDashPattern(array $vertices, bool $closed, StrokeStyle $stroke): array

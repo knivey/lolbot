@@ -13,5 +13,12 @@ class StrokeStyle
         public readonly LineJoin $lineJoin = LineJoin::Miter,
         public readonly float $miterLimit = 4.0
     ) {
+        if ($dashArray !== null) {
+            foreach ($dashArray as $v) {
+                if ($v < 0) {
+                    throw new \InvalidArgumentException('dashArray values must be >= 0');
+                }
+            }
+        }
     }
 }
