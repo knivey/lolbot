@@ -191,6 +191,31 @@ class Canvas
         $this->ctm = $this->ctm->multiply($t);
     }
 
+    public function translate(float $tx, float $ty): void
+    {
+        $this->concatTransform(Transform::translate($tx, $ty));
+    }
+
+    public function rotate(float $angle, float $cx = 0.0, float $cy = 0.0): void
+    {
+        $this->concatTransform(Transform::rotate($angle, $cx, $cy));
+    }
+
+    public function scale(float $sx, ?float $sy = null): void
+    {
+        $this->concatTransform(Transform::scale($sx, $sy));
+    }
+
+    public function skewX(float $angle): void
+    {
+        $this->concatTransform(Transform::skewX($angle));
+    }
+
+    public function skewY(float $angle): void
+    {
+        $this->concatTransform(Transform::skewY($angle));
+    }
+
     public function drawPoint(int $x, int $y, Color $color, string $text = ''): void
     {
         if (isset($this->data[$y][$x])) {

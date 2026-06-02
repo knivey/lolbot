@@ -412,4 +412,31 @@ class CanvasTest extends TestCase
         [$x, $y] = $canvas->getTransform()->apply(0.0, 0.0);
         $this->assertEqualsWithDelta(1.0, $x, 0.0001);
     }
+
+    public function test_canvas_translate_convenience(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->translate(5.0, 10.0);
+        [$x, $y] = $canvas->getTransform()->apply(0.0, 0.0);
+        $this->assertEqualsWithDelta(5.0, $x, 0.0001);
+        $this->assertEqualsWithDelta(10.0, $y, 0.0001);
+    }
+
+    public function test_canvas_rotate_convenience(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->rotate(M_PI / 2.0, 5.0, 5.0);
+        [$x, $y] = $canvas->getTransform()->apply(6.0, 5.0);
+        $this->assertEqualsWithDelta(5.0, $x, 0.0001);
+        $this->assertEqualsWithDelta(6.0, $y, 0.0001);
+    }
+
+    public function test_canvas_scale_convenience(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->scale(2.0, 3.0);
+        [$x, $y] = $canvas->getTransform()->apply(1.0, 1.0);
+        $this->assertEqualsWithDelta(2.0, $x, 0.0001);
+        $this->assertEqualsWithDelta(3.0, $y, 0.0001);
+    }
 }
