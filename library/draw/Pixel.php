@@ -6,6 +6,8 @@ class Pixel
 {
     public ?int $fg = null;
     public ?int $bg = null;
+    public float $fgAlpha = 1.0;
+    public float $bgAlpha = 1.0;
     public string $text = ' ';
 
     public function __toString(): string
