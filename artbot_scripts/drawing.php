@@ -21,39 +21,7 @@ function lineTest(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
     $ex = $cmdArgs['ex'];
     $ey = $cmdArgs['ey'];
 
-    $art->drawLine($sx, $sy, $ex, $ey, new Color(04, 0), "x");
-
-    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
-}
-
-
-#[Cmd("filledellipsetest")]
-#[Syntax('<cx: uint max=100> <cy: uint max=100> <w: uint max=100> <h: uint max=100>')]
-function filledEllipseTest(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
-{
-    $art = Canvas::createBlank(80, 24);
-    $cx = $cmdArgs['cx'];
-    $cy = $cmdArgs['cy'];
-    $w = $cmdArgs['w'];
-    $h = $cmdArgs['h'];
-
-    $art->drawFilledEllipse($cx, $cy, $w, $h, new Color(04, 0), "x");
-
-    \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
-}
-
-#[Cmd("ellipsetest")]
-#[Syntax('<cx: uint max=100> <cy: uint max=100> <w: uint max=100> <h: uint max=100> <segs: uint max=100>')]
-function ellipseTest(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
-{
-    $art = Canvas::createBlank(80, 24);
-    $cx = $cmdArgs['cx'];
-    $cy = $cmdArgs['cy'];
-    $w = $cmdArgs['w'];
-    $h = $cmdArgs['h'];
-    $segs = $cmdArgs['segs'];
-
-    $art->drawEllipse($cx, $cy, $w, $h, new Color(04, 0), "x", $segs);
+    $art->drawPath(Path::line($sx, $sy, $ex, $ey), null, new Color(04, 0), "x");
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
 }
@@ -90,7 +58,7 @@ function circles(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
         $h = rand($w - 3, $w + 3) + 5;
         $cx = rand(-5, 90);
         $cy = rand(-5, 55);
-        $art->drawEllipse($cx, $cy, $w, $h, $color);
+        $art->drawPath(Path::ellipse($cx, $cy, $w / 2, $h / 2), null, $color);
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -102,14 +70,19 @@ function circles(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 function pentagons(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $art = Canvas::createBlank(80, 48, true);
-    $numcircles = rand(5, 20);
-    for ($i = 0; $i < $numcircles; $i++) {
+    $numpents = rand(5, 20);
+    for ($i = 0; $i < $numpents; $i++) {
         $color = new Color(rand(0, 16), null);
-        $w = random_int(10, 25);
-        $h = random_int($w - 3, $w + 3) + 5;
+        $radius = random_int(10, 25);
         $cx = random_int(5, 70);
         $cy = random_int(5, 45);
-        $art->drawEllipse($cx, $cy, $w, $h, $color, '', 5, random_int(0, 36));
+        $rot = deg2rad(random_int(0, 72));
+        $points = [];
+        for ($p = 0; $p < 5; $p++) {
+            $angle = (2 * M_PI * $p / 5) + $rot;
+            $points[] = [$cx + $radius * cos($angle), $cy + $radius * sin($angle)];
+        }
+        $art->drawPath(Path::polygon($points), null, $color);
     }
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));

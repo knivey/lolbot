@@ -228,39 +228,7 @@ class Canvas
         }
     }
 
-    public function drawFilledEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = ''): void
-    {
-        for ($y = -$height; $y <= $height; $y++) {
-            for ($x = -$width; $x <= $width; $x++) {
-                if ($x * $x * $height * $height + $y * $y * $width * $width <= $height * $height * $width * $width) {
-                    $this->drawPoint((int)round($centerX + $x), (int)round($centerY + $y), $color, $text);
-                }
-            }
-        }
-    }
 
-    //with a low seg number it draws shapes so maybe just add rotation later for shape drawing
-    public function drawEllipse(int $centerX, int $centerY, int|float $width, int|float $height, Color $color, string $text = '', int $segments = 100, float $rotate = 0): void
-    {
-        //want radius amts
-        $width = $width / 2;
-        $height = $height / 2;
-        $dtheta = pi() * 2 / $segments;
-        $theta = 0;
-        $rotate = deg2rad($rotate);
-        $lx = 0;
-        $ly = 0;
-        for ($i = 0; $i <= $segments; $i++) {
-            $x = $centerX + $width * sin($theta + $rotate);
-            $y = $centerY + $height * cos($theta + $rotate);
-            $theta += $dtheta;
-            if ($i != 0) { // dont want to draw from 0,0
-                $this->drawLine((int)round($lx), (int)round($ly), (int)round($x), (int)round($y), $color, $text);
-            }
-            $lx = $x;
-            $ly = $y;
-        }
-    }
 
     //for now force to be same size, can add another function for copying rects later
     public function overlay(Canvas $art): void
