@@ -69,6 +69,12 @@ class IrcPaletteTest extends TestCase
         $this->assertSame(14, IrcPalette::nearestColor(127, 127, 127));
     }
 
+    public function test_getColor_throws_on_invalid_code(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        IrcPalette::getColor(99);
+    }
+
     public function test_getColor_returns_color_object(): void
     {
         $color = IrcPalette::getColor(4);

@@ -7,6 +7,7 @@ use Itwmw\ColorDifference\Lib\RGB;
 
 class IrcPalette
 {
+    /** @var array<int, string>|null */
     private static ?array $hexPalette = null;
 
     /** @var array<int, Color>|null */
@@ -57,31 +58,21 @@ class IrcPalette
      */
     public static function getRgb(int $ircCode): array
     {
-        if ($ircCode < 0 || $ircCode > 98) {
-            throw new \InvalidArgumentException("IRC color code must be 0-98, got $ircCode");
-        }
-        if (self::$rgbPalette === null) {
-            self::buildRgbPalette();
-        }
+        self::validateCode($ircCode);
+        self::$rgbPalette ??= self::buildRgbPalette();
         return self::$rgbPalette[$ircCode];
     }
 
     public static function getColor(int $ircCode): Color
     {
-        if ($ircCode < 0 || $ircCode > 98) {
-            throw new \InvalidArgumentException("IRC color code must be 0-98, got $ircCode");
-        }
-        if (self::$colorPalette === null) {
-            self::buildColorPalette();
-        }
+        self::validateCode($ircCode);
+        self::$colorPalette ??= self::buildColorPalette();
         return self::$colorPalette[$ircCode];
     }
 
     public static function nearestColor(int $r, int $g, int $b): int
     {
-        if (self::$colorPalette === null) {
-            self::buildColorPalette();
-        }
+        self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
         $bestIdx = 0;
         $bestDist = INF;
@@ -95,22 +86,37 @@ class IrcPalette
         return $bestIdx;
     }
 
-    private static function buildRgbPalette(): void
+    private static function validateCode(int $ircCode): void
     {
-        self::$rgbPalette = [];
+        if ($ircCode < 0 || $ircCode > 98) {
+            throw new \InvalidArgumentException("IRC color code must be 0-98, got $ircCode");
+        }
+    }
+
+    /**
+     * @return array<int, array{int, int, int}>
+     */
+    private static function buildRgbPalette(): array
+    {
+        $palette = [];
         foreach (self::getHexPalette() as $idx => $hex) {
             $r = hexdec(substr($hex, 1, 2));
             $g = hexdec(substr($hex, 3, 2));
             $b = hexdec(substr($hex, 5, 2));
-            self::$rgbPalette[$idx] = [(int) $r, (int) $g, (int) $b];
+            $palette[$idx] = [(int) $r, (int) $g, (int) $b];
         }
+        return $palette;
     }
 
-    private static function buildColorPalette(): void
+    /**
+     * @return array<int, Color>
+     */
+    private static function buildColorPalette(): array
     {
-        self::$colorPalette = [];
+        $palette = [];
         foreach (self::getHexPalette() as $idx => $hex) {
-            self::$colorPalette[$idx] = new Color($hex);
+            $palette[$idx] = new Color($hex);
         }
+        return $palette;
     }
 }
