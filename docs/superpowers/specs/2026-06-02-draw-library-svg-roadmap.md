@@ -4,7 +4,7 @@
 
 Evolve `library/draw/` from its current set of canvas primitives (`drawLine`,
 `drawFilledEllipse`, `drawPolygon`, etc.) into a structured 2D graphics library
-that can partially render SVG documents on a terminal character-cell canvas.
+that can partially render SVG documents on an IRC character-cell canvas.
 
 The guiding principle is **SVG compatibility**: wherever the SVG spec defines a
 concept, we adopt that concept's semantics and naming. This gives us a
@@ -19,7 +19,7 @@ Three files in `library/draw/`:
   `drawFilledEllipse`, `drawEllipse`, `drawPolygon` (scanline fill + outline),
   `fillColor` (flood fill), `overlay`. Supports half-block rendering for 2x
   vertical resolution. Output is IRC color-coded text (`\x03` codes).
-- **`Color.php`** — IRC color constants (16-color palette), fg/bg pair,
+- **`Color.php`** — IRC color constants (16-color and extended 99-color palette), fg/bg pair,
   gradient stubs.
 - **`Pixel.php`** — single cell: fg, bg, text character.
 
@@ -99,13 +99,14 @@ rasterizes the scene tree onto a `Canvas`.
 - Transform composition: `Transform::multiply(a, b)`
 
 **Coordinate system:**
-- `viewBox` mapping: affine transform from SVG user coordinates to terminal
+- `viewBox` mapping: affine transform from SVG user coordinates to IRC
   character cells
 - `preserveAspectRatio` handling
 
 **Paint:**
 - Solid colors: named CSS colors, `#rgb`, `#rrggbb`, `rgb()`, `rgba()`
-  mapped to the IRC 16-color palette (nearest-color matching)
+  mapped to the IRC extended color palette (colors 0–98) via nearest-color
+  matching
 - `fill="none"`, `stroke="none"`
 
 **Fill rules:**
@@ -162,7 +163,7 @@ rasterizes the scene tree onto a `Canvas`.
   `text-anchor`, `dominant-baseline`
 - Text layout within a bounding box (alignment, wrapping)
 - Text on path (`<textPath>`)
-- For the terminal: map to existing ASCII art fonts or terminal text
+- For IRC: map to existing ASCII art fonts or plain text output
 
 **Use/Symbol/Defs:**
 - `<defs>` — non-rendering container for reusable definitions
@@ -173,7 +174,7 @@ rasterizes the scene tree onto a `Canvas`.
 - `<marker>` elements referenced by `marker-start`, `marker-mid`, `marker-end`
 - Render arrowheads, dots, etc. at path vertices
 
-### Tier 4 — Terminal-Specific Enhancements
+### Tier 4 — IRC-Specific Enhancements
 
 **Higher effective resolution:**
 - Half-block characters (`▀▄`) for 2x vertical resolution (already partially
@@ -182,28 +183,15 @@ rasterizes the scene tree onto a `Canvas`.
 - Block element shading (`▔▁▂▃▄▅▆▇█`) as a brightness/density scale
 
 **Color:**
-- 256-color terminal palette (xterm 216-color cube + 24 grayscale)
-- Truecolor (24-bit RGB) escape codes for supporting terminals
-- Color quantization: map SVG RGB values to nearest terminal palette color
+- IRC extended colors (0–98): 16 standard + 83 extra colors + grayscale ramp
+- Color quantization: map SVG RGB values to nearest IRC palette color using
+  perceptual color-space distance (see Design Decisions below)
 - Floyd-Steinberg dithering or ordered dithering for smooth gradients
 
 **Unicode line drawing:**
 - Box drawing characters (`─│┌┐└┘├┤┬┴┼`) for thin/thick strokes
 - Double-line variants (`═║╔╗╚╝╠╣╦╩╬`)
 - Auto-selection of appropriate joining characters at line intersections
-
-**Advanced output:**
-- Kitty graphics protocol — inline raster images in supporting terminals
-- Sixel — inline images for VT340-compatible terminals
-- ANSI rendering with cursor movement (for animation)
-
-### Tier 5 — Animation (future)
-
-- SVG `<animate>`, `<animateTransform>`, `<animateMotion>` elements
-- Keyframe timeline with interpolation
-- Easing functions: linear, ease-in/out, bounce, elastic
-- Render-to-buffer + cell-diff for smooth partial redraws
-- Frame rate control and timing
 
 ## Design Decisions
 
@@ -238,13 +226,28 @@ For `stroke-width == 1`, keep the fast Bresenham line path.
 
 ### Color quantization
 
-SVG allows arbitrary RGB colors. The terminal canvas has a fixed palette
-(16-color IRC, 256-color xterm, or 24-bit truecolor). Strategy:
+SVG allows arbitrary RGB colors. The IRC canvas has a fixed palette of 99
+colors (indices 0–98: 16 standard + 83 extended + grayscale). Strategy:
 
-1. If the terminal supports truecolor, use it directly
-2. Otherwise, map each RGB value to the nearest palette color using
-   perceptual distance (e.g., weighted Euclidean in Lab color space)
-3. For gradients, optionally dither to reduce banding
+1. Map each SVG RGB value to the nearest IRC palette color using perceptual
+   color-space distance
+2. For gradients, optionally dither to reduce banding
+
+**Reference implementation:** `artbot_scripts/urlimg.php` contains a working
+pattern using the `Itwmw\ColorDifference` library. The `!ascii` command builds
+a `$palette` array of `Color` objects indexed by IRC color code, then uses one
+of several distance methods to find the closest match:
+
+- `getClosestMatchDin99()` — Din99 color space (default, good balance of
+  speed and accuracy)
+- `getClosestMatchCIEDE2000()` — CIEDE2000 (highest quality, slowest)
+- `getClosestMatchEuclideanLab()` — Euclidean distance in Lab space
+- `getClosestMatchEuclideanRGB()` — Euclidean distance in RGB space
+
+The draw library should implement its own color quantization following this
+pattern: build an IRC palette lookup table once, then find nearest matches by
+perceptual distance. The `Itwmw\ColorDifference` package is already a project
+dependency.
 
 ### Fill rule implementation
 
@@ -255,11 +258,11 @@ tracking winding count, toggle a boolean at each intersection.
 ## Non-Goals
 
 - **Full SVG compliance** — we target a useful subset, not the entire spec
-- **Font rendering** — terminal fonts differ from SVG font metrics; we rely on
-  terminal text rendering or ASCII art fonts
+- **Font rendering** — IRC clients render text with their own fonts and metrics;
+  we rely on ASCII art fonts or direct text output
 - **CSS styling** — inline `style` attributes and external stylesheets are
   out of scope for the foreseeable future
-- **JavaScript / SMIL animation** — static rendering only (until Tier 5)
+- **Animation** — IRC is static text; animation is not possible
 - **SVG namespaced extensions** — no foreignObject, no RDF metadata, etc.
 
 ## Milestone Order
@@ -276,4 +279,4 @@ tracking winding count, toggle a boolean at each intersection.
 9. **Filters** — blur, shadow, color matrix
 10. **Text** — SVG text elements
 11. **Use/Symbol/Defs** — reusable elements
-12. **Terminal enhancements** — higher resolution, better color, Unicode lines
+12. **IRC enhancements** — higher resolution, better color, Unicode lines
