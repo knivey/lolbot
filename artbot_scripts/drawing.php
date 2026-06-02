@@ -159,6 +159,11 @@ function hearts(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
     $baseCount = intval(20 * ($lines / 48));
     for ($i = 0; $i < $baseCount; $i++) {
         $radius = random_int(3, 18);
+        // Reject larger hearts probabilistically: small ones pass freely, big ones rarely
+        $keepChance = 1.0 - (($radius - 3) / 15.0) * 0.85;
+        if ((mt_rand() / mt_getrandmax()) > $keepChance) {
+            continue;
+        }
         $hearts[] = $radius;
     }
     sort($hearts);
