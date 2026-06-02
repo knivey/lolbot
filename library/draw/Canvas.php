@@ -371,6 +371,91 @@ class Canvas
     }
 
     /**
+     * Draw a Path with optional fill and outline.
+     *
+     * The path is flattened to polygon vertices, snapped to the integer pixel
+     * grid, then filled (multi-subpath scanline with non-zero winding rule)
+     * and outlined (Bresenham lines per subpath).
+     *
+     * Outline is drawn on top of fill. Each subpath is outlined separately;
+     * closed subpaths get a closing line, open subpaths do not.
+     *
+     * @param Path $path The path to render.
+     * @param ?Color $fillColor Fill color, or null for no fill.
+     * @param ?Color $outlineColor Outline color, or null for no outline.
+     * @param string $text Optional text for rendered pixels.
+     */
+    public function drawPath(
+        Path $path,
+        ?Color $fillColor,
+        ?Color $outlineColor,
+        string $text = ''
+    ): void {
+        $subpaths = $path->flatten();
+        if (count($subpaths) === 0) {
+            return;
+        }
+        if ($fillColor === null && $outlineColor === null) {
+            return;
+        }
+
+        // Snap all vertices to integers
+        $snappedSubpaths = [];
+        foreach ($subpaths as $sp) {
+            $snapped = [];
+            foreach ($sp['vertices'] as $v) {
+                $snapped[] = [(int) round($v[0]), (int) round($v[1])];
+            }
+            $snappedSubpaths[] = ['vertices' => $snapped, 'closed' => $sp['closed']];
+        }
+
+        // Fill: all subpaths contribute to winding rule
+        if ($fillColor !== null) {
+            $polygonArrays = [];
+            foreach ($snappedSubpaths as $sp) {
+                if (count($sp['vertices']) >= 3) {
+                    $polygonArrays[] = $sp['vertices'];
+                }
+            }
+            if (count($polygonArrays) > 0) {
+                $this->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text);
+            }
+        }
+
+        // Outline: draw each subpath separately
+        if ($outlineColor !== null) {
+            foreach ($snappedSubpaths as $sp) {
+                $vertices = $sp['vertices'];
+                $n = count($vertices);
+                if ($n < 2) {
+                    continue;
+                }
+                for ($i = 1; $i < $n; $i++) {
+                    $this->drawLine(
+                        $vertices[$i - 1][0],
+                        $vertices[$i - 1][1],
+                        $vertices[$i][0],
+                        $vertices[$i][1],
+                        $outlineColor,
+                        $text
+                    );
+                }
+                // Closing line for closed subpaths
+                if ($sp['closed']) {
+                    $this->drawLine(
+                        $vertices[$n - 1][0],
+                        $vertices[$n - 1][1],
+                        $vertices[0][0],
+                        $vertices[0][1],
+                        $outlineColor,
+                        $text
+                    );
+                }
+            }
+        }
+    }
+
+    /**
      * Fill the interior of multiple subpaths using scanline conversion with the
      * non-zero winding rule. All subpaths contribute edges to the intersection
      * list, so overlapping or nested subpaths interact correctly (e.g., a

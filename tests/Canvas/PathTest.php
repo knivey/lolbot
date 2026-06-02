@@ -1,6 +1,8 @@
 <?php
 namespace Tests\Canvas;
 
+use draw\Canvas;
+use draw\Color;
 use draw\Path;
 use PHPUnit\Framework\TestCase;
 
@@ -300,5 +302,176 @@ class PathTest extends TestCase
         $this->assertCount(1, $subpaths);
         $this->assertSame([0.0, 0.0], $subpaths[0]['vertices'][0]);
         $this->assertSame([10.0, 20.0], $subpaths[0]['vertices'][1]);
+    }
+
+    public function test_draw_path_fill_matches_draw_polygon(): void
+    {
+        // A simple rectangle path should fill the same as drawPolygon
+        $path = new Path();
+        $path->moveTo(2.0, 2.0)
+             ->lineTo(8.0, 2.0)
+             ->lineTo(8.0, 6.0)
+             ->lineTo(2.0, 6.0)
+             ->closePath();
+
+        $canvas1 = Canvas::createBlank(12, 12);
+        $canvas1->drawPolygon(
+            [[2, 2], [8, 2], [8, 6], [2, 6]],
+            new Color(3, null),
+            null
+        );
+
+        $canvas2 = Canvas::createBlank(12, 12);
+        $canvas2->drawPath($path, new Color(3, null), null);
+
+        // Compare every pixel
+        for ($y = 0; $y < 12; $y++) {
+            for ($x = 0; $x < 12; $x++) {
+                $this->assertSame(
+                    $canvas1->data[$y][$x]->fg,
+                    $canvas2->data[$y][$x]->fg,
+                    "Pixel ($x, $y) differs between drawPolygon and drawPath"
+                );
+            }
+        }
+    }
+
+    public function test_draw_path_outline_matches_draw_polygon(): void
+    {
+        $path = new Path();
+        $path->moveTo(2.0, 2.0)
+             ->lineTo(8.0, 2.0)
+             ->lineTo(8.0, 6.0)
+             ->lineTo(2.0, 6.0)
+             ->closePath();
+
+        $canvas1 = Canvas::createBlank(12, 12);
+        $canvas1->drawPolygon(
+            [[2, 2], [8, 2], [8, 6], [2, 6]],
+            null,
+            new Color(5, null)
+        );
+
+        $canvas2 = Canvas::createBlank(12, 12);
+        $canvas2->drawPath($path, null, new Color(5, null));
+
+        for ($y = 0; $y < 12; $y++) {
+            for ($x = 0; $x < 12; $x++) {
+                $this->assertSame(
+                    $canvas1->data[$y][$x]->fg,
+                    $canvas2->data[$y][$x]->fg,
+                    "Pixel ($x, $y) outline differs between drawPolygon and drawPath"
+                );
+            }
+        }
+    }
+
+    public function test_draw_path_both_fill_and_outline(): void
+    {
+        $path = new Path();
+        $path->moveTo(2.0, 2.0)
+             ->lineTo(8.0, 2.0)
+             ->lineTo(8.0, 6.0)
+             ->lineTo(2.0, 6.0)
+             ->closePath();
+
+        $canvas = Canvas::createBlank(12, 12);
+        $canvas->drawPath($path, new Color(3, null), new Color(5, null));
+
+        // Interior should be fill color
+        $this->assertSame(3, $canvas->data[4][5]->fg);
+        // Corner should be outline color (outline drawn on top)
+        $this->assertSame(5, $canvas->data[2][2]->fg);
+    }
+
+    public function test_draw_path_empty_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $path = new Path();
+        $canvas->drawPath($path, new Color(3, null), new Color(5, null));
+
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 10; $x++) {
+                $this->assertNull($canvas->data[$y][$x]->fg);
+            }
+        }
+    }
+
+    public function test_draw_path_donut_creates_hole(): void
+    {
+        // Outer square (CW), inner square (CCW) — donut with hole
+        $path = new Path();
+        $path->moveTo(2.0, 2.0)
+             ->lineTo(17.0, 2.0)
+             ->lineTo(17.0, 17.0)
+             ->lineTo(2.0, 17.0)
+             ->closePath()
+             ->moveTo(6.0, 6.0)
+             ->lineTo(6.0, 13.0)
+             ->lineTo(13.0, 13.0)
+             ->lineTo(13.0, 6.0)
+             ->closePath();
+
+        $canvas = Canvas::createBlank(20, 20, true);
+        $canvas->drawPath($path, new Color(3, null), null);
+
+        // Center of hole should be empty
+        $this->assertNull($canvas->data[9][9]->fg, "Donut hole center should be empty");
+        // Ring should be filled
+        $this->assertSame(3, $canvas->data[4][4]->fg, "Donut ring should be filled");
+    }
+
+    public function test_draw_path_outside_canvas_is_noop(): void
+    {
+        $path = new Path();
+        $path->moveTo(-20.0, -20.0)
+             ->lineTo(-10.0, -20.0)
+             ->lineTo(-10.0, -10.0)
+             ->lineTo(-20.0, -10.0)
+             ->closePath();
+
+        $canvas = Canvas::createBlank(10, 10);
+        $canvas->drawPath($path, new Color(3, null), new Color(5, null));
+
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 10; $x++) {
+                $this->assertNull($canvas->data[$y][$x]->fg);
+            }
+        }
+    }
+
+    public function test_draw_path_open_subpath_outline_no_closing_line(): void
+    {
+        // An open subpath should NOT draw a closing line for the outline
+        $path = new Path();
+        $path->moveTo(2.0, 2.0)
+             ->lineTo(8.0, 2.0)
+             ->lineTo(8.0, 8.0);
+        // No closePath → open
+
+        $canvas = Canvas::createBlank(12, 12);
+        $canvas->drawPath($path, null, new Color(5, null));
+
+        // The closing line from (8,8) back to (2,2) should NOT be drawn
+        // Point on the closing diagonal: (5,5) — should not have outline
+        $this->assertNull(
+            $canvas->data[5][5]->fg,
+            "Open subpath should not draw closing line"
+        );
+    }
+
+    public function test_draw_path_closed_subpath_outline_has_closing_line(): void
+    {
+        $path = new Path();
+        $path->moveTo(2.0, 2.0)
+             ->lineTo(8.0, 2.0)
+             ->lineTo(8.0, 8.0)
+             ->closePath();
+
+        $canvas = Canvas::createBlank(12, 12);
+        $canvas->drawPath($path, null, new Color(5, null));
+
+        // The closing line from (8,8) back to (2,2) SHOULD be drawn
+        $this->assertSame(5, $canvas->data[2][2]->fg, "Closing line endpoint should be outlined");
     }
 }
