@@ -101,17 +101,93 @@ class CanvasTest extends TestCase
 
         // Corners are on the outline, so they must show the outline color
         // (outline is drawn on top of fill).
-        $this->assertSame(5, $canvas->data[1][1]->fg);
-        $this->assertSame(5, $canvas->data[5][1]->fg);
-        $this->assertSame(5, $canvas->data[5][5]->fg);
-        $this->assertSame(5, $canvas->data[1][5]->fg);
+        $this->assertSame(5, $canvas->data[1][1]->fg, "Corner (1,1) should show outline color (outline wins over fill at boundary)");
+        $this->assertSame(5, $canvas->data[5][1]->fg, "Corner (5,1) should show outline color (outline wins over fill at boundary)");
+        $this->assertSame(5, $canvas->data[5][5]->fg, "Corner (5,5) should show outline color (outline wins over fill at boundary)");
+        $this->assertSame(5, $canvas->data[1][5]->fg, "Corner (1,5) should show outline color (outline wins over fill at boundary)");
+
+        // Edge midpoints must also show outline color, proving outline is drawn
+        // along the entire boundary — not just at vertices.
+        $this->assertSame(5, $canvas->data[1][3]->fg, "Edge midpoint (3,1) should show outline color");
+        $this->assertSame(5, $canvas->data[3][1]->fg, "Edge midpoint (1,3) should show outline color");
+        $this->assertSame(5, $canvas->data[5][3]->fg, "Edge midpoint (3,5) should show outline color");
+        $this->assertSame(5, $canvas->data[3][5]->fg, "Edge midpoint (5,3) should show outline color");
 
         // Interior pixels are pure fill.
-        $this->assertSame(3, $canvas->data[2][2]->fg);
-        $this->assertSame(3, $canvas->data[3][3]->fg);
+        $this->assertSame(3, $canvas->data[2][2]->fg, "Interior pixel (2,2) should show fill color");
+        $this->assertSame(3, $canvas->data[3][3]->fg, "Interior pixel (3,3) should show fill color");
 
         // Outside pixels are untouched.
-        $this->assertNull($canvas->data[0][0]->fg);
-        $this->assertNull($canvas->data[6][6]->fg);
+        $this->assertNull($canvas->data[0][0]->fg, "Outside pixel (0,0) should be untouched");
+        $this->assertNull($canvas->data[6][6]->fg, "Outside pixel (6,6) should be untouched");
+    }
+
+    public function test_draw_polygon_with_two_vertices_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $color = new Color(5, null);
+
+        $canvas->drawPolygon([[1.0, 1.0], [5.0, 5.0]], $color, $color);
+
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 10; $x++) {
+                $this->assertNull($canvas->data[$y][$x]->fg);
+            }
+        }
+    }
+
+    public function test_draw_polygon_with_one_vertex_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $color = new Color(5, null);
+
+        $canvas->drawPolygon([[5.0, 5.0]], $color, $color);
+
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 10; $x++) {
+                $this->assertNull($canvas->data[$y][$x]->fg);
+            }
+        }
+    }
+
+    public function test_draw_polygon_with_zero_vertices_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $color = new Color(5, null);
+
+        $canvas->drawPolygon([], $color, $color);
+
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 10; $x++) {
+                $this->assertNull($canvas->data[$y][$x]->fg);
+            }
+        }
+    }
+
+    public function test_draw_polygon_fully_outside_canvas_does_not_throw(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $color = new Color(5, null);
+
+        // Polygon entirely up-and-left of the canvas.
+        $canvas->drawPolygon(
+            [[-20.0, -20.0], [-10.0, -20.0], [-10.0, -10.0], [-20.0, -10.0]],
+            $color,
+            $color
+        );
+
+        // Polygon entirely down-and-right of the canvas.
+        $canvas->drawPolygon(
+            [[50.0, 50.0], [60.0, 50.0], [60.0, 60.0], [50.0, 60.0]],
+            $color,
+            $color
+        );
+
+        // Canvas must be untouched (drawPoint's isset check rejected every write).
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 10; $x++) {
+                $this->assertNull($canvas->data[$y][$x]->fg);
+            }
+        }
     }
 }
