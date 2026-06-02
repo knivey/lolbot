@@ -570,8 +570,7 @@ class Canvas
         $n = count($vertices);
         $count = $closed ? $n : $n - 1;
 
-        $left = [];
-        $right = [];
+        $segments = [];
 
         for ($i = 0; $i < $count; $i++) {
             $curr = $vertices[$i];
@@ -586,18 +585,53 @@ class Canvas
             $nx = -$dy / $len;
             $ny = $dx / $len;
 
-            $left[] = [$curr[0] + $nx * $halfW, $curr[1] + $ny * $halfW];
-            $left[] = [$next[0] + $nx * $halfW, $next[1] + $ny * $halfW];
-            $right[] = [$curr[0] - $nx * $halfW, $curr[1] - $ny * $halfW];
-            $right[] = [$next[0] - $nx * $halfW, $next[1] - $ny * $halfW];
+            $segments[] = [
+                'left' => [
+                    [$curr[0] + $nx * $halfW, $curr[1] + $ny * $halfW],
+                    [$next[0] + $nx * $halfW, $next[1] + $ny * $halfW]
+                ],
+                'right' => [
+                    [$curr[0] - $nx * $halfW, $curr[1] - $ny * $halfW],
+                    [$next[0] - $nx * $halfW, $next[1] - $ny * $halfW]
+                ],
+                'normal' => [$nx, $ny]
+            ];
         }
 
-        if (empty($left)) {
+        if (empty($segments)) {
             return [];
         }
 
-        $leftClean = $this->deduplicateVertices($left);
-        $rightClean = $this->deduplicateVertices($right);
+        $leftPts = [];
+        $rightPts = [];
+        $segCount = count($segments);
+
+        for ($i = 0; $i < $segCount; $i++) {
+            if ($i === 0) {
+                $leftPts[] = $segments[$i]['left'][0];
+                $rightPts[] = $segments[$i]['right'][0];
+            }
+
+            if ($i < $segCount - 1 || $closed) {
+                $nextIdx = ($i + 1) % $segCount;
+                $currLeftEnd = $segments[$i]['left'][1];
+                $nextLeftStart = $segments[$nextIdx]['left'][0];
+                $nextLeftEnd = $segments[$nextIdx]['left'][1];
+                $currRightEnd = $segments[$i]['right'][1];
+                $nextRightStart = $segments[$nextIdx]['right'][0];
+                $nextRightEnd = $segments[$nextIdx]['right'][1];
+                $vertex = $vertices[($i + 1) % $n];
+
+                $this->applyJoin($leftPts, $currLeftEnd, $nextLeftStart, $nextLeftEnd, $vertex, $halfW, $stroke);
+                $this->applyJoin($rightPts, $currRightEnd, $nextRightStart, $nextRightEnd, $vertex, $halfW, $stroke);
+            } else {
+                $leftPts[] = $segments[$i]['left'][1];
+                $rightPts[] = $segments[$i]['right'][1];
+            }
+        }
+
+        $leftClean = $this->deduplicateVertices($leftPts);
+        $rightClean = $this->deduplicateVertices($rightPts);
 
         if ($closed) {
             $rightReversed = array_reverse($rightClean);
@@ -609,6 +643,35 @@ class Canvas
 
         $rightReversed = array_reverse($rightClean);
         return array_merge($leftClean, $endCap, $rightReversed, array_reverse($startCap));
+    }
+
+    private function applyJoin(array &$pts, array $segEnd, array $nextSegStart, array $nextSegEnd, array $vertex, float $halfW, StrokeStyle $stroke): void
+    {
+        if ($stroke->lineJoin === LineJoin::Miter) {
+            $prev = $pts[count($pts) - 1];
+            $intersection = $this->lineIntersection($prev, $segEnd, $nextSegStart, $nextSegEnd);
+            if ($intersection !== null) {
+                $dx = $intersection[0] - $vertex[0];
+                $dy = $intersection[1] - $vertex[1];
+                $dist = sqrt($dx * $dx + $dy * $dy);
+                if ($dist <= $stroke->miterLimit * $halfW) {
+                    $pts[] = $intersection;
+                    return;
+                }
+            }
+            $pts[] = $segEnd;
+            $pts[] = $nextSegStart;
+        } elseif ($stroke->lineJoin === LineJoin::Round) {
+            $pts[] = $segEnd;
+            $arcPts = $this->arcPoints($vertex, $segEnd, $nextSegStart, $halfW);
+            for ($k = 1; $k < count($arcPts) - 1; $k++) {
+                $pts[] = $arcPts[$k];
+            }
+            $pts[] = $nextSegStart;
+        } else {
+            $pts[] = $segEnd;
+            $pts[] = $nextSegStart;
+        }
     }
 
     private function deduplicateVertices(array $vertices): array
