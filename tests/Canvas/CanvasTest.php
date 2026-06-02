@@ -164,6 +164,106 @@ class CanvasTest extends TestCase
         }
     }
 
+    /**
+     * Regression test for the @stars corner-stranding bug. Previously the
+     * stars command drew the outline with drawLine then flood-filled from
+     * the centroid; at sharp corners the rasterized lines did not form a
+     * 4-connected seal, so the flood fill correctly left corner pixels
+     * unfilled even though they are geometrically inside the polygon.
+     *
+     * This test uses drawPolygon (scanline fill with non-zero winding rule)
+     * and an independent winding-number point-in-polygon oracle to verify
+     * that every pixel the oracle considers inside the polygon is colored.
+     */
+    public function test_draw_polygon_star_corner_stranding_regression(): void
+    {
+        // Deterministic 5-pointed star (matches the math in stars() but with
+        // fixed rotation, fixed radius, fixed center).
+        $cx = 40.0;
+        $cy = 24.0;
+        $radius = 20.0;
+        $rot = 0.0;
+        $alpha = (2.0 * M_PI) / 10.0;
+        $points = [];
+        for ($p = 11; $p != 0; $p--) {
+            $omega = ($alpha * $p) + $rot;
+            $r = $radius * (($p % 2) + 1) / 2.0;
+            $points[] = [$r * sin($omega) + $cx, $r * cos($omega) + $cy];
+        }
+
+        $canvas = Canvas::createBlank(80, 48, true);
+        $fill = new Color(7, null);
+        $outline = new Color(4, null);
+        $canvas->drawPolygon($points, $fill, $outline);
+
+        // Bounding box of the star.
+        $xs = array_column($points, 0);
+        $ys = array_column($points, 1);
+        $minX = (int) floor(min($xs));
+        $maxX = (int) ceil(max($xs));
+        $minY = (int) floor(min($ys));
+        $maxY = (int) ceil(max($ys));
+
+        // For every pixel in the bounding box, if the winding oracle says
+        // the pixel center is inside the polygon, the canvas must show
+        // either the fill color or the outline color.
+        for ($y = $minY; $y <= $maxY; $y++) {
+            for ($x = $minX; $x <= $maxX; $x++) {
+                $winding = $this->windingAt($x + 0.5, $y + 0.5, $points);
+                if ($winding === 0) {
+                    continue;
+                }
+                $fg = $canvas->data[$y][$x]->fg;
+                $this->assertNotNull(
+                    $fg,
+                    "Pixel ($x, $y) is inside polygon (winding=$winding) but is unfilled"
+                );
+                $this->assertContains(
+                    $fg,
+                    [7, 4],
+                    "Pixel ($x, $y) is inside polygon but has unexpected fg=$fg"
+                );
+            }
+        }
+    }
+
+    /**
+     * Pure-PHP winding-number point-in-polygon test, independent of the
+     * Canvas implementation under test. Returns non-zero winding iff the
+     * point is inside the polygon under the non-zero winding rule.
+     */
+    /**
+     * @param array<int, array{0: int|float, 1: int|float}> $points
+     */
+    private function windingAt(float $px, float $py, array $points): int
+    {
+        $n = count($points);
+        $winding = 0;
+        for ($i = 0; $i < $n; $i++) {
+            [$x1, $y1] = $points[$i];
+            [$x2, $y2] = $points[($i + 1) % $n];
+            if ($y1 <= $py) {
+                if ($y2 > $py) {
+                    if ($this->isLeft($px, $py, $x1, $y1, $x2, $y2) > 0) {
+                        $winding++;
+                    }
+                }
+            } else {
+                if ($y2 <= $py) {
+                    if ($this->isLeft($px, $py, $x1, $y1, $x2, $y2) < 0) {
+                        $winding--;
+                    }
+                }
+            }
+        }
+        return $winding;
+    }
+
+    private function isLeft(float $px, float $py, float $x1, float $y1, float $x2, float $y2): float
+    {
+        return ($x2 - $x1) * ($py - $y1) - ($px - $x1) * ($y2 - $y1);
+    }
+
     public function test_draw_polygon_fully_outside_canvas_does_not_throw(): void
     {
         $canvas = Canvas::createBlank(10, 10);
