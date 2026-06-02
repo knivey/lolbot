@@ -307,6 +307,28 @@ class Canvas
         if ($fillColor === null && $outlineColor === null) {
             return;
         }
-        // Fill + outline bodies are added in Tasks 3 and 4.
+        // Outline on top of fill. Implemented first; fill is added in the next task.
+        if ($outlineColor !== null) {
+            $firstX = null;
+            $firstY = null;
+            $prevX = null;
+            $prevY = null;
+            foreach ($points as $point) {
+                $x = (int) round($point[0]);
+                $y = (int) round($point[1]);
+                if ($firstX === null) {
+                    $firstX = $x;
+                    $firstY = $y;
+                } else {
+                    $this->drawLine($prevX, $prevY, $x, $y, $outlineColor, $text);
+                }
+                $prevX = $x;
+                $prevY = $y;
+            }
+            // Close the polygon: last vertex back to first.
+            if ($prevX !== $firstX || $prevY !== $firstY) {
+                $this->drawLine($prevX, $prevY, $firstX, $firstY, $outlineColor, $text);
+            }
+        }
     }
 }

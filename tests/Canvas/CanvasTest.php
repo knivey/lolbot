@@ -32,4 +32,33 @@ class CanvasTest extends TestCase
             }
         }
     }
+
+    public function test_draw_polygon_outline_only_square(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $outline = new Color(5, null);
+
+        // Square (1,1)-(5,1)-(5,5)-(1,5)
+        $canvas->drawPolygon(
+            [[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0]],
+            null,
+            $outline
+        );
+
+        // Corners must have the outline color.
+        $this->assertSame(5, $canvas->data[1][1]->fg);
+        $this->assertSame(5, $canvas->data[5][1]->fg);
+        $this->assertSame(5, $canvas->data[5][5]->fg);
+        $this->assertSame(5, $canvas->data[1][5]->fg);
+
+        // Interior (2,2)-(4,4) must NOT be touched.
+        for ($y = 2; $y <= 4; $y++) {
+            for ($x = 2; $x <= 4; $x++) {
+                $this->assertNull(
+                    $canvas->data[$y][$x]->fg,
+                    "Interior pixel ($x, $y) was colored but only outline was requested"
+                );
+            }
+        }
+    }
 }
