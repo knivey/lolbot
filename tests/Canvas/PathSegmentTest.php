@@ -5,6 +5,7 @@ use draw\ClosePath;
 use draw\LineTo;
 use draw\MoveTo;
 use draw\CubicBezier;
+use draw\EllipticalArc;
 use draw\QuadraticBezier;
 use PHPUnit\Framework\TestCase;
 
@@ -173,5 +174,71 @@ class PathSegmentTest extends TestCase
         $fine = $seg->flatten(0.0, 0.0, 0.1);
         $coarse = $seg->flatten(0.0, 0.0, 2.0);
         $this->assertGreaterThan(count($coarse), count($fine));
+    }
+
+    public function test_arc_end_point(): void
+    {
+        $seg = new EllipticalArc(10.0, 10.0, 0.0, false, true, 20.0, 0.0);
+        $this->assertSame([20.0, 0.0], $seg->endPoint());
+    }
+
+    public function test_arc_start_equals_end_returns_empty(): void
+    {
+        $seg = new EllipticalArc(10.0, 10.0, 0.0, false, true, 0.0, 0.0);
+        $this->assertSame([], $seg->flatten(0.0, 0.0, 0.5));
+    }
+
+    public function test_arc_zero_radii_flattens_to_line(): void
+    {
+        $seg = new EllipticalArc(0.0, 0.0, 0.0, false, true, 20.0, 0.0);
+        $result = $seg->flatten(0.0, 0.0, 0.5);
+        $this->assertCount(1, $result);
+        $this->assertSame([20.0, 0.0], $result[0]);
+    }
+
+    public function test_arc_semicircle_produces_multiple_vertices(): void
+    {
+        // Semicircle from (0,0) to (20,0), rx=10, large-arc=false, sweep=true
+        $seg = new EllipticalArc(10.0, 10.0, 0.0, false, true, 20.0, 0.0);
+        $result = $seg->flatten(0.0, 0.0, 0.5);
+        $this->assertGreaterThan(2, count($result), 'Semicircle should produce several vertices');
+        // Last should be the endpoint
+        $last = $result[count($result) - 1];
+        $this->assertEqualsWithDelta(20.0, $last[0], 0.01);
+        $this->assertEqualsWithDelta(0.0, $last[1], 0.01);
+    }
+
+    public function test_arc_vertices_on_circle_within_tolerance(): void
+    {
+        // Quarter arc of a circle radius 10 centered at (10, 0)
+        // From (0,0) to (10,10), sweep=false gives center at (10,0)
+        $seg = new EllipticalArc(10.0, 10.0, 0.0, false, false, 10.0, 10.0);
+        $result = $seg->flatten(0.0, 0.0, 0.5);
+        // Every vertex should be approximately on the circle (x-10)^2 + y^2 = 100
+        foreach ($result as $vertex) {
+            $dist = sqrt(($vertex[0] - 10.0) ** 2 + $vertex[1] ** 2);
+            $this->assertEqualsWithDelta(
+                10.0,
+                $dist,
+                0.5,
+                "Vertex ({$vertex[0]}, {$vertex[1]}) is not on the circle"
+            );
+        }
+    }
+
+    public function test_arc_large_arc_flag(): void
+    {
+        // Small arc vs large arc between the same endpoints should produce
+        // different vertex counts (large arc is longer).
+        // From (0,0) to (10,0) with r=10: small arc ≈60°, large arc ≈300°
+        $small = new EllipticalArc(10.0, 10.0, 0.0, false, true, 10.0, 0.0);
+        $large = new EllipticalArc(10.0, 10.0, 0.0, true, true, 10.0, 0.0);
+        $smallResult = $small->flatten(0.0, 0.0, 0.5);
+        $largeResult = $large->flatten(0.0, 0.0, 0.5);
+        $this->assertGreaterThan(
+            count($smallResult),
+            count($largeResult),
+            'Large arc should produce more vertices than small arc'
+        );
     }
 }
