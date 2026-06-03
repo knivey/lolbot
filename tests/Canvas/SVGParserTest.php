@@ -4,6 +4,7 @@ namespace Tests\Canvas;
 
 use draw\Path;
 use draw\SVGParser;
+use draw\Transform;
 use PHPUnit\Framework\TestCase;
 
 class SVGParserTest extends TestCase
@@ -102,5 +103,91 @@ class SVGParserTest extends TestCase
     {
         $path = SVGParser::parseDString('');
         $this->assertTrue($path->isEmpty());
+    }
+
+    public function test_parse_transform_translate(): void
+    {
+        $t = SVGParser::parseTransform('translate(10, 20)');
+        $result = $t->apply(0.0, 0.0);
+        $this->assertEqualsWithDelta(10.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(20.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_translate_one_arg(): void
+    {
+        $t = SVGParser::parseTransform('translate(10)');
+        $result = $t->apply(0.0, 0.0);
+        $this->assertEqualsWithDelta(10.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(0.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_scale(): void
+    {
+        $t = SVGParser::parseTransform('scale(2, 3)');
+        $result = $t->apply(10.0, 10.0);
+        $this->assertEqualsWithDelta(20.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(30.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_scale_one_arg(): void
+    {
+        $t = SVGParser::parseTransform('scale(2)');
+        $result = $t->apply(10.0, 10.0);
+        $this->assertEqualsWithDelta(20.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(20.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_rotate(): void
+    {
+        $t = SVGParser::parseTransform('rotate(90)');
+        $result = $t->apply(1.0, 0.0);
+        $this->assertEqualsWithDelta(0.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(1.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_rotate_with_center(): void
+    {
+        $t = SVGParser::parseTransform('rotate(90, 50, 50)');
+        $result = $t->apply(51.0, 50.0);
+        $this->assertEqualsWithDelta(50.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(51.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_skewX(): void
+    {
+        $t = SVGParser::parseTransform('skewX(45)');
+        $result = $t->apply(1.0, 1.0);
+        $this->assertEqualsWithDelta(2.0, $result[0], 0.01);
+        $this->assertEqualsWithDelta(1.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_skewY(): void
+    {
+        $t = SVGParser::parseTransform('skewY(45)');
+        $result = $t->apply(1.0, 1.0);
+        $this->assertEqualsWithDelta(1.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(2.0, $result[1], 0.01);
+    }
+
+    public function test_parse_transform_matrix(): void
+    {
+        $t = SVGParser::parseTransform('matrix(2, 0, 0, 3, 10, 20)');
+        $result = $t->apply(5.0, 5.0);
+        $this->assertEqualsWithDelta(20.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(35.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_chained(): void
+    {
+        $t = SVGParser::parseTransform('translate(10, 0) scale(2)');
+        $result = $t->apply(5.0, 5.0);
+        $this->assertEqualsWithDelta(20.0, $result[0], 0.001);
+        $this->assertEqualsWithDelta(10.0, $result[1], 0.001);
+    }
+
+    public function test_parse_transform_empty_returns_identity(): void
+    {
+        $t = SVGParser::parseTransform('');
+        $this->assertTrue(Transform::identity()->equals($t));
     }
 }

@@ -255,6 +255,56 @@ class SVGParser
         return $result;
     }
 
+    public static function parseTransform(string $transform): Transform
+    {
+        $transform = trim($transform);
+        if ($transform === '') {
+            return Transform::identity();
+        }
+
+        $result = Transform::identity();
+
+        preg_match_all(
+            '/([a-zA-Z]+)\s*\(([^)]*)\)/',
+            $transform,
+            $matches,
+            PREG_SET_ORDER
+        );
+
+        foreach ($matches as $match) {
+            $func = strtolower($match[1]);
+            $args = preg_split('/[\s,]+/', trim($match[2]));
+            $args = array_map('floatval', array_filter($args ?: [], fn($v) => $v !== ''));
+
+            $t = match ($func) {
+                'translate' => Transform::translate(
+                    $args[0],
+                    $args[1] ?? 0.0
+                ),
+                'scale' => Transform::scale(
+                    $args[0],
+                    $args[1] ?? $args[0]
+                ),
+                'rotate' => Transform::rotate(
+                    deg2rad($args[0]),
+                    $args[1] ?? 0.0,
+                    $args[2] ?? 0.0
+                ),
+                'skewx' => Transform::skewX(deg2rad($args[0])),
+                'skewy' => Transform::skewY(deg2rad($args[0])),
+                'matrix' => Transform::matrix(
+                    $args[0], $args[1], $args[2],
+                    $args[3], $args[4], $args[5]
+                ),
+                default => Transform::identity(),
+            };
+
+            $result = $result->multiply($t);
+        }
+
+        return $result;
+    }
+
     /**
      * @param list<string> $tokens
      */
