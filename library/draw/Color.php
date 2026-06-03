@@ -77,18 +77,4 @@ class Color implements Paint
         }
         return false;
     }
-
-    //thinking this can be like an array of colors with a step size?
-    /**
-     * @param array<int|Color> $colors
-     */
-    public function setGradiant(array $colors): void
-    {
-
-    }
-
-    public function advanceGradiant(): void
-    {
-
-    }
 }
