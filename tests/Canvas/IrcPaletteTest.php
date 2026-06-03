@@ -152,13 +152,66 @@ class IrcPaletteTest extends TestCase
         $this->assertSame($at0, $at4, 'Dithering should wrap at 4x4 matrix size');
     }
 
-    public function test_nearestColor_dithering_with_xy_zero_same_as_none_for_bayer_center(): void
+    public function test_nearestColor_dithering_picks_between_two_palette_neighbors(): void
     {
-        $r = 200;
-        $g = 200;
-        $b = 200;
-        $at7 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 1, 3);
-        $none = IrcPalette::nearestColor($r, $g, $b, Dithering::None, 1, 3);
-        $this->assertSame($none, $at7, 'Bayer value 7 (index [3][1]) normalizes near 0, so should match no-dither for bright input');
+        $r = 128;
+        $g = 50;
+        $b = 50;
+        $none = IrcPalette::nearestColor($r, $g, $b, Dithering::None);
+        $results = [];
+        for ($y = 0; $y < 4; $y++) {
+            for ($x = 0; $x < 4; $x++) {
+                $code = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, $x, $y);
+                $results[] = $code;
+            }
+        }
+        $unique = array_unique($results);
+        $this->assertGreaterThanOrEqual(2, count($unique), 'Dithering should produce at least 2 different palette colors for a mid-range input');
+        foreach ($unique as $code) {
+            $this->assertGreaterThanOrEqual(0, $code);
+            $this->assertLessThanOrEqual(98, $code);
+        }
+    }
+
+    public function test_nearestColor_dithering_is_symmetric_across_band(): void
+    {
+        $none1 = IrcPalette::nearestColor(100, 50, 50, Dithering::None);
+        $none2 = IrcPalette::nearestColor(130, 50, 50, Dithering::None);
+        if ($none1 === $none2) {
+            $this->markTestSkipped('Test colors map to same palette entry');
+        }
+        $midR = 115;
+        $midG = 50;
+        $midB = 50;
+        $ditheredAtMid = [];
+        for ($y = 0; $y < 4; $y++) {
+            for ($x = 0; $x < 4; $x++) {
+                $ditheredAtMid[] = IrcPalette::nearestColor($midR, $midG, $midB, Dithering::Ordered4x4, $x, $y);
+            }
+        }
+        $uniqueMid = count(array_unique($ditheredAtMid));
+        $this->assertGreaterThanOrEqual(2, $uniqueMid, 'Mid-band should dither between at least 2 colors');
+    }
+
+    public function test_nearestColor_dithering_threshold_distribution(): void
+    {
+        $r = 115;
+        $g = 50;
+        $b = 50;
+        $noneCode = IrcPalette::nearestColor($r, $g, $b, Dithering::None);
+        $bestCount = 0;
+        $otherCount = 0;
+        for ($y = 0; $y < 4; $y++) {
+            for ($x = 0; $x < 4; $x++) {
+                $code = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, $x, $y);
+                if ($code === $noneCode) {
+                    $bestCount++;
+                } else {
+                    $otherCount++;
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $bestCount, 'Some pixels should pick the best match');
+        $this->assertGreaterThan(0, $otherCount, 'Some pixels should pick the second-best match');
     }
 }

@@ -28,8 +28,6 @@ class IrcPalette
         [15,  7, 13,  5],
     ];
 
-    private const DITHER_STRENGTH = 16.0;
-
     /**
      * @return array<int, string>
      */
@@ -87,11 +85,7 @@ class IrcPalette
     public static function nearestColor(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0): int
     {
         if ($mode === Dithering::Ordered4x4) {
-            $bayer = self::BAYER_4X4[$y & 3][$x & 3];
-            $offset = ($bayer - 7.5) / 8.0 * self::DITHER_STRENGTH;
-            $r = (int) max(0, min(255, round($r + $offset)));
-            $g = (int) max(0, min(255, round($g + $offset)));
-            $b = (int) max(0, min(255, round($b + $offset)));
+            return self::nearestColorDithered($r, $g, $b, $x, $y);
         }
 
         $key = ($r << 16) | ($g << 8) | $b;
@@ -113,6 +107,43 @@ class IrcPalette
         self::$nearestCache[$key] = $bestIdx;
         if (count(self::$nearestCache) > self::CACHE_LIMIT) {
             self::$nearestCache = [];
+        }
+        return $bestIdx;
+    }
+
+    private static function nearestColorDithered(int $r, int $g, int $b, int $x, int $y): int
+    {
+        self::$colorPalette ??= self::buildColorPalette();
+        $target = new Color(new RGB($r, $g, $b));
+
+        $bestIdx = 0;
+        $bestDist = INF;
+        $secondIdx = 1;
+        $secondDist = INF;
+        foreach (self::$colorPalette as $idx => $palColor) {
+            $d = $target->getDifferenceDin99($palColor);
+            if ($d < $bestDist) {
+                $secondIdx = $bestIdx;
+                $secondDist = $bestDist;
+                $bestIdx = $idx;
+                $bestDist = $d;
+            } elseif ($d < $secondDist) {
+                $secondIdx = $idx;
+                $secondDist = $d;
+            }
+        }
+
+        if ($bestDist < 0.001) {
+            return $bestIdx;
+        }
+
+        $bayer = self::BAYER_4X4[$y & 3][$x & 3];
+        $threshold = ($bayer + 0.5) / 16.0;
+
+        $t = $bestDist / ($bestDist + $secondDist);
+
+        if ($t >= $threshold) {
+            return $secondIdx;
         }
         return $bestIdx;
     }
