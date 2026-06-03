@@ -88,6 +88,10 @@ class IrcPalette
             return self::nearestColorDithered($r, $g, $b, $x, $y);
         }
 
+        if ($mode === Dithering::ShaderBlocks) {
+            return self::nearestColorShaderBlocksCode($r, $g, $b);
+        }
+
         $key = ($r << 16) | ($g << 8) | $b;
         if (isset(self::$nearestCache[$key])) {
             return self::$nearestCache[$key];
@@ -114,7 +118,11 @@ class IrcPalette
     public static function nearestColorWithMeta(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0): DitherResult
     {
         if ($mode === Dithering::Ordered4x4) {
-            return self::nearestColorDitheredMeta($r, $g, $b, $x, $y);
+            return new DitherResult(self::nearestColorDithered($r, $g, $b, $x, $y));
+        }
+
+        if ($mode === Dithering::ShaderBlocks) {
+            return self::nearestColorShaderBlocksMeta($r, $g, $b);
         }
 
         $key = ($r << 16) | ($g << 8) | $b;
@@ -142,10 +150,91 @@ class IrcPalette
 
     private static function nearestColorDithered(int $r, int $g, int $b, int $x, int $y): int
     {
-        return self::nearestColorDitheredMeta($r, $g, $b, $x, $y)->code;
+        self::$colorPalette ??= self::buildColorPalette();
+        $target = new Color(new RGB($r, $g, $b));
+
+        $bestIdx = 0;
+        $bestDist = INF;
+        $secondIdx = -1;
+        $secondDist = INF;
+        foreach (self::$colorPalette as $idx => $palColor) {
+            $d = $target->getDifferenceDin99($palColor);
+            if ($d < $bestDist) {
+                $secondIdx = $bestIdx;
+                $secondDist = $bestDist;
+                $bestIdx = $idx;
+                $bestDist = $d;
+            } elseif ($d < $secondDist) {
+                $secondIdx = $idx;
+                $secondDist = $d;
+            }
+        }
+
+        if ($secondIdx === -1) {
+            return $bestIdx;
+        }
+
+        if ($bestDist < 0.001) {
+            return $bestIdx;
+        }
+
+        self::$rgbPalette ??= self::buildRgbPalette();
+        $br = self::$rgbPalette[$bestIdx];
+
+        $secondIdx = self::findDitherCandidate($target, $br, $bestIdx, $r, $g, $b, $secondIdx);
+        if ($secondIdx === -1) {
+            return $bestIdx;
+        }
+
+        $sr = self::$rgbPalette[$secondIdx];
+        $dr = $sr[0] - $br[0];
+        $dg = $sr[1] - $br[1];
+        $db = $sr[2] - $br[2];
+        $lenSq = $dr * $dr + $dg * $dg + $db * $db;
+        if ($lenSq < 0.001) {
+            return $bestIdx;
+        }
+        $ir = $r - $br[0];
+        $ig = $g - $br[1];
+        $ib = $b - $br[2];
+        $t = ($ir * $dr + $ig * $dg + $ib * $db) / $lenSq;
+        $t = max(0.0, min(1.0, $t));
+
+        $bayer = self::BAYER_4X4[$y & 3][$x & 3];
+        $threshold = ($bayer + 0.5) / 16.0;
+
+        if ($t >= $threshold) {
+            return $secondIdx;
+        }
+        return $bestIdx;
     }
 
-    private static function nearestColorDitheredMeta(int $r, int $g, int $b, int $x, int $y): DitherResult
+    private static function nearestColorShaderBlocksCode(int $r, int $g, int $b): int
+    {
+        $key = ($r << 16) | ($g << 8) | $b;
+        if (isset(self::$nearestCache[$key])) {
+            return self::$nearestCache[$key];
+        }
+
+        self::$colorPalette ??= self::buildColorPalette();
+        $target = new Color(new RGB($r, $g, $b));
+        $bestIdx = 0;
+        $bestDist = INF;
+        foreach (self::$colorPalette as $idx => $palColor) {
+            $d = $target->getDifferenceDin99($palColor);
+            if ($d < $bestDist) {
+                $bestIdx = $idx;
+                $bestDist = $d;
+            }
+        }
+        self::$nearestCache[$key] = $bestIdx;
+        if (count(self::$nearestCache) > self::CACHE_LIMIT) {
+            self::$nearestCache = [];
+        }
+        return $bestIdx;
+    }
+
+    private static function nearestColorShaderBlocksMeta(int $r, int $g, int $b): DitherResult
     {
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
@@ -197,12 +286,6 @@ class IrcPalette
         $t = ($ir * $dr + $ig * $dg + $ib * $db) / $lenSq;
         $t = max(0.0, min(1.0, $t));
 
-        $bayer = self::BAYER_4X4[$y & 3][$x & 3];
-        $threshold = ($bayer + 0.5) / 16.0;
-
-        if ($t >= $threshold) {
-            return new DitherResult($secondIdx, dithered: true, secondBest: $bestIdx, t: 1.0 - $t);
-        }
         return new DitherResult($bestIdx, dithered: true, secondBest: $secondIdx, t: $t);
     }
 

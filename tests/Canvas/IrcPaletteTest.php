@@ -225,14 +225,14 @@ class IrcPaletteTest extends TestCase
 
     public function test_nearestColorWithMeta_exact_match_not_dithered(): void
     {
-        $result = IrcPalette::nearestColorWithMeta(255, 0, 0, Dithering::Ordered4x4, 0, 0);
+        $result = IrcPalette::nearestColorWithMeta(255, 0, 0, Dithering::ShaderBlocks, 0, 0);
         $this->assertSame(4, $result->code);
         $this->assertFalse($result->dithered);
     }
 
     public function test_nearestColorWithMeta_mid_color_is_dithered(): void
     {
-        $result = IrcPalette::nearestColorWithMeta(128, 50, 50, Dithering::Ordered4x4, 0, 0);
+        $result = IrcPalette::nearestColorWithMeta(128, 50, 50, Dithering::ShaderBlocks, 0, 0);
         $this->assertGreaterThanOrEqual(0, $result->code);
         $this->assertLessThanOrEqual(98, $result->code);
         $this->assertTrue($result->dithered);

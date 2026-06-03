@@ -1086,7 +1086,7 @@ class CanvasTest extends TestCase
     public function test_drawPoint_stores_dithering_metadata_when_enabled(): void
     {
         $canvas = Canvas::createBlank(10, 10, true);
-        $canvas->setDithering(Dithering::Ordered4x4);
+        $canvas->setDithering(Dithering::ShaderBlocks);
 
         $grad = new LinearGradient(0, 0, 9, 0, [
             new ColorStop(0.0, 255, 0, 0),
@@ -1208,7 +1208,7 @@ class CanvasTest extends TestCase
     public function test_drawPoint_solid_color_no_metadata(): void
     {
         $canvas = Canvas::createBlank(10, 10, true);
-        $canvas->setDithering(Dithering::Ordered4x4);
+        $canvas->setDithering(Dithering::ShaderBlocks);
 
         $canvas->drawPoint(5, 5, new Color(4));
 
@@ -1221,7 +1221,7 @@ class CanvasTest extends TestCase
     {
         $canvas = Canvas::createBlank(80, 48, true);
         $canvas->fillColor(0, 0, new Color(1, 1));
-        $canvas->setDithering(Dithering::Ordered4x4);
+        $canvas->setDithering(Dithering::ShaderBlocks);
 
         $grad = new LinearGradient(0, 0, 0, 47, [
             new ColorStop(0.0, 255, 0, 0),
@@ -1230,8 +1230,8 @@ class CanvasTest extends TestCase
         $canvas->drawPath(Path::rect(0, 0, 80, 48), $grad, null);
 
         $output = (string) $canvas;
-        $this->assertStringContainsString('░', $output);
-        $this->assertStringContainsString('▒', $output);
+        $hasShadeChar = str_contains($output, '░') || str_contains($output, '▒') || str_contains($output, '▓');
+        $this->assertTrue($hasShadeChar, 'Gradient with shader blocks dithering should produce at least one shade character');
     }
 
     public function test_gradient_without_dithering_no_shade_chars(): void

@@ -442,7 +442,7 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
     $art->fillColor(0, 0, new Color(1, 1));
 
     if ($cmdArgs->optEnabled('--dithered')) {
-        $art->setDithering(Dithering::Ordered4x4);
+        $art->setDithering(Dithering::ShaderBlocks);
     }
 
     match ($name) {
