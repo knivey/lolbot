@@ -5,6 +5,7 @@ namespace Tests\Canvas;
 use draw\Canvas;
 use draw\Color;
 use draw\FillRule;
+use draw\Group;
 use draw\Path;
 use draw\RenderContext;
 use draw\SceneNode;
@@ -161,5 +162,114 @@ class SceneTreeTest extends TestCase
         $shape = new Shape(path: Path::rect(2.0, 1.0, 5.0, 3.0), fill: new Color(4, null));
         $shape->render($canvas, $ctx);
         $this->assertNull($canvas->data[2][4]->fg);
+    }
+
+    public function test_group_implements_scene_node(): void
+    {
+        $group = new Group();
+        $this->assertInstanceOf(SceneNode::class, $group);
+    }
+
+    public function test_group_add_and_get_children(): void
+    {
+        $group = new Group();
+        $shape = new Shape(path: Path::circle(0.0, 0.0, 1.0));
+        $group->addChild($shape);
+        $this->assertSame([$shape], $group->getChildren());
+    }
+
+    public function test_group_remove_child(): void
+    {
+        $group = new Group();
+        $shape = new Shape(path: Path::circle(0.0, 0.0, 1.0));
+        $group->addChild($shape);
+        $group->removeChild($shape);
+        $this->assertSame([], $group->getChildren());
+    }
+
+    public function test_group_inherits_fill_to_children(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $group = new Group(fill: new Color(4, null));
+        $group->addChild(new Shape(path: Path::rect(2.0, 1.0, 5.0, 3.0)));
+        $group->render($canvas, RenderContext::defaults());
+        $this->assertSame(4, $canvas->data[2][4]->fg);
+    }
+
+    public function test_group_child_overrides_inherited_fill(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $group = new Group(fill: new Color(4, null));
+        $group->addChild(new Shape(
+            path: Path::rect(2.0, 1.0, 5.0, 3.0),
+            fill: new Color(9, null),
+        ));
+        $group->render($canvas, RenderContext::defaults());
+        $this->assertSame(9, $canvas->data[2][4]->fg);
+    }
+
+    public function test_group_transform_applies_to_children(): void
+    {
+        $canvas = Canvas::createBlank(30, 15, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $group = new Group(transform: Transform::translate(10.0, 5.0));
+        $group->addChild(new Shape(
+            path: Path::rect(0.0, 0.0, 3.0, 3.0),
+            fill: new Color(4, null),
+        ));
+        $group->render($canvas, RenderContext::defaults());
+        $this->assertSame(4, $canvas->data[6][10]->fg);
+    }
+
+    public function test_group_opacity_multiplies_to_children(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $group = new Group(opacity: 0.0);
+        $group->addChild(new Shape(
+            path: Path::rect(2.0, 1.0, 5.0, 3.0),
+            fill: new Color(4, null),
+        ));
+        $group->render($canvas, RenderContext::defaults());
+        $this->assertNull($canvas->data[2][4]->fg);
+    }
+
+    public function test_group_nested_inherits_properties(): void
+    {
+        $canvas = Canvas::createBlank(30, 15, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $outer = new Group(
+            fill: new Color(4, null),
+            transform: Transform::translate(5.0, 3.0),
+        );
+        $inner = new Group(transform: Transform::translate(3.0, 2.0));
+        $inner->addChild(new Shape(path: Path::rect(0.0, 0.0, 2.0, 2.0)));
+        $outer->addChild($inner);
+        $outer->render($canvas, RenderContext::defaults());
+        $this->assertSame(4, $canvas->data[5][8]->fg);
+    }
+
+    public function test_group_with_multiple_children_renders_all(): void
+    {
+        $canvas = Canvas::createBlank(30, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $group = new Group(fill: new Color(4, null));
+        $group->addChild(new Shape(path: Path::rect(2.0, 2.0, 3.0, 3.0)));
+        $group->addChild(new Shape(path: Path::rect(10.0, 2.0, 3.0, 3.0)));
+        $group->render($canvas, RenderContext::defaults());
+        $this->assertSame(4, $canvas->data[3][3]->fg);
+        $this->assertSame(4, $canvas->data[3][11]->fg);
+    }
+
+    public function test_group_restores_canvas_state_after_render(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $beforeTransform = $canvas->getTransform();
+        $group = new Group(transform: Transform::translate(5.0, 3.0));
+        $group->addChild(new Shape(path: Path::rect(0.0, 0.0, 2.0, 2.0), fill: new Color(4, null)));
+        $group->render($canvas, RenderContext::defaults());
+        $this->assertTrue($beforeTransform->equals($canvas->getTransform()));
     }
 }
