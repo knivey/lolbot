@@ -2,6 +2,7 @@
 
 namespace Tests\Canvas;
 
+use draw\DitherResult;
 use draw\Dithering;
 use draw\IrcPalette;
 use PHPUnit\Framework\TestCase;
@@ -213,5 +214,61 @@ class IrcPaletteTest extends TestCase
         }
         $this->assertGreaterThan(0, $bestCount, 'Some pixels should pick the best match');
         $this->assertGreaterThan(0, $otherCount, 'Some pixels should pick the second-best match');
+    }
+
+    public function test_nearestColorWithMeta_no_dithering_returns_not_dithered(): void
+    {
+        $result = IrcPalette::nearestColorWithMeta(255, 0, 0, Dithering::None);
+        $this->assertSame(4, $result->code);
+        $this->assertFalse($result->dithered);
+    }
+
+    public function test_nearestColorWithMeta_exact_match_not_dithered(): void
+    {
+        $result = IrcPalette::nearestColorWithMeta(255, 0, 0, Dithering::Ordered4x4, 0, 0);
+        $this->assertSame(4, $result->code);
+        $this->assertFalse($result->dithered);
+    }
+
+    public function test_nearestColorWithMeta_mid_color_is_dithered(): void
+    {
+        $result = IrcPalette::nearestColorWithMeta(128, 50, 50, Dithering::Ordered4x4, 0, 0);
+        $this->assertGreaterThanOrEqual(0, $result->code);
+        $this->assertLessThanOrEqual(98, $result->code);
+        $this->assertTrue($result->dithered);
+        $this->assertGreaterThanOrEqual(0, $result->secondBest);
+        $this->assertLessThanOrEqual(98, $result->secondBest);
+        $this->assertNotSame($result->code, $result->secondBest);
+        $this->assertGreaterThan(0, $result->t);
+        $this->assertLessThanOrEqual(1, $result->t);
+    }
+
+    public function test_nearestColorWithMeta_t_varies_with_bayer_position(): void
+    {
+        $results = [];
+        for ($y = 0; $y < 4; $y++) {
+            for ($x = 0; $x < 4; $x++) {
+                $r = IrcPalette::nearestColorWithMeta(128, 50, 50, Dithering::Ordered4x4, $x, $y);
+                $results[] = $r->code;
+            }
+        }
+        $unique = array_unique($results);
+        $this->assertGreaterThanOrEqual(2, count($unique));
+    }
+
+    public function test_nearestColorWithMeta_code_matches_nearestColor(): void
+    {
+        $r = 128;
+        $g = 50;
+        $b = 50;
+        foreach (Dithering::cases() as $mode) {
+            for ($y = 0; $y < 4; $y++) {
+                for ($x = 0; $x < 4; $x++) {
+                    $plain = IrcPalette::nearestColor($r, $g, $b, $mode, $x, $y);
+                    $meta = IrcPalette::nearestColorWithMeta($r, $g, $b, $mode, $x, $y);
+                    $this->assertSame($plain, $meta->code, "Mismatch at mode=$mode->name x=$x y=$y");
+                }
+            }
+        }
     }
 }

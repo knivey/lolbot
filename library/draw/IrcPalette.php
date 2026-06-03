@@ -111,7 +111,41 @@ class IrcPalette
         return $bestIdx;
     }
 
+    public static function nearestColorWithMeta(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0): DitherResult
+    {
+        if ($mode === Dithering::Ordered4x4) {
+            return self::nearestColorDitheredMeta($r, $g, $b, $x, $y);
+        }
+
+        $key = ($r << 16) | ($g << 8) | $b;
+        if (isset(self::$nearestCache[$key])) {
+            return new DitherResult(self::$nearestCache[$key]);
+        }
+
+        self::$colorPalette ??= self::buildColorPalette();
+        $target = new Color(new RGB($r, $g, $b));
+        $bestIdx = 0;
+        $bestDist = INF;
+        foreach (self::$colorPalette as $idx => $palColor) {
+            $d = $target->getDifferenceDin99($palColor);
+            if ($d < $bestDist) {
+                $bestIdx = $idx;
+                $bestDist = $d;
+            }
+        }
+        self::$nearestCache[$key] = $bestIdx;
+        if (count(self::$nearestCache) > self::CACHE_LIMIT) {
+            self::$nearestCache = [];
+        }
+        return new DitherResult($bestIdx);
+    }
+
     private static function nearestColorDithered(int $r, int $g, int $b, int $x, int $y): int
+    {
+        return self::nearestColorDitheredMeta($r, $g, $b, $x, $y)->code;
+    }
+
+    private static function nearestColorDitheredMeta(int $r, int $g, int $b, int $x, int $y): DitherResult
     {
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
@@ -134,11 +168,11 @@ class IrcPalette
         }
 
         if ($secondIdx === -1) {
-            return $bestIdx;
+            return new DitherResult($bestIdx);
         }
 
         if ($bestDist < 0.001) {
-            return $bestIdx;
+            return new DitherResult($bestIdx);
         }
 
         self::$rgbPalette ??= self::buildRgbPalette();
@@ -146,7 +180,7 @@ class IrcPalette
 
         $secondIdx = self::findDitherCandidate($target, $br, $bestIdx, $r, $g, $b, $secondIdx);
         if ($secondIdx === -1) {
-            return $bestIdx;
+            return new DitherResult($bestIdx);
         }
 
         $sr = self::$rgbPalette[$secondIdx];
@@ -155,7 +189,7 @@ class IrcPalette
         $db = $sr[2] - $br[2];
         $lenSq = $dr * $dr + $dg * $dg + $db * $db;
         if ($lenSq < 0.001) {
-            return $bestIdx;
+            return new DitherResult($bestIdx);
         }
         $ir = $r - $br[0];
         $ig = $g - $br[1];
@@ -167,9 +201,9 @@ class IrcPalette
         $threshold = ($bayer + 0.5) / 16.0;
 
         if ($t >= $threshold) {
-            return $secondIdx;
+            return new DitherResult($secondIdx, dithered: true, secondBest: $bestIdx, t: 1.0 - $t);
         }
-        return $bestIdx;
+        return new DitherResult($bestIdx, dithered: true, secondBest: $secondIdx, t: $t);
     }
 
     private static function findDitherCandidate(
