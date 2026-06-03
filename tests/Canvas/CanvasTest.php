@@ -1082,4 +1082,53 @@ class CanvasTest extends TestCase
         }
         $this->assertTrue($different, 'Paint dithering override should differ from canvas default');
     }
+
+    public function test_drawPoint_stores_dithering_metadata_when_enabled(): void
+    {
+        $canvas = Canvas::createBlank(10, 10, true);
+        $canvas->setDithering(Dithering::Ordered4x4);
+
+        $grad = new LinearGradient(0, 0, 9, 0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $canvas->drawPoint(5, 5, $grad);
+
+        $pixel = $canvas->getPixel(5, 5);
+        $this->assertNotNull($pixel->fg);
+        $this->assertTrue($pixel->dithered);
+        $this->assertGreaterThanOrEqual(0, $pixel->secondBest);
+        $this->assertGreaterThan(0, $pixel->t);
+    }
+
+    public function test_drawPoint_no_metadata_without_dithering(): void
+    {
+        $canvas = Canvas::createBlank(10, 10, true);
+
+        $grad = new LinearGradient(0, 0, 9, 0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $canvas->drawPoint(5, 5, $grad);
+
+        $pixel = $canvas->getPixel(5, 5);
+        $this->assertNotNull($pixel->fg);
+        $this->assertFalse($pixel->dithered);
+        $this->assertSame(-1, $pixel->secondBest);
+        $this->assertSame(0.0, $pixel->t);
+    }
+
+    public function test_drawPoint_solid_color_no_metadata(): void
+    {
+        $canvas = Canvas::createBlank(10, 10, true);
+        $canvas->setDithering(Dithering::Ordered4x4);
+
+        $canvas->drawPoint(5, 5, new Color(4));
+
+        $pixel = $canvas->getPixel(5, 5);
+        $this->assertSame(4, $pixel->fg);
+        $this->assertFalse($pixel->dithered);
+    }
 }

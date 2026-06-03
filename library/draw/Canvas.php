@@ -28,6 +28,11 @@ class Canvas
         return $this->dithering;
     }
 
+    public function getPixel(int $x, int $y): Pixel
+    {
+        return $this->data[$y][$x] ?? new Pixel();
+    }
+
     private function __construct(readonly public bool $halfblocks = false)
     {
         $this->ctm = Transform::identity();
@@ -241,7 +246,15 @@ class Canvas
             } else {
                 $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                 [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
-                $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b, $effectiveDithering, $x, $y);
+                if ($effectiveDithering !== Dithering::None) {
+                    $result = IrcPalette::nearestColorWithMeta($r, $g, $b, $effectiveDithering, $x, $y);
+                    $this->data[$y][$x]->fg = $result->code;
+                    $this->data[$y][$x]->dithered = $result->dithered;
+                    $this->data[$y][$x]->secondBest = $result->secondBest;
+                    $this->data[$y][$x]->t = $result->t;
+                } else {
+                    $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b);
+                }
                 $this->data[$y][$x]->bg = null;
             }
             if ($text != '') {
@@ -330,7 +343,15 @@ class Canvas
                 } else {
                     $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                     [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
-                    $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b, $effectiveDithering, $x, $y);
+                    if ($effectiveDithering !== Dithering::None) {
+                        $result = IrcPalette::nearestColorWithMeta($r, $g, $b, $effectiveDithering, $x, $y);
+                        $this->data[$y][$x]->fg = $result->code;
+                        $this->data[$y][$x]->dithered = $result->dithered;
+                        $this->data[$y][$x]->secondBest = $result->secondBest;
+                        $this->data[$y][$x]->t = $result->t;
+                    } else {
+                        $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b);
+                    }
                     $this->data[$y][$x]->bg = null;
                 }
                 if ($text != '') {
@@ -602,7 +623,15 @@ class Canvas
                         } else {
                             $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                             [$r, $g, $b] = $paint->getColorAt((float) $xx, (float) $Y);
-                            $this->data[$Y][$xx]->fg = IrcPalette::nearestColor($r, $g, $b, $effectiveDithering, $xx, $Y);
+                            if ($effectiveDithering !== Dithering::None) {
+                                $result = IrcPalette::nearestColorWithMeta($r, $g, $b, $effectiveDithering, $xx, $Y);
+                                $this->data[$Y][$xx]->fg = $result->code;
+                                $this->data[$Y][$xx]->dithered = $result->dithered;
+                                $this->data[$Y][$xx]->secondBest = $result->secondBest;
+                                $this->data[$Y][$xx]->t = $result->t;
+                            } else {
+                                $this->data[$Y][$xx]->fg = IrcPalette::nearestColor($r, $g, $b);
+                            }
                             $this->data[$Y][$xx]->bg = null;
                         }
                         if ($text != '') {
