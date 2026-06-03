@@ -1217,6 +1217,68 @@ class CanvasTest extends TestCase
         $this->assertFalse($pixel->dithered);
     }
 
+    public function test_drawPoint_solid_color_with_shader_blocks_all_sets_dithered(): void
+    {
+        $canvas = Canvas::createBlank(10, 10, true);
+        $canvas->setDithering(Dithering::ShaderBlocksAll);
+
+        $canvas->drawPoint(5, 5, new Color(4));
+
+        $pixel = $canvas->getPixel(5, 5);
+        $this->assertSame(4, $pixel->fg);
+        $this->assertTrue($pixel->dithered);
+    }
+
+    public function test_fill_polygon_solid_color_with_shader_blocks_all_sets_dithered(): void
+    {
+        $canvas = Canvas::createBlank(10, 10, true);
+        $canvas->setDithering(Dithering::ShaderBlocksAll);
+
+        $canvas->drawPath(
+            Path::polygon([[1.0, 1.0], [8.0, 1.0], [8.0, 8.0], [1.0, 8.0]]),
+            new Color(4),
+            null
+        );
+
+        $pixel = $canvas->getPixel(4, 4);
+        $this->assertSame(4, $pixel->fg);
+        $this->assertTrue($pixel->dithered);
+    }
+
+    public function test_stroke_solid_color_with_shader_blocks_all_sets_dithered(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->setDithering(Dithering::ShaderBlocksAll);
+
+        $canvas->drawPath(
+            Path::line(2, 5, 8, 5),
+            null,
+            new StrokeStyle(new Color(4))
+        );
+
+        $pixel = $canvas->getPixel(5, 5);
+        $this->assertSame(4, $pixel->fg);
+        $this->assertTrue($pixel->dithered);
+    }
+
+    public function test_shader_blocks_all_solid_shape_produces_shade_chars(): void
+    {
+        $canvas = Canvas::createBlank(10, 6, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $canvas->setDithering(Dithering::ShaderBlocksAll);
+
+        $grad = new LinearGradient(0, 0, 0, 5, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 255, 0),
+        ]);
+        $canvas->drawPath(Path::rect(0, 0, 10, 6), $grad, null);
+        $canvas->drawPath(Path::rect(0, 0, 10, 2), new Color(4), null);
+
+        $output = (string) $canvas;
+        $hasShadeChar = str_contains($output, '░') || str_contains($output, '▒') || str_contains($output, '▓');
+        $this->assertTrue($hasShadeChar, 'Solid shape over gradient with ShaderBlocksAll should produce shade characters');
+    }
+
     public function test_gradient_with_dithering_produces_shade_chars(): void
     {
         $canvas = Canvas::createBlank(80, 48, true);

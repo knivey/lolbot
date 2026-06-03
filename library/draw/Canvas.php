@@ -254,7 +254,15 @@ class Canvas
             if ($paint->isSolid() && $paint instanceof Color) {
                 $this->data[$y][$x]->fg = $paint->fg;
                 $this->data[$y][$x]->bg = $paint->bg;
-                if ($this->dithering !== Dithering::ShaderBlocksAll) {
+                if ($this->dithering === Dithering::ShaderBlocksAll) {
+                    if ($paint->fg !== null) {
+                        [$r, $g, $b] = IrcPalette::getRgb($paint->fg);
+                        $result = IrcPalette::nearestColorWithMeta($r, $g, $b, Dithering::ShaderBlocksAll, $x, $y);
+                        $this->data[$y][$x]->dithered = true;
+                        $this->data[$y][$x]->secondBest = $result->secondBest;
+                        $this->data[$y][$x]->t = $result->secondBest >= 0 ? $result->t : 1.0;
+                    }
+                } else {
                     $this->data[$y][$x]->dithered = false;
                     $this->data[$y][$x]->secondBest = -1;
                     $this->data[$y][$x]->t = 0.0;
@@ -358,7 +366,15 @@ class Canvas
                 if ($paint->isSolid() && $paint instanceof Color) {
                     $this->data[$y][$x]->fg = $paint->fg;
                     $this->data[$y][$x]->bg = $paint->bg;
-                    if ($this->dithering !== Dithering::ShaderBlocksAll) {
+                    if ($this->dithering === Dithering::ShaderBlocksAll) {
+                        if ($paint->fg !== null) {
+                            [$r, $g, $b] = IrcPalette::getRgb($paint->fg);
+                            $result = IrcPalette::nearestColorWithMeta($r, $g, $b, Dithering::ShaderBlocksAll, $x, $y);
+                            $this->data[$y][$x]->dithered = true;
+                            $this->data[$y][$x]->secondBest = $result->secondBest;
+                            $this->data[$y][$x]->t = $result->secondBest >= 0 ? $result->t : 1.0;
+                        }
+                    } else {
                         $this->data[$y][$x]->dithered = false;
                         $this->data[$y][$x]->secondBest = -1;
                         $this->data[$y][$x]->t = 0.0;
@@ -645,7 +661,15 @@ class Canvas
                         if ($paint->isSolid() && $paint instanceof Color) {
                             $this->data[$Y][$xx]->fg = $paint->fg;
                             $this->data[$Y][$xx]->bg = $paint->bg;
-                            if ($this->dithering !== Dithering::ShaderBlocksAll) {
+                            if ($this->dithering === Dithering::ShaderBlocksAll) {
+                                if ($paint->fg !== null) {
+                                    [$r, $g, $b] = IrcPalette::getRgb($paint->fg);
+                                    $result = IrcPalette::nearestColorWithMeta($r, $g, $b, Dithering::ShaderBlocksAll, $xx, $Y);
+                                    $this->data[$Y][$xx]->dithered = true;
+                                    $this->data[$Y][$xx]->secondBest = $result->secondBest;
+                                    $this->data[$Y][$xx]->t = $result->secondBest >= 0 ? $result->t : 1.0;
+                                }
+                            } else {
                                 $this->data[$Y][$xx]->dithered = false;
                                 $this->data[$Y][$xx]->secondBest = -1;
                                 $this->data[$Y][$xx]->t = 0.0;
