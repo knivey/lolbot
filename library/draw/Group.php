@@ -14,6 +14,7 @@ class Group implements SceneNode
         public readonly ?float $opacity = null,
         public readonly ?float $fillOpacity = null,
         public readonly ?FillRule $fillRule = null,
+        public readonly ?Dithering $dithering = null,
     ) {
     }
 
@@ -45,6 +46,7 @@ class Group implements SceneNode
             opacity: $this->opacity,
             fillOpacity: $this->fillOpacity,
             fillRule: $this->fillRule,
+            dithering: $this->dithering,
         );
 
         $canvas->save();

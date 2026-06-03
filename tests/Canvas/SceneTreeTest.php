@@ -4,8 +4,11 @@ namespace Tests\Canvas;
 
 use draw\Canvas;
 use draw\Color;
+use draw\ColorStop;
+use draw\Dithering;
 use draw\FillRule;
 use draw\Group;
+use draw\LinearGradient;
 use draw\Path;
 use draw\RenderContext;
 use draw\SceneNode;
@@ -356,5 +359,109 @@ class SceneTreeTest extends TestCase
         $group->render($canvas, RenderContext::defaults());
 
         $this->assertSame(9, $canvas->data[4][7]->fg, 'second child overwrites first');
+    }
+
+    public function test_render_context_merge_dithering_child_overrides_parent(): void
+    {
+        $parent = RenderContext::defaults();
+        $child = $parent->merge(dithering: Dithering::Ordered4x4);
+        $this->assertSame(Dithering::Ordered4x4, $child->dithering);
+    }
+
+    public function test_render_context_merge_dithering_null_inherits_parent(): void
+    {
+        $parent = new RenderContext(
+            fill: new Color(0, null),
+            stroke: null,
+            transform: Transform::identity(),
+            opacity: 1.0,
+            fillOpacity: 1.0,
+            fillRule: FillRule::NonZero,
+            dithering: Dithering::Ordered4x4,
+        );
+        $child = $parent->merge(dithering: null);
+        $this->assertSame(Dithering::Ordered4x4, $child->dithering);
+    }
+
+    public function test_render_context_defaults_has_no_dithering(): void
+    {
+        $ctx = RenderContext::defaults();
+        $this->assertNull($ctx->dithering);
+    }
+
+    public function test_render_context_merge_dithering_none_overrides_parent(): void
+    {
+        $parent = new RenderContext(
+            fill: new Color(0, null),
+            stroke: null,
+            transform: Transform::identity(),
+            opacity: 1.0,
+            fillOpacity: 1.0,
+            fillRule: FillRule::NonZero,
+            dithering: Dithering::Ordered4x4,
+        );
+        $child = $parent->merge(dithering: Dithering::None);
+        $this->assertSame(Dithering::None, $child->dithering);
+    }
+
+    public function test_shape_with_dithering(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 200, 100, 50),
+            new ColorStop(1.0, 50, 100, 200),
+        ];
+        $gradient = new LinearGradient(0, 0, 19, 0, $stops);
+        $path = Path::rect(0, 0, 20, 4);
+        $shapeWithDithering = new Shape($path, fill: $gradient, dithering: Dithering::Ordered4x4);
+        $shapeNoDithering = new Shape($path, fill: $gradient);
+
+        $canvas = Canvas::createBlank(20, 4);
+        $canvas->setDithering(Dithering::None);
+        $shapeWithDithering->render($canvas, RenderContext::defaults());
+
+        $canvasNoDither = Canvas::createBlank(20, 4);
+        $canvasNoDither->setDithering(Dithering::None);
+        $shapeNoDithering->render($canvasNoDither, RenderContext::defaults());
+
+        $different = false;
+        for ($y = 0; $y < 4; $y++) {
+            for ($x = 0; $x < 20; $x++) {
+                if ($canvas->data[$y][$x]->fg !== $canvasNoDither->data[$y][$x]->fg) {
+                    $different = true;
+                    break 2;
+                }
+            }
+        }
+        $this->assertTrue($different, 'Shape with dithering override should produce different output');
+    }
+
+    public function test_group_inherits_dithering_to_children(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 200, 100, 50),
+            new ColorStop(1.0, 50, 100, 200),
+        ];
+        $gradient = new LinearGradient(0, 0, 9, 0, $stops);
+        $path = Path::rect(0, 0, 10, 2);
+        $child = new Shape($path, fill: $gradient);
+        $group = new Group(dithering: Dithering::Ordered4x4);
+        $group->addChild($child);
+
+        $canvas = Canvas::createBlank(10, 2);
+        $group->render($canvas, RenderContext::defaults());
+
+        $canvasNoDither = Canvas::createBlank(10, 2);
+        $child->render($canvasNoDither, RenderContext::defaults());
+
+        $different = false;
+        for ($y = 0; $y < 2; $y++) {
+            for ($x = 0; $x < 10; $x++) {
+                if ($canvas->data[$y][$x]->fg !== $canvasNoDither->data[$y][$x]->fg) {
+                    $different = true;
+                    break 2;
+                }
+            }
+        }
+        $this->assertTrue($different, 'Group dithering should propagate to child shapes');
     }
 }

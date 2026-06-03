@@ -11,6 +11,7 @@ class RenderContext
         public readonly float $opacity,
         public readonly float $fillOpacity,
         public readonly FillRule $fillRule,
+        public readonly ?Dithering $dithering = null,
     ) {
     }
 
@@ -23,6 +24,7 @@ class RenderContext
             opacity: 1.0,
             fillOpacity: 1.0,
             fillRule: FillRule::NonZero,
+            dithering: null,
         );
     }
 
@@ -33,6 +35,7 @@ class RenderContext
         ?float $opacity = null,
         ?float $fillOpacity = null,
         ?FillRule $fillRule = null,
+        ?Dithering $dithering = null,
     ): self {
         return new self(
             fill: $fill ?? $this->fill,
@@ -47,6 +50,7 @@ class RenderContext
                 ? $this->fillOpacity * $fillOpacity
                 : $this->fillOpacity,
             fillRule: $fillRule ?? $this->fillRule,
+            dithering: $dithering ?? $this->dithering,
         );
     }
 }

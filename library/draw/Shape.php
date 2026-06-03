@@ -12,6 +12,7 @@ class Shape implements SceneNode
         public readonly ?float $opacity = null,
         public readonly ?float $fillOpacity = null,
         public readonly ?FillRule $fillRule = null,
+        public readonly ?Dithering $dithering = null,
     ) {
     }
 
@@ -28,6 +29,7 @@ class Shape implements SceneNode
             opacity: $this->opacity,
             fillOpacity: $this->fillOpacity,
             fillRule: $this->fillRule,
+            dithering: $this->dithering,
         );
 
         if ($effective->fill === null && $effective->stroke === null) {
@@ -44,6 +46,10 @@ class Shape implements SceneNode
             $canvas->concatTransform($this->transform);
         }
 
+        $prevDithering = $canvas->getDithering();
+        $resolvedDithering = $effective->dithering ?? $prevDithering;
+        $canvas->setDithering($resolvedDithering);
+
         $canvas->drawPath(
             $this->path,
             $effective->fill,
@@ -53,6 +59,8 @@ class Shape implements SceneNode
             $effective->fillOpacity,
             $effective->opacity,
         );
+
+        $canvas->setDithering($prevDithering);
 
         $canvas->restore();
     }
