@@ -7,7 +7,7 @@ namespace draw;
  * @property-read ?int $fg
  * @property-read ?int $bg
  */
-class Color
+class Color implements Paint
 {
     public const White = 0;
     public const Black = 2;
@@ -55,6 +55,19 @@ class Color
             E_USER_NOTICE
         );
         return false;
+    }
+
+    public function isSolid(): bool
+    {
+        return true;
+    }
+
+    public function getColorAt(float $x, float $y): array
+    {
+        if ($this->fg === null) {
+            return [0, 0, 0];
+        }
+        return IrcPalette::getRgb($this->fg);
     }
 
     public function equals(Color $color): bool
