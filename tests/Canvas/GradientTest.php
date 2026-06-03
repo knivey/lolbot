@@ -3,6 +3,7 @@
 namespace Tests\Canvas;
 
 use draw\ColorStop;
+use draw\Dithering;
 use draw\LinearGradient;
 use draw\RadialGradient;
 use draw\SpreadMethod;
@@ -339,5 +340,65 @@ class GradientTest extends TestCase
         ], spreadMethod: SpreadMethod::Reflect);
         $rgb = $g->getColorAt(13.0, 0.0);
         $this->assertSame([70, 0, 0], $rgb);
+    }
+
+    public function test_linear_gradient_getDithering_defaults_to_null(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ];
+        $grad = new LinearGradient(0, 0, 80, 0, $stops);
+        $this->assertNull($grad->getDithering());
+    }
+
+    public function test_linear_gradient_getDithering_returns_override(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ];
+        $grad = new LinearGradient(0, 0, 80, 0, $stops, dithering: Dithering::Ordered4x4);
+        $this->assertSame(Dithering::Ordered4x4, $grad->getDithering());
+    }
+
+    public function test_linear_gradient_getDithering_returns_none_when_explicit(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ];
+        $grad = new LinearGradient(0, 0, 80, 0, $stops, dithering: Dithering::None);
+        $this->assertSame(Dithering::None, $grad->getDithering());
+    }
+
+    public function test_radial_gradient_getDithering_defaults_to_null(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ];
+        $grad = new RadialGradient(40, 24, 20, $stops);
+        $this->assertNull($grad->getDithering());
+    }
+
+    public function test_radial_gradient_getDithering_returns_override(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ];
+        $grad = new RadialGradient(40, 24, 20, $stops, dithering: Dithering::Ordered4x4);
+        $this->assertSame(Dithering::Ordered4x4, $grad->getDithering());
+    }
+
+    public function test_radial_gradient_getDithering_with_focal_and_spread(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ];
+        $grad = new RadialGradient(40, 24, 20, $stops, fx: 38, fy: 22, spreadMethod: SpreadMethod::Reflect, dithering: Dithering::Ordered4x4);
+        $this->assertSame(Dithering::Ordered4x4, $grad->getDithering());
     }
 }

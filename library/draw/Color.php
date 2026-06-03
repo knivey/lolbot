@@ -70,6 +70,11 @@ class Color implements Paint
         return IrcPalette::getRgb($this->fg);
     }
 
+    public function getDithering(): ?Dithering
+    {
+        return null;
+    }
+
     public function equals(Color $color): bool
     {
         if ($this->fg === $color->fg && $this->bg === $color->bg) {

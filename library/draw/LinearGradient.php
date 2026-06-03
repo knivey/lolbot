@@ -17,6 +17,7 @@ class LinearGradient implements Paint
         public readonly float $y2,
         array $stops,
         public readonly SpreadMethod $spreadMethod = SpreadMethod::Pad,
+        public readonly ?Dithering $dithering = null,
     ) {
         if (count($stops) < 2) {
             throw new \InvalidArgumentException('LinearGradient requires at least 2 stops');
@@ -43,6 +44,11 @@ class LinearGradient implements Paint
         $t = (($x - $this->x1) * $dx + ($y - $this->y1) * $dy) / $lenSq;
         $t = $this->applySpread($t);
         return $this->interpolateStops($t);
+    }
+
+    public function getDithering(): ?Dithering
+    {
+        return $this->dithering;
     }
 
 }

@@ -10,4 +10,6 @@ interface Paint
     public function getColorAt(float $x, float $y): array;
 
     public function isSolid(): bool;
+
+    public function getDithering(): ?Dithering;
 }

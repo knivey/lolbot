@@ -20,6 +20,7 @@ class RadialGradient implements Paint
         ?float $fx = null,
         ?float $fy = null,
         public readonly SpreadMethod $spreadMethod = SpreadMethod::Pad,
+        public readonly ?Dithering $dithering = null,
     ) {
         if ($r <= 0) {
             throw new \InvalidArgumentException("RadialGradient radius must be > 0, got $r");
@@ -53,6 +54,11 @@ class RadialGradient implements Paint
         $t = $dist / $this->r;
         $t = $this->applySpread($t);
         return $this->interpolateStops($t);
+    }
+
+    public function getDithering(): ?Dithering
+    {
+        return $this->dithering;
     }
 
 }

@@ -4,6 +4,7 @@ namespace Tests\Canvas;
 
 use draw\Color;
 use draw\ColorStop;
+use draw\Dithering;
 use draw\LinearGradient;
 use draw\Paint;
 use draw\RadialGradient;
@@ -89,5 +90,11 @@ class PaintTest extends TestCase
             $this->assertGreaterThanOrEqual(0, $c);
             $this->assertLessThanOrEqual(255, $c);
         }
+    }
+
+    public function test_color_getDithering_returns_null(): void
+    {
+        $color = new Color(0, null);
+        $this->assertNull($color->getDithering());
     }
 }
