@@ -13,6 +13,7 @@ use draw\LineJoin;
 use draw\LinearGradient;
 use draw\RadialGradient;
 use draw\ColorStop;
+use draw\Dithering;
 use draw\SpreadMethod;
 use PHPUnit\Framework\TestCase;
 
@@ -1005,5 +1006,80 @@ class CanvasTest extends TestCase
 
         $this->assertNotNull($canvas->data[5][5]->fg);
         $this->assertNull($canvas->data[5][5]->bg);
+    }
+
+    public function test_canvas_setDithering_getDithering_roundtrip(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $this->assertSame(Dithering::None, $canvas->getDithering());
+        $canvas->setDithering(Dithering::Ordered4x4);
+        $this->assertSame(Dithering::Ordered4x4, $canvas->getDithering());
+    }
+
+    public function test_canvas_dithering_affects_gradient_fill(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 200, 100, 50),
+            new ColorStop(1.0, 50, 100, 200),
+        ];
+        $gradient = new LinearGradient(0, 0, 9, 0, $stops);
+
+        $none = Canvas::createBlank(10, 1);
+        $none->drawPath(
+            Path::rect(0, 0, 10, 1),
+            $gradient,
+            null,
+        );
+
+        $dithered = Canvas::createBlank(10, 1);
+        $dithered->setDithering(Dithering::Ordered4x4);
+        $dithered->drawPath(
+            Path::rect(0, 0, 10, 1),
+            $gradient,
+            null,
+        );
+
+        $different = false;
+        for ($x = 0; $x < 10; $x++) {
+            if ($none->data[0][$x]->fg !== $dithered->data[0][$x]->fg) {
+                $different = true;
+                break;
+            }
+        }
+        $this->assertTrue($different, 'Dithered gradient should produce different colors than undithered');
+    }
+
+    public function test_canvas_paint_dithering_overrides_canvas_default(): void
+    {
+        $stops = [
+            new ColorStop(0.0, 200, 100, 50),
+            new ColorStop(1.0, 50, 100, 200),
+        ];
+        $gradientNone = new LinearGradient(0, 0, 9, 0, $stops, dithering: Dithering::None);
+        $gradientDithered = new LinearGradient(0, 0, 9, 0, $stops, dithering: Dithering::Ordered4x4);
+
+        $canvasDitherDefault = Canvas::createBlank(10, 1);
+        $canvasDitherDefault->setDithering(Dithering::Ordered4x4);
+        $canvasDitherDefault->drawPath(
+            Path::rect(0, 0, 10, 1),
+            $gradientNone,
+            null,
+        );
+
+        $canvasNoneDefault = Canvas::createBlank(10, 1);
+        $canvasNoneDefault->drawPath(
+            Path::rect(0, 0, 10, 1),
+            $gradientDithered,
+            null,
+        );
+
+        $different = false;
+        for ($x = 0; $x < 10; $x++) {
+            if ($canvasDitherDefault->data[0][$x]->fg !== $canvasNoneDefault->data[0][$x]->fg) {
+                $different = true;
+                break;
+            }
+        }
+        $this->assertTrue($different, 'Paint dithering override should differ from canvas default');
     }
 }

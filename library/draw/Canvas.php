@@ -16,6 +16,17 @@ class Canvas
     private Transform $ctm;
     /** @var array<int, Transform> */
     private array $transformStack = [];
+    private Dithering $dithering = Dithering::None;
+
+    public function setDithering(Dithering $mode): void
+    {
+        $this->dithering = $mode;
+    }
+
+    public function getDithering(): Dithering
+    {
+        return $this->dithering;
+    }
 
     private function __construct(readonly public bool $halfblocks = false)
     {
@@ -228,8 +239,9 @@ class Canvas
                 $this->data[$y][$x]->fg = $paint->fg;
                 $this->data[$y][$x]->bg = $paint->bg;
             } else {
+                $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                 [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
-                $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b);
+                $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b, $effectiveDithering, $x, $y);
                 $this->data[$y][$x]->bg = null;
             }
             if ($text != '') {
@@ -316,8 +328,9 @@ class Canvas
                     $this->data[$y][$x]->fg = $paint->fg;
                     $this->data[$y][$x]->bg = $paint->bg;
                 } else {
+                    $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                     [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
-                    $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b);
+                    $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b, $effectiveDithering, $x, $y);
                     $this->data[$y][$x]->bg = null;
                 }
                 if ($text != '') {
@@ -391,6 +404,7 @@ class Canvas
 
         if ($opacity < 1.0) {
             $temp = Canvas::createBlank($this->w, $this->h, $this->halfblocks);
+            $temp->setDithering($this->dithering);
             $this->renderFill($temp, $snappedSubpaths, $fill, $text, $fillRule, $fillOpacity);
             $this->renderStroke($temp, $snappedSubpaths, $stroke, $text, $strokeOpacity);
             Compositor::blend($this, $temp, $opacity);
@@ -417,6 +431,7 @@ class Canvas
         if (count($polygonArrays) > 0) {
             if ($fillOpacity < 1.0) {
                 $temp = Canvas::createBlank($target->w, $target->h, $target->halfblocks);
+                $temp->setDithering($this->dithering);
                 $temp->fillPolygonScanlineMulti($polygonArrays, $fill, $text, $fillRule);
                 Compositor::blend($target, $temp, $fillOpacity);
             } else {
@@ -435,6 +450,7 @@ class Canvas
         }
         if ($strokeOpacity < 1.0) {
             $temp = Canvas::createBlank($target->w, $target->h, $target->halfblocks);
+            $temp->setDithering($this->dithering);
             foreach ($snappedSubpaths as $sp) {
                 $temp->strokeSubpath($sp, $stroke, $text);
             }
@@ -584,8 +600,9 @@ class Canvas
                             $this->data[$Y][$xx]->fg = $paint->fg;
                             $this->data[$Y][$xx]->bg = $paint->bg;
                         } else {
+                            $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                             [$r, $g, $b] = $paint->getColorAt((float) $xx, (float) $Y);
-                            $this->data[$Y][$xx]->fg = IrcPalette::nearestColor($r, $g, $b);
+                            $this->data[$Y][$xx]->fg = IrcPalette::nearestColor($r, $g, $b, $effectiveDithering, $xx, $Y);
                             $this->data[$Y][$xx]->bg = null;
                         }
                         if ($text != '') {
