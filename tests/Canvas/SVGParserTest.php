@@ -386,4 +386,78 @@ class SVGParserTest extends TestCase
         $doc->render($canvas);
         $this->assertNotNull($canvas->data[2][10]->fg);
     }
+
+    public function test_integration_nested_groups_with_styles(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><g fill="red"><g transform="translate(5,5)"><rect x="0" y="0" width="5" height="5"/></g></g></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNull($canvas->data[2][2]->fg);
+        $this->assertNotNull($canvas->data[7][7]->fg);
+    }
+
+    public function test_integration_viewbox_with_shapes(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="50" fill="blue"/><rect x="0" y="0" width="200" height="200" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(40, 40);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[20][20]->fg);
+    }
+
+    public function test_integration_fill_and_stroke(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="16" height="6" fill="red" stroke="white" stroke-width="2"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+        $this->assertNotNull($canvas->data[2][5]->fg);
+    }
+
+    public function test_integration_readFile(): void
+    {
+        $tmpFile = tempnam(sys_get_temp_dir(), 'svgtest_');
+        file_put_contents($tmpFile, '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="red"/></svg>');
+        try {
+            $doc = SVGParser::readFile($tmpFile);
+            $canvas = Canvas::createBlank(10, 10);
+            $doc->render($canvas);
+            $this->assertNotNull($canvas->data[5][5]->fg);
+        } finally {
+            unlink($tmpFile);
+        }
+    }
+
+    public function test_integration_malformed_xml_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        SVGParser::parseString('<not valid xml');
+    }
+
+    public function test_integration_nonexistent_file_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        SVGParser::readFile('/nonexistent/path/to/file.svg');
+    }
+
+    public function test_integration_complex_path(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><path d="M 10 0 L 20 20 L 0 20 Z" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(25, 25);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[10][10]->fg);
+    }
+
+    public function test_integration_evenodd_fill_rule(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><path d="M 0 0 L 20 0 L 20 20 L 0 20 Z M 5 5 L 15 5 L 15 15 L 5 15 Z" fill="red" fill-rule="evenodd"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(25, 25);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[2][2]->fg);
+        $this->assertNull($canvas->data[10][10]->fg);
+    }
 }
