@@ -36,6 +36,7 @@ function svg(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
     try {
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url);
+        $request->setBodySizeLimit($maxSize);
 
         /** @var Response $response */
         $response = $client->request($request);
@@ -45,20 +46,7 @@ function svg(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
             return;
         }
 
-        $contentLength = $response->getHeader('content-length');
-        if ($contentLength !== null && (int)$contentLength > $maxSize) {
-            $bot->notice($args->nick, "SVG file too large (max 2MB)");
-            return;
-        }
-
-        $body = '';
-        foreach ($response->getBody() as $chunk) {
-            $body .= $chunk;
-            if (strlen($body) > $maxSize) {
-                $bot->notice($args->nick, "SVG file too large (max 2MB)");
-                return;
-            }
-        }
+        $body = $response->getBody()->buffer();
 
         $contentType = strtolower($response->getHeader('content-type') ?? '');
         $isSvgType = str_contains($contentType, 'svg')
@@ -82,6 +70,8 @@ function svg(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
 
         $lines = explode("\n", $output);
         \pumpToChan($bot, $args->chan, $lines);
+    } catch (\Amp\Http\Client\ParseException $e) {
+        $bot->notice($args->nick, "SVG file too large (max 2MB)");
     } catch (\InvalidArgumentException $e) {
         $bot->notice($args->nick, "Failed to parse SVG");
     } catch (\Throwable $e) {
