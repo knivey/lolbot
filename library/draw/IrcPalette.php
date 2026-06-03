@@ -16,6 +16,9 @@ class IrcPalette
     /** @var array<int, array{int, int, int}>|null */
     private static ?array $rgbPalette = null;
 
+    /** @var array<int, int> */
+    private static array $nearestCache = [];
+
     /**
      * @return array<int, string>
      */
@@ -72,6 +75,11 @@ class IrcPalette
 
     public static function nearestColor(int $r, int $g, int $b): int
     {
+        $key = ($r << 16) | ($g << 8) | $b;
+        if (isset(self::$nearestCache[$key])) {
+            return self::$nearestCache[$key];
+        }
+
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
         $bestIdx = 0;
@@ -83,6 +91,7 @@ class IrcPalette
                 $bestDist = $d;
             }
         }
+        self::$nearestCache[$key] = $bestIdx;
         return $bestIdx;
     }
 

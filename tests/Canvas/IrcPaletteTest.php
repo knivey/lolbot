@@ -90,4 +90,11 @@ class IrcPaletteTest extends TestCase
         $lastRgb = IrcPalette::getRgb(98);
         $this->assertSame([255, 255, 255], $lastRgb);
     }
+
+    public function test_nearestColor_returns_consistent_results(): void
+    {
+        $first = IrcPalette::nearestColor(200, 100, 50);
+        $second = IrcPalette::nearestColor(200, 100, 50);
+        $this->assertSame($first, $second);
+    }
 }
