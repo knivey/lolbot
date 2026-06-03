@@ -118,7 +118,7 @@ class IrcPalette
 
         $bestIdx = 0;
         $bestDist = INF;
-        $secondIdx = 1;
+        $secondIdx = -1;
         $secondDist = INF;
         foreach (self::$colorPalette as $idx => $palColor) {
             $d = $target->getDifferenceDin99($palColor);
@@ -133,6 +133,10 @@ class IrcPalette
             }
         }
 
+        if ($secondIdx === -1) {
+            return $bestIdx;
+        }
+
         if ($bestDist < 0.001) {
             return $bestIdx;
         }
@@ -140,6 +144,25 @@ class IrcPalette
         self::$rgbPalette ??= self::buildRgbPalette();
         $br = self::$rgbPalette[$bestIdx];
         $sr = self::$rgbPalette[$secondIdx];
+        if ($br[0] === $sr[0] && $br[1] === $sr[1] && $br[2] === $sr[2]) {
+            $secondIdx = -1;
+            $secondDist = INF;
+            foreach (self::$colorPalette as $idx => $palColor) {
+                $pr = self::$rgbPalette[$idx];
+                if ($pr[0] === $br[0] && $pr[1] === $br[1] && $pr[2] === $br[2]) {
+                    continue;
+                }
+                $d = $target->getDifferenceDin99($palColor);
+                if ($d < $secondDist) {
+                    $secondIdx = $idx;
+                    $secondDist = $d;
+                }
+            }
+            if ($secondIdx === -1) {
+                return $bestIdx;
+            }
+            $sr = self::$rgbPalette[$secondIdx];
+        }
         $dr = $sr[0] - $br[0];
         $dg = $sr[1] - $br[1];
         $db = $sr[2] - $br[2];
