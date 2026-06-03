@@ -108,9 +108,9 @@ class IrcPaletteTest extends TestCase
 
     public function test_nearestColor_dithering_changes_result_for_some_pixels(): void
     {
-        $midR = 128;
-        $midG = 64;
-        $midB = 32;
+        $midR = 160;
+        $midG = 100;
+        $midB = 60;
         $none0 = IrcPalette::nearestColor($midR, $midG, $midB, Dithering::None, 0, 0);
         $dither0 = IrcPalette::nearestColor($midR, $midG, $midB, Dithering::Ordered4x4, 0, 0);
         $dither5 = IrcPalette::nearestColor($midR, $midG, $midB, Dithering::Ordered4x4, 3, 0);

@@ -137,10 +137,24 @@ class IrcPalette
             return $bestIdx;
         }
 
+        self::$rgbPalette ??= self::buildRgbPalette();
+        $br = self::$rgbPalette[$bestIdx];
+        $sr = self::$rgbPalette[$secondIdx];
+        $dr = $sr[0] - $br[0];
+        $dg = $sr[1] - $br[1];
+        $db = $sr[2] - $br[2];
+        $lenSq = $dr * $dr + $dg * $dg + $db * $db;
+        if ($lenSq < 0.001) {
+            return $bestIdx;
+        }
+        $ir = $r - $br[0];
+        $ig = $g - $br[1];
+        $ib = $b - $br[2];
+        $t = ($ir * $dr + $ig * $dg + $ib * $db) / $lenSq;
+        $t = max(0.0, min(1.0, $t));
+
         $bayer = self::BAYER_4X4[$y & 3][$x & 3];
         $threshold = ($bayer + 0.5) / 16.0;
-
-        $t = $bestDist / ($bestDist + $secondDist);
 
         if ($t >= $threshold) {
             return $secondIdx;
