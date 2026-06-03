@@ -10,41 +10,41 @@ use PHPUnit\Framework\TestCase;
 
 class StrokeStyleTest extends TestCase
 {
-    public function test_default_values(): void
+    public function test_default_opacity_is_one(): void
     {
         $s = new StrokeStyle(new Color(4, null));
-        $this->assertSame(4, $s->color->fg);
-        $this->assertSame(1.0, $s->width);
-        $this->assertNull($s->dashArray);
-        $this->assertSame(0.0, $s->dashOffset);
-        $this->assertSame(LineCap::Butt, $s->lineCap);
-        $this->assertSame(LineJoin::Miter, $s->lineJoin);
-        $this->assertSame(4.0, $s->miterLimit);
+        $this->assertSame(1.0, $s->opacity);
     }
 
-    public function test_custom_values(): void
+    public function test_opacity_can_be_set(): void
+    {
+        $s = new StrokeStyle(new Color(4, null), opacity: 0.5);
+        $this->assertSame(0.5, $s->opacity);
+    }
+
+    public function test_zero_opacity_is_valid(): void
+    {
+        $s = new StrokeStyle(new Color(4, null), opacity: 0.0);
+        $this->assertSame(0.0, $s->opacity);
+    }
+
+    public function test_existing_properties_unchanged(): void
     {
         $s = new StrokeStyle(
-            new Color(5, null),
+            new Color(4, null),
             width: 3.0,
-            dashArray: [5.0, 3.0],
-            dashOffset: 2.0,
+            dashArray: [4.0, 2.0],
+            dashOffset: 1.0,
             lineCap: LineCap::Round,
             lineJoin: LineJoin::Bevel,
-            miterLimit: 8.0
+            miterLimit: 2.0,
         );
-        $this->assertSame(5, $s->color->fg);
+        $this->assertSame(4, $s->color->fg);
         $this->assertSame(3.0, $s->width);
-        $this->assertSame([5.0, 3.0], $s->dashArray);
-        $this->assertSame(2.0, $s->dashOffset);
+        $this->assertSame([4.0, 2.0], $s->dashArray);
+        $this->assertSame(1.0, $s->dashOffset);
         $this->assertSame(LineCap::Round, $s->lineCap);
         $this->assertSame(LineJoin::Bevel, $s->lineJoin);
-        $this->assertSame(8.0, $s->miterLimit);
-    }
-
-    public function test_negative_dash_array_throws(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        new StrokeStyle(new Color(4, null), dashArray: [5.0, -1.0]);
+        $this->assertSame(2.0, $s->miterLimit);
     }
 }

@@ -11,7 +11,8 @@ class StrokeStyle
         public readonly float $dashOffset = 0.0,
         public readonly LineCap $lineCap = LineCap::Butt,
         public readonly LineJoin $lineJoin = LineJoin::Miter,
-        public readonly float $miterLimit = 4.0
+        public readonly float $miterLimit = 4.0,
+        public readonly float $opacity = 1.0,
     ) {
         if ($dashArray !== null) {
             foreach ($dashArray as $v) {
