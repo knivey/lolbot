@@ -25,7 +25,6 @@ class Shape implements SceneNode
         $effective = $ctx->merge(
             fill: $this->fill,
             stroke: $this->stroke,
-            transform: $this->transform,
             opacity: $this->opacity,
             fillOpacity: $this->fillOpacity,
             fillRule: $this->fillRule,
