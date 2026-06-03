@@ -57,7 +57,7 @@ class StrokeStyleTest extends TestCase
             lineJoin: LineJoin::Bevel,
             miterLimit: 2.0,
         );
-        $this->assertSame(4, $s->color->fg);
+        $this->assertSame(4, $s->paint->fg);
         $this->assertSame(3.0, $s->width);
         $this->assertSame([4.0, 2.0], $s->dashArray);
         $this->assertSame(1.0, $s->dashOffset);

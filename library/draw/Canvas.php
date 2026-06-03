@@ -216,7 +216,7 @@ class Canvas
         $this->concatTransform(Transform::skewY($angle));
     }
 
-    public function drawPoint(int|float $x, int|float $y, Color $color, string $text = ''): void
+    public function drawPoint(int|float $x, int|float $y, Paint $paint, string $text = ''): void
     {
         if (!$this->isIdentity($this->ctm)) {
             [$x, $y] = $this->ctm->apply((float) $x, (float) $y);
@@ -224,8 +224,14 @@ class Canvas
         $x = (int) round($x);
         $y = (int) round($y);
         if (isset($this->data[$y][$x])) {
-            $this->data[$y][$x]->fg = $color->fg;
-            $this->data[$y][$x]->bg = $color->bg;
+            if ($paint->isSolid() && $paint instanceof Color) {
+                $this->data[$y][$x]->fg = $paint->fg;
+                $this->data[$y][$x]->bg = $paint->bg;
+            } else {
+                [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
+                $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b);
+                $this->data[$y][$x]->bg = null;
+            }
             if ($text != '') {
                 $this->data[$y][$x]->text = $text;
             }
@@ -294,7 +300,7 @@ class Canvas
             && $e[3] === 1.0 && $e[4] === 0.0 && $e[5] === 0.0;
     }
 
-    private function drawLineInternal(int $startX, int $startY, int $endX, int $endY, Color $color, string $text = ''): void
+    private function drawLineInternal(int $startX, int $startY, int $endX, int $endY, Paint $paint, string $text = ''): void
     {
         $dx = abs($endX - $startX);
         $dy = abs($endY - $startY);
@@ -306,8 +312,14 @@ class Canvas
         $cnt = 0;
         while ($cnt++ < 1000) {
             if (isset($this->data[$y][$x])) {
-                $this->data[$y][$x]->fg = $color->fg;
-                $this->data[$y][$x]->bg = $color->bg;
+                if ($paint->isSolid() && $paint instanceof Color) {
+                    $this->data[$y][$x]->fg = $paint->fg;
+                    $this->data[$y][$x]->bg = $paint->bg;
+                } else {
+                    [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
+                    $this->data[$y][$x]->fg = IrcPalette::nearestColor($r, $g, $b);
+                    $this->data[$y][$x]->bg = null;
+                }
                 if ($text != '') {
                     $this->data[$y][$x]->text = $text;
                 }
@@ -329,7 +341,7 @@ class Canvas
 
     /**
      * @param Path $path The path to render.
-     * @param ?Color $fillColor Fill color, or null for no fill.
+     * @param ?Paint $fill Fill paint, or null for no fill.
      * @param ?StrokeStyle $stroke Stroke style, or null for no outline.
      * @param string $text Optional text for rendered pixels.
      * @param FillRule $fillRule Fill rule for scanline conversion.
@@ -338,7 +350,7 @@ class Canvas
      */
     public function drawPath(
         Path $path,
-        ?Color $fillColor,
+        ?Paint $fill,
         ?StrokeStyle $stroke,
         string $text = '',
         FillRule $fillRule = FillRule::NonZero,
@@ -349,7 +361,7 @@ class Canvas
         if (count($subpaths) === 0) {
             return;
         }
-        if ($fillColor === null && $stroke === null) {
+        if ($fill === null && $stroke === null) {
             return;
         }
 
@@ -379,11 +391,11 @@ class Canvas
 
         if ($opacity < 1.0) {
             $temp = Canvas::createBlank($this->w, $this->h, $this->halfblocks);
-            $this->renderFill($temp, $snappedSubpaths, $fillColor, $text, $fillRule, $fillOpacity);
+            $this->renderFill($temp, $snappedSubpaths, $fill, $text, $fillRule, $fillOpacity);
             $this->renderStroke($temp, $snappedSubpaths, $stroke, $text, $strokeOpacity);
             Compositor::blend($this, $temp, $opacity);
         } else {
-            $this->renderFill($this, $snappedSubpaths, $fillColor, $text, $fillRule, $fillOpacity);
+            $this->renderFill($this, $snappedSubpaths, $fill, $text, $fillRule, $fillOpacity);
             $this->renderStroke($this, $snappedSubpaths, $stroke, $text, $strokeOpacity);
         }
     }
@@ -391,9 +403,9 @@ class Canvas
     /**
      * @param array<int, array{vertices: array<int, array{int, int}>, closed: bool}> $snappedSubpaths
      */
-    private function renderFill(Canvas $target, array $snappedSubpaths, ?Color $fillColor, string $text, FillRule $fillRule, float $fillOpacity): void
+    private function renderFill(Canvas $target, array $snappedSubpaths, ?Paint $fill, string $text, FillRule $fillRule, float $fillOpacity): void
     {
-        if ($fillColor === null) {
+        if ($fill === null) {
             return;
         }
         $polygonArrays = [];
@@ -405,10 +417,10 @@ class Canvas
         if (count($polygonArrays) > 0) {
             if ($fillOpacity < 1.0) {
                 $temp = Canvas::createBlank($target->w, $target->h, $target->halfblocks);
-                $temp->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text, $fillRule);
+                $temp->fillPolygonScanlineMulti($polygonArrays, $fill, $text, $fillRule);
                 Compositor::blend($target, $temp, $fillOpacity);
             } else {
-                $target->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text, $fillRule);
+                $target->fillPolygonScanlineMulti($polygonArrays, $fill, $text, $fillRule);
             }
         }
     }
@@ -463,7 +475,7 @@ class Canvas
                         (int) $segVerts[$i - 1][1],
                         (int) $segVerts[$i][0],
                         (int) $segVerts[$i][1],
-                        $stroke->color,
+                        $stroke->paint,
                         $text
                     );
                 }
@@ -473,7 +485,7 @@ class Canvas
                         (int) $segVerts[$segN - 1][1],
                         (int) $segVerts[0][0],
                         (int) $segVerts[0][1],
-                        $stroke->color,
+                        $stroke->paint,
                         $text
                     );
                 }
@@ -496,7 +508,7 @@ class Canvas
 
             $polygon = $this->expandStrokePolygon($segVerts, $segClosed, $halfW, $stroke);
             if (count($polygon) >= 3) {
-                $this->fillPolygonScanlineMulti([$polygon], $stroke->color, $text, FillRule::NonZero);
+                $this->fillPolygonScanlineMulti([$polygon], $stroke->paint, $text, FillRule::NonZero);
             }
         }
     }
@@ -511,7 +523,7 @@ class Canvas
      *
      * @param array<int, array<int, array{int, int}>> $subpaths
      */
-    private function fillPolygonScanlineMulti(array $subpaths, Color $color, string $text, FillRule $fillRule): void
+    private function fillPolygonScanlineMulti(array $subpaths, Paint $paint, string $text, FillRule $fillRule): void
     {
         if (count($subpaths) === 0) {
             return;
@@ -563,13 +575,19 @@ class Canvas
             // Sort by x so we can walk left-to-right.
             usort($intersections, fn ($a, $b) => $a[0] <=> $b[0]);
 
-            $fillSpan = function (float $x0, float $x1) use ($Y, $color, $text): void {
+            $fillSpan = function (float $x0, float $x1) use ($Y, $paint, $text): void {
                 $xL = (int) ceil($x0);
                 $xR = (int) floor($x1);
                 for ($xx = $xL; $xx <= $xR; $xx++) {
                     if (isset($this->data[$Y][$xx])) {
-                        $this->data[$Y][$xx]->fg = $color->fg;
-                        $this->data[$Y][$xx]->bg = $color->bg;
+                        if ($paint->isSolid() && $paint instanceof Color) {
+                            $this->data[$Y][$xx]->fg = $paint->fg;
+                            $this->data[$Y][$xx]->bg = $paint->bg;
+                        } else {
+                            [$r, $g, $b] = $paint->getColorAt((float) $xx, (float) $Y);
+                            $this->data[$Y][$xx]->fg = IrcPalette::nearestColor($r, $g, $b);
+                            $this->data[$Y][$xx]->bg = null;
+                        }
                         if ($text != '') {
                             $this->data[$Y][$xx]->text = $text;
                         }

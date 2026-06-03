@@ -7,7 +7,7 @@ class StrokeStyle
     public readonly float $opacity;
 
     public function __construct(
-        public readonly Color $color,
+        public readonly Paint $paint,
         public readonly float $width = 1.0,
         public readonly ?array $dashArray = null,
         public readonly float $dashOffset = 0.0,
