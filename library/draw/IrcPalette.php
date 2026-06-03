@@ -19,6 +19,8 @@ class IrcPalette
     /** @var array<int, int> */
     private static array $nearestCache = [];
 
+    private const CACHE_LIMIT = 4096;
+
     /**
      * @return array<int, string>
      */
@@ -92,6 +94,9 @@ class IrcPalette
             }
         }
         self::$nearestCache[$key] = $bestIdx;
+        if (count(self::$nearestCache) > self::CACHE_LIMIT) {
+            self::$nearestCache = [];
+        }
         return $bestIdx;
     }
 
