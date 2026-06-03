@@ -17,6 +17,7 @@ use draw\StrokeStyle;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
+use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("linetest")]
@@ -421,6 +422,7 @@ $demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'st
 #[Cmd("demo")]
 #[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor). Random if no arg.")]
 #[Syntax('[name]')]
+#[Options("--dithered")]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $demos;
@@ -438,6 +440,10 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 
     $art = Canvas::createBlank(80, 48, true);
     $art->fillColor(0, 0, new Color(1, 1));
+
+    if ($cmdArgs->optEnabled('--dithered')) {
+        $art->setDithering(Dithering::Ordered4x4);
+    }
 
     match ($name) {
         'flowers' => demoFlowers($art),
