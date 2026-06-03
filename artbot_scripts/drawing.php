@@ -421,7 +421,7 @@ $demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'st
 #[Cmd("demo")]
 #[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest). Random if no arg.")]
 #[Syntax('[name]')]
-#[Option("--dither", "Dithering mode: spatial or shader")]
+#[Option("--dither", "Dithering mode: spatial, shader, or all")]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $demos;
