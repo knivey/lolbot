@@ -4,9 +4,13 @@ namespace artbot_scripts;
 
 use draw\Canvas;
 use draw\Color;
+use draw\ColorStop;
+use draw\LinearGradient;
 use draw\LineCap;
 use draw\LineJoin;
 use draw\Path;
+use draw\RadialGradient;
+use draw\SpreadMethod;
 use draw\StrokeStyle;
 
 use knivey\cmdr\attributes\Cmd;
@@ -411,19 +415,24 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo'];
 
 #[Cmd("demo")]
-#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex). Random if no arg.")]
+#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo). Random if no arg.")]
 #[Syntax('[name]')]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $demos;
+    $random = !isset($cmdArgs['name']);
     $name = $cmdArgs['name'] ?? $demos[array_rand($demos)];
 
     if (!in_array($name, $demos)) {
         $bot->pm($args->chan, "unknown demo: $name  try: " . implode(', ', $demos));
         return;
+    }
+
+    if ($random) {
+        $bot->pm($args->chan, "random demo: \x02$name\x02");
     }
 
     $art = Canvas::createBlank(80, 48, true);
@@ -437,6 +446,10 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'vortex' => demoVortex($art),
         'transform' => demoTransform($art),
         'strokes' => demoStrokes($art),
+        'gradient' => demoGradient($art),
+        'opacity' => demoOpacity($art),
+        'linework' => demoLinework($art),
+        'topo' => demoTopo($art),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -639,4 +652,286 @@ function demoStrokes(Canvas $art): void
         $art->drawPath($path, null, new StrokeStyle($color, width: 3.0, lineJoin: $join));
         $jx += 14;
     }
+}
+
+function demoGradient(Canvas $art): void
+{
+    $palettes = [
+        [[255, 50, 50], [255, 165, 0], [255, 255, 0], [50, 255, 50], [50, 150, 255]],
+        [[0, 0, 80], [80, 0, 120], [200, 0, 100], [255, 100, 0], [255, 220, 50]],
+        [[10, 10, 40], [30, 60, 120], [60, 140, 200], [140, 200, 240], [220, 240, 255]],
+        [[120, 0, 60], [200, 0, 80], [255, 60, 100], [255, 140, 160], [255, 220, 230]],
+        [[0, 40, 20], [0, 100, 60], [0, 180, 80], [100, 220, 100], [200, 255, 150]],
+    ];
+    $pal = $palettes[array_rand($palettes)];
+
+    $skyGrad = new LinearGradient(0.0, 0.0, 0.0, 47.0, [
+        new ColorStop(0.0, $pal[0][0], $pal[0][1], $pal[0][2]),
+        new ColorStop(0.5, $pal[1][0], $pal[1][1], $pal[1][2]),
+        new ColorStop(1.0, $pal[2][0], $pal[2][1], $pal[2][2]),
+    ]);
+    $art->drawPath(Path::rect(0.0, 0.0, 80.0, 48.0), $skyGrad, null);
+
+    $sunX = rand(15, 65);
+    $sunY = rand(8, 18);
+    $sunR = rand(6, 12);
+    $sunGrad = new RadialGradient(
+        $sunX, $sunY, $sunR,
+        [
+            new ColorStop(0.0, 255, 255, 220),
+            new ColorStop(0.4, $pal[4][0], $pal[4][1], $pal[4][2]),
+            new ColorStop(1.0, $pal[3][0], $pal[3][1], $pal[3][2]),
+        ],
+        spreadMethod: SpreadMethod::Pad,
+    );
+    $art->drawPath(Path::circle($sunX, $sunY, $sunR), $sunGrad, null);
+
+    $numOrbs = rand(3, 6);
+    for ($i = 0; $i < $numOrbs; $i++) {
+        $ox = rand(5, 75);
+        $oy = rand(20, 40);
+        $or = rand(4, 10);
+        $orbGrad = new RadialGradient(
+            $ox, $oy, $or,
+            [
+                new ColorStop(0.0, $pal[4][0], $pal[4][1], $pal[4][2]),
+                new ColorStop(1.0, $pal[0][0], $pal[0][1], $pal[0][2]),
+            ],
+            spreadMethod: SpreadMethod::Reflect,
+        );
+        $art->drawPath(Path::circle($ox, $oy, $or), $orbGrad, null);
+    }
+
+    $numRays = rand(5, 10);
+    for ($i = 0; $i < $numRays; $i++) {
+        $angle = (2 * M_PI * $i / $numRays) + (mt_rand() / mt_getrandmax()) * 0.3;
+        $len = rand(20, 40);
+        $rayGrad = new LinearGradient(
+            $sunX, $sunY,
+            $sunX + cos($angle) * $len, $sunY + sin($angle) * $len,
+            [
+                new ColorStop(0.0, $pal[4][0], $pal[4][1], $pal[4][2]),
+                new ColorStop(1.0, $pal[2][0], $pal[2][1], $pal[2][2]),
+            ],
+        );
+        $path = new Path();
+        $path->moveTo($sunX, $sunY);
+        $path->lineTo($sunX + cos($angle) * $len, $sunY + sin($angle) * $len);
+        $art->drawPath($path, null, new StrokeStyle($rayGrad, width: 2.0));
+    }
+
+    $numHills = rand(2, 4);
+    for ($h = 0; $h < $numHills; $h++) {
+        $baseY = 32 + $h * 5;
+        $points = [];
+        for ($x = 0; $x <= 80; $x += 2) {
+            $offset = sin($x * 0.08 + $h * 2) * (6 + $h * 2)
+                    + sin($x * 0.03 + $h) * 4;
+            $points[] = [$x, $baseY + $offset];
+        }
+        $points[] = [80.0, 48.0];
+        $points[] = [0.0, 48.0];
+        $hillGrad = new LinearGradient(
+            0.0, $baseY - 10.0,
+            0.0, 48.0,
+            [
+                new ColorStop(0.0, $pal[1][0], $pal[1][1], $pal[1][2]),
+                new ColorStop(0.6, $pal[0][0], $pal[0][1], $pal[0][2]),
+                new ColorStop(1.0, $pal[0][0], $pal[0][1], $pal[0][2]),
+            ],
+        );
+        $art->drawPath(Path::polygon($points), $hillGrad, null);
+    }
+}
+
+function demoOpacity(Canvas $art): void
+{
+    $colors = [4, 7, 8, 9, 11, 12, 13];
+    $art->fillColor(0, 0, new Color(1, 1));
+
+    $numShapes = rand(6, 14);
+    for ($i = 0; $i < $numShapes; $i++) {
+        $opacity = 0.2 + (mt_rand() / mt_getrandmax()) * 0.8;
+        $fillOpacity = 0.3 + (mt_rand() / mt_getrandmax()) * 0.7;
+        $color = new Color($colors[array_rand($colors)], null);
+
+        if (mt_rand() / mt_getrandmax() < 0.5) {
+            $cx = rand(8, 72);
+            $cy = rand(8, 40);
+            $r = rand(5, 18);
+            $art->drawPath(
+                Path::circle($cx, $cy, $r),
+                $color,
+                null,
+                '',
+                \draw\FillRule::NonZero,
+                $fillOpacity,
+                $opacity,
+            );
+        } else {
+            $x = rand(5, 55);
+            $y = rand(5, 30);
+            $w = rand(8, 25);
+            $h = rand(8, 18);
+            $angle = (mt_rand() / mt_getrandmax()) * M_PI * 0.5;
+            $art->save();
+            $art->translate($x + $w / 2, $y + $h / 2);
+            $art->rotate($angle);
+            $art->drawPath(
+                Path::rect(-$w / 2, -$h / 2, $w, $h),
+                $color,
+                null,
+                '',
+                \draw\FillRule::NonZero,
+                $fillOpacity,
+                $opacity,
+            );
+            $art->restore();
+        }
+    }
+
+    $ringCx = rand(25, 55);
+    $ringCy = rand(15, 33);
+    $numRings = rand(3, 5);
+    for ($r = 0; $r < $numRings; $r++) {
+        $outerR = 6 + $r * 4;
+        $innerR = $outerR - 3;
+        $ringColor = new Color($colors[array_rand($colors)], null);
+        $path = new Path();
+        $segs = 32;
+        $startA = 0.0;
+        $path->moveTo($ringCx + cos($startA) * $outerR, $ringCy + sin($startA) * $outerR);
+        for ($s = 1; $s <= $segs; $s++) {
+            $a = 2 * M_PI * $s / $segs;
+            $path->lineTo($ringCx + cos($a) * $outerR, $ringCy + sin($a) * $outerR);
+        }
+        $path->closePath();
+        $path->moveTo($ringCx + cos($startA) * $innerR, $ringCy + sin($startA) * $innerR);
+        for ($s = $segs; $s >= 1; $s--) {
+            $a = 2 * M_PI * $s / $segs;
+            $path->lineTo($ringCx + cos($a) * $innerR, $ringCy + sin($a) * $innerR);
+        }
+        $path->closePath();
+        $art->drawPath(
+            $path,
+            $ringColor,
+            null,
+            '',
+            \draw\FillRule::EvenOdd,
+            0.7,
+            0.6 + $r * 0.1,
+        );
+    }
+}
+
+function demoLinework(Canvas $art): void
+{
+    $colors = [4, 7, 8, 9, 11, 12, 13];
+    $art->fillColor(0, 0, new Color(1, 1));
+
+    $borderColor = new Color($colors[array_rand($colors)], null);
+    $art->drawPath(
+        Path::rect(2.0, 1.0, 76.0, 46.0),
+        null,
+        new StrokeStyle($borderColor, width: 2.0, dashArray: [8.0, 4.0], lineCap: LineCap::Square),
+    );
+
+    $warpColor = new Color($colors[array_rand($colors)], null);
+    $weftColor = new Color($colors[array_rand($colors)], null);
+
+    $numCols = rand(6, 9);
+    $numRows = rand(5, 7);
+    $margin = 6.0;
+    $colSpacing = (76.0 - 2 * $margin) / $numCols;
+    $rowSpacing = (44.0 - 2 * ($margin - 3)) / $numRows;
+    $waveAmp = min($colSpacing, $rowSpacing) * 0.2;
+
+    for ($r = 0; $r < $numRows; $r++) {
+        $y = ($margin - 3) + $r * $rowSpacing;
+        $phase = $r * 0.7 + mt_rand() / mt_getrandmax() * 0.5;
+        $points = [];
+        for ($x = $margin; $x <= 76.0 - $margin; $x += 1) {
+            $points[] = [$x, $y + sin($x * 0.15 + $phase) * $waveAmp];
+        }
+        $art->drawPath(Path::polyline($points), null, new StrokeStyle(
+            $warpColor,
+            width: 2.5,
+            lineCap: LineCap::Round,
+            opacity: 0.9,
+        ));
+    }
+
+    for ($c = 0; $c < $numCols; $c++) {
+        $x = $margin + $c * $colSpacing;
+        $phase = $c * 0.9 + mt_rand() / mt_getrandmax() * 0.5;
+        $points = [];
+        for ($y = $margin - 3; $y <= 46.0 - ($margin - 3); $y += 1) {
+            $points[] = [$x + sin($y * 0.18 + $phase) * $waveAmp, $y];
+        }
+        $art->drawPath(Path::polyline($points), null, new StrokeStyle(
+            $weftColor,
+            width: 2.5,
+            dashArray: [3.0, 1.0],
+            lineCap: LineCap::Round,
+            opacity: 0.7,
+        ));
+    }
+
+    $accentColor = new Color($colors[array_rand($colors)], null);
+    for ($i = 0; $i < 3; $i++) {
+        $cx = rand(20, 60);
+        $cy = rand(10, 40);
+        $r = rand(4, 8);
+        $art->drawPath(
+            Path::circle($cx, $cy, $r),
+            null,
+            new StrokeStyle($accentColor, width: 1.5, dashArray: [2.0, 2.0], lineCap: LineCap::Round, opacity: 0.5),
+        );
+    }
+}
+
+function demoTopo(Canvas $art): void
+{
+    $colors = [4, 7, 8, 9, 11, 12, 13];
+    $art->fillColor(0, 0, new Color(1, 1));
+
+    $cx = 35 + rand(-10, 10);
+    $cy = 22 + rand(-6, 6);
+    $numContours = rand(12, 18);
+    $maxR = max($cx, 80 - $cx, $cy, 48 - $cy) + 12;
+    $lineColor = new Color($colors[array_rand($colors)], null);
+
+    for ($c = $numContours; $c >= 1; $c--) {
+        $radius = ($c / $numContours) * $maxR;
+        $points = [];
+        $segments = 72;
+        for ($s = 0; $s <= $segments; $s++) {
+            $angle = 2 * M_PI * $s / $segments;
+            $distort = 0;
+            $distort += sin($angle * 3 + $c * 0.5) * 2.0;
+            $distort += sin($angle * 5 + $c * 1.3) * 1.2;
+            $distort += cos($angle * 2 + $c * 0.7) * 1.5;
+
+            $x = $cx + cos($angle) * $radius + $distort;
+            $y = $cy + sin($angle) * $radius * 0.6 + $distort * 0.5;
+            $points[] = [$x, $y];
+        }
+
+        $width = 1.0 + ($c % 3) * 0.5;
+        $dash = $c % 4 === 0 ? [4.0, 2.0] : [];
+        $art->drawPath(Path::polyline($points), null, new StrokeStyle(
+            $lineColor,
+            width: $width,
+            dashArray: $dash,
+            lineCap: LineCap::Round,
+            opacity: 0.3 + ($c / $numContours) * 0.7,
+        ));
+    }
+
+    $peakColor = new Color($colors[array_rand($colors)], null);
+    $art->drawPath(
+        Path::circle($cx, $cy, 1.5),
+        null,
+        new StrokeStyle($peakColor, width: 2.0, lineCap: LineCap::Round),
+    );
 }

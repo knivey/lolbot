@@ -119,11 +119,13 @@ require_once 'library/Nicks.php';
 require_once 'library/Channels.php';
 
 \Revolt\EventLoop::setErrorHandler(function(\Throwable $error) {
-    echo "Uncaught error thrown: " . $error->getMessage() . "\n";
-    if ($prev = $error->getPrevious()) {
-        echo "Caused by: " . $prev->getMessage() . " in " . $prev->getFile() . ":" . $prev->getLine() . "\n";
+    echo "Uncaught error: " . $error->getMessage() . "\n";
+    $e = $error->getPrevious() ?? $error;
+    echo "  at " . $e->getFile() . ":" . $e->getLine() . "\n";
+    echo $e->getTraceAsString() . "\n";
+    while ($e = $e->getPrevious()) {
+        echo "Caused by: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
     }
-    echo $error->getTraceAsString() . "\n";
 });
 
 /**

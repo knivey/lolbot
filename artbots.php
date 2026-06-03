@@ -85,8 +85,13 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 }
 
 \Revolt\EventLoop::setErrorHandler(function(\Throwable $error) {
-    echo "Uncaught error thrown:\n";
-    echo $error->getTraceAsString();
+    echo "Uncaught error: " . $error->getMessage() . "\n";
+    $e = $error->getPrevious() ?? $error;
+    echo "  at " . $e->getFile() . ":" . $e->getLine() . "\n";
+    echo $e->getTraceAsString() . "\n";
+    while ($e = $e->getPrevious()) {
+        echo "Caused by: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
+    }
 });
 
 function onchat(\Irc\Event\ChatEvent $args, \Irc\Client $bot, NetworkContext $ctx): void
