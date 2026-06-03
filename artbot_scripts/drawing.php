@@ -416,10 +416,10 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor'];
 
 #[Cmd("demo")]
-#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered). Random if no arg.")]
+#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor). Random if no arg.")]
 #[Syntax('[name]')]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
@@ -452,6 +452,7 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'linework' => demoLinework($art),
         'topo' => demoTopo($art),
         'dithered' => demoDithered($art),
+        'twocolor' => demoTwoColor($art),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -945,6 +946,37 @@ function demoDithered(Canvas $art): void
         new ColorStop(0.3, 50, 200, 50),
         new ColorStop(0.6, 50, 50, 200),
         new ColorStop(1.0, 200, 200, 50),
+    ];
+
+    $topHalf = Canvas::createBlank(80, 24, true);
+    $bottomHalf = Canvas::createBlank(80, 24, true);
+
+    $topHalf->drawPath(
+        Path::rect(0, 0, 80, 24),
+        new LinearGradient(0, 0, 80, 0, $stops),
+        null,
+    );
+
+    $bottomHalf->setDithering(Dithering::Ordered4x4);
+    $bottomHalf->drawPath(
+        Path::rect(0, 0, 80, 24),
+        new LinearGradient(0, 0, 80, 0, $stops),
+        null,
+    );
+
+    for ($y = 0; $y < 24; $y++) {
+        for ($x = 0; $x < 80; $x++) {
+            $art->data[$y][$x] = $topHalf->data[$y][$x];
+            $art->data[$y + 24][$x] = $bottomHalf->data[$y][$x];
+        }
+    }
+}
+
+function demoTwoColor(Canvas $art): void
+{
+    $stops = [
+        new ColorStop(0.0, 255, 0, 0),
+        new ColorStop(1.0, 0, 0, 255),
     ];
 
     $topHalf = Canvas::createBlank(80, 24, true);
