@@ -103,11 +103,6 @@ class Canvas
 
                     if (!$isDitheredSameFg) {
                         if ($pixel1->fg !== $fg || $pixel2->fg !== $bg) {
-                            if ($pixel1->fg === $pixel2->fg && $pixel2->fg === $bg) {
-                                $out .= " ";
-                                continue;
-                            }
-
                             if ($bg === $pixel2->fg) {
                                 if ($pixel1->fg === null) {
                                     $out .= "\x03,$pixel2->fg";
@@ -152,7 +147,7 @@ class Canvas
                             $out .= "░";
                         }
                     } else {
-                        $out .= " ";
+                        $out .= $hb;
                     }
                 }
                 $out .= "\n";
