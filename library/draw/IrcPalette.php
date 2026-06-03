@@ -143,26 +143,13 @@ class IrcPalette
 
         self::$rgbPalette ??= self::buildRgbPalette();
         $br = self::$rgbPalette[$bestIdx];
-        $sr = self::$rgbPalette[$secondIdx];
-        if ($br[0] === $sr[0] && $br[1] === $sr[1] && $br[2] === $sr[2]) {
-            $secondIdx = -1;
-            $secondDist = INF;
-            foreach (self::$colorPalette as $idx => $palColor) {
-                $pr = self::$rgbPalette[$idx];
-                if ($pr[0] === $br[0] && $pr[1] === $br[1] && $pr[2] === $br[2]) {
-                    continue;
-                }
-                $d = $target->getDifferenceDin99($palColor);
-                if ($d < $secondDist) {
-                    $secondIdx = $idx;
-                    $secondDist = $d;
-                }
-            }
-            if ($secondIdx === -1) {
-                return $bestIdx;
-            }
-            $sr = self::$rgbPalette[$secondIdx];
+
+        $secondIdx = self::findDitherCandidate($target, $br, $bestIdx, $r, $g, $b, $secondIdx);
+        if ($secondIdx === -1) {
+            return $bestIdx;
         }
+
+        $sr = self::$rgbPalette[$secondIdx];
         $dr = $sr[0] - $br[0];
         $dg = $sr[1] - $br[1];
         $db = $sr[2] - $br[2];
@@ -183,6 +170,68 @@ class IrcPalette
             return $secondIdx;
         }
         return $bestIdx;
+    }
+
+    private static function findDitherCandidate(
+        Color $target,
+        array $br,
+        int $bestIdx,
+        int $r,
+        int $g,
+        int $b,
+        int $initialSecondIdx,
+    ): int {
+        $secondIdx = $initialSecondIdx;
+        $sr = self::$rgbPalette[$secondIdx];
+        if ($br[0] === $sr[0] && $br[1] === $sr[1] && $br[2] === $sr[2]) {
+            $secondIdx = -1;
+        }
+
+        if ($secondIdx !== -1) {
+            $dr = $sr[0] - $br[0];
+            $dg = $sr[1] - $br[1];
+            $db = $sr[2] - $br[2];
+            $lenSq = $dr * $dr + $dg * $dg + $db * $db;
+            if ($lenSq > 0.001) {
+                $ir = $r - $br[0];
+                $ig = $g - $br[1];
+                $ib = $b - $br[2];
+                $t = ($ir * $dr + $ig * $dg + $ib * $db) / $lenSq;
+                if ($t > 0) {
+                    return $secondIdx;
+                }
+            }
+        }
+
+        $secondDist = INF;
+        $secondIdx = -1;
+        foreach (self::$colorPalette as $idx => $palColor) {
+            $pr = self::$rgbPalette[$idx];
+            if ($pr[0] === $br[0] && $pr[1] === $br[1] && $pr[2] === $br[2]) {
+                continue;
+            }
+            $dr = $pr[0] - $br[0];
+            $dg = $pr[1] - $br[1];
+            $db = $pr[2] - $br[2];
+            $lenSq = $dr * $dr + $dg * $dg + $db * $db;
+            if ($lenSq < 0.001) {
+                continue;
+            }
+            $ir = $r - $br[0];
+            $ig = $g - $br[1];
+            $ib = $b - $br[2];
+            $t = ($ir * $dr + $ig * $dg + $ib * $db) / $lenSq;
+            if ($t <= 0) {
+                continue;
+            }
+            $d = $target->getDifferenceDin99($palColor);
+            if ($d < $secondDist) {
+                $secondDist = $d;
+                $secondIdx = $idx;
+            }
+        }
+
+        return $secondIdx;
     }
 
     private static function validateCode(int $ircCode): void
