@@ -3,6 +3,8 @@
 namespace Tests\Canvas;
 
 use draw\Color;
+use draw\ColorStop;
+use draw\LinearGradient;
 use draw\Paint;
 use PHPUnit\Framework\TestCase;
 
@@ -40,5 +42,28 @@ class PaintTest extends TestCase
         $rgb1 = $color->getColorAt(0.0, 0.0);
         $rgb2 = $color->getColorAt(100.0, 200.0);
         $this->assertSame($rgb1, $rgb2);
+    }
+
+    public function test_linear_gradient_is_not_solid(): void
+    {
+        $g = new LinearGradient(0.0, 0.0, 10.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $this->assertFalse($g->isSolid());
+    }
+
+    public function test_linear_gradient_get_color_at_returns_valid_rgb(): void
+    {
+        $g = new LinearGradient(0.0, 0.0, 10.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $rgb = $g->getColorAt(5.0, 5.0);
+        $this->assertCount(3, $rgb);
+        foreach ($rgb as $c) {
+            $this->assertGreaterThanOrEqual(0, $c);
+            $this->assertLessThanOrEqual(255, $c);
+        }
     }
 }
