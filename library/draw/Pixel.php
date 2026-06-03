@@ -9,6 +9,9 @@ class Pixel
     public float $fgAlpha = 1.0;
     public float $bgAlpha = 1.0;
     public string $text = ' ';
+    public bool $dithered = false;
+    public int $secondBest = -1;
+    public float $t = 0.0;
 
     public function __toString(): string
     {

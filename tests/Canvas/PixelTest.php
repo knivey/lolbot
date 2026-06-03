@@ -37,4 +37,33 @@ class PixelTest extends TestCase
         $this->assertSame(12, $p->bg);
         $this->assertSame('█', $p->text);
     }
+
+    public function test_default_dithered_is_false(): void
+    {
+        $p = new Pixel();
+        $this->assertFalse($p->dithered);
+    }
+
+    public function test_default_secondBest_is_negative_one(): void
+    {
+        $p = new Pixel();
+        $this->assertSame(-1, $p->secondBest);
+    }
+
+    public function test_default_t_is_zero(): void
+    {
+        $p = new Pixel();
+        $this->assertSame(0.0, $p->t);
+    }
+
+    public function test_dithering_properties_can_be_set(): void
+    {
+        $p = new Pixel();
+        $p->dithered = true;
+        $p->secondBest = 40;
+        $p->t = 0.5;
+        $this->assertTrue($p->dithered);
+        $this->assertSame(40, $p->secondBest);
+        $this->assertSame(0.5, $p->t);
+    }
 }
