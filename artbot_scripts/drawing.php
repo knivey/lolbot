@@ -416,10 +416,10 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor', 'shadertest'];
 
 #[Cmd("demo")]
-#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor). Random if no arg.")]
+#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest). Random if no arg.")]
 #[Syntax('[name]')]
 #[Option("--dither", "Dithering mode: spatial or shader")]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
@@ -468,6 +468,7 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'topo' => demoTopo($art),
         'dithered' => demoDithered($art),
         'twocolor' => demoTwoColor($art),
+        'shadertest' => demoShaderTest($art),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -1016,4 +1017,83 @@ function demoTwoColor(Canvas $art): void
             $art->data[$y + 24][$x] = $bottomHalf->data[$y][$x];
         }
     }
+}
+
+function demoShaderTest(Canvas $art): void
+{
+    $art->setDithering(Dithering::ShaderBlocks);
+
+    $bgGrad = new LinearGradient(0, 0, 0, 47, [
+        new ColorStop(0.0, 20, 0, 80),
+        new ColorStop(0.5, 120, 0, 60),
+        new ColorStop(1.0, 200, 60, 0),
+    ]);
+    $art->drawPath(Path::rect(0, 0, 80, 48), $bgGrad, null);
+
+    $groundGrad = new LinearGradient(0, 38, 0, 47, [
+        new ColorStop(0.0, 0, 100, 0),
+        new ColorStop(1.0, 0, 50, 0),
+    ]);
+    $art->drawPath(Path::rect(0, 38, 80, 10), $groundGrad, null);
+
+    $moonX = 15.0;
+    $moonY = 10.0;
+    $moonR = 6.0;
+    $art->drawPath(
+        Path::circle($moonX, $moonY, $moonR),
+        new Color(0, 0),
+        null,
+    );
+    $art->drawPath(
+        Path::circle($moonX + 3, $moonY - 1.5, $moonR - 1),
+        new Color(16, null),
+        null,
+    );
+
+    $starColor = new Color(0, null);
+    $starPositions = [
+        [5, 3], [12, 6], [25, 2], [35, 5], [42, 1],
+        [50, 4], [58, 2], [65, 6], [72, 3], [78, 1],
+        [8, 8], [20, 9], [33, 7], [48, 8], [55, 10],
+        [62, 7], [70, 9], [75, 5], [3, 12], [30, 12],
+    ];
+    foreach ($starPositions as [$sx, $sy]) {
+        $art->drawPath(Path::rect($sx, $sy, 1, 1), $starColor, null);
+    }
+
+    $treeGreen = new Color(3, null);
+    $treeBrown = new Color(17, null);
+    $trees = [[10, 36], [25, 35], [40, 37], [55, 34], [68, 36]];
+    foreach ($trees as [$tx, $ty]) {
+        $h = rand(6, 10);
+        $art->drawPath(Path::rect($tx, $ty - 2, 1, 3), $treeBrown, null);
+        $art->drawPath(
+            Path::polygon([
+                [$tx - 3, $ty - 2],
+                [$tx + 4, $ty - 2],
+                [$tx + 0.5, $ty - $h],
+            ]),
+            $treeGreen,
+            null,
+        );
+    }
+
+    $roofColor = new Color(5, null);
+    $wallColor = new Color(42, null);
+    $doorColor = new Color(16, null);
+    $bx = 45.0;
+    $by = 32.0;
+    $art->drawPath(Path::rect($bx, $by, 12, 6), $wallColor, null);
+    $art->drawPath(
+        Path::polygon([
+            [$bx - 1, $by],
+            [$bx + 13, $by],
+            [$bx + 6, $by - 5],
+        ]),
+        $roofColor,
+        null,
+    );
+    $art->drawPath(Path::rect($bx + 5, $by + 2, 3, 4), $doorColor, null);
+    $art->drawPath(Path::rect($bx + 1, $by + 1, 2, 2), new Color(11, null), null);
+    $art->drawPath(Path::rect($bx + 9, $by + 1, 2, 2), new Color(11, null), null);
 }
