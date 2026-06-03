@@ -2,9 +2,13 @@
 
 namespace Tests\Canvas;
 
+use draw\Canvas;
 use draw\Color;
 use draw\FillRule;
+use draw\Path;
 use draw\RenderContext;
+use draw\SceneNode;
+use draw\Shape;
 use draw\Transform;
 use PHPUnit\Framework\TestCase;
 
@@ -83,5 +87,79 @@ class SceneTreeTest extends TestCase
         $merged = $ctx->merge(fill: new Color(4, null));
         $this->assertNotSame($ctx, $merged);
         $this->assertNotSame($ctx->fill, $merged->fill);
+    }
+
+    public function test_shape_has_no_children(): void
+    {
+        $shape = new Shape(path: Path::circle(5.0, 5.0, 3.0));
+        $this->assertSame([], $shape->getChildren());
+    }
+
+    public function test_shape_implements_scene_node(): void
+    {
+        $shape = new Shape(path: Path::rect(0.0, 0.0, 10.0, 10.0));
+        $this->assertInstanceOf(SceneNode::class, $shape);
+    }
+
+    public function test_shape_render_uses_inherited_fill(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $shape = new Shape(path: Path::rect(2.0, 1.0, 5.0, 3.0));
+        $ctx = RenderContext::defaults();
+        $shape->render($canvas, $ctx);
+        $this->assertNotNull($canvas->data[2][4]->fg);
+    }
+
+    public function test_shape_render_with_own_fill_overrides_inherited(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $fill = new Color(4, null);
+        $shape = new Shape(path: Path::rect(2.0, 1.0, 5.0, 3.0), fill: $fill);
+        $ctx = RenderContext::defaults();
+        $shape->render($canvas, $ctx);
+        $this->assertSame(4, $canvas->data[2][4]->fg);
+    }
+
+    public function test_shape_render_with_transform(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $shape = new Shape(
+            path: Path::rect(0.0, 0.0, 3.0, 3.0),
+            fill: new Color(9, null),
+            transform: Transform::translate(5.0, 3.0),
+        );
+        $shape->render($canvas, RenderContext::defaults());
+        $this->assertSame(9, $canvas->data[4][6]->fg);
+    }
+
+    public function test_shape_render_with_opacity(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $shape = new Shape(
+            path: Path::rect(0.0, 0.0, 5.0, 5.0),
+            fill: new Color(4, null),
+            opacity: 0.0,
+        );
+        $shape->render($canvas, RenderContext::defaults());
+        $this->assertNull($canvas->data[2][2]->fg);
+    }
+
+    public function test_shape_render_null_fill_and_stroke_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $ctx = new RenderContext(
+            fill: new Color(0, null),
+            stroke: null,
+            transform: Transform::identity(),
+            opacity: 0.0,
+            fillOpacity: 0.0,
+            fillRule: FillRule::NonZero,
+        );
+        $shape = new Shape(path: Path::rect(2.0, 1.0, 5.0, 3.0), fill: new Color(4, null));
+        $shape->render($canvas, $ctx);
+        $this->assertNull($canvas->data[2][4]->fg);
     }
 }
