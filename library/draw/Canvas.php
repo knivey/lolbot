@@ -118,7 +118,18 @@ class Canvas
                         $bg = $pixel2->fg;
                     }
                     if ($pixel1->fg !== $pixel2->fg) {
-                        $out .= $hb;
+                        if ($pixel1->dithered && $pixel2->dithered) {
+                            $avgT = ($pixel1->t + $pixel2->t) / 2.0;
+                            if ($avgT < 0.33) {
+                                $out .= "░";
+                            } elseif ($avgT < 0.66) {
+                                $out .= "▒";
+                            } else {
+                                $out .= "▓";
+                            }
+                        } else {
+                            $out .= $hb;
+                        }
                     } else {
                         $out .= " ";
                     }

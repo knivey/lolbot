@@ -1120,6 +1120,91 @@ class CanvasTest extends TestCase
         $this->assertSame(0.0, $pixel->t);
     }
 
+    public function test_toString_uses_shade_chars_when_both_pixels_dithered(): void
+    {
+        $canvas = Canvas::createBlank(4, 2, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $pixel1 = $canvas->getPixel(0, 0);
+        $pixel1->fg = 4;
+        $pixel1->dithered = true;
+        $pixel1->secondBest = 40;
+        $pixel1->t = 0.5;
+
+        $pixel2 = $canvas->getPixel(0, 1);
+        $pixel2->fg = 12;
+        $pixel2->dithered = true;
+        $pixel2->secondBest = 48;
+        $pixel2->t = 0.3;
+
+        $output = (string) $canvas;
+        $this->assertStringContainsString('▒', $output);
+        $this->assertStringNotContainsString('▀', $output);
+    }
+
+    public function test_toString_uses_halfblock_when_only_one_pixel_dithered(): void
+    {
+        $canvas = Canvas::createBlank(4, 2, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $pixel1 = $canvas->getPixel(0, 0);
+        $pixel1->fg = 4;
+        $pixel1->dithered = true;
+        $pixel1->secondBest = 40;
+        $pixel1->t = 0.5;
+
+        $pixel2 = $canvas->getPixel(0, 1);
+        $pixel2->fg = 12;
+
+        $output = (string) $canvas;
+        $this->assertStringContainsString('▀', $output);
+    }
+
+    public function test_toString_uses_halfblock_when_neither_pixel_dithered(): void
+    {
+        $canvas = Canvas::createBlank(4, 2, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $pixel1 = $canvas->getPixel(0, 0);
+        $pixel1->fg = 4;
+
+        $pixel2 = $canvas->getPixel(0, 1);
+        $pixel2->fg = 12;
+
+        $output = (string) $canvas;
+        $this->assertStringContainsString('▀', $output);
+    }
+
+    public function test_shade_char_selection_by_avg_t(): void
+    {
+        $cases = [
+            [0.1, 0.2, '░'],
+            [0.3, 0.4, '▒'],
+            [0.5, 0.5, '▒'],
+            [0.7, 0.7, '▓'],
+            [0.9, 0.8, '▓'],
+        ];
+        foreach ($cases as [$t1, $t2, $expectedChar]) {
+            $canvas = Canvas::createBlank(4, 2, true);
+            $canvas->fillColor(0, 0, new Color(1, 1));
+
+            $pixel1 = $canvas->getPixel(0, 0);
+            $pixel1->fg = 4;
+            $pixel1->dithered = true;
+            $pixel1->secondBest = 40;
+            $pixel1->t = $t1;
+
+            $pixel2 = $canvas->getPixel(0, 1);
+            $pixel2->fg = 12;
+            $pixel2->dithered = true;
+            $pixel2->secondBest = 48;
+            $pixel2->t = $t2;
+
+            $output = (string) $canvas;
+            $this->assertStringContainsString($expectedChar, $output, "avg t=" . (($t1 + $t2) / 2) . " should use '$expectedChar'");
+        }
+    }
+
     public function test_drawPoint_solid_color_no_metadata(): void
     {
         $canvas = Canvas::createBlank(10, 10, true);
