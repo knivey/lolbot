@@ -1032,8 +1032,8 @@ function demoShaderTest(Canvas $art): void
     $art->drawPath(Path::rect(0, 0, 80, 48), $bgGrad, null);
 
     $groundGrad = new LinearGradient(0, 38, 0, 47, [
-        new ColorStop(0.0, 0, 71, 0),
-        new ColorStop(1.0, 0, 36, 0),
+        new ColorStop(0.0, 0, 100, 0),
+        new ColorStop(1.0, 0, 50, 0),
     ]);
     $art->drawPath(Path::rect(0, 38, 80, 10), $groundGrad, null);
 
