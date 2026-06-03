@@ -60,4 +60,64 @@ class SvgColorTest extends TestCase
         $result = SvgColor::parse('currentColor');
         $this->assertNull($result);
     }
+
+    public function test_hex_3_digit(): void
+    {
+        $result = SvgColor::parse('#f00');
+        $this->assertSame([255, 0, 0], $result);
+    }
+
+    public function test_hex_6_digit(): void
+    {
+        $result = SvgColor::parse('#ff0000');
+        $this->assertSame([255, 0, 0], $result);
+    }
+
+    public function test_hex_8_digit_ignores_alpha(): void
+    {
+        $result = SvgColor::parse('#ff000080');
+        $this->assertSame([255, 0, 0], $result);
+    }
+
+    public function test_hex_uppercase(): void
+    {
+        $result = SvgColor::parse('#FF0000');
+        $this->assertSame([255, 0, 0], $result);
+    }
+
+    public function test_hex_invalid_length_returns_null(): void
+    {
+        $result = SvgColor::parse('#ff');
+        $this->assertNull($result);
+    }
+
+    public function test_rgb_functional(): void
+    {
+        $result = SvgColor::parse('rgb(255, 128, 0)');
+        $this->assertSame([255, 128, 0], $result);
+    }
+
+    public function test_rgba_functional_ignores_alpha(): void
+    {
+        $result = SvgColor::parse('rgba(255, 128, 0, 0.5)');
+        $this->assertSame([255, 128, 0], $result);
+    }
+
+    public function test_rgb_percent(): void
+    {
+        $result = SvgColor::parse('rgb(100%, 0%, 50%)');
+        $this->assertSame([255, 0, 128], $result);
+    }
+
+    public function test_rgb_clamps_to_255(): void
+    {
+        $result = SvgColor::parse('rgb(300, -10, 128)');
+        $this->assertSame([255, 0, 128], $result);
+    }
+
+    public function test_unknown_string_returns_null(): void
+    {
+        $result = SvgColor::parse('notacolor');
+        $this->assertNull($result);
+    }
 }

@@ -55,7 +55,7 @@ class SvgColor
 
     private static function parseRgb(string $color): ?array
     {
-        if (!preg_match('/rgba?\(\s*([\d.]+%?)\s*[,\s]\s*([\d.]+%?)\s*[,\s]\s*([\d.]+%?)/i', $color, $m)) {
+        if (!preg_match('/rgba?\(\s*(-?[\d.]+%?)\s*[,\s]\s*(-?[\d.]+%?)\s*[,\s]\s*(-?[\d.]+%?)/i', $color, $m)) {
             return null;
         }
 
@@ -70,7 +70,7 @@ class SvgColor
     {
         if (str_ends_with($val, '%')) {
             $pct = (float)$val;
-            return (int)round($pct * 2.55);
+            return (int)round(min(100.0, max(0.0, $pct)) * 255 / 100);
         }
         return (int)min(255, max(0, (float)$val));
     }
