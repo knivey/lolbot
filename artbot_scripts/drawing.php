@@ -1022,7 +1022,9 @@ function demoTwoColor(Canvas $art): void
 
 function demoShaderTest(Canvas $art): void
 {
-    $art->setDithering(Dithering::ShaderBlocks);
+    if ($art->getDithering() === Dithering::None) {
+        $art->setDithering(Dithering::ShaderBlocks);
+    }
 
     $bgGrad = new LinearGradient(0, 0, 0, 47, [
         new ColorStop(0.0, 0, 0, 127),

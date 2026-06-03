@@ -21,6 +21,8 @@ class IrcPalette
 
     private const CACHE_LIMIT = 4096;
 
+    private const DARK_L_THRESHOLD = 25.0;
+
     private const BAYER_4X4 = [
         [ 0,  8,  2, 10],
         [12,  4, 14,  6],
@@ -82,6 +84,14 @@ class IrcPalette
         return self::$colorPalette[$ircCode];
     }
 
+    private static function colorDistance(Color $target, Color $candidate, float $targetL): float
+    {
+        if ($targetL < self::DARK_L_THRESHOLD) {
+            return $target->getDifferenceEuclideanRGB($candidate);
+        }
+        return $target->getDifferenceDin99($candidate);
+    }
+
     public static function nearestColor(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0): int
     {
         if ($mode === Dithering::Ordered4x4) {
@@ -99,10 +109,11 @@ class IrcPalette
 
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
+        $targetL = $target->getLab()->L;
         $bestIdx = 0;
         $bestDist = INF;
         foreach (self::$colorPalette as $idx => $palColor) {
-            $d = $target->getDifferenceDin99($palColor);
+            $d = self::colorDistance($target, $palColor, $targetL);
             if ($d < $bestDist) {
                 $bestIdx = $idx;
                 $bestDist = $d;
@@ -132,10 +143,11 @@ class IrcPalette
 
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
+        $targetL = $target->getLab()->L;
         $bestIdx = 0;
         $bestDist = INF;
         foreach (self::$colorPalette as $idx => $palColor) {
-            $d = $target->getDifferenceDin99($palColor);
+            $d = self::colorDistance($target, $palColor, $targetL);
             if ($d < $bestDist) {
                 $bestIdx = $idx;
                 $bestDist = $d;
@@ -152,13 +164,14 @@ class IrcPalette
     {
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
+        $targetL = $target->getLab()->L;
 
         $bestIdx = 0;
         $bestDist = INF;
         $secondIdx = -1;
         $secondDist = INF;
         foreach (self::$colorPalette as $idx => $palColor) {
-            $d = $target->getDifferenceDin99($palColor);
+            $d = self::colorDistance($target, $palColor, $targetL);
             if ($d < $bestDist) {
                 $secondIdx = $bestIdx;
                 $secondDist = $bestDist;
@@ -181,7 +194,7 @@ class IrcPalette
         self::$rgbPalette ??= self::buildRgbPalette();
         $br = self::$rgbPalette[$bestIdx];
 
-        $secondIdx = self::findDitherCandidate($target, $br, $bestIdx, $r, $g, $b, $secondIdx);
+        $secondIdx = self::findDitherCandidate($target, $br, $bestIdx, $r, $g, $b, $secondIdx, $targetL);
         if ($secondIdx === -1) {
             return $bestIdx;
         }
@@ -218,10 +231,11 @@ class IrcPalette
 
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
+        $targetL = $target->getLab()->L;
         $bestIdx = 0;
         $bestDist = INF;
         foreach (self::$colorPalette as $idx => $palColor) {
-            $d = $target->getDifferenceDin99($palColor);
+            $d = self::colorDistance($target, $palColor, $targetL);
             if ($d < $bestDist) {
                 $bestIdx = $idx;
                 $bestDist = $d;
@@ -238,13 +252,14 @@ class IrcPalette
     {
         self::$colorPalette ??= self::buildColorPalette();
         $target = new Color(new RGB($r, $g, $b));
+        $targetL = $target->getLab()->L;
 
         $bestIdx = 0;
         $bestDist = INF;
         $secondIdx = -1;
         $secondDist = INF;
         foreach (self::$colorPalette as $idx => $palColor) {
-            $d = $target->getDifferenceDin99($palColor);
+            $d = self::colorDistance($target, $palColor, $targetL);
             if ($d < $bestDist) {
                 $secondIdx = $bestIdx;
                 $secondDist = $bestDist;
@@ -267,7 +282,7 @@ class IrcPalette
         self::$rgbPalette ??= self::buildRgbPalette();
         $br = self::$rgbPalette[$bestIdx];
 
-        $secondIdx = self::findDitherCandidate($target, $br, $bestIdx, $r, $g, $b, $secondIdx);
+        $secondIdx = self::findDitherCandidate($target, $br, $bestIdx, $r, $g, $b, $secondIdx, $targetL);
         if ($secondIdx === -1) {
             return new DitherResult($bestIdx);
         }
@@ -297,6 +312,7 @@ class IrcPalette
         int $g,
         int $b,
         int $initialSecondIdx,
+        float $targetL,
     ): int {
         $secondIdx = $initialSecondIdx;
         $sr = self::$rgbPalette[$secondIdx];
@@ -341,7 +357,7 @@ class IrcPalette
             if ($t <= 0) {
                 continue;
             }
-            $d = $target->getDifferenceDin99($palColor);
+            $d = self::colorDistance($target, $palColor, $targetL);
             if ($d < $secondDist) {
                 $secondDist = $d;
                 $secondIdx = $idx;
