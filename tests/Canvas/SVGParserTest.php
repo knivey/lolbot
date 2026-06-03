@@ -2,7 +2,12 @@
 
 namespace Tests\Canvas;
 
+use draw\Canvas;
+use draw\Color;
+use draw\Group;
 use draw\Path;
+use draw\SVGDocument;
+use draw\Shape;
 use draw\SVGParser;
 use draw\Transform;
 use PHPUnit\Framework\TestCase;
@@ -189,5 +194,125 @@ class SVGParserTest extends TestCase
     {
         $t = SVGParser::parseTransform('');
         $this->assertTrue(Transform::identity()->equals($t));
+    }
+
+    public function test_parse_string_rect(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="10" height="10" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 20);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+        $this->assertNull($canvas->data[0][0]->fg);
+    }
+
+    public function test_parse_string_circle(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="5" fill="blue"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 20);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[10][10]->fg);
+    }
+
+    public function test_parse_string_ellipse(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><ellipse cx="15" cy="10" rx="10" ry="5" fill="green"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(30, 20);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[10][15]->fg);
+    }
+
+    public function test_parse_string_line(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="5" x2="19" y2="5" stroke="white"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][10]->fg);
+    }
+
+    public function test_parse_string_polyline(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><polyline points="0,0 10,0 10,10" stroke="white"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 20);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[0][5]->fg);
+    }
+
+    public function test_parse_string_polygon(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><polygon points="5,0 10,10 0,10" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_path_element(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><path d="M 0 0 L 10 0 L 10 10 L 0 10 Z" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_group(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><g fill="red"><rect x="0" y="0" width="5" height="5"/></g></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[2][2]->fg);
+    }
+
+    public function test_parse_string_viewBox(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="0" y="0" width="50" height="50" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $this->assertSame([0.0, 0.0, 100.0, 100.0], $doc->getViewBox());
+        $canvas = Canvas::createBlank(40, 40);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[10][10]->fg);
+    }
+
+    public function test_parse_string_transform_attribute(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="5" height="5" fill="red" transform="translate(5,5)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNull($canvas->data[0][0]->fg);
+        $this->assertNotNull($canvas->data[7][7]->fg);
+    }
+
+    public function test_parse_string_unknown_element_ignored(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="red"/><text>Hello</text></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_opacity(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="red" opacity="0.5"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_fill_none(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="none" stroke="white"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[0][5]->fg);
     }
 }
