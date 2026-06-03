@@ -10,6 +10,7 @@ use draw\Path;
 use draw\RenderContext;
 use draw\SceneNode;
 use draw\Shape;
+use draw\StrokeStyle;
 use draw\Transform;
 use PHPUnit\Framework\TestCase;
 
@@ -271,5 +272,89 @@ class SceneTreeTest extends TestCase
         $group->addChild(new Shape(path: Path::rect(0.0, 0.0, 2.0, 2.0), fill: new Color(4, null)));
         $group->render($canvas, RenderContext::defaults());
         $this->assertTrue($beforeTransform->equals($canvas->getTransform()));
+    }
+
+    public function test_complex_scene_nested_groups_with_overrides(): void
+    {
+        $canvas = Canvas::createBlank(40, 20, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $root = new Group(
+            fill: new Color(4, null),
+            transform: Transform::translate(2.0, 1.0),
+            opacity: 0.8,
+        );
+
+        $bgGroup = new Group();
+        $bgGroup->addChild(new Shape(path: Path::rect(0.0, 0.0, 10.0, 5.0)));
+        $bgGroup->addChild(new Shape(path: Path::rect(12.0, 0.0, 10.0, 5.0)));
+
+        $fgGroup = new Group(
+            fill: new Color(9, null),
+            opacity: 0.5,
+        );
+        $fgGroup->addChild(new Shape(path: Path::rect(5.0, 2.0, 4.0, 3.0)));
+        $fgGroup->addChild(new Shape(
+            path: Path::circle(20.0, 4.0, 2.0),
+            fill: new Color(11, null),
+            opacity: 1.0,
+        ));
+
+        $root->addChild($bgGroup);
+        $root->addChild($fgGroup);
+
+        $root->render($canvas, RenderContext::defaults());
+
+        $this->assertNotNull($canvas->data[3][5]->fg, 'bg rect rendered');
+        $this->assertNotNull($canvas->data[3][15]->fg, 'bg rect 2 rendered');
+        $this->assertNotNull($canvas->data[4][8]->fg, 'fg rect rendered');
+        $this->assertNotNull($canvas->data[5][22]->fg, 'circle rendered');
+    }
+
+    public function test_scene_with_stroke_inheritance(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $group = new Group(
+            stroke: new StrokeStyle(new Color(4, null), width: 1.0),
+        );
+        $group->addChild(new Shape(path: Path::rect(3.0, 2.0, 5.0, 3.0), fill: null));
+
+        $group->render($canvas, RenderContext::defaults());
+
+        $this->assertNotNull($canvas->data[2][3]->fg, 'stroke rendered');
+    }
+
+    public function test_empty_group_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $before = $canvas->data[0][0]->fg;
+
+        $group = new Group(fill: new Color(4, null));
+        $group->render($canvas, RenderContext::defaults());
+
+        $this->assertSame($before, $canvas->data[0][0]->fg);
+    }
+
+    public function test_scene_renders_children_in_order(): void
+    {
+        $canvas = Canvas::createBlank(20, 10, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $group = new Group();
+        $group->addChild(new Shape(
+            path: Path::rect(5.0, 2.0, 5.0, 5.0),
+            fill: new Color(4, null),
+        ));
+        $group->addChild(new Shape(
+            path: Path::rect(5.0, 2.0, 5.0, 5.0),
+            fill: new Color(9, null),
+        ));
+
+        $group->render($canvas, RenderContext::defaults());
+
+        $this->assertSame(9, $canvas->data[4][7]->fg, 'second child overwrites first');
     }
 }
