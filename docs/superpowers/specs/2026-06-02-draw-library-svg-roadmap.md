@@ -13,15 +13,30 @@ door to an SVG parser layer that maps directly onto our types.
 
 ## Current State
 
-Three files in `library/draw/`:
+Files in `library/draw/`:
 
-- **`Canvas.php`** — character-cell pixel grid with `drawPoint`, `drawLine`,
-  `drawFilledEllipse`, `drawEllipse`, `drawPolygon` (scanline fill + outline),
+- **`Canvas.php`** — character-cell pixel grid with `drawPath`, `drawPoint`,
+  `drawLine`, `drawFilledEllipse`, `drawEllipse`, `drawPolygon` (scanline fill + outline),
   `fillColor` (flood fill), `overlay`. Supports half-block rendering for 2x
-  vertical resolution. Output is IRC color-coded text (`\x03` codes).
-- **`Color.php`** — IRC color constants (16-color and extended 99-color palette), fg/bg pair,
-  gradient stubs.
-- **`Pixel.php`** — single cell: fg, bg, text character.
+  vertical resolution, transform stack, fill/stroke opacity, gradient fills/strokes.
+  Output is IRC color-coded text (`\x03` codes).
+- **`Color.php`** — IRC color constants, fg/bg pair, implements `Paint` interface.
+- **`Pixel.php`** — single cell: fg, bg, text character, fgAlpha, bgAlpha.
+- **`Path.php`** — ordered path segments (M/L/C/Q/A/Z), flatten to polygon,
+  static factories for rect, circle, ellipse, polygon, polyline, line.
+- **`StrokeStyle.php`** — width, dash array/offset, line cap/join, miter limit,
+  opacity, accepts `Paint` interface (solid color or gradient).
+- **`Transform.php`** — 2x3 affine matrix with translate, rotate, scale, skew,
+  composition, and canvas transform stack.
+- **`FillRule.php`** — enum: NonZero, EvenOdd.
+- **`Paint.php`** — interface for solid and gradient paint sources.
+- **`IrcPalette.php`** — 99-entry IRC→RGB lookup, nearestColor() with Din99 distance.
+- **`Compositor.php`** — source-over blend with opacity compositing.
+- **`LinearGradient.php`** — gradient along a vector with spread methods.
+- **`RadialGradient.php`** — gradient along a radius with focal point and spread methods.
+- **`ColorStop.php`** — value object: offset, r, g, b with validation.
+- **`SpreadMethod.php`** — enum: Pad, Reflect, Repeat.
+- **`GradientMath.php`** — shared trait for gradient spread/interpolation logic.
 
 The `drawPolygon` method already implements non-zero winding rule scanline
 fill with top-left pixel sampling that aligns with Bresenham outlines.
@@ -274,10 +289,11 @@ tracking winding count, toggle a boolean at each intersection.
 4. ~~**EvenOdd fill rule** — add to scanline converter~~ **DONE**
 5. ~~**StrokeStyle** — width, dash, caps, joins (strokes > 1px), stroke-opacity~~ **DONE**
 6. ~~**Compositor / opacity** — Pixel alpha, IrcPalette, Compositor, fill-opacity, element opacity~~ **DONE**
-7. **Gradient Paint** — linear, radial, color stops, stop interpolation
-8. **SVG parser** — XML parser mapping SVG elements to scene tree
-9. **Clip/Mask** — clipping regions and masks
-10. **Filters** — blur, shadow, color matrix
-11. **Text** — SVG text elements
-12. **Use/Symbol/Defs** — reusable elements
-13. **IRC enhancements** — higher resolution, better color, Unicode lines
+7. ~~**Gradient Paint** — linear, radial, color stops, stop interpolation~~ **DONE**
+8. ~~**Scene tree / Groups** — `<g>` elements, property inheritance (fill, stroke, transform, opacity), child overrides parent~~ **DONE**
+9. **SVG parser** — XML parser mapping SVG elements to scene tree
+10. **Clip/Mask** — clipping regions and masks
+11. **Filters** — blur, shadow, color matrix
+12. **Text** — SVG text elements
+13. **Use/Symbol/Defs** — reusable elements
+14. **IRC enhancements** — higher resolution, better color, Unicode lines
