@@ -68,6 +68,7 @@ class CompositorTest extends TestCase
 
         // Result should be ~#7F7F7F which is grey (index 14 = #7F7F7F)
         $result = $dst->data[5][5]->fg;
+        $this->assertNotNull($result);
         $rgb = \draw\IrcPalette::getRgb($result);
         // Allow some tolerance since quantization may not land exactly
         $this->assertGreaterThan(100, $rgb[0], "R should be mid-range");

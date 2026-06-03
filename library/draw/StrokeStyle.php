@@ -4,6 +4,8 @@ namespace draw;
 
 class StrokeStyle
 {
+    public readonly float $opacity;
+
     public function __construct(
         public readonly Color $color,
         public readonly float $width = 1.0,
@@ -12,8 +14,9 @@ class StrokeStyle
         public readonly LineCap $lineCap = LineCap::Butt,
         public readonly LineJoin $lineJoin = LineJoin::Miter,
         public readonly float $miterLimit = 4.0,
-        public readonly float $opacity = 1.0,
+        float $opacity = 1.0,
     ) {
+        $this->opacity = max(0.0, min(1.0, $opacity));
         if ($dashArray !== null) {
             foreach ($dashArray as $v) {
                 if ($v < 0) {
