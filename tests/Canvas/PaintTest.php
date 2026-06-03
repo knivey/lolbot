@@ -6,6 +6,7 @@ use draw\Color;
 use draw\ColorStop;
 use draw\LinearGradient;
 use draw\Paint;
+use draw\RadialGradient;
 use PHPUnit\Framework\TestCase;
 
 class PaintTest extends TestCase
@@ -60,6 +61,29 @@ class PaintTest extends TestCase
             new ColorStop(1.0, 0, 0, 255),
         ]);
         $rgb = $g->getColorAt(5.0, 5.0);
+        $this->assertCount(3, $rgb);
+        foreach ($rgb as $c) {
+            $this->assertGreaterThanOrEqual(0, $c);
+            $this->assertLessThanOrEqual(255, $c);
+        }
+    }
+
+    public function test_radial_gradient_is_not_solid(): void
+    {
+        $g = new RadialGradient(5.0, 5.0, 10.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $this->assertFalse($g->isSolid());
+    }
+
+    public function test_radial_gradient_get_color_at_returns_valid_rgb(): void
+    {
+        $g = new RadialGradient(5.0, 5.0, 10.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $rgb = $g->getColorAt(20.0, 20.0);
         $this->assertCount(3, $rgb);
         foreach ($rgb as $c) {
             $this->assertGreaterThanOrEqual(0, $c);

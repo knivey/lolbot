@@ -4,6 +4,7 @@ namespace Tests\Canvas;
 
 use draw\ColorStop;
 use draw\LinearGradient;
+use draw\RadialGradient;
 use draw\SpreadMethod;
 use PHPUnit\Framework\TestCase;
 
@@ -232,6 +233,111 @@ class GradientTest extends TestCase
             new ColorStop(1.0, 100, 0, 0),
         ], SpreadMethod::Repeat);
         $rgb = $g->getColorAt(-3.0, 5.0);
+        $this->assertSame([70, 0, 0], $rgb);
+    }
+
+    public function test_radial_gradient_fewer_than_two_stops_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new RadialGradient(5.0, 5.0, 10.0, [
+            new ColorStop(0.0, 255, 0, 0),
+        ]);
+    }
+
+    public function test_radial_gradient_zero_radius_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new RadialGradient(5.0, 5.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+    }
+
+    public function test_radial_gradient_negative_radius_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new RadialGradient(5.0, 5.0, -1.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+    }
+
+    public function test_radial_gradient_focal_point_outside_circle_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new RadialGradient(5.0, 5.0, 5.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ], fx: 15.0, fy: 5.0);
+    }
+
+    public function test_radial_gradient_center_returns_first_stop(): void
+    {
+        $g = new RadialGradient(5.0, 5.0, 10.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $rgb = $g->getColorAt(5.0, 5.0);
+        $this->assertSame([255, 0, 0], $rgb);
+    }
+
+    public function test_radial_gradient_edge_returns_last_stop(): void
+    {
+        $g = new RadialGradient(5.0, 5.0, 10.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $rgb = $g->getColorAt(15.0, 5.0);
+        $this->assertSame([0, 0, 255], $rgb);
+    }
+
+    public function test_radial_gradient_midpoint(): void
+    {
+        $g = new RadialGradient(0.0, 0.0, 10.0, [
+            new ColorStop(0.0, 0, 0, 0),
+            new ColorStop(1.0, 200, 0, 0),
+        ]);
+        $rgb = $g->getColorAt(5.0, 0.0);
+        $this->assertSame([100, 0, 0], $rgb);
+    }
+
+    public function test_radial_gradient_focal_point_offset(): void
+    {
+        $g = new RadialGradient(5.0, 5.0, 10.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ], fx: 0.0, fy: 5.0);
+        $rgb = $g->getColorAt(0.0, 5.0);
+        $this->assertSame([255, 0, 0], $rgb);
+    }
+
+    public function test_radial_gradient_pad_beyond_radius(): void
+    {
+        $g = new RadialGradient(5.0, 5.0, 10.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ], spreadMethod: SpreadMethod::Pad);
+        $rgb = $g->getColorAt(20.0, 5.0);
+        $this->assertSame([0, 0, 255], $rgb);
+    }
+
+    public function test_radial_gradient_repeat_beyond_radius(): void
+    {
+        $g = new RadialGradient(0.0, 0.0, 10.0, [
+            new ColorStop(0.0, 0, 0, 0),
+            new ColorStop(1.0, 100, 0, 0),
+        ], spreadMethod: SpreadMethod::Repeat);
+        $rgb = $g->getColorAt(13.0, 0.0);
+        $this->assertSame([30, 0, 0], $rgb);
+    }
+
+    public function test_radial_gradient_reflect_beyond_radius(): void
+    {
+        $g = new RadialGradient(0.0, 0.0, 10.0, [
+            new ColorStop(0.0, 0, 0, 0),
+            new ColorStop(1.0, 100, 0, 0),
+        ], spreadMethod: SpreadMethod::Reflect);
+        $rgb = $g->getColorAt(13.0, 0.0);
         $this->assertSame([70, 0, 0], $rgb);
     }
 }
