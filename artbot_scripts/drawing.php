@@ -17,7 +17,6 @@ use draw\StrokeStyle;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Option;
-use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("linetest")]
@@ -422,7 +421,7 @@ $demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'st
 #[Cmd("demo")]
 #[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor). Random if no arg.")]
 #[Syntax('[name]')]
-#[Options("--dithered")]
+#[Option("--dither", "Dithering mode: spatial or shader")]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     global $demos;
@@ -441,8 +440,18 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
     $art = Canvas::createBlank(80, 48, true);
     $art->fillColor(0, 0, new Color(1, 1));
 
-    if ($cmdArgs->optEnabled('--dithered')) {
-        $art->setDithering(Dithering::ShaderBlocks);
+    $ditherVal = $cmdArgs->getOpt('--dither');
+    if ($ditherVal !== false) {
+        $mode = match (strtolower($ditherVal)) {
+            'spatial', 'ordered' => Dithering::Ordered4x4,
+            'shader', 'shade', 'blocks' => Dithering::ShaderBlocks,
+            default => null,
+        };
+        if ($mode === null) {
+            $bot->pm($args->chan, "unknown dither mode: $ditherVal  try: spatial, shader");
+            return;
+        }
+        $art->setDithering($mode);
     }
 
     match ($name) {
