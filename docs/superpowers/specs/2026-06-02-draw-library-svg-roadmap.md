@@ -291,7 +291,7 @@ tracking winding count, toggle a boolean at each intersection.
 6. ~~**Compositor / opacity** — Pixel alpha, IrcPalette, Compositor, fill-opacity, element opacity~~ **DONE**
 7. ~~**Gradient Paint** — linear, radial, color stops, stop interpolation~~ **DONE**
 8. ~~**Scene tree / Groups** — `<g>` elements, property inheritance (fill, stroke, transform, opacity), child overrides parent~~ **DONE**
-9. **SVG parser** — XML parser mapping SVG elements to scene tree
+9. ~~**SVG parser** — XML parser mapping SVG elements to scene tree~~ **DONE**
 10. **Clip/Mask** — clipping regions and masks
 11. **Filters** — blur, shadow, color matrix
 12. **Text** — SVG text elements
