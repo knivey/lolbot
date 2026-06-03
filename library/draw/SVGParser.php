@@ -666,7 +666,15 @@ class SVGParser
     private static function parsePaintAttr(\SimpleXMLElement $el, string $attr, array &$defs, ?LoggerInterface $logger): ?Paint
     {
         $val = self::getEffectiveAttr($el, $attr);
-        if ($val === '' || $val === 'none') {
+        if ($val === 'none') {
+            return null;
+        }
+        if ($val === '') {
+            if ($attr === 'fill') {
+                $rgb = [0, 0, 0];
+                $code = IrcPalette::nearestColor($rgb[0], $rgb[1], $rgb[2]);
+                return new Color($code, null);
+            }
             return null;
         }
 
