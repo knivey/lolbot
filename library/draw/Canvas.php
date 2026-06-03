@@ -332,13 +332,18 @@ class Canvas
      * @param ?Color $fillColor Fill color, or null for no fill.
      * @param ?StrokeStyle $stroke Stroke style, or null for no outline.
      * @param string $text Optional text for rendered pixels.
+     * @param FillRule $fillRule Fill rule for scanline conversion.
+     * @param float $fillOpacity Opacity for the fill (0.0–1.0).
+     * @param float $opacity Element-level opacity applied to everything (0.0–1.0).
      */
     public function drawPath(
         Path $path,
         ?Color $fillColor,
         ?StrokeStyle $stroke,
         string $text = '',
-        FillRule $fillRule = FillRule::NonZero
+        FillRule $fillRule = FillRule::NonZero,
+        float $fillOpacity = 1.0,
+        float $opacity = 1.0,
     ): void {
         $subpaths = $path->flatten();
         if (count($subpaths) === 0) {
@@ -368,21 +373,63 @@ class Canvas
             $snappedSubpaths[] = ['vertices' => $snapped, 'closed' => $sp['closed']];
         }
 
-        if ($fillColor !== null) {
-            $polygonArrays = [];
-            foreach ($snappedSubpaths as $sp) {
-                if (count($sp['vertices']) >= 3) {
-                    $polygonArrays[] = $sp['vertices'];
-                }
-            }
-            if (count($polygonArrays) > 0) {
-                $this->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text, $fillRule);
+        $fillOpacity = max(0.0, min(1.0, $fillOpacity));
+        $opacity = max(0.0, min(1.0, $opacity));
+        $strokeOpacity = $stroke !== null ? max(0.0, min(1.0, $stroke->opacity)) : 1.0;
+
+        if ($opacity < 1.0) {
+            $temp = Canvas::createBlank($this->w, $this->h, $this->halfblocks);
+            $this->renderFill($temp, $snappedSubpaths, $fillColor, $text, $fillRule, $fillOpacity);
+            $this->renderStroke($temp, $snappedSubpaths, $stroke, $text, $strokeOpacity);
+            Compositor::blend($this, $temp, $opacity);
+        } else {
+            $this->renderFill($this, $snappedSubpaths, $fillColor, $text, $fillRule, $fillOpacity);
+            $this->renderStroke($this, $snappedSubpaths, $stroke, $text, $strokeOpacity);
+        }
+    }
+
+    /**
+     * @param array<int, array{vertices: array<int, array{int, int}>, closed: bool}> $snappedSubpaths
+     */
+    private function renderFill(Canvas $target, array $snappedSubpaths, ?Color $fillColor, string $text, FillRule $fillRule, float $fillOpacity): void
+    {
+        if ($fillColor === null) {
+            return;
+        }
+        $polygonArrays = [];
+        foreach ($snappedSubpaths as $sp) {
+            if (count($sp['vertices']) >= 3) {
+                $polygonArrays[] = $sp['vertices'];
             }
         }
+        if (count($polygonArrays) > 0) {
+            if ($fillOpacity < 1.0) {
+                $temp = Canvas::createBlank($target->w, $target->h, $target->halfblocks);
+                $temp->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text, $fillRule);
+                Compositor::blend($target, $temp, $fillOpacity);
+            } else {
+                $target->fillPolygonScanlineMulti($polygonArrays, $fillColor, $text, $fillRule);
+            }
+        }
+    }
 
-        if ($stroke !== null) {
+    /**
+     * @param array<int, array{vertices: array<int, array{int, int}>, closed: bool}> $snappedSubpaths
+     */
+    private function renderStroke(Canvas $target, array $snappedSubpaths, ?StrokeStyle $stroke, string $text, float $strokeOpacity): void
+    {
+        if ($stroke === null) {
+            return;
+        }
+        if ($strokeOpacity < 1.0) {
+            $temp = Canvas::createBlank($target->w, $target->h, $target->halfblocks);
             foreach ($snappedSubpaths as $sp) {
-                $this->strokeSubpath($sp, $stroke, $text);
+                $temp->strokeSubpath($sp, $stroke, $text);
+            }
+            Compositor::blend($target, $temp, $strokeOpacity);
+        } else {
+            foreach ($snappedSubpaths as $sp) {
+                $target->strokeSubpath($sp, $stroke, $text);
             }
         }
     }

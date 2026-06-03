@@ -741,4 +741,157 @@ class CanvasTest extends TestCase
             $this->assertSame(4, $canvas->data[5][$x]->fg, "Solid line pixel $x");
         }
     }
+
+    public function test_draw_path_fill_opacity_renders_at_half(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $canvas->drawPath(
+            Path::rect(0, 0, 20, 10),
+            new Color(4, null),
+            null,
+            '',
+            FillRule::NonZero,
+            0.5
+        );
+
+        $pixel = $canvas->data[5][5];
+        $this->assertNotNull($pixel->fg);
+        $this->assertSame(4, $pixel->fg, "50% fill on blank canvas copies color directly");
+    }
+
+    public function test_draw_path_fill_opacity_zero_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $canvas->drawPath(
+            Path::rect(0, 0, 20, 10),
+            new Color(4, null),
+            null,
+            '',
+            FillRule::NonZero,
+            0.0
+        );
+
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 20; $x++) {
+                $this->assertNull($canvas->data[$y][$x]->fg, "Pixel ($x,$y) should be empty at 0 opacity");
+            }
+        }
+    }
+
+    public function test_draw_path_stroke_opacity_renders_at_half(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), opacity: 0.5);
+        $canvas->drawPath(Path::line(2, 5, 17, 5), null, $stroke);
+
+        $pixel = $canvas->data[5][10];
+        $this->assertNotNull($pixel->fg);
+        $this->assertSame(4, $pixel->fg, "50% stroke on blank canvas copies directly");
+    }
+
+    public function test_draw_path_stroke_opacity_zero_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $stroke = new StrokeStyle(new Color(4, null), opacity: 0.0);
+        $canvas->drawPath(Path::line(2, 5, 17, 5), null, $stroke);
+
+        for ($x = 2; $x <= 17; $x++) {
+            $this->assertNull($canvas->data[5][$x]->fg, "Pixel $x should be empty at 0 stroke opacity");
+        }
+    }
+
+    public function test_draw_path_element_opacity_blends(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+
+        $canvas->drawPath(
+            Path::rect(0, 0, 20, 10),
+            new Color(0, null),
+            null
+        );
+
+        $canvas->drawPath(
+            Path::rect(2, 2, 10, 5),
+            new Color(4, null),
+            null,
+            '',
+            FillRule::NonZero,
+            1.0,
+            0.5
+        );
+
+        $blended = $canvas->data[4][5];
+        $this->assertNotSame(4, $blended->fg, "Should not be pure red after 50% element opacity");
+        $this->assertNotSame(0, $blended->fg, "Should not be pure white after 50% element opacity");
+
+        $outside = $canvas->data[0][0];
+        $this->assertSame(0, $outside->fg, "Outside overlap should be unchanged");
+    }
+
+    public function test_draw_path_element_opacity_zero_is_noop(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $canvas->drawPath(
+            Path::rect(2, 2, 10, 5),
+            new Color(4, null),
+            null,
+            '',
+            FillRule::NonZero,
+            1.0,
+            0.0
+        );
+
+        $this->assertNull($canvas->data[4][5]->fg, "Should be empty at 0 element opacity");
+    }
+
+    public function test_draw_path_fill_and_stroke_combined_opacities(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+
+        $canvas->drawPath(
+            Path::rect(0, 0, 20, 10),
+            new Color(0, null),
+            null
+        );
+
+        $stroke = new StrokeStyle(new Color(4, null), width: 3.0, opacity: 0.5);
+        $canvas->drawPath(
+            Path::rect(2, 2, 10, 5),
+            new Color(9, null),
+            $stroke,
+            '',
+            FillRule::NonZero,
+            0.7,
+            1.0
+        );
+
+        $fillPixel = $canvas->data[4][5];
+        $this->assertNotSame(9, $fillPixel->fg, "Fill should be blended, not raw");
+        $this->assertNotSame(0, $fillPixel->fg, "Fill should not be pure white bg");
+
+        $strokePixel = $canvas->data[2][5];
+        $this->assertNotSame(4, $strokePixel->fg, "Stroke should be blended, not raw");
+    }
+
+    public function test_draw_path_opacity_full_is_same_as_default(): void
+    {
+        $c1 = Canvas::createBlank(20, 10);
+        $c2 = Canvas::createBlank(20, 10);
+
+        $fill = new Color(4, null);
+        $stroke = new StrokeStyle(new Color(0, null));
+
+        $c1->drawPath(Path::rect(2, 2, 10, 5), $fill, $stroke);
+        $c2->drawPath(Path::rect(2, 2, 10, 5), $fill, $stroke, '', FillRule::NonZero, 1.0, 1.0);
+
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 20; $x++) {
+                $this->assertSame(
+                    $c1->data[$y][$x]->fg,
+                    $c2->data[$y][$x]->fg,
+                    "Pixel ($x,$y) should match with explicit 1.0 opacity"
+                );
+            }
+        }
+    }
 }
