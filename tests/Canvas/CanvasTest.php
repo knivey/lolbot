@@ -10,6 +10,10 @@ use draw\StrokeStyle;
 use draw\FillRule;
 use draw\LineCap;
 use draw\LineJoin;
+use draw\LinearGradient;
+use draw\RadialGradient;
+use draw\ColorStop;
+use draw\SpreadMethod;
 use PHPUnit\Framework\TestCase;
 
 class CanvasTest extends TestCase
@@ -893,5 +897,113 @@ class CanvasTest extends TestCase
                 );
             }
         }
+    }
+
+    public function test_draw_path_with_linear_gradient_fill(): void
+    {
+        $canvas = Canvas::createBlank(20, 5);
+        $gradient = new LinearGradient(0.0, 0.0, 19.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $path = Path::rect(0.0, 0.0, 20.0, 5.0);
+        $canvas->drawPath($path, $gradient, null);
+
+        $this->assertNotNull($canvas->data[2][0]->fg);
+        $this->assertNotNull($canvas->data[2][19]->fg);
+        $this->assertNotSame(
+            $canvas->data[2][0]->fg,
+            $canvas->data[2][19]->fg,
+            'Left and right pixels should have different colors in a horizontal gradient'
+        );
+    }
+
+    public function test_draw_path_with_radial_gradient_fill(): void
+    {
+        $canvas = Canvas::createBlank(21, 21);
+        $gradient = new RadialGradient(10.0, 10.0, 10.0, [
+            new ColorStop(0.0, 255, 255, 255),
+            new ColorStop(1.0, 0, 0, 0),
+        ]);
+
+        $path = Path::rect(0.0, 0.0, 21.0, 21.0);
+        $canvas->drawPath($path, $gradient, null);
+
+        $this->assertNotNull($canvas->data[10][10]->fg);
+        $this->assertNotNull($canvas->data[10][0]->fg);
+        $this->assertNotSame(
+            $canvas->data[10][10]->fg,
+            $canvas->data[10][0]->fg,
+            'Center and edge pixels should have different colors in a radial gradient'
+        );
+    }
+
+    public function test_draw_path_with_gradient_stroke_width_1(): void
+    {
+        $canvas = Canvas::createBlank(20, 5);
+        $gradient = new LinearGradient(0.0, 0.0, 19.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $path = Path::line(0.0, 2.0, 19.0, 2.0);
+        $canvas->drawPath($path, null, new StrokeStyle($gradient));
+
+        $this->assertNotNull($canvas->data[2][0]->fg);
+        $this->assertNotNull($canvas->data[2][19]->fg);
+        $this->assertNotSame(
+            $canvas->data[2][0]->fg,
+            $canvas->data[2][19]->fg,
+            'Start and end pixels should have different colors in a gradient stroke'
+        );
+    }
+
+    public function test_draw_path_with_gradient_stroke_width_gt_1(): void
+    {
+        $canvas = Canvas::createBlank(20, 10);
+        $gradient = new LinearGradient(0.0, 0.0, 19.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $path = Path::line(0.0, 5.0, 19.0, 5.0);
+        $canvas->drawPath($path, null, new StrokeStyle($gradient, width: 3.0));
+
+        $this->assertNotNull($canvas->data[4][0]->fg);
+        $this->assertNotNull($canvas->data[4][19]->fg);
+        $this->assertNotSame(
+            $canvas->data[4][0]->fg,
+            $canvas->data[4][19]->fg,
+            'Start and end of thick stroke should have different colors in a gradient'
+        );
+    }
+
+    public function test_draw_path_gradient_and_opacity(): void
+    {
+        $canvas = Canvas::createBlank(20, 5);
+        $gradient = new LinearGradient(0.0, 0.0, 19.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $path = Path::rect(0.0, 0.0, 20.0, 5.0);
+        $canvas->drawPath($path, $gradient, null, '', FillRule::NonZero, 0.5);
+
+        $this->assertNotNull($canvas->data[2][10]->fg);
+    }
+
+    public function test_draw_point_with_gradient(): void
+    {
+        $canvas = Canvas::createBlank(10, 10);
+        $gradient = new LinearGradient(0.0, 0.0, 9.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $canvas->drawPoint(5, 5, $gradient);
+
+        $this->assertNotNull($canvas->data[5][5]->fg);
+        $this->assertNull($canvas->data[5][5]->bg);
     }
 }
