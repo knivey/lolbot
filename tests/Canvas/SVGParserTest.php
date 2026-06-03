@@ -315,4 +315,50 @@ class SVGParserTest extends TestCase
         $doc->render($canvas);
         $this->assertNotNull($canvas->data[0][5]->fg);
     }
+
+    public function test_parse_string_linear_gradient(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient></defs><rect x="0" y="0" width="20" height="10" fill="url(#g1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+        $this->assertNotNull($canvas->data[5][15]->fg);
+    }
+
+    public function test_parse_string_radial_gradient(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="rg" cx="10" cy="10" r="10"><stop offset="0" stop-color="white"/><stop offset="1" stop-color="black"/></radialGradient></defs><rect x="0" y="0" width="20" height="20" fill="url(#rg)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 20);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[10][10]->fg);
+    }
+
+    public function test_parse_string_gradient_with_percentage_stops(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="red"/><stop offset="100%" stop-color="blue"/></linearGradient></defs><rect x="0" y="0" width="10" height="10" fill="url(#g2)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_missing_gradient_ref_no_fill(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="url(#missing)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+        $this->assertNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_gradient_spread_reflect(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g3" x1="0" y1="0" x2="5" y2="0" spreadMethod="reflect"><stop offset="0" stop-color="red"/><stop offset="1" stop-color="blue"/></linearGradient></defs><rect x="0" y="0" width="20" height="5" fill="url(#g3)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 5);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[2][10]->fg);
+    }
 }

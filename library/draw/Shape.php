@@ -32,7 +32,13 @@ class Shape implements SceneNode
             dithering: $this->dithering,
         );
 
-        if ($effective->fill === null && $effective->stroke === null) {
+        $effectiveFill = ($effective->fill instanceof NoPaint) ? null : $effective->fill;
+        $effectiveStroke = $effective->stroke;
+        if ($effectiveStroke !== null && $effectiveStroke->paint instanceof NoPaint) {
+            $effectiveStroke = null;
+        }
+
+        if ($effectiveFill === null && $effectiveStroke === null) {
             return;
         }
 
@@ -52,8 +58,8 @@ class Shape implements SceneNode
 
         $canvas->drawPath(
             $this->path,
-            $effective->fill,
-            $effective->stroke,
+            $effectiveFill,
+            $effectiveStroke,
             '',
             $effective->fillRule,
             $effective->fillOpacity,

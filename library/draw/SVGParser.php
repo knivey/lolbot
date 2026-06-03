@@ -383,6 +383,8 @@ class SVGParser
             'polyline' => self::parsePolylineElement($el, $defs, $logger),
             'polygon' => self::parsePolygonElement($el, $defs, $logger),
             'defs' => self::parseDefsElement($el, $defs, $logger),
+            'linearGradient' => self::handleGradientElement($el, $defs, $logger),
+            'radialGradient' => self::handleGradientElement($el, $defs, $logger),
             default => new Group(),
         };
     }
@@ -503,12 +505,105 @@ class SVGParser
     {
         $group = new Group();
         foreach ($el->children() as $child) {
-            $id = (string)($child['id'] ?? '');
-            if ($id !== '') {
-                $defs[$id] = $child;
+            $name = $child->getName();
+            if ($name === 'linearGradient' || $name === 'radialGradient') {
+                self::parseGradientElement($child, $defs, $logger);
+            } else {
+                $id = (string)($child['id'] ?? '');
+                if ($id !== '') {
+                    $defs[$id] = $child;
+                }
             }
         }
         return $group;
+    }
+
+    private static function parseGradientElement(\SimpleXMLElement $el, array &$defs, ?LoggerInterface $logger): void
+    {
+        $id = (string)($el['id'] ?? '');
+        if ($id === '') {
+            return;
+        }
+
+        $stops = self::parseGradientStops($el);
+        if (count($stops) < 2) {
+            return;
+        }
+
+        $spread = match (strtolower((string)($el['spreadMethod'] ?? 'pad'))) {
+            'reflect' => SpreadMethod::Reflect,
+            'repeat' => SpreadMethod::Repeat,
+            default => SpreadMethod::Pad,
+        };
+
+        $name = $el->getName();
+        if ($name === 'linearGradient') {
+            $x1 = self::parseGradientCoord($el, 'x1', 0.0);
+            $y1 = self::parseGradientCoord($el, 'y1', 0.0);
+            $x2 = self::parseGradientCoord($el, 'x2', 1.0);
+            $y2 = self::parseGradientCoord($el, 'y2', 0.0);
+            $defs[$id] = new LinearGradient($x1, $y1, $x2, $y2, $stops, $spread);
+        } elseif ($name === 'radialGradient') {
+            $cx = self::parseGradientCoord($el, 'cx', 0.5);
+            $cy = self::parseGradientCoord($el, 'cy', 0.5);
+            $r = self::parseGradientCoord($el, 'r', 0.5);
+            $fx = self::parseOptionalGradientCoord($el, 'fx');
+            $fy = self::parseOptionalGradientCoord($el, 'fy');
+            $defs[$id] = new RadialGradient($cx, $cy, $r, $stops, $fx, $fy, $spread);
+        }
+    }
+
+    private static function handleGradientElement(\SimpleXMLElement $el, array &$defs, ?LoggerInterface $logger): Group
+    {
+        self::parseGradientElement($el, $defs, $logger);
+        return new Group();
+    }
+
+    private static function parseGradientStops(\SimpleXMLElement $el): array
+    {
+        $stops = [];
+        foreach ($el->children() as $child) {
+            if ($child->getName() !== 'stop') {
+                continue;
+            }
+            $offsetStr = (string)($child['offset'] ?? '0');
+            $offset = self::parsePercentageOrFloat($offsetStr);
+            $colorStr = (string)($child['stop-color'] ?? 'black');
+            $rgb = SvgColor::parse($colorStr);
+            if ($rgb === null) {
+                $rgb = [0, 0, 0];
+            }
+            $stops[] = new ColorStop($offset, $rgb[0], $rgb[1], $rgb[2]);
+        }
+        usort($stops, fn(ColorStop $a, ColorStop $b) => $a->offset <=> $b->offset);
+        return $stops;
+    }
+
+    private static function parsePercentageOrFloat(string $val): float
+    {
+        $val = trim($val);
+        if (str_ends_with($val, '%')) {
+            return (float)substr($val, 0, -1) / 100.0;
+        }
+        return (float)$val;
+    }
+
+    private static function parseGradientCoord(\SimpleXMLElement $el, string $attr, float $default): float
+    {
+        $val = (string)($el[$attr] ?? '');
+        if ($val === '') {
+            return $default;
+        }
+        return self::parsePercentageOrFloat($val);
+    }
+
+    private static function parseOptionalGradientCoord(\SimpleXMLElement $el, string $attr): ?float
+    {
+        $val = (string)($el[$attr] ?? '');
+        if ($val === '') {
+            return null;
+        }
+        return self::parsePercentageOrFloat($val);
     }
 
     private static function buildShape(Path $path, \SimpleXMLElement $el, array &$defs, ?LoggerInterface $logger): Shape
@@ -544,7 +639,7 @@ class SVGParser
                 return $defs[$id];
             }
             $logger?->warning("SVG reference not found: #{$id}");
-            return null;
+            return new NoPaint();
         }
 
         $rgb = SvgColor::parse($val);
