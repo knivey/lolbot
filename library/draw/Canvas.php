@@ -1053,4 +1053,51 @@ class Canvas
         }
         return null;
     }
+
+    public function resampleTo(int $targetW, int $targetH): Canvas
+    {
+        $out = self::createBlank($targetW, $targetH, $this->halfblocks);
+
+        $xScale = $this->w / $targetW;
+        $yScale = $this->h / $targetH;
+
+        for ($ty = 0; $ty < $targetH; $ty++) {
+            for ($tx = 0; $tx < $targetW; $tx++) {
+                $srcY0 = (int)floor($ty * $yScale);
+                $srcY1 = (int)floor(($ty + 1) * $yScale);
+                $srcX0 = (int)floor($tx * $xScale);
+                $srcX1 = (int)floor(($tx + 1) * $xScale);
+
+                $rSum = 0.0;
+                $gSum = 0.0;
+                $bSum = 0.0;
+                $count = 0;
+
+                for ($sy = $srcY0; $sy < $srcY1 && $sy < $this->h; $sy++) {
+                    for ($sx = $srcX0; $sx < $srcX1 && $sx < $this->w; $sx++) {
+                        $pixel = $this->data[$sy][$sx];
+                        if ($pixel->fg === null) {
+                            continue;
+                        }
+                        $rgb = IrcPalette::getRgb($pixel->fg);
+                        $rSum += $rgb[0];
+                        $gSum += $rgb[1];
+                        $bSum += $rgb[2];
+                        $count++;
+                    }
+                }
+
+                if ($count > 0) {
+                    $code = IrcPalette::nearestColor(
+                        (int)round($rSum / $count),
+                        (int)round($gSum / $count),
+                        (int)round($bSum / $count),
+                    );
+                    $out->data[$ty][$tx]->fg = $code;
+                }
+            }
+        }
+
+        return $out;
+    }
 }

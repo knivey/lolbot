@@ -335,6 +335,8 @@ class SVGParser
         return (float)$str !== 0.0;
     }
 
+    private const SVG_NS = 'http://www.w3.org/2000/svg';
+
     public static function parseString(string $svg, ?LoggerInterface $logger = null): SVGDocument
     {
         $xml = @simplexml_load_string($svg);
@@ -369,6 +371,35 @@ class SVGParser
         return self::parseString($contents, $logger);
     }
 
+    private static function detectNamespace(\SimpleXMLElement $el): string
+    {
+        foreach ($el->getDocNamespaces(false, false) as $prefix => $uri) {
+            if ($prefix === '' && $uri === self::SVG_NS) {
+                return $uri;
+            }
+        }
+        $namespaces = $el->getNamespaces(false);
+        return $namespaces[''] ?? '';
+    }
+
+    private static function svgChildren(\SimpleXMLElement $el): array
+    {
+        $result = [];
+        foreach ($el->children() as $child) {
+            $result[] = $child;
+        }
+        if (!empty($result)) {
+            return $result;
+        }
+        $ns = self::detectNamespace($el);
+        if ($ns !== '') {
+            foreach ($el->children($ns, false) as $child) {
+                $result[] = $child;
+            }
+        }
+        return $result;
+    }
+
     private static function parseElement(\SimpleXMLElement $el, array &$defs, ?LoggerInterface $logger): SceneNode
     {
         $name = $el->getName();
@@ -395,7 +426,7 @@ class SVGParser
     private static function parseSvgElement(\SimpleXMLElement $el, array &$defs, ?LoggerInterface $logger): Group
     {
         $group = new Group();
-        foreach ($el->children() as $child) {
+        foreach (self::svgChildren($el) as $child) {
             $group->addChild(self::parseElement($child, $defs, $logger));
         }
         return $group;
@@ -419,7 +450,7 @@ class SVGParser
             fillRule: $fillRule,
         );
 
-        foreach ($el->children() as $child) {
+        foreach (self::svgChildren($el) as $child) {
             $group->addChild(self::parseElement($child, $defs, $logger));
         }
 
@@ -507,7 +538,7 @@ class SVGParser
     private static function parseDefsElement(\SimpleXMLElement $el, array &$defs, ?LoggerInterface $logger): Group
     {
         $group = new Group();
-        foreach ($el->children() as $child) {
+        foreach (self::svgChildren($el) as $child) {
             $name = $child->getName();
             if ($name === 'linearGradient' || $name === 'radialGradient') {
                 self::parseGradientElement($child, $defs, $logger);
@@ -565,13 +596,16 @@ class SVGParser
     private static function parseGradientStops(\SimpleXMLElement $el): array
     {
         $stops = [];
-        foreach ($el->children() as $child) {
+        foreach (self::svgChildren($el) as $child) {
             if ($child->getName() !== 'stop') {
                 continue;
             }
             $offsetStr = (string)($child['offset'] ?? '0');
             $offset = self::parsePercentageOrFloat($offsetStr);
-            $colorStr = (string)($child['stop-color'] ?? 'black');
+            $colorStr = self::getEffectiveAttr($child, 'stop-color');
+            if ($colorStr === '') {
+                $colorStr = 'black';
+            }
             $rgb = SvgColor::parse($colorStr);
             if ($rgb === null) {
                 $rgb = [0, 0, 0];
@@ -631,7 +665,7 @@ class SVGParser
 
     private static function parsePaintAttr(\SimpleXMLElement $el, string $attr, array &$defs, ?LoggerInterface $logger): ?Paint
     {
-        $val = (string)($el[$attr] ?? '');
+        $val = self::getEffectiveAttr($el, $attr);
         if ($val === '' || $val === 'none') {
             return null;
         }
@@ -656,7 +690,7 @@ class SVGParser
 
     private static function parseStrokeAttr(\SimpleXMLElement $el, array &$defs, ?LoggerInterface $logger): ?StrokeStyle
     {
-        $strokeVal = (string)($el['stroke'] ?? '');
+        $strokeVal = self::getEffectiveAttr($el, 'stroke');
         if ($strokeVal === '' || $strokeVal === 'none') {
             return null;
         }
@@ -679,13 +713,13 @@ class SVGParser
             $paint = new Color($code, null);
         }
 
-        $width = (float)($el['stroke-width'] ?? 1.0);
+        $width = (float)(self::getEffectiveAttr($el, 'stroke-width') ?: '1.0');
         if ($width < 0) {
             $width = 1.0;
         }
 
         $dashArray = null;
-        $dashStr = (string)($el['stroke-dasharray'] ?? '');
+        $dashStr = self::getEffectiveAttr($el, 'stroke-dasharray');
         if ($dashStr !== '' && $dashStr !== 'none') {
             $dashArray = array_map('floatval', preg_split('/[\s,]+/', trim($dashStr)));
             $dashArray = array_filter($dashArray, fn($v) => $v > 0);
@@ -694,26 +728,26 @@ class SVGParser
             }
         }
 
-        $lineCap = match ((string)($el['stroke-linecap'] ?? 'butt')) {
+        $lineCap = match (self::getEffectiveAttr($el, 'stroke-linecap') ?: 'butt') {
             'round' => LineCap::Round,
             'square' => LineCap::Square,
             default => LineCap::Butt,
         };
 
-        $lineJoin = match ((string)($el['stroke-linejoin'] ?? 'miter')) {
+        $lineJoin = match (self::getEffectiveAttr($el, 'stroke-linejoin') ?: 'miter') {
             'round' => LineJoin::Round,
             'bevel' => LineJoin::Bevel,
             default => LineJoin::Miter,
         };
 
-        $miterLimit = (float)($el['stroke-miterlimit'] ?? 4.0);
+        $miterLimit = (float)(self::getEffectiveAttr($el, 'stroke-miterlimit') ?: '4.0');
         $strokeOpacity = self::parseFloatAttr($el, 'stroke-opacity') ?? 1.0;
 
         return new StrokeStyle(
             paint: $paint,
             width: $width,
             dashArray: $dashArray === null ? null : array_values($dashArray),
-            dashOffset: (float)($el['stroke-dashoffset'] ?? 0.0),
+            dashOffset: (float)(self::getEffectiveAttr($el, 'stroke-dashoffset') ?: '0.0'),
             lineCap: $lineCap,
             lineJoin: $lineJoin,
             miterLimit: $miterLimit,
@@ -723,16 +757,42 @@ class SVGParser
 
     private static function parseOptionalTransform(\SimpleXMLElement $el): ?Transform
     {
-        $val = (string)($el['transform'] ?? '');
+        $val = self::getEffectiveAttr($el, 'transform');
         if ($val === '') {
             return null;
         }
         return self::parseTransform($val);
     }
 
+    private static function getEffectiveAttr(\SimpleXMLElement $el, string $attr): string
+    {
+        $xmlVal = (string)($el[$attr] ?? '');
+        if ($xmlVal !== '') {
+            return $xmlVal;
+        }
+        $styleStr = (string)($el['style'] ?? '');
+        if ($styleStr === '') {
+            return '';
+        }
+        return self::parseStyleProperty($styleStr, $attr);
+    }
+
+    private static function parseStyleProperty(string $style, string $property): string
+    {
+        $declarations = preg_split('/\s*;\s*/', $style, -1, PREG_SPLIT_NO_EMPTY);
+        $value = '';
+        foreach ($declarations as $decl) {
+            $parts = explode(':', $decl, 2);
+            if (count($parts) === 2 && trim($parts[0]) === $property) {
+                $value = trim($parts[1]);
+            }
+        }
+        return $value;
+    }
+
     private static function parseFloatAttr(\SimpleXMLElement $el, string $attr): ?float
     {
-        $val = (string)($el[$attr] ?? '');
+        $val = self::getEffectiveAttr($el, $attr);
         if ($val === '') {
             return null;
         }
@@ -741,7 +801,7 @@ class SVGParser
 
     private static function parseFillRuleAttr(\SimpleXMLElement $el): ?FillRule
     {
-        $val = (string)($el['fill-rule'] ?? '');
+        $val = self::getEffectiveAttr($el, 'fill-rule');
         if ($val === '') {
             return null;
         }

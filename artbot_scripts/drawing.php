@@ -974,7 +974,7 @@ function demoDithered(Canvas $art): void
         null,
     );
 
-    $bottomHalf->setDithering(Dithering::Ordered4x4);
+    $bottomHalf->setDithering($art->getDithering() !== Dithering::None ? $art->getDithering() : Dithering::Ordered4x4);
     $bottomHalf->drawPath(
         Path::rect(0, 0, 80, 24),
         new LinearGradient(0, 0, 80, 0, $stops),
@@ -1005,7 +1005,7 @@ function demoTwoColor(Canvas $art): void
         null,
     );
 
-    $bottomHalf->setDithering(Dithering::Ordered4x4);
+    $bottomHalf->setDithering($art->getDithering() !== Dithering::None ? $art->getDithering() : Dithering::Ordered4x4);
     $bottomHalf->drawPath(
         Path::rect(0, 0, 80, 24),
         new LinearGradient(0, 0, 80, 0, $stops),
