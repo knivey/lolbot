@@ -445,10 +445,11 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         $mode = match (strtolower($ditherVal)) {
             'spatial', 'ordered' => Dithering::Ordered4x4,
             'shader', 'shade', 'blocks' => Dithering::ShaderBlocks,
+            'all', 'shaderall' => Dithering::ShaderBlocksAll,
             default => null,
         };
         if ($mode === null) {
-            $bot->pm($args->chan, "unknown dither mode: $ditherVal  try: spatial, shader");
+            $bot->pm($args->chan, "unknown dither mode: $ditherVal  try: spatial, shader, all");
             return;
         }
         $art->setDithering($mode);
@@ -1024,15 +1025,15 @@ function demoShaderTest(Canvas $art): void
     $art->setDithering(Dithering::ShaderBlocks);
 
     $bgGrad = new LinearGradient(0, 0, 0, 47, [
-        new ColorStop(0.0, 20, 0, 80),
-        new ColorStop(0.5, 120, 0, 60),
-        new ColorStop(1.0, 200, 60, 0),
+        new ColorStop(0.0, 0, 0, 127),
+        new ColorStop(0.5, 75, 0, 116),
+        new ColorStop(1.0, 180, 40, 0),
     ]);
     $art->drawPath(Path::rect(0, 0, 80, 48), $bgGrad, null);
 
     $groundGrad = new LinearGradient(0, 38, 0, 47, [
-        new ColorStop(0.0, 0, 100, 0),
-        new ColorStop(1.0, 0, 50, 0),
+        new ColorStop(0.0, 0, 71, 0),
+        new ColorStop(1.0, 0, 36, 0),
     ]);
     $art->drawPath(Path::rect(0, 38, 80, 10), $groundGrad, null);
 
@@ -1063,7 +1064,7 @@ function demoShaderTest(Canvas $art): void
 
     $treeGreen = new Color(3, null);
     $treeBrown = new Color(17, null);
-    $trees = [[10, 36], [25, 35], [40, 37], [55, 34], [68, 36]];
+    $trees = [[10, 38], [25, 37], [40, 39], [55, 36], [68, 38]];
     foreach ($trees as [$tx, $ty]) {
         $h = rand(6, 10);
         $art->drawPath(Path::rect($tx, $ty - 2, 1, 3), $treeBrown, null);

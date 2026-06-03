@@ -88,7 +88,7 @@ class IrcPalette
             return self::nearestColorDithered($r, $g, $b, $x, $y);
         }
 
-        if ($mode === Dithering::ShaderBlocks) {
+        if ($mode === Dithering::ShaderBlocks || $mode === Dithering::ShaderBlocksAll) {
             return self::nearestColorShaderBlocksCode($r, $g, $b);
         }
 
@@ -121,7 +121,7 @@ class IrcPalette
             return new DitherResult(self::nearestColorDithered($r, $g, $b, $x, $y));
         }
 
-        if ($mode === Dithering::ShaderBlocks) {
+        if ($mode === Dithering::ShaderBlocks || $mode === Dithering::ShaderBlocksAll) {
             return self::nearestColorShaderBlocksMeta($r, $g, $b);
         }
 
