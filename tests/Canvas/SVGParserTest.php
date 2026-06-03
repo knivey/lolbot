@@ -353,6 +353,31 @@ class SVGParserTest extends TestCase
         $this->assertNull($canvas->data[5][5]->fg);
     }
 
+    public function test_parse_string_logs_unknown_element(): void
+    {
+        $logger = new class extends \Psr\Log\AbstractLogger {
+            public array $warnings = [];
+            public function log($level, $message, array $context = []): void
+            {
+                if ($level === 'warning') {
+                    $this->warnings[] = $message;
+                }
+            }
+        };
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><text x="0" y="0">hello</text></svg>';
+        SVGParser::parseString($svg, $logger);
+        $this->assertNotEmpty($logger->warnings);
+    }
+
+    public function test_parse_string_no_logger_no_error(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><text x="0" y="0">hello</text><rect x="0" y="0" width="5" height="5" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[2][2]->fg);
+    }
+
     public function test_parse_string_gradient_spread_reflect(): void
     {
         $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g3" x1="0" y1="0" x2="5" y2="0" spreadMethod="reflect"><stop offset="0" stop-color="red"/><stop offset="1" stop-color="blue"/></linearGradient></defs><rect x="0" y="0" width="20" height="5" fill="url(#g3)"/></svg>';

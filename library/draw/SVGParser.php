@@ -385,7 +385,10 @@ class SVGParser
             'defs' => self::parseDefsElement($el, $defs, $logger),
             'linearGradient' => self::handleGradientElement($el, $defs, $logger),
             'radialGradient' => self::handleGradientElement($el, $defs, $logger),
-            default => new Group(),
+            default => (function () use ($name, $logger) {
+                $logger?->warning("Unsupported SVG element: <{$name}>");
+                return new Group();
+            })(),
         };
     }
 
