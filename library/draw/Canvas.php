@@ -254,6 +254,9 @@ class Canvas
             if ($paint->isSolid() && $paint instanceof Color) {
                 $this->data[$y][$x]->fg = $paint->fg;
                 $this->data[$y][$x]->bg = $paint->bg;
+                $this->data[$y][$x]->dithered = false;
+                $this->data[$y][$x]->secondBest = -1;
+                $this->data[$y][$x]->t = 0.0;
             } else {
                 $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                 [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
@@ -353,6 +356,9 @@ class Canvas
                 if ($paint->isSolid() && $paint instanceof Color) {
                     $this->data[$y][$x]->fg = $paint->fg;
                     $this->data[$y][$x]->bg = $paint->bg;
+                    $this->data[$y][$x]->dithered = false;
+                    $this->data[$y][$x]->secondBest = -1;
+                    $this->data[$y][$x]->t = 0.0;
                 } else {
                     $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                     [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
@@ -635,6 +641,9 @@ class Canvas
                         if ($paint->isSolid() && $paint instanceof Color) {
                             $this->data[$Y][$xx]->fg = $paint->fg;
                             $this->data[$Y][$xx]->bg = $paint->bg;
+                            $this->data[$Y][$xx]->dithered = false;
+                            $this->data[$Y][$xx]->secondBest = -1;
+                            $this->data[$Y][$xx]->t = 0.0;
                         } else {
                             $effectiveDithering = $paint->getDithering() ?? $this->dithering;
                             [$r, $g, $b] = $paint->getColorAt((float) $xx, (float) $Y);
