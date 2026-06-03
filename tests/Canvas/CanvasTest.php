@@ -1139,7 +1139,7 @@ class CanvasTest extends TestCase
 
         $output = (string) $canvas;
         $this->assertStringContainsString('▒', $output);
-        $this->assertStringContainsString('▀', $output);
+        $this->assertStringNotContainsString('▀', $output);
     }
 
     public function test_toString_uses_halfblock_when_only_one_pixel_dithered(): void
