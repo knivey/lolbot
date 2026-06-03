@@ -21,6 +21,15 @@ class IrcPalette
 
     private const CACHE_LIMIT = 4096;
 
+    private const BAYER_4X4 = [
+        [ 0,  8,  2, 10],
+        [12,  4, 14,  6],
+        [ 3, 11,  1,  9],
+        [15,  7, 13,  5],
+    ];
+
+    private const DITHER_STRENGTH = 16.0;
+
     /**
      * @return array<int, string>
      */
@@ -75,8 +84,16 @@ class IrcPalette
         return self::$colorPalette[$ircCode];
     }
 
-    public static function nearestColor(int $r, int $g, int $b): int
+    public static function nearestColor(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0): int
     {
+        if ($mode === Dithering::Ordered4x4) {
+            $bayer = self::BAYER_4X4[$y & 3][$x & 3];
+            $offset = ($bayer - 7.5) / 8.0 * self::DITHER_STRENGTH;
+            $r = (int) max(0, min(255, round($r + $offset)));
+            $g = (int) max(0, min(255, round($g + $offset)));
+            $b = (int) max(0, min(255, round($b + $offset)));
+        }
+
         $key = ($r << 16) | ($g << 8) | $b;
         if (isset(self::$nearestCache[$key])) {
             return self::$nearestCache[$key];

@@ -2,6 +2,7 @@
 
 namespace Tests\Canvas;
 
+use draw\Dithering;
 use draw\IrcPalette;
 use PHPUnit\Framework\TestCase;
 
@@ -96,5 +97,68 @@ class IrcPaletteTest extends TestCase
         $first = IrcPalette::nearestColor(200, 100, 50);
         $second = IrcPalette::nearestColor(200, 100, 50);
         $this->assertSame($first, $second);
+    }
+
+    public function test_nearestColor_defaults_to_no_dithering(): void
+    {
+        $undithered = IrcPalette::nearestColor(128, 128, 128);
+        $explicitNone = IrcPalette::nearestColor(128, 128, 128, Dithering::None, 5, 5);
+        $this->assertSame($undithered, $explicitNone);
+    }
+
+    public function test_nearestColor_dithering_changes_result_for_some_pixels(): void
+    {
+        $midR = 128;
+        $midG = 64;
+        $midB = 32;
+        $none0 = IrcPalette::nearestColor($midR, $midG, $midB, Dithering::None, 0, 0);
+        $dither0 = IrcPalette::nearestColor($midR, $midG, $midB, Dithering::Ordered4x4, 0, 0);
+        $dither5 = IrcPalette::nearestColor($midR, $midG, $midB, Dithering::Ordered4x4, 3, 0);
+        $anyDifferent = ($none0 !== $dither0) || ($none0 !== $dither5) || ($dither0 !== $dither5);
+        $this->assertTrue($anyDifferent, 'Dithering should produce at least one different result');
+    }
+
+    public function test_nearestColor_dithering_clamps_to_valid_range(): void
+    {
+        $result = IrcPalette::nearestColor(0, 0, 0, Dithering::Ordered4x4, 3, 3);
+        $this->assertGreaterThanOrEqual(0, $result);
+        $this->assertLessThanOrEqual(98, $result);
+
+        $result = IrcPalette::nearestColor(255, 255, 255, Dithering::Ordered4x4, 0, 0);
+        $this->assertGreaterThanOrEqual(0, $result);
+        $this->assertLessThanOrEqual(98, $result);
+    }
+
+    public function test_nearestColor_dithering_is_position_dependent(): void
+    {
+        $r = 100;
+        $g = 100;
+        $b = 100;
+        $result1 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 0, 0);
+        $result2 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 1, 0);
+        $result3 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 2, 0);
+        $result4 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 3, 0);
+        $uniqueResults = array_unique([$result1, $result2, $result3, $result4]);
+        $this->assertGreaterThan(1, count($uniqueResults), 'Different positions should produce varied results for a mid-range color');
+    }
+
+    public function test_nearestColor_dithering_wraps_at_matrix_size(): void
+    {
+        $r = 100;
+        $g = 100;
+        $b = 100;
+        $at4 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 4, 4);
+        $at0 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 0, 0);
+        $this->assertSame($at0, $at4, 'Dithering should wrap at 4x4 matrix size');
+    }
+
+    public function test_nearestColor_dithering_with_xy_zero_same_as_none_for_bayer_center(): void
+    {
+        $r = 200;
+        $g = 200;
+        $b = 200;
+        $at7 = IrcPalette::nearestColor($r, $g, $b, Dithering::Ordered4x4, 1, 3);
+        $none = IrcPalette::nearestColor($r, $g, $b, Dithering::None, 1, 3);
+        $this->assertSame($none, $at7, 'Bayer value 7 (index [3][1]) normalizes near 0, so should match no-dither for bright input');
     }
 }
