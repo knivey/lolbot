@@ -1216,4 +1216,38 @@ class CanvasTest extends TestCase
         $this->assertSame(4, $pixel->fg);
         $this->assertFalse($pixel->dithered);
     }
+
+    public function test_gradient_with_dithering_produces_shade_chars(): void
+    {
+        $canvas = Canvas::createBlank(80, 48, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+        $canvas->setDithering(Dithering::Ordered4x4);
+
+        $grad = new LinearGradient(0, 0, 0, 47, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $canvas->drawPath(Path::rect(0, 0, 80, 48), $grad, null);
+
+        $output = (string) $canvas;
+        $this->assertStringContainsString('░', $output);
+        $this->assertStringContainsString('▒', $output);
+    }
+
+    public function test_gradient_without_dithering_no_shade_chars(): void
+    {
+        $canvas = Canvas::createBlank(80, 48, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $grad = new LinearGradient(0, 0, 0, 47, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+        $canvas->drawPath(Path::rect(0, 0, 80, 48), $grad, null);
+
+        $output = (string) $canvas;
+        $this->assertStringNotContainsString('░', $output);
+        $this->assertStringNotContainsString('▒', $output);
+        $this->assertStringNotContainsString('▓', $output);
+    }
 }
