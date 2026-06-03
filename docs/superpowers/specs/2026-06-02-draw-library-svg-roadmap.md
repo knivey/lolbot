@@ -139,7 +139,7 @@ rasterizes the scene tree onto a `Canvas`.
 
 **Opacity:**
 - `opacity`, `fill-opacity`, `stroke-opacity`
-- Render to an offscreen buffer, then composite with alpha
+- Render to an offscreen buffer, then composite with alpha (Compositor class built)
 
 **Clipping and masking:**
 - `clip-path` referencing a `<clipPath>` element — restricts drawing to the
@@ -272,11 +272,12 @@ tracking winding count, toggle a boolean at each intersection.
 2. ~~**Basic shapes** — rect, circle, ellipse as convenience methods on Path~~ **DONE**
 3. ~~**Transform** — affine matrix, transform stack on Canvas~~ **DONE**
 4. ~~**EvenOdd fill rule** — add to scanline converter~~ **DONE**
-5. ~~**StrokeStyle** — width, dash, caps, joins (strokes > 1px)~~ **DONE** (stroke-opacity deferred; no compositing infrastructure yet)
-6. **Gradient Paint** — linear, radial, color stops, stop interpolation
-7. **SVG parser** — XML parser mapping SVG elements to scene tree
-8. **Clip/Mask** — clipping regions and masks
-9. **Filters** — blur, shadow, color matrix
-10. **Text** — SVG text elements
-11. **Use/Symbol/Defs** — reusable elements
-12. **IRC enhancements** — higher resolution, better color, Unicode lines
+5. ~~**StrokeStyle** — width, dash, caps, joins (strokes > 1px)~~ **DONE** (stroke-opacity deferred; pending StrokeStyle.opacity addition)
+6. ~~**Compositor / opacity** — Pixel alpha, IrcPalette, Compositor (source-over blending in RGB)~~ **DONE**
+7. **Gradient Paint** — linear, radial, color stops, stop interpolation
+8. **SVG parser** — XML parser mapping SVG elements to scene tree
+9. **Clip/Mask** — clipping regions and masks
+10. **Filters** — blur, shadow, color matrix
+11. **Text** — SVG text elements
+12. **Use/Symbol/Defs** — reusable elements
+13. **IRC enhancements** — higher resolution, better color, Unicode lines
