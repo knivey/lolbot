@@ -56,6 +56,16 @@ class Transform
         return new self($a, $b, $c, $d, $e, $f);
     }
 
+    public function equals(Transform $other): bool
+    {
+        return abs($this->a - $other->a) < 1e-10
+            && abs($this->b - $other->b) < 1e-10
+            && abs($this->c - $other->c) < 1e-10
+            && abs($this->d - $other->d) < 1e-10
+            && abs($this->e - $other->e) < 1e-10
+            && abs($this->f - $other->f) < 1e-10;
+    }
+
     public function multiply(Transform $other): self
     {
         return new self(
