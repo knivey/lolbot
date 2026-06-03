@@ -97,26 +97,33 @@ class Canvas
                         $out .= " ";
                         continue;
                     }
-                    if ($pixel1->fg !== $fg || $pixel2->fg !== $bg) {
-                        if ($pixel1->fg === $pixel2->fg && $pixel2->fg === $bg) {
-                            $out .= " ";
-                            continue;
-                        }
+                    $isDitheredSameFg = ($pixel1->fg === $pixel2->fg
+                        && $pixel1->dithered && $pixel2->dithered
+                        && $pixel1->secondBest >= 0 && $pixel1->fg !== null);
 
-                        if ($bg === $pixel2->fg) {
-                            if ($pixel1->fg === null) {
-                                $out .= "\x03,$pixel2->fg";
+                    if (!$isDitheredSameFg) {
+                        if ($pixel1->fg !== $fg || $pixel2->fg !== $bg) {
+                            if ($pixel1->fg === $pixel2->fg && $pixel2->fg === $bg) {
+                                $out .= " ";
+                                continue;
+                            }
+
+                            if ($bg === $pixel2->fg) {
+                                if ($pixel1->fg === null) {
+                                    $out .= "\x03,$pixel2->fg";
+                                } else {
+                                    $out .= "\x03$pixel1->fg";
+                                }
+                            } elseif ($pixel2->fg !== null) {
+                                $out .= "\x03$pixel1->fg,$pixel2->fg";
                             } else {
                                 $out .= "\x03$pixel1->fg";
                             }
-                        } elseif ($pixel2->fg !== null) {
-                            $out .= "\x03$pixel1->fg,$pixel2->fg";
-                        } else {
-                            $out .= "\x03$pixel1->fg";
+                            $fg = $pixel1->fg;
+                            $bg = $pixel2->fg;
                         }
-                        $fg = $pixel1->fg;
-                        $bg = $pixel2->fg;
                     }
+
                     if ($pixel1->fg !== $pixel2->fg) {
                         if ($pixel1->dithered && $pixel2->dithered) {
                             $avgT = ($pixel1->t + $pixel2->t) / 2.0;
@@ -129,6 +136,20 @@ class Canvas
                             }
                         } else {
                             $out .= $hb;
+                        }
+                    } elseif ($isDitheredSameFg) {
+                        $avgT = ($pixel1->t + $pixel2->t) / 2.0;
+                        if ($fg !== $pixel1->fg || $bg !== $pixel1->secondBest) {
+                            $out .= "\x03$pixel1->fg,$pixel1->secondBest";
+                            $fg = $pixel1->fg;
+                            $bg = $pixel1->secondBest;
+                        }
+                        if ($avgT < 0.33) {
+                            $out .= "▓";
+                        } elseif ($avgT < 0.66) {
+                            $out .= "▒";
+                        } else {
+                            $out .= "░";
                         }
                     } else {
                         $out .= " ";

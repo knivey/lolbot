@@ -1312,4 +1312,175 @@ class CanvasTest extends TestCase
         $this->assertStringNotContainsString('▒', $output);
         $this->assertStringNotContainsString('▓', $output);
     }
+
+    public function test_toString_same_fg_dithered_pixels_produce_shade_chars(): void
+    {
+        $canvas = Canvas::createBlank(6, 2, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $pixel1 = $canvas->getPixel(0, 0);
+        $pixel1->fg = 4;
+        $pixel1->dithered = true;
+        $pixel1->secondBest = 64;
+        $pixel1->t = 0.5;
+
+        $pixel2 = $canvas->getPixel(0, 1);
+        $pixel2->fg = 4;
+        $pixel2->dithered = true;
+        $pixel2->secondBest = 64;
+        $pixel2->t = 0.5;
+
+        $output = (string) $canvas;
+        $this->assertStringContainsString('▒', $output);
+        $this->assertStringContainsString("\x034,64", $output);
+    }
+
+    public function test_toString_same_fg_dithered_pixels_no_redundant_color_codes(): void
+    {
+        $canvas = Canvas::createBlank(6, 2, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        for ($x = 0; $x < 6; $x++) {
+            $pixel1 = $canvas->getPixel($x, 0);
+            $pixel1->fg = 4;
+            $pixel1->dithered = true;
+            $pixel1->secondBest = 64;
+            $pixel1->t = 0.5;
+
+            $pixel2 = $canvas->getPixel($x, 1);
+            $pixel2->fg = 4;
+            $pixel2->dithered = true;
+            $pixel2->secondBest = 64;
+            $pixel2->t = 0.5;
+        }
+
+        $output = (string) $canvas;
+        $colorCodeCount = substr_count($output, "\x03");
+        $this->assertSame(1, $colorCodeCount, 'Consecutive same-fg same-secondBest dithered pixels should emit only one color code');
+    }
+
+    public function test_toString_same_fg_dithered_pixels_emits_new_color_when_secondBest_changes(): void
+    {
+        $canvas = Canvas::createBlank(4, 2, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $pixel1 = $canvas->getPixel(0, 0);
+        $pixel1->fg = 4;
+        $pixel1->dithered = true;
+        $pixel1->secondBest = 64;
+        $pixel1->t = 0.5;
+
+        $pixel2 = $canvas->getPixel(0, 1);
+        $pixel2->fg = 4;
+        $pixel2->dithered = true;
+        $pixel2->secondBest = 64;
+        $pixel2->t = 0.5;
+
+        $pixel3 = $canvas->getPixel(1, 0);
+        $pixel3->fg = 4;
+        $pixel3->dithered = true;
+        $pixel3->secondBest = 40;
+        $pixel3->t = 0.5;
+
+        $pixel4 = $canvas->getPixel(1, 1);
+        $pixel4->fg = 4;
+        $pixel4->dithered = true;
+        $pixel4->secondBest = 40;
+        $pixel4->t = 0.5;
+
+        $output = (string) $canvas;
+        $this->assertStringContainsString("\x034,64", $output);
+        $this->assertStringContainsString("\x034,40", $output);
+        $colorCodeCount = substr_count($output, "\x03");
+        $this->assertSame(3, $colorCodeCount, 'Should emit one color code per distinct color (4,64 then 4,40 then reset to 1,1)');
+    }
+
+    public function test_toString_same_fg_dithered_shade_char_by_avg_t(): void
+    {
+        $cases = [
+            [0.1, 0.2, '▓'],
+            [0.3, 0.4, '▒'],
+            [0.7, 0.8, '░'],
+        ];
+        foreach ($cases as [$t1, $t2, $expectedChar]) {
+            $canvas = Canvas::createBlank(4, 2, true);
+            $canvas->fillColor(0, 0, new Color(1, 1));
+
+            $pixel1 = $canvas->getPixel(0, 0);
+            $pixel1->fg = 4;
+            $pixel1->dithered = true;
+            $pixel1->secondBest = 64;
+            $pixel1->t = $t1;
+
+            $pixel2 = $canvas->getPixel(0, 1);
+            $pixel2->fg = 4;
+            $pixel2->dithered = true;
+            $pixel2->secondBest = 64;
+            $pixel2->t = $t2;
+
+            $output = (string) $canvas;
+            $this->assertStringContainsString($expectedChar, $output, "avg t=" . (($t1 + $t2) / 2) . " should use '$expectedChar'");
+        }
+    }
+
+    public function test_toString_same_fg_not_dithered_outputs_space(): void
+    {
+        $canvas = Canvas::createBlank(4, 2, true);
+        $canvas->fillColor(0, 0, new Color(1, 1));
+
+        $pixel1 = $canvas->getPixel(0, 0);
+        $pixel1->fg = 4;
+
+        $pixel2 = $canvas->getPixel(0, 1);
+        $pixel2->fg = 4;
+
+        $output = (string) $canvas;
+        $this->assertStringNotContainsString('░', $output);
+        $this->assertStringNotContainsString('▒', $output);
+        $this->assertStringNotContainsString('▓', $output);
+    }
+
+    public function test_horizontal_gradient_shader_blocks_produces_shade_chars(): void
+    {
+        $canvas = Canvas::createBlank(40, 4, true);
+        $canvas->setDithering(Dithering::ShaderBlocks);
+        $canvas->drawPath(
+            Path::rect(0, 0, 40, 4),
+            new LinearGradient(0, 0, 40, 0, [
+                new ColorStop(0.0, 255, 0, 0),
+                new ColorStop(1.0, 0, 0, 255),
+            ]),
+            null,
+        );
+
+        $output = (string) $canvas;
+        $hasShadeChar = str_contains($output, '░') || str_contains($output, '▒') || str_contains($output, '▓');
+        $this->assertTrue($hasShadeChar, 'Horizontal gradient with ShaderBlocks should produce shade characters');
+    }
+
+    public function test_horizontal_gradient_shader_blocks_no_consecutive_duplicate_color_codes(): void
+    {
+        $canvas = Canvas::createBlank(40, 4, true);
+        $canvas->setDithering(Dithering::ShaderBlocks);
+        $canvas->drawPath(
+            Path::rect(0, 0, 40, 4),
+            new LinearGradient(0, 0, 40, 0, [
+                new ColorStop(0.0, 255, 0, 0),
+                new ColorStop(1.0, 0, 0, 255),
+            ]),
+            null,
+        );
+
+        $output = (string) $canvas;
+        preg_match_all("/\x03(\d+,\d+|\d+)/", $output, $matches);
+        $prev = null;
+        $consecutiveDupes = 0;
+        foreach ($matches[0] as $code) {
+            if ($code === $prev) {
+                $consecutiveDupes++;
+            }
+            $prev = $code;
+        }
+        $this->assertSame(0, $consecutiveDupes, 'Output should not contain consecutive identical color codes');
+    }
 }
