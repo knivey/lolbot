@@ -137,4 +137,66 @@ class TransformTest extends TestCase
         $this->assertEqualsWithDelta(0.0, $x, 0.0001);
         $this->assertEqualsWithDelta(6.0, $y, 0.0001);
     }
+
+    public function test_inverse_of_identity_is_identity(): void
+    {
+        $t = Transform::identity();
+        $inv = $t->inverse();
+        $this->assertTrue($inv->equals(Transform::identity()));
+    }
+
+    public function test_inverse_of_translate(): void
+    {
+        $t = Transform::translate(10.0, 20.0);
+        $inv = $t->inverse();
+        [$x, $y] = $inv->apply(15.0, 25.0);
+        $this->assertEqualsWithDelta(5.0, $x, 0.0001);
+        $this->assertEqualsWithDelta(5.0, $y, 0.0001);
+    }
+
+    public function test_inverse_of_scale(): void
+    {
+        $t = Transform::scale(2.0, 4.0);
+        $inv = $t->inverse();
+        [$x, $y] = $inv->apply(6.0, 12.0);
+        $this->assertEqualsWithDelta(3.0, $x, 0.0001);
+        $this->assertEqualsWithDelta(3.0, $y, 0.0001);
+    }
+
+    public function test_inverse_of_rotate(): void
+    {
+        $t = Transform::rotate(M_PI / 4.0);
+        $inv = $t->inverse();
+        [$x, $y] = $t->apply(3.0, 7.0);
+        [$rx, $ry] = $inv->apply($x, $y);
+        $this->assertEqualsWithDelta(3.0, $rx, 0.0001);
+        $this->assertEqualsWithDelta(7.0, $ry, 0.0001);
+    }
+
+    public function test_inverse_of_composed_transform(): void
+    {
+        $t = Transform::translate(100.0, 200.0)
+            ->multiply(Transform::rotate(deg2rad(86.5167)))
+            ->multiply(Transform::scale(230.426));
+        $inv = $t->inverse();
+        [$x, $y] = $t->apply(5.0, 10.0);
+        [$rx, $ry] = $inv->apply($x, $y);
+        $this->assertEqualsWithDelta(5.0, $rx, 0.0001);
+        $this->assertEqualsWithDelta(10.0, $ry, 0.0001);
+    }
+
+    public function test_inverse_roundtrip_preserves_point(): void
+    {
+        $t = Transform::matrix(2.0, 1.0, 0.5, 3.0, 10.0, 20.0);
+        $inv = $t->inverse();
+        $composed = $t->multiply($inv);
+        $this->assertTrue($composed->equals(Transform::identity()));
+    }
+
+    public function test_inverse_of_singular_matrix_throws(): void
+    {
+        $t = Transform::matrix(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        $this->expectException(\LogicException::class);
+        $t->inverse();
+    }
 }

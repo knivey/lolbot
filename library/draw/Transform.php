@@ -86,6 +86,22 @@ class Transform
         return [$this->a, $this->b, $this->c, $this->d, $this->e, $this->f];
     }
 
+    public function inverse(): self
+    {
+        $det = $this->a * $this->d - $this->b * $this->c;
+        if (abs($det) < 1e-15) {
+            throw new \LogicException('Cannot invert singular transform matrix');
+        }
+        return new self(
+            $this->d / $det,
+            -$this->b / $det,
+            -$this->c / $det,
+            $this->a / $det,
+            ($this->c * $this->f - $this->d * $this->e) / $det,
+            ($this->b * $this->e - $this->a * $this->f) / $det,
+        );
+    }
+
     /**
      * @return array{float, float}
      */
