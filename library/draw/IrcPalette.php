@@ -115,12 +115,12 @@ class IrcPalette
         return $target->getDifferenceDin99($candidate);
     }
 
-    public static function nearestColorFromLab(float $L, float $a, float $b): int
+    public static function nearestColorFromLab(float $L, float $a, float $b, bool $limit16 = false): int
     {
         $qL = (int)round($L * 10);
         $qa = (int)round($a * 10);
         $qb = (int)round($b * 10);
-        $key = "{$qL},{$qa},{$qb}";
+        $key = "{$qL},{$qa},{$qb}" . ($limit16 ? ',16' : '');
         if (isset(self::$labCache[$key])) {
             return self::$labCache[$key];
         }
@@ -129,7 +129,9 @@ class IrcPalette
         $target = new Color(new \Itwmw\ColorDifference\Lib\Lab($L, $a, $b));
         $bestIdx = 0;
         $bestDist = INF;
+        $maxIdx = $limit16 ? 15 : PHP_INT_MAX;
         foreach (self::$colorPalette as $idx => $palColor) {
+            if ($idx > $maxIdx) break;
             $d = self::colorDistance($target, $palColor, $L);
             if ($d < $bestDist) {
                 $bestIdx = $idx;
