@@ -433,3 +433,42 @@ function render(float $lum): string
     $idx = (int)round(max(0, min($lum, 1)) * (count($chars) - 1));
     return $chars[min($idx, count($chars) - 1)];
 }
+
+function edgeChar(array $gxMap, array $gyMap, int $srcX0, int $srcY0, int $blockSize, int $sampleW, int $sampleH, float $threshold = 40.0): ?string
+{
+    $sumGx = 0.0;
+    $sumGy = 0.0;
+    $yStart = max(1, $srcY0);
+    $yEnd = min($sampleH - 1, $srcY0 + $blockSize);
+    $xStart = max(1, $srcX0);
+    $xEnd = min($sampleW - 1, $srcX0 + $blockSize);
+    for ($sy = $yStart; $sy < $yEnd; $sy++) {
+        for ($sx = $xStart; $sx < $xEnd; $sx++) {
+            $idx = $sy * $sampleW + $sx;
+            $sumGx += $gxMap[$idx];
+            $sumGy += $gyMap[$idx];
+        }
+    }
+    $pixels = ($yEnd - $yStart) * ($xEnd - $xStart);
+    if ($pixels == 0) {
+        return null;
+    }
+    $mag = sqrt($sumGx * $sumGx + $sumGy * $sumGy) / $pixels;
+    if ($mag <= $threshold) {
+        return null;
+    }
+    $angle = atan2($sumGy, $sumGx) * 180.0 / M_PI;
+    if ($angle < 0) {
+        $angle += 180.0;
+    }
+    if ($angle < 22.5 || $angle >= 157.5) {
+        return '|';
+    }
+    if ($angle < 67.5) {
+        return '\\';
+    }
+    if ($angle < 112.5) {
+        return '=';
+    }
+    return '/';
+}
