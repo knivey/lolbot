@@ -137,6 +137,10 @@ rasterizes the scene tree onto a `Canvas`.
 - Gradient spread methods: `pad`, `reflect`, `repeat`
 - Applied per-pixel during scanline fill (compute gradient position,
   interpolate stop colors, map to nearest IRC color)
+- `gradientTransform`: additional affine transform from gradient space to user space
+- `gradientUnits`: `objectBoundingBox` (0–1 → shape bbox) and `userSpaceOnUse` (SVG user coordinates)
+- ViewBox coordinate mapping: Canvas inverse CTM ensures gradients sample in correct coordinate space
+- Nested group support: parentTransform tracking ensures gradients inside transformed groups resolve correctly
 
 **Advanced strokes:**
 - `stroke-width` > 1: convert to polygon by offsetting both sides of the path
