@@ -146,6 +146,8 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
 #[Option("--brightness", "change brightness value as percent, 100 is default")]
 #[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
 #[Option("--16", "limit to only using 16 colors")]
+#[Option("--no-edges", "disable edge detection characters")]
+#[Option("--edges-only", "only show edge characters, no luminosity fill")]
 function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
@@ -371,7 +373,13 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                     }
                 }
                 else {
-                    $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH) ?? render($luminosity);
+                    if($cmdArgs->optEnabled("--no-edges")) {
+                        $str_char = render($luminosity);
+                    } elseif($cmdArgs->optEnabled("--edges-only")) {
+                        $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH) ?? ' ';
+                    } else {
+                        $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH) ?? render($luminosity);
+                    }
                     if($match_index != $last_match_index) {
                         $img_string .= "\x03{$match_index}{$str_char}";
                     }
