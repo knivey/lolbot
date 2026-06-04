@@ -742,4 +742,14 @@ class SVGParserTest extends TestCase
         $this->assertNotNull($canvas->data[5][5]->fg);
         $this->assertNotNull($canvas->data[5][15]->fg);
     }
+
+    public function test_userSpaceOnUse_gradient_inside_transformed_group(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g1" x1="0" y1="0" x2="20" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient></defs><g transform="translate(10, 0)"><rect x="0" y="0" width="20" height="10" fill="url(#g1)"/></g></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(30, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][15]->fg);
+        $this->assertNotNull($canvas->data[5][25]->fg);
+    }
 }

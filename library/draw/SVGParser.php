@@ -352,7 +352,7 @@ class SVGParser
 
         $defs = [];
         $styles = self::collectStyles($xml);
-        $root = self::parseSvgElement($xml, $defs, $styles, $logger);
+        $root = self::parseSvgElement($xml, $defs, $styles, $logger, Transform::identity());
 
         $viewBox = null;
         $vb = (string)($xml['viewBox'] ?? '');
@@ -407,19 +407,19 @@ class SVGParser
         return $result;
     }
 
-    private static function parseElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parseElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $name = $el->getName();
         return match ($name) {
-            'svg' => self::parseSvgElement($el, $defs, $styles, $logger),
-            'g' => self::parseGroupElement($el, $defs, $styles, $logger),
-            'path' => self::parsePathElement($el, $defs, $styles, $logger),
-            'rect' => self::parseRectElement($el, $defs, $styles, $logger),
-            'circle' => self::parseCircleElement($el, $defs, $styles, $logger),
-            'ellipse' => self::parseEllipseElement($el, $defs, $styles, $logger),
-            'line' => self::parseLineElement($el, $defs, $styles, $logger),
-            'polyline' => self::parsePolylineElement($el, $defs, $styles, $logger),
-            'polygon' => self::parsePolygonElement($el, $defs, $styles, $logger),
+            'svg' => self::parseSvgElement($el, $defs, $styles, $logger, $parentTransform),
+            'g' => self::parseGroupElement($el, $defs, $styles, $logger, $parentTransform),
+            'path' => self::parsePathElement($el, $defs, $styles, $logger, $parentTransform),
+            'rect' => self::parseRectElement($el, $defs, $styles, $logger, $parentTransform),
+            'circle' => self::parseCircleElement($el, $defs, $styles, $logger, $parentTransform),
+            'ellipse' => self::parseEllipseElement($el, $defs, $styles, $logger, $parentTransform),
+            'line' => self::parseLineElement($el, $defs, $styles, $logger, $parentTransform),
+            'polyline' => self::parsePolylineElement($el, $defs, $styles, $logger, $parentTransform),
+            'polygon' => self::parsePolygonElement($el, $defs, $styles, $logger, $parentTransform),
             'defs' => self::parseDefsElement($el, $defs, $styles, $logger),
             'linearGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
             'radialGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
@@ -431,16 +431,16 @@ class SVGParser
         };
     }
 
-    private static function parseSvgElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): Group
+    private static function parseSvgElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): Group
     {
         $group = new Group();
         foreach (self::svgChildren($el) as $child) {
-            $group->addChild(self::parseElement($child, $defs, $styles, $logger));
+            $group->addChild(self::parseElement($child, $defs, $styles, $logger, $parentTransform));
         }
         return $group;
     }
 
-    private static function parseGroupElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): Group
+    private static function parseGroupElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): Group
     {
         $fill = self::parsePaintAttr($el, 'fill', $defs, $styles, $logger);
         $stroke = self::parseStrokeAttr($el, $defs, $styles, $logger);
@@ -448,6 +448,11 @@ class SVGParser
         $opacity = self::parseFloatAttr($el, 'opacity', $styles);
         $fillOpacity = self::parseFloatAttr($el, 'fill-opacity', $styles);
         $fillRule = self::parseFillRuleAttr($el, $styles);
+
+        $childTransform = $parentTransform;
+        if ($transform !== null) {
+            $childTransform = $parentTransform->multiply($transform);
+        }
 
         $group = new Group(
             fill: $fill,
@@ -459,20 +464,20 @@ class SVGParser
         );
 
         foreach (self::svgChildren($el) as $child) {
-            $group->addChild(self::parseElement($child, $defs, $styles, $logger));
+            $group->addChild(self::parseElement($child, $defs, $styles, $logger, $childTransform));
         }
 
         return $group;
     }
 
-    private static function parsePathElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parsePathElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $d = (string)($el['d'] ?? '');
         $path = self::parseDString($d);
-        return self::buildShape($path, $el, $defs, $styles, $logger);
+        return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
-    private static function parseRectElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parseRectElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $x = (float)($el['x'] ?? 0);
         $y = (float)($el['y'] ?? 0);
@@ -482,20 +487,20 @@ class SVGParser
         $ry = (float)($el['ry'] ?? 0);
 
         $path = Path::rect($x, $y, $w, $h, $rx, $ry);
-        return self::buildShape($path, $el, $defs, $styles, $logger);
+        return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
-    private static function parseCircleElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parseCircleElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $cx = (float)($el['cx'] ?? 0);
         $cy = (float)($el['cy'] ?? 0);
         $r = (float)($el['r'] ?? 0);
 
         $path = Path::circle($cx, $cy, $r);
-        return self::buildShape($path, $el, $defs, $styles, $logger);
+        return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
-    private static function parseEllipseElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parseEllipseElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $cx = (float)($el['cx'] ?? 0);
         $cy = (float)($el['cy'] ?? 0);
@@ -503,10 +508,10 @@ class SVGParser
         $ry = (float)($el['ry'] ?? 0);
 
         $path = Path::ellipse($cx, $cy, $rx, $ry);
-        return self::buildShape($path, $el, $defs, $styles, $logger);
+        return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
-    private static function parseLineElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parseLineElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $x1 = (float)($el['x1'] ?? 0);
         $y1 = (float)($el['y1'] ?? 0);
@@ -514,10 +519,10 @@ class SVGParser
         $y2 = (float)($el['y2'] ?? 0);
 
         $path = Path::line($x1, $y1, $x2, $y2);
-        return self::buildShape($path, $el, $defs, $styles, $logger);
+        return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
-    private static function parsePolylineElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parsePolylineElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $pointsStr = (string)($el['points'] ?? '');
         $points = self::parsePointsAttr($pointsStr);
@@ -527,10 +532,10 @@ class SVGParser
         } else {
             $path = Path::polyline($points);
         }
-        return self::buildShape($path, $el, $defs, $styles, $logger);
+        return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
-    private static function parsePolygonElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function parsePolygonElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $pointsStr = (string)($el['points'] ?? '');
         $points = self::parsePointsAttr($pointsStr);
@@ -540,7 +545,7 @@ class SVGParser
         } else {
             $path = Path::polygon($points);
         }
-        return self::buildShape($path, $el, $defs, $styles, $logger);
+        return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
     private static function parseDefsElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): Group
@@ -670,14 +675,14 @@ class SVGParser
         return self::parsePercentageOrFloat($val);
     }
 
-    private static function buildShape(Path $path, \SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
+    private static function buildShape(Path $path, \SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $display = self::getEffectiveAttr($el, 'display', $styles);
         if ($display === 'none') {
             return new Group();
         }
 
-        $fill = self::resolveGradientPaint($el, 'fill', $defs, $styles, $path, $logger);
+        $fill = self::resolveGradientPaint($el, 'fill', $defs, $styles, $path, $parentTransform, $logger);
         $stroke = self::parseStrokeAttr($el, $defs, $styles, $logger);
         $transform = self::parseOptionalTransform($el, $styles);
         $opacity = self::parseFloatAttr($el, 'opacity', $styles);
@@ -738,6 +743,7 @@ class SVGParser
         array &$defs,
         array $styles,
         ?Path $path,
+        Transform $parentTransform,
         ?LoggerInterface $logger,
     ): ?Paint {
         $val = self::getEffectiveAttr($el, $attr, $styles);
@@ -780,7 +786,11 @@ class SVGParser
             }
 
             if ($gradientTransform !== null) {
-                return $gradient->withSampleTransform($gradientTransform);
+                $sampleTransform = $parentTransform->multiply($gradientTransform);
+                return $gradient->withSampleTransform($sampleTransform);
+            }
+            if (!$parentTransform->equals(Transform::identity())) {
+                return $gradient->withSampleTransform($parentTransform);
             }
             return $gradient;
         }
