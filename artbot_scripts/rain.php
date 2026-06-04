@@ -238,20 +238,15 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $rot = $copy['rot'];
             $absCos = abs(cos($rot));
             $absSin = abs(sin($rot));
-            $rotW = (int)round($cw * $absCos + $ch * $absSin);
-            $rotH = (int)round($cw * $absSin + $ch * $absCos);
-            $rotW = max($rotW, $cw);
-            $rotH = max($rotH, $ch);
-            $offX = (int)(($rotW - $cw) / 2);
-            $offY = (int)(($rotH - $ch) / 2);
+            $rotW = (int)ceil($cw * $absCos + $ch * $absSin) + 2;
+            $rotH = (int)ceil($cw * $absSin + $ch * $absCos) + 2;
+            $offX = (int)round(($rotW - $cw) / 2);
+            $offY = (int)round(($rotH - $ch) / 2);
 
             $tempCanvas = Canvas::createBlank($rotW, $rotH, true);
             $vbt = $doc->getViewBoxTransform((float)$cw, (float)$ch);
             $tempCanvas->save();
             $tempCanvas->concatTransform(Transform::translate((float)$offX, (float)$offY));
-            if ($vbt !== null) {
-                $tempCanvas->concatTransform($vbt);
-            }
             $cx = $cw / 2.0;
             $cy = $ch / 2.0;
             $tempCanvas->concatTransform(
@@ -259,6 +254,9 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
                     ->multiply(Transform::rotate($rot))
                     ->multiply(Transform::translate(-$cx, -$cy))
             );
+            if ($vbt !== null) {
+                $tempCanvas->concatTransform($vbt);
+            }
             $doc->getRoot()->render($tempCanvas, RenderContext::defaults());
             $tempCanvas->restore();
 
