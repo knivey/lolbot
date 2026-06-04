@@ -465,10 +465,10 @@ function edgeChar(array $gxMap, array $gyMap, int $srcX0, int $srcY0, int $block
         return '|';
     }
     if ($angle < 67.5) {
-        return '\\';
+        return '/';
     }
     if ($angle < 112.5) {
         return '=';
     }
-    return '/';
+    return '\\';
 }
