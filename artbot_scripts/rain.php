@@ -10,6 +10,7 @@ use draw\LinearGradient;
 use draw\RadialGradient;
 use draw\Path;
 use draw\StrokeStyle;
+use draw\RenderContext;
 use draw\SVGParser;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
@@ -154,12 +155,10 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         // --- Generate SVG copies ---
         $numCopies = rand(5, 8);
         $copies = [];
-        $canvasW = $renderW;
-        $canvasH = $renderH;
 
         for ($i = 0; $i < $numCopies; $i++) {
             $scalePct = 20 + (mt_rand() / mt_getrandmax()) * 40;
-            $copyW = (int)round(($scalePct / 100.0) * $canvasW);
+            $copyW = (int)round(($scalePct / 100.0) * $renderW);
             $aspect = $svgH / $svgW;
             $copyH = (int)round($copyW * $aspect);
             $copyH = $copyH - ($copyH % 2);
@@ -179,8 +178,8 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $bestOverlap = PHP_FLOAT_MAX;
 
             for ($attempt = 0; $attempt < 20; $attempt++) {
-                $tx = rand((int)-($cw / 5), $canvasW - (int)($cw * 0.8));
-                $ty = rand((int)-($ch / 5), $canvasH - (int)($ch * 0.8));
+                $tx = rand((int)-($cw / 5), $renderW - (int)($cw * 0.8));
+                $ty = rand((int)-($ch / 5), $renderH - (int)($ch * 0.8));
 
                 $maxOverlap = 0.0;
                 foreach ($placed as $p) {
@@ -219,14 +218,14 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             if ($vbt !== null) {
                 $tempCanvas->concatTransform($vbt);
             }
-            $doc->getRoot()->render($tempCanvas, \draw\RenderContext::defaults());
+            $doc->getRoot()->render($tempCanvas, RenderContext::defaults());
             $tempCanvas->restore();
 
             for ($py = 0; $py < $ch; $py++) {
                 for ($px = 0; $px < $cw; $px++) {
                     $dstX = $bestX + $px;
                     $dstY = $bestY + $py;
-                    if ($dstX >= 0 && $dstX < $canvasW && $dstY >= 0 && $dstY < $canvasH) {
+                    if ($dstX >= 0 && $dstX < $renderW && $dstY >= 0 && $dstY < $renderH) {
                         $sp = $tempCanvas->data[$py][$px];
                         if ($sp->fg !== null) {
                             $canvas->data[$dstY][$dstX] = clone $sp;
@@ -239,7 +238,7 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 
         // --- Motion lines ---
         foreach ($placed as $p) {
-            if ($p['y'] < (int)($canvasH * 0.3)) {
+            if ($p['y'] < (int)($renderH * 0.3)) {
                 continue;
             }
             $numLines = rand(3, 5);
