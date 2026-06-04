@@ -14,7 +14,8 @@ class Canvas
     public int $h = 0;
 
     private Transform $ctm;
-    /** @var array<int, Transform> */
+    private Transform $inverseCtm;
+    /** @var array<int, array{0: Transform, 1: Transform}> */
     private array $transformStack = [];
     private Dithering $dithering = Dithering::None;
 
@@ -36,6 +37,7 @@ class Canvas
     private function __construct(readonly public bool $halfblocks = false)
     {
         $this->ctm = Transform::identity();
+        $this->inverseCtm = Transform::identity();
     }
 
     /**
@@ -213,7 +215,7 @@ class Canvas
 
     public function save(): void
     {
-        $this->transformStack[] = $this->ctm;
+        $this->transformStack[] = [$this->ctm, $this->inverseCtm];
     }
 
     public function restore(): void
@@ -221,7 +223,9 @@ class Canvas
         if (count($this->transformStack) === 0) {
             throw new \LogicException('Cannot restore: transform stack is empty');
         }
-        $this->ctm = array_pop($this->transformStack);
+        $saved = array_pop($this->transformStack);
+        $this->ctm = $saved[0];
+        $this->inverseCtm = $saved[1];
     }
 
     public function getTransform(): Transform
@@ -232,11 +236,13 @@ class Canvas
     public function setTransform(Transform $t): void
     {
         $this->ctm = $t;
+        $this->inverseCtm = $t->inverse();
     }
 
     public function concatTransform(Transform $t): void
     {
         $this->ctm = $this->ctm->multiply($t);
+        $this->inverseCtm = $t->inverse()->multiply($this->inverseCtm);
     }
 
     public function translate(float $tx, float $ty): void
@@ -290,7 +296,12 @@ class Canvas
                 }
             } else {
                 $effectiveDithering = $paint->getDithering() ?? $this->dithering;
-                [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
+                $gx = (float) $x;
+                $gy = (float) $y;
+                if (!$this->isIdentity($this->ctm)) {
+                    [$gx, $gy] = $this->inverseCtm->apply($gx, $gy);
+                }
+                [$r, $g, $b] = $paint->getColorAt($gx, $gy);
                 if ($effectiveDithering === Dithering::ShaderBlocks || $effectiveDithering === Dithering::ShaderBlocksAll) {
                     $result = IrcPalette::nearestColorWithMeta($r, $g, $b, $effectiveDithering, $x, $y);
                     $this->data[$y][$x]->fg = $result->code;
@@ -402,7 +413,12 @@ class Canvas
                     }
                 } else {
                     $effectiveDithering = $paint->getDithering() ?? $this->dithering;
-                    [$r, $g, $b] = $paint->getColorAt((float) $x, (float) $y);
+                    $gx = (float) $x;
+                    $gy = (float) $y;
+                    if (!$this->isIdentity($this->ctm)) {
+                        [$gx, $gy] = $this->inverseCtm->apply($gx, $gy);
+                    }
+                    [$r, $g, $b] = $paint->getColorAt($gx, $gy);
                     if ($effectiveDithering === Dithering::ShaderBlocks || $effectiveDithering === Dithering::ShaderBlocksAll) {
                         $result = IrcPalette::nearestColorWithMeta($r, $g, $b, $effectiveDithering, $x, $y);
                         $this->data[$y][$x]->fg = $result->code;
@@ -697,7 +713,12 @@ class Canvas
                             }
                         } else {
                             $effectiveDithering = $paint->getDithering() ?? $this->dithering;
-                            [$r, $g, $b] = $paint->getColorAt((float) $xx, (float) $Y);
+                            $gx = (float) $xx;
+                            $gy = (float) $Y;
+                            if (!$this->isIdentity($this->ctm)) {
+                                [$gx, $gy] = $this->inverseCtm->apply($gx, $gy);
+                            }
+                            [$r, $g, $b] = $paint->getColorAt($gx, $gy);
                             if ($effectiveDithering === Dithering::ShaderBlocks || $effectiveDithering === Dithering::ShaderBlocksAll) {
                                 $result = IrcPalette::nearestColorWithMeta($r, $g, $b, $effectiveDithering, $xx, $Y);
                                 $this->data[$Y][$xx]->fg = $result->code;
