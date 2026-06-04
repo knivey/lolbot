@@ -145,7 +145,6 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
 #[Option("--saturation", "change saturation value as percent, 100 is default")]
 #[Option("--brightness", "change brightness value as percent, 100 is default")]
 #[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
-#[Option("--render2", "alternate text rending for luminocity")]
 #[Option("--16", "limit to only using 16 colors")]
 function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
@@ -226,6 +225,28 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         $sampleH = $targetH * 8;
         $img->resizeImage($sampleW, $sampleH, Imagick::FILTER_LANCZOS, 1);
         $pixels = $img->exportImagePixels(0, 0, $sampleW, $sampleH, "RGB", Imagick::PIXEL_CHAR);
+
+        $lumMap = array_fill(0, $sampleW * $sampleH, 0.0);
+        $gxMap = array_fill(0, $sampleW * $sampleH, 0.0);
+        $gyMap = array_fill(0, $sampleW * $sampleH, 0.0);
+        for ($i = 0; $i < $sampleW * $sampleH; $i++) {
+            $lumMap[$i] = 0.299 * $pixels[$i * 3] + 0.587 * $pixels[$i * 3 + 1] + 0.114 * $pixels[$i * 3 + 2];
+        }
+        for ($y = 1; $y < $sampleH - 1; $y++) {
+            for ($x = 1; $x < $sampleW - 1; $x++) {
+                $tl = $lumMap[($y - 1) * $sampleW + ($x - 1)];
+                $tc = $lumMap[($y - 1) * $sampleW + $x];
+                $tr = $lumMap[($y - 1) * $sampleW + ($x + 1)];
+                $ml = $lumMap[$y * $sampleW + ($x - 1)];
+                $mr = $lumMap[$y * $sampleW + ($x + 1)];
+                $bl = $lumMap[($y + 1) * $sampleW + ($x - 1)];
+                $bc = $lumMap[($y + 1) * $sampleW + $x];
+                $br = $lumMap[($y + 1) * $sampleW + ($x + 1)];
+                $idx = $y * $sampleW + $x;
+                $gxMap[$idx] = -$tl + $tr - 2 * $ml + 2 * $mr - $bl + $br;
+                $gyMap[$idx] = -$tl - 2 * $tc - $tr + $bl + 2 * $bc + $br;
+            }
+        }
 
         $text = $cmdArgs[1];
         if($text != "") {
@@ -350,11 +371,7 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                     }
                 }
                 else {
-                    if($cmdArgs->optEnabled('--render2')) {
-                        $str_char = render2($luminosity);
-                    } else {
                         $str_char = render($luminosity);
-                    }
                     if($match_index != $last_match_index) {
                         $img_string .= "\x03{$match_index}{$str_char}";
                     }
@@ -412,44 +429,7 @@ function make_even(int|float $n): int|float {
 
 function render(float $lum): string
 {
-    $chars = ['.', ':', '-', '~', '+', '*', '=', '>', '%', '$', '&', '#', '@'];
+    $chars = [' ', '.', "'", '`', ':', '-', '~', '+', '=', '!', '*', '?', '/', '^', '#', '%', '$', '&', '@', 'W'];
     $idx = (int)round(max(0, min($lum, 1)) * (count($chars) - 1));
     return $chars[min($idx, count($chars) - 1)];
-}
-
-function render2(float $lum): string {
-    $chars = [' ','@','8','%','#','*','!','+','=','-',';',':',',','.', '$'];
-    $total = max(0, min($lum, 1)) * 256;
-    switch($total) {
-        case $total > 238:
-            return $chars[14];
-        case $total > 221:
-            return $chars[13];
-        case $total > 204:
-            return $chars[12];
-        case $total > 187:
-            return $chars[11];
-        case $total > 170:
-            return $chars[10];
-        case $total > 153:
-            return $chars[9];
-        case $total > 136:
-            return $chars[8];
-        case $total > 119:
-            return $chars[7];
-        case $total > 102:
-            return $chars[6];
-        case $total > 85:
-            return $chars[5];
-        case $total > 68:
-            return $chars[4];
-        case $total > 51:
-            return $chars[3];
-        case $total > 34:
-            return $chars[2];
-        case $total > 17:
-            return $chars[1];
-        default:
-            return $chars[0];
-    }
 }
