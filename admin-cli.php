@@ -9,11 +9,11 @@ global $entityManager, $dependencyFactory;
 
 use lolbot\cli_cmds;
 use Symfony\Component\Console\Application;
-use Symfony\Component\Console\Command\CompletionCommand;
+use Symfony\Component\Console\Command\CompleteCommand;
 use Doctrine\Migrations\Tools\Console\Command;
 
 $application = new Application();
-$application->add(new CompletionCommand());
+$application->add(new CompleteCommand());
 
 $application->addCommands(array(
     new Command\DumpSchemaCommand($dependencyFactory),
