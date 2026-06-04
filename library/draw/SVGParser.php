@@ -350,8 +350,9 @@ class SVGParser
             throw new \InvalidArgumentException('Failed to parse SVG XML');
         }
 
-        $defs = [];
         $styles = self::collectStyles($xml);
+        $defs = [];
+        self::collectAllDefs($xml, $defs, $styles, $logger);
         $root = self::parseSvgElement($xml, $defs, $styles, $logger, Transform::identity());
 
         $viewBox = null;
@@ -546,6 +547,20 @@ class SVGParser
             $path = Path::polygon($points);
         }
         return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
+    }
+
+    private static function collectAllDefs(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): void
+    {
+        foreach (self::svgChildren($el) as $child) {
+            $name = $child->getName();
+            if ($name === 'defs') {
+                self::parseDefsElement($child, $defs, $styles, $logger);
+            } elseif ($name === 'linearGradient' || $name === 'radialGradient') {
+                self::parseGradientElement($child, $defs, $styles, $logger);
+            } else {
+                self::collectAllDefs($child, $defs, $styles, $logger);
+            }
+        }
     }
 
     private static function parseDefsElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): Group
