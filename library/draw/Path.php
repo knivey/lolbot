@@ -327,6 +327,32 @@ class Path
         return $this->transform;
     }
 
+    /**
+     * @return array{x: float, y: float, w: float, h: float}|null
+     */
+    public function getBBox(float $tolerance = 0.5): ?array
+    {
+        $subpaths = $this->flatten($tolerance);
+        $minX = PHP_FLOAT_MAX;
+        $minY = PHP_FLOAT_MAX;
+        $maxX = PHP_FLOAT_MIN;
+        $maxY = PHP_FLOAT_MIN;
+        $found = false;
+        foreach ($subpaths as $sp) {
+            foreach ($sp['vertices'] as $v) {
+                $found = true;
+                if ($v[0] < $minX) $minX = $v[0];
+                if ($v[1] < $minY) $minY = $v[1];
+                if ($v[0] > $maxX) $maxX = $v[0];
+                if ($v[1] > $maxY) $maxY = $v[1];
+            }
+        }
+        if (!$found) {
+            return null;
+        }
+        return ['x' => $minX, 'y' => $minY, 'w' => $maxX - $minX, 'h' => $maxY - $minY];
+    }
+
     private function ensureCurrentPoint(): void
     {
         if (!$this->hasCurrentPoint) {

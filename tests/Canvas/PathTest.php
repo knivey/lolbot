@@ -661,4 +661,43 @@ class PathTest extends TestCase
         $canvas->drawPath($path, new Color(4, null), null);
         $this->assertSame(4, $canvas->data[4][4]->fg);
     }
+
+    public function test_getBBox_empty_path_returns_null(): void
+    {
+        $path = new Path();
+        $this->assertNull($path->getBBox());
+    }
+
+    public function test_getBBox_rect(): void
+    {
+        $path = Path::rect(10.0, 20.0, 30.0, 40.0);
+        $bbox = $path->getBBox();
+        $this->assertNotNull($bbox);
+        $this->assertEqualsWithDelta(10.0, $bbox['x'], 0.001);
+        $this->assertEqualsWithDelta(20.0, $bbox['y'], 0.001);
+        $this->assertEqualsWithDelta(30.0, $bbox['w'], 0.001);
+        $this->assertEqualsWithDelta(40.0, $bbox['h'], 0.001);
+    }
+
+    public function test_getBBox_circle(): void
+    {
+        $path = Path::circle(50.0, 50.0, 25.0);
+        $bbox = $path->getBBox();
+        $this->assertNotNull($bbox);
+        $this->assertEqualsWithDelta(25.0, $bbox['x'], 0.5);
+        $this->assertEqualsWithDelta(25.0, $bbox['y'], 0.5);
+        $this->assertEqualsWithDelta(50.0, $bbox['w'], 0.5);
+        $this->assertEqualsWithDelta(50.0, $bbox['h'], 0.5);
+    }
+
+    public function test_getBBox_triangle(): void
+    {
+        $path = Path::polygon([[0.0, 0.0], [10.0, 0.0], [5.0, 10.0]]);
+        $bbox = $path->getBBox();
+        $this->assertNotNull($bbox);
+        $this->assertEqualsWithDelta(0.0, $bbox['x'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $bbox['y'], 0.001);
+        $this->assertEqualsWithDelta(10.0, $bbox['w'], 0.001);
+        $this->assertEqualsWithDelta(10.0, $bbox['h'], 0.001);
+    }
 }
