@@ -71,8 +71,8 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             return;
         }
 
-        $displayW = 100;
-        $displayH = 120;
+        $displayW = 80;
+        $displayH = 360;
         $ssFactor = 3;
         $renderW = $displayW * $ssFactor;
         $renderH = $displayH * $ssFactor;
@@ -81,34 +81,10 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 
         $palettes = [
             [
-                [0.0, 40, 20, 80],
-                [0.4, 180, 100, 60],
-                [0.7, 255, 180, 100],
-                [1.0, 255, 230, 180],
-            ],
-            [
                 [0.0, 25, 60, 150],
                 [0.4, 80, 140, 210],
                 [0.7, 150, 200, 240],
                 [1.0, 200, 230, 255],
-            ],
-            [
-                [0.0, 60, 20, 80],
-                [0.3, 200, 60, 100],
-                [0.6, 255, 120, 50],
-                [1.0, 255, 180, 60],
-            ],
-            [
-                [0.0, 160, 100, 40],
-                [0.4, 230, 180, 60],
-                [0.7, 255, 220, 130],
-                [1.0, 255, 245, 200],
-            ],
-            [
-                [0.0, 15, 15, 50],
-                [0.4, 30, 50, 90],
-                [0.7, 60, 70, 120],
-                [1.0, 90, 80, 130],
             ],
         ];
 
@@ -134,10 +110,10 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         );
         $canvas->drawPath(Path::circle($sunX, $sunY, $sunR), $sunGrad, null);
 
-        $numClouds = rand(2, 4);
+        $numClouds = rand(4, 8);
         for ($c = 0; $c < $numClouds; $c++) {
             $cloudX = rand(20, $renderW - 20);
-            $cloudY = rand(15, (int)($renderH * 0.5));
+            $cloudY = rand(15, $renderH - 15);
             $numBlobs = rand(2, 3);
             for ($b = 0; $b < $numBlobs; $b++) {
                 $bw = rand(25, 55);
@@ -153,11 +129,11 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         }
 
         // --- Generate SVG copies ---
-        $numCopies = rand(5, 8);
+        $numCopies = rand(20, 32);
         $copies = [];
 
         for ($i = 0; $i < $numCopies; $i++) {
-            $scalePct = 20 + (mt_rand() / mt_getrandmax()) * 40;
+            $scalePct = 20 + pow(mt_rand() / mt_getrandmax(), 2.5) * 40;
             $copyW = (int)round(($scalePct / 100.0) * $renderW);
             $aspect = $svgH / $svgW;
             $copyH = (int)round($copyW * $aspect);
