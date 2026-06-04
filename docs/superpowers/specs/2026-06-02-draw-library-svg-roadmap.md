@@ -296,8 +296,8 @@ tracking winding count, toggle a boolean at each intersection.
 12. **Text** — SVG text elements
 13. **Use/Symbol/Defs** — reusable elements
 14. **IRC enhancements** — higher resolution, better color, Unicode lines
-15. **CSS class support** — parse `<style>` blocks, resolve `class` attributes to fill/stroke values
-    - Parse `<style>` element text content into selector→property rules (class selectors `.foo`, type selectors `path`, universal `*`)
+15. ~~**CSS class support** — parse `<style>` blocks, resolve `class` attributes to fill/stroke values~~ **DONE**
+    - Parse `<style>` element text content into selector→property rules (class selectors `.foo`, type selectors `path`, universal `*`, ID selectors `#foo`)
     - Track `class` attribute on each parsed element
     - Extend `getEffectiveAttr()` cascade: inline `style` → CSS class rules → presentation attribute
     - Selector specificity: ID > class > type; equal specificity → last rule wins
