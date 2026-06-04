@@ -7,8 +7,8 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
-use Itwmw\ColorDifference\Color;
-use Itwmw\ColorDifference\Lib\RGB;
+use draw\IrcPalette;
+use draw\Dithering;
 
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
@@ -136,108 +136,6 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
     }
 }
 
-static $palette = [
-    new Color('#FFFFFF'),
-    new Color('#000000'),
-    new Color('#00007F'),
-    new Color('#009300'),
-    new Color('#FF0000'),
-    new Color('#7F0000'),
-    new Color('#9C009C'),
-    new Color('#FC7F00'),
-    new Color('#FFFF00'),
-    new Color('#00FC00'),
-    new Color('#009393'),
-    new Color('#00FFFF'),
-    new Color('#0000FC'),
-    new Color('#FF00FF'),
-    new Color('#7F7F7F'),
-    new Color('#D2D2D2'),
-    new Color('#470000'),
-    new Color('#472100'),
-    new Color('#474700'),
-    new Color('#324700'),
-    new Color('#004700'),
-    new Color('#00472c'),
-    new Color('#004747'),
-    new Color('#002747'),
-    new Color('#000047'),
-    new Color('#2e0047'),
-    new Color('#470047'),
-    new Color('#47002a'),
-    new Color('#740000'),
-    new Color('#743a00'),
-    new Color('#747400'),
-    new Color('#517400'),
-    new Color('#007400'),
-    new Color('#007449'),
-    new Color('#007474'),
-    new Color('#004074'),
-    new Color('#000074'),
-    new Color('#4b0074'),
-    new Color('#740074'),
-    new Color('#740045'),
-    new Color('#b50000'),
-    new Color('#b56300'),
-    new Color('#b5b500'),
-    new Color('#7db500'),
-    new Color('#00b500'),
-    new Color('#00b571'),
-    new Color('#00b5b5'),
-    new Color('#0063b5'),
-    new Color('#0000b5'),
-    new Color('#7500b5'),
-    new Color('#b500b5'),
-    new Color('#b5006b'),
-    new Color('#ff0000'),
-    new Color('#ff8c00'),
-    new Color('#ffff00'),
-    new Color('#b2ff00'),
-    new Color('#00ff00'),
-    new Color('#00ffa0'),
-    new Color('#00ffff'),
-    new Color('#008cff'),
-    new Color('#0000ff'),
-    new Color('#a500ff'),
-    new Color('#ff00ff'),
-    new Color('#ff0098'),
-    new Color('#ff5959'),
-    new Color('#ffb459'),
-    new Color('#ffff71'),
-    new Color('#cfff60'),
-    new Color('#6fff6f'),
-    new Color('#65ffc9'),
-    new Color('#6dffff'),
-    new Color('#59b4ff'),
-    new Color('#5959ff'),
-    new Color('#c459ff'),
-    new Color('#ff66ff'),
-    new Color('#ff59bc'),
-    new Color('#ff9c9c'),
-    new Color('#ffd39c'),
-    new Color('#ffff9c'),
-    new Color('#e2ff9c'),
-    new Color('#9cff9c'),
-    new Color('#9cffdb'),
-    new Color('#9cffff'),
-    new Color('#9cd3ff'),
-    new Color('#9c9cff'),
-    new Color('#dc9cff'),
-    new Color('#ff9cff'),
-    new Color('#ff94d3'),
-    new Color('#000000'),
-    new Color('#131313'),
-    new Color('#282828'),
-    new Color('#363636'),
-    new Color('#4d4d4d'),
-    new Color('#656565'),
-    new Color('#818181'),
-    new Color('#9f9f9f'),
-    new Color('#bcbcbc'),
-    new Color('#e2e2e2'),
-    new Color('#ffffff')
-];
-
 #[Cmd("ascii")]
 #[Syntax("<img_url> [custom_text]...")]
 #[\knivey\cmdr\attributes\Desc("Generates an ascii from an image url, color matching defaults to Din99")]
@@ -245,14 +143,12 @@ static $palette = [
 #[Option("--edit", "Generate a URL to open the ascii in asciibird editor")]
 #[Option("--block", "Render the image with full blocks")]
 #[Option("--halfblock", "Render the image with halfblocks")]
-#[Option("--quality", "calculate colors using CIEDE2000")]
-#[Option("--lab", "calculate colors using euclidian difference in lab colorspace")]
-#[Option("--rgb", "calculate colors using euclidian difference in rgb colorspace")]
 #[Option("--saturation", "change saturation value as percent, 100 is default")]
 #[Option("--brightness", "change brightness value as percent, 100 is default")]
 #[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
 #[Option("--render2", "alternate text rending for luminocity")]
 #[Option("--16", "limit to only using 16 colors")]
+#[Option("--no-downsample", "skip 4x Lab downsampling, use direct Imagick resize")]
 function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
@@ -284,28 +180,20 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             $width = 80;
         else
             $width = 120;
-        $brightness = 100;
-        $saturation = 100;
-        $hue = 100;
-        $limit = false;
+        $limit16 = false;
         if($cmdArgs->optEnabled("--16")) {
-            $limit = true;
-        }
-        if($cmdArgs->optEnabled("--width")) {
-            $width = intval($cmdArgs->getOpt("--width"));
-            if($width < 10 || $width > 200) {
-                $bot->pm($args->chan, "--width should be between 10 and 200");
-                return;
-            }
+            $limit16 = true;
         }
 
         $img = new Imagick();
         $img->readImageBlob($body);
         if($cmdArgs->optEnabled("--gamma")) {
             $gamma = $cmdArgs->getOpt("--gamma");
-
             $img->gammaImage($gamma);
         }
+        $brightness = 100;
+        $saturation = 100;
+        $hue = 100;
         if($cmdArgs->optEnabled("--saturation")) {
             $saturation = intval($cmdArgs->getOpt("--saturation"));
             if($saturation < 0 || $saturation > 10000) {
@@ -321,16 +209,25 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             }
         }
         $img->modulateImage($brightness, $saturation, $hue);
-        $size = $img->getImageGeometry();
-        $factor = $width / $size['width'];
-        $width = $size['width'] * $factor;
+        $origSize = $img->getImageGeometry();
+        $factor = $width / $origSize['width'];
+        $targetW = (int)round($origSize['width'] * $factor);
         if($cmdArgs->optEnabled("--halfblock"))
-            $height = make_even(round($size['height'] * $factor));
+            $targetH = (int)make_even(round($origSize['height'] * $factor));
         else
-            $height = round($size['height'] * $factor / 2);
+            $targetH = (int)round($origSize['height'] * $factor / 2);
 
-        $img->resizeImage($width, $height, Imagick::FILTER_LANCZOS2SHARP, 0);
-        $size = $img->getImageGeometry();
+        $noDownsample = $cmdArgs->optEnabled("--no-downsample");
+
+        if ($noDownsample) {
+            $img->resizeImage($targetW, $targetH, Imagick::FILTER_LANCZOS2SHARP, 0);
+            $size = $img->getImageGeometry();
+        } else {
+            $midW = $targetW * 4;
+            $midH = $targetH * 4;
+            $img->resizeImage($midW, $midH, Imagick::FILTER_LANCZOS2SHARP, 0);
+            $size = ['width' => $targetW, 'height' => $targetH];
+        }
 
         $text = $cmdArgs[1];
         if($text != "") {
@@ -349,39 +246,60 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             $last_match_index = -1;
             $fg = -1;
             $bg = -1;
-            $hb = "▀";
+            $hb = "\u{2580}";
             for($col = 0; $col < $size['width']; $col++) {
-                $pixel = $img->getImagePixelColor($col, $row);
-                $rgba = $pixel->getColor();
-                $color = new Color(new RGB((int)$rgba['r'], (int)$rgba['g'], (int)$rgba['b']));
-                if($cmdArgs->optEnabled("--halfblock")) {
-                    $pixel2 = $img->getImagePixelColor($col, $row + 1);
-                    $rgba2 = $pixel2->getColor();
-                    $color2 = new Color(new RGB((int)$rgba2['r'], (int)$rgba2['g'], (int)$rgba2['b']));
-                }
+                $luminosity = 0.0;
 
+                if ($noDownsample) {
+                    $pixel = $img->getImagePixelColor($col, $row);
+                    $luminosity = $pixel->getHSL()['luminosity'];
+                    $rgba = $pixel->getColor();
+                    $match_index = IrcPalette::nearestColor((int)$rgba['r'], (int)$rgba['g'], (int)$rgba['b'], Dithering::None, 0, 0, $limit16);
 
-                if($cmdArgs->optEnabled("--quality")) {
-                    $match_index = getClosestMatchCIEDE2000($color, $limit);
-                } elseif ($cmdArgs->optEnabled("--lab")) {
-                    $match_index = getClosestMatchEuclideanLab($color, $limit);
-                } elseif ($cmdArgs->optEnabled("--rgb")) {
-                    $match_index = getClosestMatchEuclideanRGB($color, $limit);
-                } else {
-                    $match_index = getClosestMatchDin99($color, $limit);
-                }
-
-                if($cmdArgs->optEnabled("--halfblock")) {
-                    if($cmdArgs->optEnabled("--quality")) {
-                        $match_index2 = getClosestMatchCIEDE2000($color2, $limit);
-                    } elseif ($cmdArgs->optEnabled("--lab")) {
-                        $match_index2 = getClosestMatchEuclideanLab($color2, $limit);
-                    } elseif ($cmdArgs->optEnabled("--rgb")) {
-                        $match_index2 = getClosestMatchEuclideanRGB($color2, $limit);
-                    } else {
-                        $match_index2 = getClosestMatchDin99($color2, $limit);
+                    if($cmdArgs->optEnabled("--halfblock")) {
+                        $pixel2 = $img->getImagePixelColor($col, $row + 1);
+                        $rgba2 = $pixel2->getColor();
+                        $match_index2 = IrcPalette::nearestColor((int)$rgba2['r'], (int)$rgba2['g'], (int)$rgba2['b'], Dithering::None, 0, 0, $limit16);
                     }
-                    //just keeping this simple to start with
+                } else {
+                    $srcX = $col * 4;
+                    $srcY = $row * 4;
+                    $lSum = 0.0; $aSum = 0.0; $bSum = 0.0; $count = 0;
+                    for ($sy = $srcY; $sy < $srcY + 4; $sy++) {
+                        for ($sx = $srcX; $sx < $srcX + 4; $sx++) {
+                            $px = $img->getImagePixelColor($sx, $sy);
+                            $c = $px->getColor();
+                            $labColor = new \Itwmw\ColorDifference\Color(new \Itwmw\ColorDifference\Lib\RGB((int)$c['r'], (int)$c['g'], (int)$c['b']));
+                            $lab = $labColor->getLab();
+                            $lSum += $lab->L;
+                            $aSum += $lab->a;
+                            $bSum += $lab->b;
+                            $count++;
+                        }
+                    }
+                    $match_index = IrcPalette::nearestColorFromLab($lSum / $count, $aSum / $count, $bSum / $count, $limit16);
+                    $luminosity = ($lSum / $count) / 100.0;
+
+                    if($cmdArgs->optEnabled("--halfblock")) {
+                        $srcY2 = ($row + 1) * 4;
+                        $lSum2 = 0.0; $aSum2 = 0.0; $bSum2 = 0.0; $count2 = 0;
+                        for ($sy = $srcY2; $sy < $srcY2 + 4; $sy++) {
+                            for ($sx = $srcX; $sx < $srcX + 4; $sx++) {
+                                $px = $img->getImagePixelColor($sx, $sy);
+                                $c = $px->getColor();
+                                $labColor = new \Itwmw\ColorDifference\Color(new \Itwmw\ColorDifference\Lib\RGB((int)$c['r'], (int)$c['g'], (int)$c['b']));
+                                $lab = $labColor->getLab();
+                                $lSum2 += $lab->L;
+                                $aSum2 += $lab->a;
+                                $bSum2 += $lab->b;
+                                $count2++;
+                            }
+                        }
+                        $match_index2 = IrcPalette::nearestColorFromLab($lSum2 / $count2, $aSum2 / $count2, $bSum2 / $count2, $limit16);
+                    }
+                }
+
+                if($cmdArgs->optEnabled("--halfblock")) {
                     if($match_index != $fg || $match_index2 != $bg) {
                         if($match_index == $match_index2 && $match_index2 == $bg) {
                             $img_string .= " ";
@@ -416,9 +334,9 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                 }
                 else {
                     if($cmdArgs->optEnabled('--render2')) {
-                        $str_char = render2($pixel->getHSL()['luminosity']);
+                        $str_char = render2($luminosity);
                     } else {
-                        $str_char = render($pixel->getHSL()['luminosity']);
+                        $str_char = render($luminosity);
                     }
                     if($match_index != $last_match_index) {
                         $img_string .= "\x03{$match_index}{$str_char}";
@@ -474,78 +392,6 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
 
 function make_even(int|float $n): int|float {
     return $n - $n % 2;
-}
-
-function getClosestMatchCIEDE2000(Color $color, bool $limit = true): int {
-    global $palette;
-    if($limit)
-        $pal = array_slice($palette, 0, 16);
-    else
-        $pal = $palette;
-    $matchIndex = 0;
-    $dist = 9999999999999.0;
-    foreach ($pal as $idx => $p) {
-        $d = $color->getDifferenceCIEDE2000($p);
-        if($d < $dist) {
-            $matchIndex = $idx;
-            $dist = $d;
-        }
-    }
-    return $matchIndex;
-}
-
-function getClosestMatchDin99(Color $color, bool $limit = false): int {
-    global $palette;
-    if($limit)
-        $pal = array_slice($palette, 0, 16);
-    else
-        $pal = $palette;
-    $matchIndex = 0;
-    $dist = 9999999999999.0;
-    foreach ($pal as $idx => $p) {
-        $d = $color->getDifferenceDin99($p);
-        if($d < $dist) {
-            $matchIndex = $idx;
-            $dist = $d;
-        }
-    }
-    return $matchIndex;
-}
-
-function getClosestMatchEuclideanLab(Color $color, bool $limit = false): int {
-    global $palette;
-    if($limit)
-        $pal = array_slice($palette, 0, 16);
-    else
-        $pal = $palette;
-    $matchIndex = 0;
-    $dist = 9999999999999.0;
-    foreach ($pal as $idx => $p) {
-        $d = $color->getDifferenceEuclideanLab($p);
-        if($d < $dist) {
-            $matchIndex = $idx;
-            $dist = $d;
-        }
-    }
-    return $matchIndex;
-}
-
-function getClosestMatchEuclideanRGB(Color $color, bool $limit = false): int {
-    global $palette;
-    if($limit)
-        $pal = array_slice($palette, 0, 16);
-    else
-        $pal = $palette;
-    $matchIndex = 0;
-    $dist = 9999999999999.0;
-    foreach ($pal as $idx => $p) {
-        $d = $color->getDifferenceEuclideanRGB($p);
-        if($d < $dist) {
-            $matchIndex = $idx;
-            $dist = $d;
-        }
-    }
-    return $matchIndex;
 }
 
 function render(float $lum): string
