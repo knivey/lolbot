@@ -117,7 +117,8 @@ function svg(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
             $canvas = $canvas->resampleTo($width, $height);
         }
 
-        $output = trim((string)$canvas);
+        // Do NOT trim whitespace - trailing spaces can be colored and are part of the art
+        $output = (string)$canvas;
         if ($output === '') {
             $bot->notice($args->nick, "SVG rendered as empty");
             return;
