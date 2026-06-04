@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 require_once 'bootstrap.php';
 
@@ -8,9 +9,11 @@ global $entityManager, $dependencyFactory;
 
 use lolbot\cli_cmds;
 use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Command\CompletionCommand;
 use Doctrine\Migrations\Tools\Console\Command;
 
 $application = new Application();
+$application->add(new CompletionCommand());
 
 $application->addCommands(array(
     new Command\DumpSchemaCommand($dependencyFactory),
