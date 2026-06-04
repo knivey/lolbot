@@ -1121,29 +1121,20 @@ class Canvas
                         if ($pixel->fg === null) {
                             continue;
                         }
-                        $lab = IrcPalette::getColor($pixel->fg)->getLab();
-                        $lSum += $lab->L;
-                        $aSum += $lab->a;
-                        $bSum += $lab->b;
+                        $lab = IrcPalette::getLab($pixel->fg);
+                        $lSum += $lab[0];
+                        $aSum += $lab[1];
+                        $bSum += $lab[2];
                         $count++;
                     }
                 }
 
                 if ($count > 0) {
-                    $avgColor = new \Itwmw\ColorDifference\Color(
-                        new \Itwmw\ColorDifference\Lib\Lab(
-                            $lSum / $count,
-                            $aSum / $count,
-                            $bSum / $count,
-                        )
+                    $out->data[$ty][$tx]->fg = IrcPalette::nearestColorFromLab(
+                        $lSum / $count,
+                        $aSum / $count,
+                        $bSum / $count,
                     );
-                    $rgb = $avgColor->getRGB();
-                    $code = IrcPalette::nearestColor(
-                        (int)round($rgb->R),
-                        (int)round($rgb->G),
-                        (int)round($rgb->B),
-                    );
-                    $out->data[$ty][$tx]->fg = $code;
                 }
             }
         }

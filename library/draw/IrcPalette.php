@@ -13,11 +13,17 @@ class IrcPalette
     /** @var array<int, Color>|null */
     private static ?array $colorPalette = null;
 
+    /** @var array<int, array{float, float, float}>|null */
+    private static ?array $labPalette = null;
+
     /** @var array<int, array{int, int, int}>|null */
     private static ?array $rgbPalette = null;
 
     /** @var array<int, int> */
     private static array $nearestCache = [];
+
+    /** @var array<string, int> */
+    private static array $labCache = [];
 
     private const CACHE_LIMIT = 4096;
 
@@ -77,11 +83,28 @@ class IrcPalette
         return self::$rgbPalette[$ircCode];
     }
 
+    public static function init(): void
+    {
+        self::$hexPalette ??= self::getHexPalette();
+        self::$colorPalette ??= self::buildColorPalette();
+        self::$rgbPalette ??= self::buildRgbPalette();
+        self::$labPalette ??= self::buildLabPalette();
+    }
+
     public static function getColor(int $ircCode): Color
     {
         self::validateCode($ircCode);
         self::$colorPalette ??= self::buildColorPalette();
         return self::$colorPalette[$ircCode];
+    }
+
+    /**
+     * @return array{float, float, float}
+     */
+    public static function getLab(int $ircCode): array
+    {
+        self::validateCode($ircCode);
+        return self::$labPalette[$ircCode];
     }
 
     private static function colorDistance(Color $target, Color $candidate, float $targetL): float
@@ -90,6 +113,34 @@ class IrcPalette
             return $target->getDifferenceEuclideanRGB($candidate);
         }
         return $target->getDifferenceDin99($candidate);
+    }
+
+    public static function nearestColorFromLab(float $L, float $a, float $b): int
+    {
+        $qL = (int)round($L * 10);
+        $qa = (int)round($a * 10);
+        $qb = (int)round($b * 10);
+        $key = "{$qL},{$qa},{$qb}";
+        if (isset(self::$labCache[$key])) {
+            return self::$labCache[$key];
+        }
+
+        self::$colorPalette ??= self::buildColorPalette();
+        $target = new Color(new \Itwmw\ColorDifference\Lib\Lab($L, $a, $b));
+        $bestIdx = 0;
+        $bestDist = INF;
+        foreach (self::$colorPalette as $idx => $palColor) {
+            $d = self::colorDistance($target, $palColor, $L);
+            if ($d < $bestDist) {
+                $bestIdx = $idx;
+                $bestDist = $d;
+            }
+        }
+        self::$labCache[$key] = $bestIdx;
+        if (count(self::$labCache) > 8192) {
+            self::$labCache = [];
+        }
+        return $bestIdx;
     }
 
     public static function nearestColor(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0): int
@@ -400,4 +451,20 @@ class IrcPalette
         }
         return $palette;
     }
+
+    /**
+     * @return array<int, array{float, float, float}>
+     */
+    private static function buildLabPalette(): array
+    {
+        self::$colorPalette ??= self::buildColorPalette();
+        $palette = [];
+        foreach (self::$colorPalette as $idx => $color) {
+            $lab = $color->getLab();
+            $palette[$idx] = [$lab->L, $lab->a, $lab->b];
+        }
+        return $palette;
+    }
 }
+
+IrcPalette::init();
