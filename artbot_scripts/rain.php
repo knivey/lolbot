@@ -12,63 +12,80 @@ use draw\Path;
 use draw\StrokeStyle;
 use draw\RenderContext;
 use draw\SVGParser;
+use draw\Transform;
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("rain")]
-#[Syntax('<url>')]
+#[Syntax('[urls]...')]
 function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
-    $url = $cmdArgs[0] ?? '';
-    if ($url === '') {
-        $bot->notice($args->nick, "Usage: @rain <url>");
-        return;
+    $urls = [];
+    $rawUrls = explode(' ', $cmdArgs[0] ?? '');
+    foreach ($rawUrls as $u) {
+        $u = trim($u);
+        if ($u !== '') {
+            $urls[] = $u;
+        }
     }
 
-    if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('/^https?:\/\//i', (string)$url)) {
-        $bot->notice($args->nick, "URL must be http or https");
-        return;
+    $defaultDir = __DIR__ . '/rain-defaults';
+    $useDefaults = empty($urls);
+
+    $docs = [];
+    if ($useDefaults) {
+        foreach (glob("$defaultDir/*.svg") as $file) {
+            $body = file_get_contents($file);
+            if ($body === false) {
+                continue;
+            }
+            try {
+                $docs[] = SVGParser::parseString($body, $bot->log);
+            } catch (\Throwable) {
+            }
+        }
+        if (empty($docs)) {
+            $bot->notice($args->nick, "No default SVGs found");
+            return;
+        }
     }
 
     $maxSize = 2 * 1024 * 1024;
 
     try {
-        $client = HttpClientBuilder::buildDefault();
-        $request = new Request($url);
-        $request->setBodySizeLimit($maxSize);
-
-        /** @var Response $response */
-        $response = $client->request($request);
-
-        if ($response->getStatus() !== 200) {
-            $bot->notice($args->nick, "Failed to fetch SVG: HTTP " . $response->getStatus());
-            return;
+        foreach ($urls as $url) {
+            if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('/^https?:\/\//i', (string)$url)) {
+                $bot->notice($args->nick, "URL must be http or https: $url");
+                return;
+            }
         }
 
-        $body = $response->getBody()->buffer();
+        foreach ($urls as $url) {
+            $client = HttpClientBuilder::buildDefault();
+            $request = new Request($url);
+            $request->setBodySizeLimit($maxSize);
 
-        $contentType = strtolower($response->getHeader('content-type') ?? '');
-        $isSvgType = str_contains($contentType, 'svg')
-            || str_contains($contentType, 'xml')
-            || str_contains($body, '<svg');
+            /** @var Response $response */
+            $response = $client->request($request);
 
-        if (!$isSvgType) {
-            $bot->notice($args->nick, "URL does not appear to be an SVG file");
-            return;
-        }
+            if ($response->getStatus() !== 200) {
+                $bot->notice($args->nick, "Failed to fetch SVG: HTTP " . $response->getStatus());
+                return;
+            }
 
-        $doc = SVGParser::parseString($body, $bot->log);
+            $body = $response->getBody()->buffer();
 
-        $svgW = $doc->getWidth();
-        $svgH = $doc->getHeight();
-        $vb = $doc->getViewBox();
-        if ($vb !== null) {
-            $svgW = $vb[2];
-            $svgH = $vb[3];
-        }
-        if ($svgW <= 0 || $svgH <= 0) {
-            $bot->notice($args->nick, "SVG has invalid dimensions");
-            return;
+            $contentType = strtolower($response->getHeader('content-type') ?? '');
+            $isSvgType = str_contains($contentType, 'svg')
+                || str_contains($contentType, 'xml')
+                || str_contains($body, '<svg');
+
+            if (!$isSvgType) {
+                $bot->notice($args->nick, "URL does not appear to be an SVG file: $url");
+                return;
+            }
+
+            $docs[] = SVGParser::parseString($body, $bot->log);
         }
 
         $displayW = 80;
@@ -79,16 +96,12 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 
         $canvas = Canvas::createBlank($renderW, $renderH, true);
 
-        $palettes = [
-            [
-                [0.0, 25, 60, 150],
-                [0.4, 80, 140, 210],
-                [0.7, 150, 200, 240],
-                [1.0, 200, 230, 255],
-            ],
+        $pal = [
+            [0.0, 25, 60, 150],
+            [0.4, 80, 140, 210],
+            [0.7, 150, 200, 240],
+            [1.0, 200, 230, 255],
         ];
-
-        $pal = $palettes[array_rand($palettes)];
         $skyStops = [];
         foreach ($pal as $stop) {
             $skyStops[] = new ColorStop($stop[0], $stop[1], $stop[2], $stop[3]);
@@ -128,11 +141,22 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             }
         }
 
-        // --- Generate SVG copies ---
         $numCopies = rand(20, 32);
         $copies = [];
 
         for ($i = 0; $i < $numCopies; $i++) {
+            $doc = $docs[array_rand($docs)];
+            $svgW = $doc->getWidth();
+            $svgH = $doc->getHeight();
+            $vb = $doc->getViewBox();
+            if ($vb !== null) {
+                $svgW = $vb[2];
+                $svgH = $vb[3];
+            }
+            if ($svgW <= 0 || $svgH <= 0) {
+                continue;
+            }
+
             $scalePct = 20 + pow(mt_rand() / mt_getrandmax(), 2.5) * 40;
             $copyW = (int)round(($scalePct / 100.0) * $renderW);
             $aspect = $svgH / $svgW;
@@ -140,7 +164,8 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $copyH = $copyH - ($copyH % 2);
             $copyW = max(10, $copyW);
             $copyH = max(2, $copyH);
-            $copies[] = ['w' => $copyW, 'h' => $copyH];
+            $rotation = deg2rad(rand(-20, 20));
+            $copies[] = ['w' => $copyW, 'h' => $copyH, 'doc' => $doc, 'rot' => $rotation];
         }
 
         usort($copies, fn($a, $b) => $a['w'] <=> $b['w']);
@@ -188,12 +213,21 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $copy['y'] = $bestY;
             $placed[] = $copy;
 
+            $doc = $copy['doc'];
+            $rot = $copy['rot'];
             $tempCanvas = Canvas::createBlank($cw, $ch, true);
             $vbt = $doc->getViewBoxTransform((float)$cw, (float)$ch);
             $tempCanvas->save();
             if ($vbt !== null) {
                 $tempCanvas->concatTransform($vbt);
             }
+            $cx = $cw / 2.0;
+            $cy = $ch / 2.0;
+            $tempCanvas->concatTransform(
+                Transform::translate($cx, $cy)
+                    ->multiply(Transform::rotate($rot))
+                    ->multiply(Transform::translate(-$cx, -$cy))
+            );
             $doc->getRoot()->render($tempCanvas, RenderContext::defaults());
             $tempCanvas->restore();
 
