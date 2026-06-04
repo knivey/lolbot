@@ -59,6 +59,7 @@ require_once 'artbot_scripts/bashorg.php';
 require_once 'artbot_scripts/artfart.php';
 require_once 'artbot_scripts/help.php';
 require_once 'artbot_scripts/svg.php';
+require_once 'artbot_scripts/rain.php';
 
 //copied from Cmdr should give it its own function in there later
 /**
