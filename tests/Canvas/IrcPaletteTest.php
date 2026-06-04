@@ -279,6 +279,20 @@ class IrcPaletteTest extends TestCase
         $this->assertSame($fullResult, $limitedResult);
     }
 
+    public function test_nearestColor_limit16_uses_only_first_16_colors(): void
+    {
+        $result = IrcPalette::nearestColor(100, 80, 60, Dithering::None, 0, 0, true);
+        $this->assertGreaterThanOrEqual(0, $result);
+        $this->assertLessThanOrEqual(15, $result);
+    }
+
+    public function test_nearestColor_limit16_false_uses_all_99_colors(): void
+    {
+        $result = IrcPalette::nearestColor(100, 80, 60, Dithering::None, 0, 0, false);
+        $this->assertGreaterThanOrEqual(0, $result);
+        $this->assertLessThanOrEqual(98, $result);
+    }
+
     public function test_nearestColorWithMeta_code_matches_nearestColor(): void
     {
         $r = 128;

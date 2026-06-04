@@ -145,17 +145,17 @@ class IrcPalette
         return $bestIdx;
     }
 
-    public static function nearestColor(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0): int
+    public static function nearestColor(int $r, int $g, int $b, Dithering $mode = Dithering::None, int $x = 0, int $y = 0, bool $limit16 = false): int
     {
-        if ($mode === Dithering::Ordered4x4) {
+        if ($mode === Dithering::Ordered4x4 && !$limit16) {
             return self::nearestColorDithered($r, $g, $b, $x, $y);
         }
 
-        if ($mode === Dithering::ShaderBlocks || $mode === Dithering::ShaderBlocksAll) {
+        if (($mode === Dithering::ShaderBlocks || $mode === Dithering::ShaderBlocksAll) && !$limit16) {
             return self::nearestColorShaderBlocksCode($r, $g, $b);
         }
 
-        $key = ($r << 16) | ($g << 8) | $b;
+        $key = (($r << 16) | ($g << 8) | $b) . ($limit16 ? 'l' : '');
         if (isset(self::$nearestCache[$key])) {
             return self::$nearestCache[$key];
         }
@@ -165,7 +165,9 @@ class IrcPalette
         $targetL = $target->getLab()->L;
         $bestIdx = 0;
         $bestDist = INF;
+        $maxIdx = $limit16 ? 15 : PHP_INT_MAX;
         foreach (self::$colorPalette as $idx => $palColor) {
+            if ($idx > $maxIdx) break;
             $d = self::colorDistance($target, $palColor, $targetL);
             if ($d < $bestDist) {
                 $bestIdx = $idx;
