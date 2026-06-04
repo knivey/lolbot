@@ -653,6 +653,11 @@ class SVGParser
 
     private static function buildShape(Path $path, \SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): SceneNode
     {
+        $display = self::getEffectiveAttr($el, 'display', $styles);
+        if ($display === 'none') {
+            return new Group();
+        }
+
         $fill = self::parsePaintAttr($el, 'fill', $defs, $styles, $logger);
         $stroke = self::parseStrokeAttr($el, $defs, $styles, $logger);
         $transform = self::parseOptionalTransform($el, $styles);

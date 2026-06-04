@@ -595,4 +595,79 @@ class SVGParserTest extends TestCase
         $doc->render($canvas);
         $this->assertNull($canvas->data[5][5]->fg);
     }
+
+    public function test_parse_string_css_display_none(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.hidden { display: none; }</style><rect x="0" y="0" width="10" height="10" fill="red" class="hidden"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_empty_style_block(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style></style><rect x="0" y="0" width="10" height="10" fill="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_unknown_property_ignored(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.red { fill: red; cursor: pointer; font-size: 14px; }</style><rect x="0" y="0" width="10" height="10" fill="none" class="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_comments_stripped(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>/* comment */.red { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none" class="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_style_in_defs(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><style>.red { fill: red; }</style></defs><rect x="0" y="0" width="10" height="10" fill="none" class="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_does_not_log_style_element(): void
+    {
+        $logger = new class extends \Psr\Log\AbstractLogger {
+            public array $warnings = [];
+            public function log($level, $message, array $context = []): void
+            {
+                if ($level === 'warning') {
+                    $this->warnings[] = $message;
+                }
+            }
+        };
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.red { fill: red; }</style><rect x="0" y="0" width="5" height="5" fill="red"/></svg>';
+        SVGParser::parseString($svg, $logger);
+        if (empty($logger->warnings)) {
+            $this->assertCount(0, $logger->warnings);
+        }
+        foreach ($logger->warnings as $w) {
+            $this->assertStringNotContainsString('style', $w);
+        }
+    }
+
+    public function test_parse_string_css_malformed_rule_skipped(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.red { fill: red; } { broken } .blue { fill: blue; }</style><rect x="0" y="0" width="10" height="10" fill="none" class="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
 }
