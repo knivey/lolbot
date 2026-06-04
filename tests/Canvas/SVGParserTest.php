@@ -694,4 +694,52 @@ class SVGParserTest extends TestCase
         $this->assertNull($canvas->data[5][5]->fg);
         $this->assertNotNull($canvas->data[0][5]->fg);
     }
+
+    public function test_linear_gradient_with_gradientTransform(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="0" gradientTransform="translate(0, 5)"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient></defs><rect x="0" y="0" width="20" height="10" fill="url(#g1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+        $this->assertNotNull($canvas->data[5][15]->fg);
+    }
+
+    public function test_radial_gradient_with_gradientTransform(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="rg" cx="0" cy="0" r="1" gradientTransform="translate(10, 10) scale(10)"><stop offset="0" stop-color="white"/><stop offset="1" stop-color="black"/></radialGradient></defs><rect x="0" y="0" width="20" height="20" fill="url(#rg)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 20);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[10][10]->fg);
+    }
+
+    public function test_gradient_with_userSpaceOnUse(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g1" x1="0" y1="5" x2="20" y2="5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient></defs><rect x="0" y="0" width="20" height="10" fill="url(#g1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_gradient_with_viewBox_and_gradientTransform(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><radialGradient id="rg" cx="0" cy="0" r="1" gradientTransform="translate(100, 100) scale(100)"><stop offset="0" stop-color="#ffcc00"/><stop offset="1" stop-color="#0066ff"/></radialGradient></defs><rect x="0" y="0" width="200" height="200" fill="url(#rg)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 20);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[10][10]->fg);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_gradient_default_gradientUnits_is_objectBoundingBox(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient></defs><rect x="0" y="0" width="20" height="10" fill="url(#g1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+        $this->assertNotNull($canvas->data[5][15]->fg);
+    }
 }

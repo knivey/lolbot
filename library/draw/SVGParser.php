@@ -578,20 +578,39 @@ class SVGParser
             default => SpreadMethod::Pad,
         };
 
+        $gradientUnits = match (strtolower((string)($el['gradientUnits'] ?? 'objectBoundingBox'))) {
+            'userspaceonuse' => GradientUnits::UserSpaceOnUse,
+            default => GradientUnits::ObjectBoundingBox,
+        };
+
+        $gradientTransform = null;
+        $gtStr = (string)($el['gradientTransform'] ?? '');
+        if ($gtStr !== '') {
+            $gradientTransform = self::parseTransform($gtStr);
+        }
+
         $name = $el->getName();
         if ($name === 'linearGradient') {
             $x1 = self::parseGradientCoord($el, 'x1', 0.0);
             $y1 = self::parseGradientCoord($el, 'y1', 0.0);
             $x2 = self::parseGradientCoord($el, 'x2', 1.0);
             $y2 = self::parseGradientCoord($el, 'y2', 0.0);
-            $defs[$id] = new LinearGradient($x1, $y1, $x2, $y2, $stops, $spread);
+            $defs[$id] = [
+                'gradient' => new LinearGradient($x1, $y1, $x2, $y2, $stops, $spread),
+                'units' => $gradientUnits,
+                'transform' => $gradientTransform,
+            ];
         } elseif ($name === 'radialGradient') {
             $cx = self::parseGradientCoord($el, 'cx', 0.5);
             $cy = self::parseGradientCoord($el, 'cy', 0.5);
             $r = self::parseGradientCoord($el, 'r', 0.5);
             $fx = self::parseOptionalGradientCoord($el, 'fx');
             $fy = self::parseOptionalGradientCoord($el, 'fy');
-            $defs[$id] = new RadialGradient($cx, $cy, $r, $stops, $fx, $fy, $spread);
+            $defs[$id] = [
+                'gradient' => new RadialGradient($cx, $cy, $r, $stops, $fx, $fy, $spread),
+                'units' => $gradientUnits,
+                'transform' => $gradientTransform,
+            ];
         }
     }
 
@@ -658,7 +677,7 @@ class SVGParser
             return new Group();
         }
 
-        $fill = self::parsePaintAttr($el, 'fill', $defs, $styles, $logger);
+        $fill = self::resolveGradientPaint($el, 'fill', $defs, $styles, $path, $logger);
         $stroke = self::parseStrokeAttr($el, $defs, $styles, $logger);
         $transform = self::parseOptionalTransform($el, $styles);
         $opacity = self::parseFloatAttr($el, 'opacity', $styles);
@@ -694,7 +713,11 @@ class SVGParser
         if (preg_match('/^url\(#(.+)\)$/', $val, $m)) {
             $id = $m[1];
             if (isset($defs[$id])) {
-                return $defs[$id];
+                $entry = $defs[$id];
+                if ($entry instanceof Paint) {
+                    return $entry;
+                }
+                return $entry['gradient'];
             }
             $logger?->warning("SVG reference not found: #{$id}");
             return new NoPaint();
@@ -705,6 +728,67 @@ class SVGParser
             return null;
         }
 
+        $code = IrcPalette::nearestColor($rgb[0], $rgb[1], $rgb[2]);
+        return new Color($code, null);
+    }
+
+    private static function resolveGradientPaint(
+        \SimpleXMLElement $el,
+        string $attr,
+        array &$defs,
+        array $styles,
+        ?Path $path,
+        ?LoggerInterface $logger,
+    ): ?Paint {
+        $val = self::getEffectiveAttr($el, $attr, $styles);
+        if ($val === 'none') {
+            return new NoPaint();
+        }
+        if ($val === '') {
+            if ($attr === 'fill') {
+                $rgb = [0, 0, 0];
+                $code = IrcPalette::nearestColor($rgb[0], $rgb[1], $rgb[2]);
+                return new Color($code, null);
+            }
+            return null;
+        }
+
+        if (preg_match('/^url\(#(.+)\)$/', $val, $m)) {
+            $id = $m[1];
+            if (!isset($defs[$id])) {
+                $logger?->warning("SVG reference not found: #{$id}");
+                return new NoPaint();
+            }
+            $entry = $defs[$id];
+            if ($entry instanceof Paint) {
+                return $entry;
+            }
+            $gradient = $entry['gradient'];
+            $units = $entry['units'];
+            $gradientTransform = $entry['transform'];
+
+            if ($units === GradientUnits::ObjectBoundingBox && $path !== null) {
+                $bbox = $path->getBBox();
+                if ($bbox !== null && ($bbox['w'] > 0 || $bbox['h'] > 0)) {
+                    $bboxTransform = Transform::translate($bbox['x'], $bbox['y'])
+                        ->multiply(Transform::scale($bbox['w'], $bbox['h']));
+                    $sampleTransform = $gradientTransform !== null
+                        ? $bboxTransform->multiply($gradientTransform)
+                        : $bboxTransform;
+                    return $gradient->withSampleTransform($sampleTransform);
+                }
+            }
+
+            if ($gradientTransform !== null) {
+                return $gradient->withSampleTransform($gradientTransform);
+            }
+            return $gradient;
+        }
+
+        $rgb = SvgColor::parse($val);
+        if ($rgb === null) {
+            return null;
+        }
         $code = IrcPalette::nearestColor($rgb[0], $rgb[1], $rgb[2]);
         return new Color($code, null);
     }
@@ -720,7 +804,8 @@ class SVGParser
         if (preg_match('/^url\(#(.+)\)$/', $strokeVal, $m)) {
             $id = $m[1];
             if (isset($defs[$id])) {
-                $paint = $defs[$id];
+                $entry = $defs[$id];
+                $paint = ($entry instanceof Paint) ? $entry : $entry['gradient'];
             } else {
                 $logger?->warning("SVG stroke reference not found: #{$id}");
                 return null;
