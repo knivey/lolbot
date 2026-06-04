@@ -151,7 +151,92 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             }
         }
 
-        // TODO: generate and render SVG copies (next task)
+        // --- Generate SVG copies ---
+        $numCopies = rand(5, 8);
+        $copies = [];
+        $canvasW = $renderW;
+        $canvasH = $renderH;
+
+        for ($i = 0; $i < $numCopies; $i++) {
+            $scalePct = 20 + (mt_rand() / mt_getrandmax()) * 40;
+            $copyW = (int)round(($scalePct / 100.0) * $canvasW);
+            $aspect = $svgH / $svgW;
+            $copyH = (int)round($copyW * $aspect);
+            $copyH = $copyH - ($copyH % 2);
+            $copyW = max(10, $copyW);
+            $copyH = max(2, $copyH);
+            $copies[] = ['w' => $copyW, 'h' => $copyH];
+        }
+
+        usort($copies, fn($a, $b) => $a['w'] <=> $b['w']);
+
+        $placed = [];
+        foreach ($copies as &$copy) {
+            $cw = $copy['w'];
+            $ch = $copy['h'];
+            $bestX = 0;
+            $bestY = 0;
+            $bestOverlap = PHP_FLOAT_MAX;
+
+            for ($attempt = 0; $attempt < 20; $attempt++) {
+                $tx = rand((int)-($cw / 5), $canvasW - (int)($cw * 0.8));
+                $ty = rand((int)-($ch / 5), $canvasH - (int)($ch * 0.8));
+
+                $maxOverlap = 0.0;
+                foreach ($placed as $p) {
+                    $ox1 = max($tx, $p['x']);
+                    $oy1 = max($ty, $p['y']);
+                    $ox2 = min($tx + $cw, $p['x'] + $p['w']);
+                    $oy2 = min($ty + $ch, $p['y'] + $p['h']);
+                    $ow = max(0, $ox2 - $ox1);
+                    $oh = max(0, $oy2 - $oy1);
+                    $intersection = $ow * $oh;
+                    $smallerArea = min($cw * $ch, $p['w'] * $p['h']);
+                    $ratio = $intersection / $smallerArea;
+                    $maxOverlap = max($maxOverlap, $ratio);
+                }
+
+                if ($maxOverlap < 0.5) {
+                    $bestX = $tx;
+                    $bestY = $ty;
+                    break;
+                }
+
+                if ($maxOverlap < $bestOverlap) {
+                    $bestOverlap = $maxOverlap;
+                    $bestX = $tx;
+                    $bestY = $ty;
+                }
+            }
+
+            $copy['x'] = $bestX;
+            $copy['y'] = $bestY;
+            $placed[] = $copy;
+
+            $tempCanvas = Canvas::createBlank($cw, $ch, true);
+            $vbt = $doc->getViewBoxTransform((float)$cw, (float)$ch);
+            $tempCanvas->save();
+            if ($vbt !== null) {
+                $tempCanvas->concatTransform($vbt);
+            }
+            $doc->getRoot()->render($tempCanvas, \draw\RenderContext::defaults());
+            $tempCanvas->restore();
+
+            for ($py = 0; $py < $ch; $py++) {
+                for ($px = 0; $px < $cw; $px++) {
+                    $dstX = $bestX + $px;
+                    $dstY = $bestY + $py;
+                    if ($dstX >= 0 && $dstX < $canvasW && $dstY >= 0 && $dstY < $canvasH) {
+                        $sp = $tempCanvas->data[$py][$px];
+                        if ($sp->fg !== null) {
+                            $canvas->data[$dstY][$dstX] = clone $sp;
+                        }
+                    }
+                }
+            }
+        }
+        unset($copy);
+
         // TODO: motion lines (next task)
 
         $canvas = $canvas->resampleTo($displayW, $displayH);
