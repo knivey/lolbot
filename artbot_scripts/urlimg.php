@@ -8,7 +8,6 @@ use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use draw\IrcPalette;
-use draw\Dithering;
 
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
@@ -223,8 +222,10 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         else
             $targetH = (int)round($origSize['height'] * $factor / 2);
 
-        $img->resizeImage($targetW, $targetH, Imagick::FILTER_LANCZOS2SHARP, 0);
-        $size = $img->getImageGeometry();
+        $sampleW = $targetW * 8;
+        $sampleH = $targetH * 8;
+        $img->resizeImage($sampleW, $sampleH, Imagick::FILTER_LANCZOS, 1);
+        $pixels = $img->exportImagePixels(0, 0, $sampleW, $sampleH, "RGB", Imagick::PIXEL_CHAR);
 
         $text = $cmdArgs[1];
         if($text != "") {
@@ -239,20 +240,80 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         //delay so the above actualy has a chance to send first
         Amp\delay(0.05);
         $hb = "\u{2580}";
+        $blockSize = 8;
 
-        for($row = 0; $row < $size['height']; $row++) {
+        for($row = 0; $row < $targetH; $row++) {
             $last_match_index = -1;
             $fg = -1;
             $bg = -1;
-            for($col = 0; $col < $size['width']; $col++) {
-                $pixel = $img->getImagePixelColor($col, $row);
-                $rgba = $pixel->getColor();
-                $match_index = IrcPalette::nearestColor((int)$rgba['r'], (int)$rgba['g'], (int)$rgba['b'], Dithering::None, 0, 0, $limit16);
+            $srcY0 = $row * $blockSize;
+
+            $hb_srcY0 = 0;
+            if($cmdArgs->optEnabled("--halfblock")) {
+                $hb_srcY0 = ($row + 1) * $blockSize;
+            }
+
+            for($col = 0; $col < $targetW; $col++) {
+                $srcX0 = $col * $blockSize;
+
+                $lSum = 0.0; $aSum = 0.0; $bSum = 0.0;
+                for ($sy = $srcY0; $sy < $srcY0 + $blockSize; $sy++) {
+                    $rowOff = $sy * $sampleW * 3;
+                    for ($sx = $srcX0; $sx < $srcX0 + $blockSize; $sx++) {
+                        $idx = $rowOff + $sx * 3;
+                        $R = $pixels[$idx] / 255.0;
+                        $G = $pixels[$idx + 1] / 255.0;
+                        $B = $pixels[$idx + 2] / 255.0;
+                        $R = $R > 0.04045 ? (($R + 0.055) / 1.055) ** 2.4 : $R / 12.92;
+                        $G = $G > 0.04045 ? (($G + 0.055) / 1.055) ** 2.4 : $G / 12.92;
+                        $B = $B > 0.04045 ? (($B + 0.055) / 1.055) ** 2.4 : $B / 12.92;
+                        $R *= 100; $G *= 100; $B *= 100;
+                        $X = ($R * 0.4124564 + $G * 0.3575761 + $B * 0.1804375) / 95.047;
+                        $Y = ($R * 0.2126729 + $G * 0.7151522 + $B * 0.0721750) / 100.0;
+                        $Z = ($R * 0.0193339 + $G * 0.1191920 + $B * 0.9503041) / 108.883;
+                        $X = $X > 0.008856 ? $X ** (1 / 3) : (7.787 * $X) / (16 / 116);
+                        $Y = $Y > 0.008856 ? $Y ** (1 / 3) : (7.787 * $Y) / (16 / 116);
+                        $Z = $Z > 0.008856 ? $Z ** (1 / 3) : (7.787 * $Z) / (16 / 116);
+                        $lSum += 116 * $Y - 16;
+                        $aSum += 500 * ($X - $Y);
+                        $bSum += 200 * ($Y - $Z);
+                    }
+                }
+                $blockPixels = $blockSize * $blockSize;
+                $avgL = $lSum / $blockPixels;
+                $avgA = $aSum / $blockPixels;
+                $avgB = $bSum / $blockPixels;
+                $match_index = IrcPalette::nearestColorFromLab($avgL, $avgA, $avgB, $limit16);
+                $luminosity = $avgL / 100.0;
 
                 if($cmdArgs->optEnabled("--halfblock")) {
-                    $pixel2 = $img->getImagePixelColor($col, $row + 1);
-                    $rgba2 = $pixel2->getColor();
-                    $match_index2 = IrcPalette::nearestColor((int)$rgba2['r'], (int)$rgba2['g'], (int)$rgba2['b'], Dithering::None, 0, 0, $limit16);
+                    $lSum2 = 0.0; $aSum2 = 0.0; $bSum2 = 0.0;
+                    for ($sy = $hb_srcY0; $sy < $hb_srcY0 + $blockSize; $sy++) {
+                        $rowOff = $sy * $sampleW * 3;
+                        for ($sx = $srcX0; $sx < $srcX0 + $blockSize; $sx++) {
+                            $idx = $rowOff + $sx * 3;
+                            $R = $pixels[$idx] / 255.0;
+                            $G = $pixels[$idx + 1] / 255.0;
+                            $B = $pixels[$idx + 2] / 255.0;
+                            $R = $R > 0.04045 ? (($R + 0.055) / 1.055) ** 2.4 : $R / 12.92;
+                            $G = $G > 0.04045 ? (($G + 0.055) / 1.055) ** 2.4 : $G / 12.92;
+                            $B = $B > 0.04045 ? (($B + 0.055) / 1.055) ** 2.4 : $B / 12.92;
+                            $R *= 100; $G *= 100; $B *= 100;
+                            $X = ($R * 0.4124564 + $G * 0.3575761 + $B * 0.1804375) / 95.047;
+                            $Y = ($R * 0.2126729 + $G * 0.7151522 + $B * 0.0721750) / 100.0;
+                            $Z = ($R * 0.0193339 + $G * 0.1191920 + $B * 0.9503041) / 108.883;
+                            $X = $X > 0.008856 ? $X ** (1 / 3) : (7.787 * $X) / (16 / 116);
+                            $Y = $Y > 0.008856 ? $Y ** (1 / 3) : (7.787 * $Y) / (16 / 116);
+                            $Z = $Z > 0.008856 ? $Z ** (1 / 3) : (7.787 * $Z) / (16 / 116);
+                            $lSum2 += 116 * $Y - 16;
+                            $aSum2 += 500 * ($X - $Y);
+                            $bSum2 += 200 * ($Y - $Z);
+                        }
+                    }
+                    $avgL2 = $lSum2 / $blockPixels;
+                    $avgA2 = $aSum2 / $blockPixels;
+                    $avgB2 = $bSum2 / $blockPixels;
+                    $match_index2 = IrcPalette::nearestColorFromLab($avgL2, $avgA2, $avgB2, $limit16);
                 }
 
                 if($cmdArgs->optEnabled("--halfblock")) {
@@ -289,7 +350,6 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                     }
                 }
                 else {
-                    $luminosity = $pixel->getHSL()['luminosity'];
                     if($cmdArgs->optEnabled('--render2')) {
                         $str_char = render2($luminosity);
                     } else {
@@ -309,7 +369,6 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                 $row++;
             $img_string .= "\n";
         }
-
         $out = [];
         $cnt = 0;
         foreach(explode("\n", $img_string) as $line) {

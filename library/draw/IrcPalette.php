@@ -27,7 +27,9 @@ class IrcPalette
 
     private const CACHE_LIMIT = 4096;
 
-    private const DARK_L_THRESHOLD = 25.0;
+    private const DARK_L_THRESHOLD = 40.0;
+
+    private const DARK_RGB_FALLBACK = 15.0;
 
     private const BAYER_4X4 = [
         [ 0,  8,  2, 10],
@@ -109,8 +111,18 @@ class IrcPalette
 
     private static function colorDistance(Color $target, Color $candidate, float $targetL): float
     {
-        if ($targetL < self::DARK_L_THRESHOLD) {
+        if ($targetL < self::DARK_RGB_FALLBACK) {
             return $target->getDifferenceEuclideanRGB($candidate);
+        }
+        if ($targetL < self::DARK_L_THRESHOLD) {
+            $lab = $target->getLab();
+            $factor = ($targetL - self::DARK_RGB_FALLBACK) / (self::DARK_L_THRESHOLD - self::DARK_RGB_FALLBACK);
+            $desaturated = new Color(new \Itwmw\ColorDifference\Lib\Lab(
+                $lab->L,
+                $lab->a * $factor,
+                $lab->b * $factor,
+            ));
+            return $desaturated->getDifferenceDin99($candidate);
         }
         return $target->getDifferenceDin99($candidate);
     }
