@@ -148,7 +148,6 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
 #[Option("--gamma", "adjust the gamma of the image, ex --gamma=0.8")]
 #[Option("--render2", "alternate text rending for luminocity")]
 #[Option("--16", "limit to only using 16 colors")]
-#[Option("--no-downsample", "skip 4x Lab downsampling, use direct Imagick resize")]
 function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
@@ -224,17 +223,8 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         else
             $targetH = (int)round($origSize['height'] * $factor / 2);
 
-        $noDownsample = $cmdArgs->optEnabled("--no-downsample");
-
-        if ($noDownsample) {
-            $img->resizeImage($targetW, $targetH, Imagick::FILTER_LANCZOS2SHARP, 0);
-            $size = $img->getImageGeometry();
-        } else {
-            $midW = $targetW * 4;
-            $midH = $targetH * 4;
-            $img->resizeImage($midW, $midH, Imagick::FILTER_LANCZOS2SHARP, 0);
-            $size = ['width' => $targetW, 'height' => $targetH];
-        }
+        $img->resizeImage($targetW, $targetH, Imagick::FILTER_LANCZOS2SHARP, 0);
+        $size = $img->getImageGeometry();
 
         $text = $cmdArgs[1];
         if($text != "") {
@@ -255,55 +245,14 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             $fg = -1;
             $bg = -1;
             for($col = 0; $col < $size['width']; $col++) {
-                $luminosity = 0.0;
+                $pixel = $img->getImagePixelColor($col, $row);
+                $rgba = $pixel->getColor();
+                $match_index = IrcPalette::nearestColor((int)$rgba['r'], (int)$rgba['g'], (int)$rgba['b'], Dithering::None, 0, 0, $limit16);
 
-                if ($noDownsample) {
-                    $pixel = $img->getImagePixelColor($col, $row);
-                    $luminosity = $pixel->getHSL()['luminosity'];
-                    $rgba = $pixel->getColor();
-                    $match_index = IrcPalette::nearestColor((int)$rgba['r'], (int)$rgba['g'], (int)$rgba['b'], Dithering::None, 0, 0, $limit16);
-
-                    if($cmdArgs->optEnabled("--halfblock")) {
-                        $pixel2 = $img->getImagePixelColor($col, $row + 1);
-                        $rgba2 = $pixel2->getColor();
-                        $match_index2 = IrcPalette::nearestColor((int)$rgba2['r'], (int)$rgba2['g'], (int)$rgba2['b'], Dithering::None, 0, 0, $limit16);
-                    }
-                } else {
-                    $srcX = $col * 4;
-                    $srcY = $row * 4;
-                    $lSum = 0.0; $aSum = 0.0; $bSum = 0.0; $count = 0;
-                    for ($sy = $srcY; $sy < $srcY + 4; $sy++) {
-                        for ($sx = $srcX; $sx < $srcX + 4; $sx++) {
-                            $px = $img->getImagePixelColor($sx, $sy);
-                            $c = $px->getColor();
-                            $labColor = new \Itwmw\ColorDifference\Color(new \Itwmw\ColorDifference\Lib\RGB((int)$c['r'], (int)$c['g'], (int)$c['b']));
-                            $lab = $labColor->getLab();
-                            $lSum += $lab->L;
-                            $aSum += $lab->a;
-                            $bSum += $lab->b;
-                            $count++;
-                        }
-                    }
-                    $match_index = IrcPalette::nearestColorFromLab($lSum / $count, $aSum / $count, $bSum / $count, $limit16);
-                    $luminosity = ($lSum / $count) / 100.0;
-
-                    if($cmdArgs->optEnabled("--halfblock")) {
-                        $srcY2 = ($row + 1) * 4;
-                        $lSum2 = 0.0; $aSum2 = 0.0; $bSum2 = 0.0; $count2 = 0;
-                        for ($sy = $srcY2; $sy < $srcY2 + 4; $sy++) {
-                            for ($sx = $srcX; $sx < $srcX + 4; $sx++) {
-                                $px = $img->getImagePixelColor($sx, $sy);
-                                $c = $px->getColor();
-                                $labColor = new \Itwmw\ColorDifference\Color(new \Itwmw\ColorDifference\Lib\RGB((int)$c['r'], (int)$c['g'], (int)$c['b']));
-                                $lab = $labColor->getLab();
-                                $lSum2 += $lab->L;
-                                $aSum2 += $lab->a;
-                                $bSum2 += $lab->b;
-                                $count2++;
-                            }
-                        }
-                        $match_index2 = IrcPalette::nearestColorFromLab($lSum2 / $count2, $aSum2 / $count2, $bSum2 / $count2, $limit16);
-                    }
+                if($cmdArgs->optEnabled("--halfblock")) {
+                    $pixel2 = $img->getImagePixelColor($col, $row + 1);
+                    $rgba2 = $pixel2->getColor();
+                    $match_index2 = IrcPalette::nearestColor((int)$rgba2['r'], (int)$rgba2['g'], (int)$rgba2['b'], Dithering::None, 0, 0, $limit16);
                 }
 
                 if($cmdArgs->optEnabled("--halfblock")) {
@@ -340,6 +289,7 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                     }
                 }
                 else {
+                    $luminosity = $pixel->getHSL()['luminosity'];
                     if($cmdArgs->optEnabled('--render2')) {
                         $str_char = render2($luminosity);
                     } else {
