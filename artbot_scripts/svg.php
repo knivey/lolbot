@@ -117,7 +117,7 @@ function svg(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
             $canvas = $canvas->resampleTo($width, $height);
         }
 
-        $output = rtrim((string)$canvas);
+        $output = trim((string)$canvas);
         if ($output === '') {
             $bot->notice($args->nick, "SVG rendered as empty");
             return;
