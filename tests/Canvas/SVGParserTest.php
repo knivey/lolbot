@@ -460,4 +460,13 @@ class SVGParserTest extends TestCase
         $this->assertNotNull($canvas->data[2][2]->fg);
         $this->assertNull($canvas->data[10][10]->fg);
     }
+
+    public function test_parse_string_css_class_selector(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.red { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none" class="red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
 }
