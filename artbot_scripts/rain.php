@@ -237,7 +237,26 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         }
         unset($copy);
 
-        // TODO: motion lines (next task)
+        // --- Motion lines ---
+        foreach ($placed as $p) {
+            if ($p['y'] < (int)($canvasH * 0.3)) {
+                continue;
+            }
+            $numLines = rand(3, 5);
+            $lineLen = (int)($p['w'] * 0.15 + $p['h'] * 0.1);
+            $lineLen = max(5, min($lineLen, 30));
+            $motionColor = new Color(0, null);
+            for ($ml = 0; $ml < $numLines; $ml++) {
+                $lx = $p['x'] + (int)(($ml + 0.5) / $numLines * $p['w']);
+                $ly = $p['y'] - rand(2, 8);
+                $spread = rand(-3, 3);
+                $canvas->drawPath(
+                    Path::line($lx, $ly, $lx + $spread, $ly - $lineLen),
+                    null,
+                    new StrokeStyle($motionColor),
+                );
+            }
+        }
 
         $canvas = $canvas->resampleTo($displayW, $displayH);
 
