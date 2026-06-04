@@ -275,8 +275,7 @@ tracking winding count, toggle a boolean at each intersection.
 - **Full SVG compliance** — we target a useful subset, not the entire spec
 - **Font rendering** — IRC clients render text with their own fonts and metrics;
   we rely on ASCII art fonts or direct text output
-- **CSS styling** — inline `style` attributes and external stylesheets are
-  out of scope for the foreseeable future
+- **CSS styling** — external stylesheets are out of scope; `<style>` block CSS class resolution is tracked in milestone 15
 - **Animation** — IRC is static text; animation is not possible
 - **SVG namespaced extensions** — no foreignObject, no RDF metadata, etc.
 
@@ -297,3 +296,9 @@ tracking winding count, toggle a boolean at each intersection.
 12. **Text** — SVG text elements
 13. **Use/Symbol/Defs** — reusable elements
 14. **IRC enhancements** — higher resolution, better color, Unicode lines
+15. **CSS class support** — parse `<style>` blocks, resolve `class` attributes to fill/stroke values
+    - Parse `<style>` element text content into selector→property rules (class selectors `.foo`, type selectors `path`, universal `*`)
+    - Track `class` attribute on each parsed element
+    - Extend `getEffectiveAttr()` cascade: inline `style` → CSS class rules → presentation attribute
+    - Selector specificity: ID > class > type; equal specificity → last rule wins
+    - External stylesheets remain out of scope; only inline `<style>` blocks within the SVG document

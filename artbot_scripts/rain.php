@@ -21,20 +21,41 @@ use knivey\cmdr\attributes\Syntax;
 function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $urls = [];
-    $rawUrls = explode(' ', $cmdArgs[0] ?? '');
-    foreach ($rawUrls as $u) {
-        $u = trim($u);
-        if ($u !== '') {
-            $urls[] = $u;
+    $preset = null;
+    $noSS = false;
+    $rawArgs = explode(' ', $cmdArgs[0] ?? '');
+    foreach ($rawArgs as $a) {
+        $a = trim($a);
+        if ($a === '') {
+            continue;
+        }
+        if ($a === '--no-supersample') {
+            $noSS = true;
+            continue;
+        }
+        if (preg_match('/^https?:\/\//i', $a)) {
+            $urls[] = $a;
+        } else {
+            $preset = $a;
         }
     }
 
     $defaultDir = __DIR__ . '/rain-defaults';
-    $useDefaults = empty($urls);
+    $useDefaults = empty($urls) && $preset === null;
 
     $docs = [];
-    if ($useDefaults) {
-        foreach (glob("$defaultDir/*.svg") as $file) {
+    if ($useDefaults || $preset !== null) {
+        if ($preset !== null) {
+            $subdir = "$defaultDir/$preset";
+        } else {
+            $subdirs = glob("$defaultDir/*", GLOB_ONLYDIR);
+            if (empty($subdirs)) {
+                $bot->notice($args->nick, "No preset themes found");
+                return;
+            }
+            $subdir = $subdirs[array_rand($subdirs)];
+        }
+        foreach (glob("$subdir/*.svg") as $file) {
             $body = file_get_contents($file);
             if ($body === false) {
                 continue;
@@ -45,7 +66,7 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             }
         }
         if (empty($docs)) {
-            $bot->notice($args->nick, "No default SVGs found");
+            $bot->notice($args->nick, "No SVGs found in " . basename($subdir));
             return;
         }
     }
@@ -90,7 +111,7 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 
         $displayW = 80;
         $displayH = 360;
-        $ssFactor = 3;
+        $ssFactor = $noSS ? 1 : 3;
         $renderW = $displayW * $ssFactor;
         $renderH = $displayH * $ssFactor;
 
@@ -215,9 +236,19 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 
             $doc = $copy['doc'];
             $rot = $copy['rot'];
-            $tempCanvas = Canvas::createBlank($cw, $ch, true);
+            $absCos = abs(cos($rot));
+            $absSin = abs(sin($rot));
+            $rotW = (int)round($cw * $absCos + $ch * $absSin);
+            $rotH = (int)round($cw * $absSin + $ch * $absCos);
+            $rotW = max($rotW, $cw);
+            $rotH = max($rotH, $ch);
+            $offX = (int)(($rotW - $cw) / 2);
+            $offY = (int)(($rotH - $ch) / 2);
+
+            $tempCanvas = Canvas::createBlank($rotW, $rotH, true);
             $vbt = $doc->getViewBoxTransform((float)$cw, (float)$ch);
             $tempCanvas->save();
+            $tempCanvas->concatTransform(Transform::translate((float)$offX, (float)$offY));
             if ($vbt !== null) {
                 $tempCanvas->concatTransform($vbt);
             }
@@ -231,10 +262,10 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $doc->getRoot()->render($tempCanvas, RenderContext::defaults());
             $tempCanvas->restore();
 
-            for ($py = 0; $py < $ch; $py++) {
-                for ($px = 0; $px < $cw; $px++) {
-                    $dstX = $bestX + $px;
-                    $dstY = $bestY + $py;
+            for ($py = 0; $py < $rotH; $py++) {
+                for ($px = 0; $px < $rotW; $px++) {
+                    $dstX = $bestX - $offX + $px;
+                    $dstY = $bestY - $offY + $py;
                     if ($dstX >= 0 && $dstX < $renderW && $dstY >= 0 && $dstY < $renderH) {
                         $sp = $tempCanvas->data[$py][$px];
                         if ($sp->fg !== null) {
@@ -269,7 +300,7 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 
         $canvas = $canvas->resampleTo($displayW, $displayH);
 
-        $output = trim((string)$canvas);
+        $output = (string)$canvas;
         if ($output === '') {
             $bot->notice($args->nick, "Rendered as empty");
             return;
