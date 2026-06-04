@@ -149,6 +149,7 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
 #[Option("--no-edges", "disable edge detection characters")]
 #[Option("--edges-only", "only show edge characters, no luminosity fill")]
 #[Option("--edges-threshold", "edge detection sensitivity, lower=more edges (default: 40)")]
+#[Option("--posterize", "reduce colors to N levels per channel before conversion")]
 function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
@@ -220,6 +221,14 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             }
         }
         $img->modulateImage($brightness, $saturation, $hue);
+        if($cmdArgs->optEnabled("--posterize")) {
+            $levels = intval($cmdArgs->getOpt("--posterize"));
+            if($levels < 2 || $levels > 256) {
+                $bot->pm($args->chan, "--posterize should be between 2 and 256");
+                return;
+            }
+            $img->posterizeImage($levels, Imagick::DITHERMETHOD_NO);
+        }
         $origSize = $img->getImageGeometry();
         $factor = $width / $origSize['width'];
         $targetW = (int)round($origSize['width'] * $factor);
