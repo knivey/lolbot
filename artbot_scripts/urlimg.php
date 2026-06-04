@@ -148,6 +148,7 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
 #[Option("--16", "limit to only using 16 colors")]
 #[Option("--no-edges", "disable edge detection characters")]
 #[Option("--edges-only", "only show edge characters, no luminosity fill")]
+#[Option("--edges-threshold", "edge detection sensitivity, lower=more edges (default: 40)")]
 function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void {
     $ctx = \NetworkContext::get($bot);
     $config = $ctx->config;
@@ -189,6 +190,10 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         $limit16 = false;
         if($cmdArgs->optEnabled("--16")) {
             $limit16 = true;
+        }
+        $edgeThreshold = 40.0;
+        if($cmdArgs->optEnabled("--edges-threshold")) {
+            $edgeThreshold = (float)$cmdArgs->getOpt("--edges-threshold");
         }
 
         $img = new Imagick();
@@ -376,9 +381,9 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                     if($cmdArgs->optEnabled("--no-edges")) {
                         $str_char = render($luminosity);
                     } elseif($cmdArgs->optEnabled("--edges-only")) {
-                        $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH) ?? ' ';
+                        $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH, $edgeThreshold) ?? ' ';
                     } else {
-                        $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH) ?? render($luminosity);
+                        $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH, $edgeThreshold) ?? render($luminosity);
                     }
                     if($match_index != $last_match_index) {
                         $img_string .= "\x03{$match_index}{$str_char}";
