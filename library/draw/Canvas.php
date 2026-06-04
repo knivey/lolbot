@@ -1089,8 +1089,8 @@ class Canvas
                 $srcX0 = (int)floor($tx * $xScale);
                 $srcX1 = (int)floor(($tx + 1) * $xScale);
 
-                $rSum = 0.0;
-                $gSum = 0.0;
+                $lSum = 0.0;
+                $aSum = 0.0;
                 $bSum = 0.0;
                 $count = 0;
 
@@ -1100,19 +1100,27 @@ class Canvas
                         if ($pixel->fg === null) {
                             continue;
                         }
-                        $rgb = IrcPalette::getRgb($pixel->fg);
-                        $rSum += $rgb[0];
-                        $gSum += $rgb[1];
-                        $bSum += $rgb[2];
+                        $lab = IrcPalette::getColor($pixel->fg)->getLab();
+                        $lSum += $lab->L;
+                        $aSum += $lab->a;
+                        $bSum += $lab->b;
                         $count++;
                     }
                 }
 
                 if ($count > 0) {
+                    $avgColor = new \Itwmw\ColorDifference\Color(
+                        new \Itwmw\ColorDifference\Lib\Lab(
+                            $lSum / $count,
+                            $aSum / $count,
+                            $bSum / $count,
+                        )
+                    );
+                    $rgb = $avgColor->getRGB();
                     $code = IrcPalette::nearestColor(
-                        (int)round($rSum / $count),
-                        (int)round($gSum / $count),
-                        (int)round($bSum / $count),
+                        (int)round($rgb->R),
+                        (int)round($rgb->G),
+                        (int)round($rgb->B),
                     );
                     $out->data[$ty][$tx]->fg = $code;
                 }
