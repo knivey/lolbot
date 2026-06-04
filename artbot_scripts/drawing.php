@@ -13,6 +13,7 @@ use draw\Path;
 use draw\RadialGradient;
 use draw\SpreadMethod;
 use draw\StrokeStyle;
+use draw\Transform;
 
 use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
@@ -416,10 +417,10 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor', 'shadertest'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor', 'shadertest', 'gradtransform'];
 
 #[Cmd("demo")]
-#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest). Random if no arg.")]
+#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest, gradtransform). Random if no arg.")]
 #[Syntax('[name]')]
 #[Option("--dither", "Dithering mode: spatial, shader, or all")]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
@@ -470,6 +471,7 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'dithered' => demoDithered($art),
         'twocolor' => demoTwoColor($art),
         'shadertest' => demoShaderTest($art),
+        'gradtransform' => demoGradTransform($art),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -1099,4 +1101,77 @@ function demoShaderTest(Canvas $art): void
     $art->drawPath(Path::rect($bx + 5, $by + 2, 3, 4), $doorColor, null);
     $art->drawPath(Path::rect($bx + 1, $by + 1, 2, 2), new Color(11, null), null);
     $art->drawPath(Path::rect($bx + 9, $by + 1, 2, 2), new Color(11, null), null);
+}
+
+function demoGradTransform(Canvas $art): void
+{
+    $palettes = [
+        [[255, 200, 0], [255, 100, 0], [200, 0, 50], [100, 0, 150], [50, 0, 200]],
+        [[0, 200, 255], [0, 100, 200], [0, 50, 150], [100, 0, 200], [200, 0, 255]],
+        [[255, 100, 50], [255, 180, 0], [200, 255, 0], [0, 200, 100], [0, 100, 200]],
+        [[0, 255, 100], [100, 200, 0], [200, 150, 0], [255, 100, 50], [255, 50, 100]],
+        [[200, 50, 255], [100, 0, 200], [50, 50, 255], [0, 150, 255], [0, 255, 200]],
+    ];
+    $pal = $palettes[array_rand($palettes)];
+
+    $bgGrad = new LinearGradient(0.0, 0.0, 0.0, 48.0, [
+        new ColorStop(0.0, $pal[0][0], $pal[0][1], $pal[0][2]),
+        new ColorStop(0.5, $pal[1][0], $pal[1][1], $pal[1][2]),
+        new ColorStop(1.0, $pal[2][0], $pal[2][1], $pal[2][2]),
+    ]);
+    $art->drawPath(Path::rect(0.0, 0.0, 80.0, 48.0), $bgGrad, null);
+
+    $numOrbs = rand(4, 7);
+    for ($i = 0; $i < $numOrbs; $i++) {
+        $cx = rand(8, 72);
+        $cy = rand(8, 40);
+        $r = rand(5, 14);
+        $angle = deg2rad(rand(0, 360));
+        $scale = 0.5 + (mt_rand() / mt_getrandmax()) * 2.0;
+
+        $sampleTransform = Transform::translate($cx, $cy)
+            ->multiply(Transform::rotate($angle))
+            ->multiply(Transform::scale($r * $scale));
+
+        $orbGrad = new RadialGradient(
+            0.0, 0.0, 1.0,
+            [
+                new ColorStop(0.0, $pal[4][0], $pal[4][1], $pal[4][2]),
+                new ColorStop(0.6, $pal[3][0], $pal[3][1], $pal[3][2]),
+                new ColorStop(1.0, $pal[0][0], $pal[0][1], $pal[0][2]),
+            ],
+            spreadMethod: SpreadMethod::Pad,
+            sampleTransform: $sampleTransform,
+        );
+        $art->drawPath(Path::circle($cx, $cy, $r), $orbGrad, null);
+    }
+
+    $numRays = rand(3, 6);
+    for ($i = 0; $i < $numRays; $i++) {
+        $x1 = rand(5, 75);
+        $y1 = rand(5, 20);
+        $angle = deg2rad(rand(-60, 60));
+        $len = rand(15, 35);
+        $x2 = $x1 + cos($angle) * $len;
+        $y2 = $y1 + sin($angle) * $len;
+
+        $rotAngle = deg2rad(rand(-45, 45));
+
+        $rayGrad = new LinearGradient(
+            0.0, 0.0, 1.0, 0.0,
+            [
+                new ColorStop(0.0, $pal[4][0], $pal[4][1], $pal[4][2]),
+                new ColorStop(0.5, $pal[3][0], $pal[3][1], $pal[3][2]),
+                new ColorStop(1.0, $pal[2][0], $pal[2][1], $pal[2][2]),
+            ],
+            sampleTransform: Transform::translate($x1, $y1)
+                ->multiply(Transform::rotate($rotAngle))
+                ->multiply(Transform::scale($len, 1.0)),
+        );
+
+        $path = new Path();
+        $path->moveTo($x1, $y1);
+        $path->lineTo($x2, $y2);
+        $art->drawPath($path, null, new StrokeStyle($rayGrad, width: 2.0));
+    }
 }
