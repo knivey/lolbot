@@ -675,7 +675,7 @@ class SVGParser
     {
         $val = self::getEffectiveAttr($el, $attr, $styles);
         if ($val === 'none') {
-            return null;
+            return new NoPaint();
         }
         if ($val === '') {
             if ($attr === 'fill') {
