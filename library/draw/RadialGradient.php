@@ -9,6 +9,8 @@ class RadialGradient implements Paint
     public readonly float $fx;
     public readonly float $fy;
 
+    private ?Transform $sampleTransformInverse = null;
+
     /**
      * @param array<ColorStop> $stops
      */
@@ -21,6 +23,7 @@ class RadialGradient implements Paint
         ?float $fy = null,
         public readonly SpreadMethod $spreadMethod = SpreadMethod::Pad,
         public readonly ?Dithering $dithering = null,
+        ?Transform $sampleTransform = null,
     ) {
         if ($r <= 0) {
             throw new \InvalidArgumentException("RadialGradient radius must be > 0, got $r");
@@ -37,6 +40,9 @@ class RadialGradient implements Paint
         if (sqrt($fdx * $fdx + $fdy * $fdy) >= $r) {
             throw new \InvalidArgumentException('Focal point must be inside the circle');
         }
+        if ($sampleTransform !== null) {
+            $this->sampleTransformInverse = $sampleTransform->inverse();
+        }
     }
 
     use GradientMath;
@@ -48,6 +54,9 @@ class RadialGradient implements Paint
 
     public function getColorAt(float $x, float $y): array
     {
+        if ($this->sampleTransformInverse !== null) {
+            [$x, $y] = $this->sampleTransformInverse->apply($x, $y);
+        }
         $dx = $x - $this->fx;
         $dy = $y - $this->fy;
         $dist = sqrt($dx * $dx + $dy * $dy);
@@ -59,6 +68,23 @@ class RadialGradient implements Paint
     public function getDithering(): ?Dithering
     {
         return $this->dithering;
+    }
+
+    public function withSampleTransform(?Transform $sampleTransform): self
+    {
+        $fx = ($this->fx == $this->cx) ? null : $this->fx;
+        $fy = ($this->fy == $this->cy) ? null : $this->fy;
+        return new self(
+            $this->cx,
+            $this->cy,
+            $this->r,
+            $this->stops,
+            $fx,
+            $fy,
+            $this->spreadMethod,
+            $this->dithering,
+            $sampleTransform,
+        );
     }
 
 }

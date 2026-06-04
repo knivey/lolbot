@@ -7,6 +7,8 @@ class LinearGradient implements Paint
     /** @var ColorStop[] */
     public readonly array $stops;
 
+    private ?Transform $sampleTransformInverse = null;
+
     /**
      * @param array<ColorStop> $stops
      */
@@ -18,12 +20,16 @@ class LinearGradient implements Paint
         array $stops,
         public readonly SpreadMethod $spreadMethod = SpreadMethod::Pad,
         public readonly ?Dithering $dithering = null,
+        ?Transform $sampleTransform = null,
     ) {
         if (count($stops) < 2) {
             throw new \InvalidArgumentException('LinearGradient requires at least 2 stops');
         }
         usort($stops, fn(ColorStop $a, ColorStop $b) => $a->offset <=> $b->offset);
         $this->stops = $stops;
+        if ($sampleTransform !== null) {
+            $this->sampleTransformInverse = $sampleTransform->inverse();
+        }
     }
 
     use GradientMath;
@@ -35,6 +41,9 @@ class LinearGradient implements Paint
 
     public function getColorAt(float $x, float $y): array
     {
+        if ($this->sampleTransformInverse !== null) {
+            [$x, $y] = $this->sampleTransformInverse->apply($x, $y);
+        }
         $dx = $this->x2 - $this->x1;
         $dy = $this->y2 - $this->y1;
         $lenSq = $dx * $dx + $dy * $dy;
@@ -49,6 +58,20 @@ class LinearGradient implements Paint
     public function getDithering(): ?Dithering
     {
         return $this->dithering;
+    }
+
+    public function withSampleTransform(?Transform $sampleTransform): self
+    {
+        return new self(
+            $this->x1,
+            $this->y1,
+            $this->x2,
+            $this->y2,
+            $this->stops,
+            $this->spreadMethod,
+            $this->dithering,
+            $sampleTransform,
+        );
     }
 
 }

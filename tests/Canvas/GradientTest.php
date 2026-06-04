@@ -7,6 +7,7 @@ use draw\Dithering;
 use draw\LinearGradient;
 use draw\RadialGradient;
 use draw\SpreadMethod;
+use draw\Transform;
 use PHPUnit\Framework\TestCase;
 
 class GradientTest extends TestCase
@@ -400,5 +401,51 @@ class GradientTest extends TestCase
         ];
         $grad = new RadialGradient(40, 24, 20, $stops, fx: 38, fy: 22, spreadMethod: SpreadMethod::Reflect, dithering: Dithering::Ordered4x4);
         $this->assertSame(Dithering::Ordered4x4, $grad->getDithering());
+    }
+
+    public function test_linear_gradient_with_sample_transform_translate(): void
+    {
+        $stops = [new ColorStop(0.0, 255, 0, 0), new ColorStop(1.0, 0, 0, 255)];
+        $sampleTransform = Transform::translate(100.0, 0.0);
+        $g = new LinearGradient(0.0, 5.0, 10.0, 5.0, $stops, SpreadMethod::Pad, null, $sampleTransform);
+        $rgb = $g->getColorAt(100.0, 5.0);
+        $this->assertEqualsWithDelta(255, $rgb[0], 2);
+        $this->assertEqualsWithDelta(0, $rgb[1], 2);
+        $this->assertEqualsWithDelta(0, $rgb[2], 2);
+        $rgb = $g->getColorAt(110.0, 5.0);
+        $this->assertEqualsWithDelta(0, $rgb[0], 2);
+        $this->assertEqualsWithDelta(0, $rgb[1], 2);
+        $this->assertEqualsWithDelta(255, $rgb[2], 2);
+    }
+
+    public function test_linear_gradient_without_sample_transform_unchanged(): void
+    {
+        $stops = [new ColorStop(0.0, 255, 0, 0), new ColorStop(1.0, 0, 0, 255)];
+        $g = new LinearGradient(0.0, 5.0, 10.0, 5.0, $stops);
+        $rgb = $g->getColorAt(5.0, 5.0);
+        $this->assertEqualsWithDelta(128, $rgb[0], 2);
+    }
+
+    public function test_radial_gradient_with_sample_transform(): void
+    {
+        $stops = [new ColorStop(0.0, 255, 255, 255), new ColorStop(1.0, 0, 0, 0)];
+        $sampleTransform = Transform::translate(50.0, 50.0);
+        $g = new RadialGradient(10.0, 10.0, 10.0, $stops, null, null, SpreadMethod::Pad, null, $sampleTransform);
+        $rgb = $g->getColorAt(60.0, 60.0);
+        $this->assertEqualsWithDelta(255, $rgb[0], 2);
+        $rgb = $g->getColorAt(70.0, 60.0);
+        $this->assertEqualsWithDelta(0, $rgb[0], 5);
+    }
+
+    public function test_radial_gradient_with_sample_transform_composed(): void
+    {
+        $stops = [new ColorStop(0.0, 255, 0, 0), new ColorStop(1.0, 0, 0, 255)];
+        $gradientTransform = Transform::translate(109.0, 16.0)
+            ->multiply(Transform::rotate(deg2rad(86.5167)))
+            ->multiply(Transform::scale(230.426));
+        $g = new RadialGradient(0.0, 0.0, 1.0, $stops, null, null, SpreadMethod::Pad, null, $gradientTransform);
+        $center = $gradientTransform->apply(0.0, 0.0);
+        $rgb = $g->getColorAt($center[0], $center[1]);
+        $this->assertEqualsWithDelta(255, $rgb[0], 2);
     }
 }
