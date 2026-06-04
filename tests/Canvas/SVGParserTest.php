@@ -654,12 +654,7 @@ class SVGParserTest extends TestCase
         };
         $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.red { fill: red; }</style><rect x="0" y="0" width="5" height="5" fill="red"/></svg>';
         SVGParser::parseString($svg, $logger);
-        if (empty($logger->warnings)) {
-            $this->assertCount(0, $logger->warnings);
-        }
-        foreach ($logger->warnings as $w) {
-            $this->assertStringNotContainsString('style', $w);
-        }
+        $this->assertEmpty($logger->warnings);
     }
 
     public function test_parse_string_css_malformed_rule_skipped(): void
@@ -669,5 +664,34 @@ class SVGParserTest extends TestCase
         $canvas = Canvas::createBlank(15, 15);
         $doc->render($canvas);
         $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_stop_color_on_gradient(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.sc1 { stop-color: red; } .sc2 { stop-color: blue; }</style><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="sc1"/><stop offset="1" class="sc2"/></linearGradient></defs><rect x="0" y="0" width="20" height="10" fill="url(#g1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+        $this->assertNotNull($canvas->data[5][15]->fg);
+    }
+
+    public function test_parse_string_css_style_inside_group(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><g><style>.red { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none" class="red"/></g></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_fill_none_does_not_inherit_group_fill(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><g fill="red"><rect x="0" y="0" width="10" height="10" fill="none" stroke="white"/></g></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNull($canvas->data[5][5]->fg);
+        $this->assertNotNull($canvas->data[0][5]->fg);
     }
 }
