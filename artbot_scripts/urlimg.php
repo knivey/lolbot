@@ -442,7 +442,7 @@ function make_even(int|float $n): int|float {
 
 function render(float $lum): string
 {
-    $chars = [' ', '.', "'", '`', ':', '-', '~', '+', '=', '!', '*', '?', '/', '^', '#', '%', '$', '&', '@', 'W'];
+    $chars = [' ', '.', "'", ':', '^', '(', '*', 'T', ')', 'v', 'x', 'a', 'w', 'm', '$', '%', '&', '#', 'W', '@'];
     $idx = (int)round(max(0, min($lum, 1)) * (count($chars) - 1));
     return $chars[min($idx, count($chars) - 1)];
 }
