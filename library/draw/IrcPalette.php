@@ -19,7 +19,7 @@ class IrcPalette
     /** @var array<int, array{int, int, int}>|null */
     private static ?array $rgbPalette = null;
 
-    /** @var array<int, int> */
+    /** @var array<int|string, int> */
     private static array $nearestCache = [];
 
     /** @var array<string, int> */

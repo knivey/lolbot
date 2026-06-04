@@ -180,6 +180,13 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             $width = 80;
         else
             $width = 120;
+        if($cmdArgs->optEnabled("--width")) {
+            $width = intval($cmdArgs->getOpt("--width"));
+            if($width < 10 || $width > 200) {
+                $bot->pm($args->chan, "--width should be between 10 and 200");
+                return;
+            }
+        }
         $limit16 = false;
         if($cmdArgs->optEnabled("--16")) {
             $limit16 = true;
@@ -241,12 +248,12 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
         pumpToChan($bot, $args->chan, ["ok give me a few seconds to generate the ascii.."]);
         //delay so the above actualy has a chance to send first
         Amp\delay(0.05);
+        $hb = "\u{2580}";
 
         for($row = 0; $row < $size['height']; $row++) {
             $last_match_index = -1;
             $fg = -1;
             $bg = -1;
-            $hb = "\u{2580}";
             for($col = 0; $col < $size['width']; $col++) {
                 $luminosity = 0.0;
 
