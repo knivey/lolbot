@@ -23,8 +23,8 @@ class ignore_add extends Command
 {
     protected function configure(): void
     {
-        $this->addArgument("type", InputArgument::REQUIRED);
-        $this->addArgument("regex", InputArgument::REQUIRED);
+        $this->addArgument("type", InputArgument::REQUIRED, "Ignore type (global, network, bot, channel)");
+        $this->addArgument("regex", InputArgument::REQUIRED, "Regex pattern (@ delimiter is added automatically)");
         $this->addOption("network", "N", InputOption::VALUE_REQUIRED, "Network ID");
         $this->addOption("bot", "B", InputOption::VALUE_REQUIRED, "Bot ID");
     }
