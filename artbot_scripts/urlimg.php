@@ -371,7 +371,7 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                     }
                 }
                 else {
-                        $str_char = render($luminosity);
+                    $str_char = edgeChar($gxMap, $gyMap, $srcX0, $srcY0, $blockSize, $sampleW, $sampleH) ?? render($luminosity);
                     if($match_index != $last_match_index) {
                         $img_string .= "\x03{$match_index}{$str_char}";
                     }
