@@ -469,4 +469,58 @@ class SVGParserTest extends TestCase
         $doc->render($canvas);
         $this->assertNotNull($canvas->data[5][5]->fg);
     }
+
+    public function test_parse_string_css_id_selector(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>#myRect { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none" id="myRect"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_type_selector(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>rect { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_universal_selector(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>* { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_multiple_classes(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.red { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none" class="bold red"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_comma_separated_selectors(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.a, .b { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none" class="b"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_css_type_selector_case_insensitive(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>RECT { fill: red; }</style><rect x="0" y="0" width="10" height="10" fill="none"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $canvas = Canvas::createBlank(15, 15);
+        $doc->render($canvas);
+        $this->assertNotNull($canvas->data[5][5]->fg);
+    }
 }
