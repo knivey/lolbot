@@ -81,14 +81,14 @@ enum GradientUnits {
 ```
 
 **`LinearGradient` changes**:
-- New constructor params: `?Transform $gradientTransform = null`, `GradientUnits $gradientUnits = GradientUnits::ObjectBoundingBox`
-- In `getColorAt(x, y)`: if `$gradientTransform` is set, apply `$gradientTransform->inverse()` to `(x, y)` before computing the gradient
+- New constructor params: `?Transform $gradientTransform = null`, `GradientUnits $gradientUnits = GradientUnits::ObjectBoundingBox`, `?Transform $refTransform = null`
+- In `getColorAt(x, y)`: apply transforms in reverse order: `$refTransform->inverse()` (if set), then `$gradientTransform->inverse()` (if set), then compute the gradient
 
 **`RadialGradient` changes**:
 - Same new constructor params as LinearGradient
 - Same inverse transform application in `getColorAt`
 
-The gradient's own coordinates (x1/y1/x2/y2 for linear; cx/cy/r for radial) remain in their **gradient-local** coordinate space. The `gradientTransform` maps gradient-local → user space. By applying its inverse in `getColorAt`, we map the user-space sample point back to gradient-local space where the coordinates are defined.
+The gradient's own coordinates (x1/y1/x2/y2 for linear; cx/cy/r for radial) remain in their **gradient-local** coordinate space. The `gradientTransform` maps gradient-local → user space. The `refTransform` maps the gradient's reference coordinate system → root user space (for nested groups). By applying their inverses in `getColorAt`, we map the user-space sample point back to gradient-local space.
 
 ### 4. SVGParser Changes
 
@@ -98,13 +98,7 @@ The gradient's own coordinates (x1/y1/x2/y2 for linear; cx/cy/r for radial) rema
 - Pass both to gradient constructors
 - Store gradient in `$defs` with its `GradientUnits` value alongside the gradient object (so paint resolution knows how to handle it)
 
-**Defs storage change**: Currently `$defs[$id] = gradient_object`. Change to a structure that carries metadata:
-
-```php
-$defs[$id] = new GradientDef($gradient, $gradientUnits);
-```
-
-Or equivalently, store `GradientUnits` on the gradient objects themselves (they already have the property) and update `parsePaintAttr` / `parseStrokeAttr` to check it.
+**Defs storage**: `GradientUnits` is stored directly on the gradient objects (new `$gradientUnits` constructor parameter). When `parsePaintAttr()` / `parseStrokeAttr()` resolve `url(#gradientId)`, they check `$gradient->gradientUnits` to decide whether bbox scaling is needed.
 
 **objectBoundingBox handling** in `parsePaintAttr()` / `parseStrokeAttr()`:
 - When resolving `url(#gradientId)`, check the gradient's `gradientUnits`
@@ -124,12 +118,12 @@ For `userSpaceOnUse` gradients referenced inside transformed groups, the gradien
 **`SVGParser` changes**:
 - New `array $transformStack` parameter threaded through `parseElement()`, `parseGroupElement()`, `parseSvgElement()`, `buildShape()`
 - `parseGroupElement()`: if the group has a transform, push it onto the stack before parsing children, pop after
-- The accumulated transform at any point = composition of all transforms on the stack
+- The accumulated transform at any point = composition of all group transforms on the stack (NOT including viewBox — that's handled by Canvas inverse CTM)
 
 **Reference transform on gradient paints**:
 - When resolving `url(#gradientId)` for a `userSpaceOnUse` gradient, compute `$refTransform` = composition of `$transformStack` entries
-- Store `$refTransform` on the gradient paint (new property on gradient classes or a wrapper)
-- In `getColorAt()`: apply `$refTransform->inverse()` then `$gradientTransform->inverse()` to the input coordinates
+- Store `$refTransform` on the gradient paint (new `$refTransform` property on gradient classes)
+- In `getColorAt()`: the Canvas inverse CTM maps pixel → root user space. Then `$refTransform->inverse()` maps root → group space. Then `$gradientTransform->inverse()` maps group space → gradient space.
 
 **For `objectBoundingBox`**: No reference transform needed — the coordinates are already scaled to the shape's bbox in its local space.
 
