@@ -32,9 +32,10 @@ function svg(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
 
     $halfblocks = !$cmdArgs->optEnabled("--nohalfblock");
     $dither = match (strtolower($cmdArgs->getOpt("--dither") ?: 'none')) {
-        'ordered4x4', '4x4' => Dithering::Ordered4x4,
-        'shaderblocks' => Dithering::ShaderBlocks,
-        'shaderblocksall' => Dithering::ShaderBlocksAll,
+        'ordered4x4', '4x4', 'spatial', 'ordered' => Dithering::Ordered4x4,
+        'shaderblocks', 'shader', 'shade', 'blocks' => Dithering::ShaderBlocks,
+        'shaderblocksall', 'all', 'shaderall' => Dithering::ShaderBlocksAll,
+        'none' => Dithering::None,
         default => Dithering::None,
     };
     $ssFactor = 0;

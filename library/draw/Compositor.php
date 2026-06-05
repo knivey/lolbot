@@ -58,7 +58,7 @@ class Compositor
                     $effectiveAlpha = $sp->fgAlpha * $opacity;
                     if ($effectiveAlpha < 0.001) {
                         // skip
-                    } elseif ($dp->fg === null) {
+                    } elseif ($dp->fg === null || $effectiveAlpha >= 0.999) {
                         $dp->fg = $sp->fg;
                         $dp->fgAlpha = 1.0;
                         self::copyPixelMeta($dp, $sp, 'fg');
@@ -134,7 +134,7 @@ class Compositor
                     $effectiveAlpha = $sp->fgAlpha * $opacity;
                     if ($effectiveAlpha < 0.001) {
                         // skip
-                    } elseif ($dp->fg === null) {
+                    } elseif ($dp->fg === null || $effectiveAlpha >= 0.999) {
                         $dp->fg = $sp->fg;
                         $dp->fgAlpha = 1.0;
                         self::copyPixelMeta($dp, $sp, 'fg');
@@ -228,7 +228,7 @@ class Compositor
                     $effectiveAlpha = $sp->fgAlpha * $effectiveOpacity;
                     if ($effectiveAlpha < 0.001) {
                         // skip
-                    } elseif ($dp->fg === null) {
+                    } elseif ($dp->fg === null || $effectiveAlpha >= 0.999) {
                         $dp->fg = $sp->fg;
                         $dp->fgAlpha = 1.0;
                         self::copyPixelMeta($dp, $sp, 'fg');
