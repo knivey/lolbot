@@ -97,7 +97,7 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
         if($type[0] == 'text') {
             var_dump($type);
             if(isset($type[1]) && !preg_match("/^plain;?/", $type[1])) {
-                $bot->pm($args->chan, "content-type was ".implode('/', $type)." should be text/plain or image/* (pastebin.com maybe works too)");
+                $bot->pm($args->chan, "content-type was ".implode('/', $type)." should be text/plain or image (pastebin.com maybe works too)");
                 return;
             }
             if($cmdArgs->optEnabled('--rainbow') || $cmdArgs->optEnabled('--rnb')) {
@@ -451,7 +451,7 @@ function make_even(int|float $n): int|float {
 
 function render(float $lum): string
 {
-    $chars = [' ', '.', "'", ':', '^', '(', '*', 'T', ')', 'v', 'x', 'a', 'w', 'm', '$', '%', '&', '#', 'W', '@'];
+    $chars = [' ', '.', "'", ':', '^', '(', '*', 'T', ')', 'v', 'x', 'a', 'w', 'm', '$', '%', '&', 'W', '@'];
     $idx = (int)round(max(0, min($lum, 1)) * (count($chars) - 1));
     return $chars[min($idx, count($chars) - 1)];
 }
