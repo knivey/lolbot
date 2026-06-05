@@ -239,7 +239,9 @@ class stocks extends \scripts\script_base
         } else {
             $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
             $current = $json->$coin->usd;
-            self::getCache()->set($cacheKey, $current, 900);
+            if ($current !== null) {
+                self::getCache()->set($cacheKey, $current, 900);
+            }
         }
         return "Current price for $coin: $current USD";
     }
