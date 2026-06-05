@@ -14,8 +14,10 @@ use function knivey\tools\multi_array_padding;
 
 class stocks extends \scripts\script_base
 {
+    /** @var LocalCache<mixed>|null */
     private static ?LocalCache $cache = null;
 
+    /** @return LocalCache<mixed> */
     private static function getCache(): LocalCache
     {
         if (self::$cache === null) {
