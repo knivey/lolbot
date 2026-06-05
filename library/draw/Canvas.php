@@ -584,13 +584,18 @@ class Canvas
         $minY = PHP_INT_MAX;
         $maxX = PHP_INT_MIN;
         $maxY = PHP_INT_MIN;
+        $found = false;
         foreach ($snappedSubpaths as $sp) {
             foreach ($sp['vertices'] as $v) {
+                $found = true;
                 if ($v[0] < $minX) $minX = $v[0];
                 if ($v[1] < $minY) $minY = $v[1];
                 if ($v[0] > $maxX) $maxX = $v[0];
                 if ($v[1] > $maxY) $maxY = $v[1];
             }
+        }
+        if (!$found) {
+            return ['x1' => 0, 'y1' => 0, 'x2' => -1, 'y2' => -1];
         }
         return ['x1' => $minX, 'y1' => $minY, 'x2' => $maxX, 'y2' => $maxY];
     }
