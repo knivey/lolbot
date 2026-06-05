@@ -10,8 +10,6 @@ use knivey\cmdr\attributes\Syntax;
 use scripts\remindme\entities\reminder;
 use scripts\script_base;
 
-use function knivey\tools\makeArgs;
-
 class remindme extends script_base
 {
     /** @var array<string, int> */
@@ -20,8 +18,8 @@ class remindme extends script_base
     private array $limitWarns = [];
 
     #[Cmd("in", "remindme")]
-    #[Syntax("<time> <msg>...")]
-    #[Desc("sets a reminder for your after time. time is formatted like 5m30s supports: 1y2M3d4h5m6s")]
+    #[Syntax("<timemsg>...")]
+    #[Desc("sets a reminder. time can be a duration (1h30m, 1 hour 15 min, 2 days) or a relative date (next tuesday, tomorrow 3pm, next month, aug 15th, second week of jan)")]
     public function in(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
@@ -36,13 +34,20 @@ class remindme extends script_base
         $this->cmdLimit[$host] = time() + 2;
         unset($this->limitWarns[$host]);
 
-        $in = \string2Seconds($cmdArgs['time']);
-        if (is_string($in)) {
-            $bot->pm($args->chan, "Error: $in, Give me a proper duration of at least 15 seconds with no spaces using yMwdhms (Ex: 1h10m15s)");
+        $parsed = \parseDuration($cmdArgs['timemsg']);
+        if ($parsed === null) {
+            $bot->pm($args->chan, "Couldn't understand that time. Try: 1h30m, 1 hour 15 min, 2 days, next tuesday, tomorrow 3pm, next month, aug 15");
             return;
         }
+
+        if ($parsed->remainder === '') {
+            $bot->pm($args->chan, "You need to tell me what to remind you about!");
+            return;
+        }
+
+        $in = $parsed->seconds;
         if ($in < 15) {
-            $bot->pm($args->chan, "Give me a proper duration of at least 15 seconds with no spaces (Ex: 1h10m15s)");
+            $bot->pm($args->chan, "Give me a time at least 15 seconds in the future");
             return;
         }
         if ($in > \string2Seconds("69y")) {
@@ -53,53 +58,53 @@ class remindme extends script_base
         $r = new reminder();
         $r->nick = $args->nick;
         $r->chan = $args->chan;
-        $r->at = time() + $in;
-        $r->msg = $cmdArgs['msg'];
+        $r->at = $parsed->targetTime ?? time() + $in;
+        $r->msg = $parsed->remainder;
         $r->network = $this->network;
         $entityManager->persist($r);
         $entityManager->flush();
 
-        $bot->pm($args->chan, "Ok, I'll remind you in " . \Duration_toString($in));
+        if ($parsed->targetTime !== null) {
+            $dt = Carbon::createFromTimestamp($parsed->targetTime);
+            $fromNow = $dt->shortRelativeToNowDiffForHumans(Carbon::now(), 10);
+            $bot->pm($args->chan, "Ok, I'll remind you on " . $dt->toCookieString() . " ($fromNow)");
+        } else {
+            $bot->pm($args->chan, "Ok, I'll remind you in " . \Duration_toString($in));
+        }
         $this->sendDelayed($bot, $r, $in);
     }
 
-    /*
-     * Because cmdr doesnt yet support it, using \knivey\tools\makeArgs which makes args using "arg one" arg2 "arg\"3" etc
-     */
-    // TODO let users save a timezone so they dont have always include it here
     #[Cmd("at", "on")]
     #[Syntax("<timemsg>...")]
-    #[Desc("Remind you at a certain date time, the date time must be in quotes")]
+    #[Desc("Remind you at a certain date time. Try: .on next friday watch new JRH  or  .at tomorrow 3pm eat ice cream  or  .in aug 15 pay rent")]
     public function at(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
-        $r = makeArgs($cmdArgs['timemsg']);
-        if (!is_array($r) || count($r) < 2) {
-            $bot->pm($args->chan, "Syntax: <datetime> <msg>  If datetime is more than one word put it inside quotes, you should include your timezone");
-            $bot->pm($args->chan, "Example: .on \"next Friday EDT\" watch new JRH  <- Will trigger at 00:00");
-            $bot->pm($args->chan, "Example: .at \"11pm EDT\" eat ice cream");
-            return;
-        }
-        $time = array_shift($r);
-        $msg = implode(' ', $r);
 
-        try {
-            $dt = new Carbon($time);
-        } catch (\Exception $e) {
-            $bot->pm($args->chan, "That date time ($time) isn't understood");
+        $parsed = \parseDuration($cmdArgs['timemsg']);
+        if ($parsed === null || $parsed->remainder === '') {
+            $bot->pm($args->chan, "Syntax: <datetime> <msg>  Try: .on next friday watch new JRH  or  .at tomorrow 3pm eat ice cream  or  .in aug 15 pay rent");
             return;
         }
-        if ($dt->getTimestamp() <= time() + 15) {
+
+        if ($parsed->targetTime !== null) {
+            $dt = Carbon::createFromTimestamp($parsed->targetTime);
+        } else {
+            $dt = Carbon::createFromTimestamp(time() + $parsed->seconds);
+        }
+
+        $in = $parsed->seconds;
+        if ($in < 15) {
             $bot->pm($args->chan, "Give me a time at least 15 seconds in the future");
             return;
         }
-        $in = $dt->getTimestamp() - time();
+
         $r = new reminder();
         $r->nick = $args->nick;
         $r->chan = $args->chan;
         $r->at = $dt->getTimestamp();
         $r->sent = false;
-        $r->msg = $msg;
+        $r->msg = $parsed->remainder;
         $r->network = $this->network;
         $entityManager->persist($r);
         $entityManager->flush();
