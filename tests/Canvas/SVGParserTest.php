@@ -798,4 +798,75 @@ class SVGParserTest extends TestCase
 
         $this->assertSame(4, $canvas->data[5][5]->fg);
     }
+
+    public function test_parse_string_clipPath_with_group(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c1"><circle cx="5" cy="5" r="5"/></clipPath></defs><g clip-path="url(#c1)"><rect x="0" y="0" width="15" height="10" fill="red"/></g></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(15, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[5][5]->fg);
+        $this->assertNull($canvas->data[0][14]->fg);
+    }
+
+    public function test_parse_string_clipPath_with_transform(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c1" transform="translate(5,0)"><rect x="0" y="0" width="5" height="5"/></clipPath></defs><rect x="0" y="0" width="15" height="10" fill="red" clip-path="url(#c1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(15, 10);
+        $doc->render($canvas);
+
+        $this->assertNull($canvas->data[2][2]->fg);
+        $this->assertSame(4, $canvas->data[2][7]->fg);
+    }
+
+    public function test_parse_string_clipPath_and_mask_combined(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c1"><rect x="0" y="0" width="8" height="8"/></clipPath><mask id="m1"><rect x="0" y="0" width="5" height="5" fill="white"/></mask></defs><rect x="0" y="0" width="10" height="10" fill="red" clip-path="url(#c1)" mask="url(#m1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg);
+        $this->assertNull($canvas->data[8][8]->fg);
+    }
+
+    public function test_parse_string_mask_alpha_type(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><mask id="m1" mask-type="alpha"><rect x="0" y="0" width="5" height="5" fill="white"/></mask></defs><rect x="0" y="0" width="10" height="10" fill="red" mask="url(#m1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg);
+        $this->assertNull($canvas->data[8][8]->fg);
+    }
+
+    public function test_parse_string_clipPath_in_defs_only(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c1"><rect x="0" y="0" width="5" height="5"/></clipPath></defs></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_clipPath_with_path_element(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c1"><path d="M 0 0 L 5 0 L 5 5 L 0 5 Z"/></clipPath></defs><rect x="0" y="0" width="10" height="10" fill="red" clip-path="url(#c1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[2][2]->fg);
+        $this->assertNull($canvas->data[8][8]->fg);
+    }
 }
