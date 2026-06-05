@@ -162,3 +162,294 @@ function Duration_array2string(array $duration, bool $nopad = false): string {
 
 }
 
+class ParseResult
+{
+    public function __construct(
+        public readonly int $seconds,
+        public readonly string $remainder,
+        public readonly ?int $targetTime = null,
+    ) {}
+}
+
+function parseDuration(string $input): ?ParseResult
+{
+    $input = trim($input);
+    if ($input === '') {
+        return null;
+    }
+
+    $remainder = '';
+    $seconds = parseDurationRegex($input, $remainder);
+    if ($seconds !== null) {
+        return new ParseResult($seconds, trim($remainder));
+    }
+
+    $result = parseDurationDate($input);
+    if ($result !== null) {
+        return $result;
+    }
+
+    return null;
+}
+
+function parseDurationRegex(string $input, string &$remainder = ''): ?int
+{
+    global $Duration_periods;
+
+    $wordUnits = [
+        'years'   => $Duration_periods['y'],
+        'year'    => $Duration_periods['y'],
+        'yrs'     => $Duration_periods['y'],
+        'yr'      => $Duration_periods['y'],
+        'months'  => $Duration_periods['M'],
+        'month'   => $Duration_periods['M'],
+        'weeks'   => $Duration_periods['w'],
+        'week'    => $Duration_periods['w'],
+        'wks'     => $Duration_periods['w'],
+        'wk'      => $Duration_periods['w'],
+        'days'    => $Duration_periods['d'],
+        'day'     => $Duration_periods['d'],
+        'hours'   => $Duration_periods['h'],
+        'hour'    => $Duration_periods['h'],
+        'hrs'     => $Duration_periods['h'],
+        'hr'      => $Duration_periods['h'],
+        'minutes' => $Duration_periods['m'],
+        'minute'  => $Duration_periods['m'],
+        'mins'    => $Duration_periods['m'],
+        'min'     => $Duration_periods['m'],
+        'seconds' => $Duration_periods['s'],
+        'second'  => $Duration_periods['s'],
+        'secs'    => $Duration_periods['s'],
+        'sec'     => $Duration_periods['s'],
+    ];
+
+    $singleLetter = implode('', array_keys($Duration_periods));
+    $wordAlternation = implode('|', array_keys($wordUnits));
+
+    $pattern = '/^(\d+\s*[' . preg_quote($singleLetter, '/') . '](?![a-zA-Z])\s*|(\d+)\s*(' . $wordAlternation . ')\s*)+/i';
+
+    if (!preg_match($pattern, $input, $matches, PREG_OFFSET_CAPTURE)) {
+        return null;
+    }
+
+    $matched = $matches[0][0];
+    $matchEnd = $matches[0][1] + strlen($matched);
+    $remainder = substr($input, $matchEnd);
+
+    $total = 0;
+    $tokenPattern = '/(\d+)\s*([' . preg_quote($singleLetter, '/') . '])(?![a-zA-Z])|(\d+)\s*(' . $wordAlternation . ')/i';
+    if (!preg_match_all($tokenPattern, $matched, $tokens, PREG_SET_ORDER)) {
+        return null;
+    }
+
+    foreach ($tokens as $token) {
+        if (!empty($token[2])) {
+            $num = (int) $token[1];
+            $unit = $token[2];
+            if (!isset($Duration_periods[$unit])) {
+                $unitLower = strtolower($unit);
+                if (!isset($Duration_periods[$unitLower])) {
+                    return null;
+                }
+                $unit = $unitLower;
+            }
+            $total += $num * $Duration_periods[$unit];
+        } elseif (!empty($token[4])) {
+            $num = (int) $token[3];
+            $unit = strtolower($token[4]);
+            if (!isset($wordUnits[$unit])) {
+                return null;
+            }
+            $total += $num * $wordUnits[$unit];
+        }
+    }
+
+    if ($total <= 0) {
+        return null;
+    }
+
+    if ($total > PHP_INT_MAX) {
+        return null;
+    }
+
+    return (int) $total;
+}
+
+function parseDurationDate(string $input): ?ParseResult
+{
+    $dayNames = [
+        'monday'    => 1, 'mon'  => 1,
+        'tuesday'   => 2, 'tues' => 2, 'tue' => 2,
+        'wednesday' => 3, 'wed'  => 3,
+        'thursday'  => 4, 'thurs'=> 4, 'thu' => 4,
+        'friday'    => 5, 'fri'  => 5,
+        'saturday'  => 6, 'sat'  => 6,
+        'sunday'    => 7, 'sun'  => 7,
+    ];
+    $monthNames = [
+        'january'  => 1,  'jan' => 1,
+        'february' => 2,  'feb' => 2,
+        'march'    => 3,  'mar' => 3,
+        'april'    => 4,  'apr' => 4,
+        'may'      => 5,
+        'june'     => 6,  'jun' => 6,
+        'july'     => 7,  'jul' => 7,
+        'august'   => 8,  'aug' => 8,
+        'september'=> 9,  'sep' => 9,  'sept' => 9,
+        'october'  => 10, 'oct' => 10,
+        'november' => 11, 'nov' => 11,
+        'december' => 12, 'dec' => 12,
+    ];
+    $ordinals = [
+        'first'  => 1, '1st' => 1,
+        'second' => 2, '2nd' => 2,
+        'third'  => 3, '3rd' => 3,
+        'fourth' => 4, '4th' => 4,
+        'fifth'  => 5, '5th' => 5,
+    ];
+
+    $dayPattern = implode('|', array_keys($dayNames));
+    $monthPattern = implode('|', array_keys($monthNames));
+    $ordinalPattern = implode('|', array_keys($ordinals));
+    $timePattern = '(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(am|pm)';
+    $timeGroup = '(?:' . $timePattern . ')?\s*(?:at\s+(?:' . $timePattern . '))?';
+
+    $patterns = [
+        '/^(today)\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^(tomorrow)\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^next\s+(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^next\s+(week|month|year|yr|mo|wks?)\b\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^(' . $ordinalPattern . ')\s+week\s+of\s+(' . $monthPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^(' . $monthPattern . ')\s+(\d{1,2})(?:st|nd|rd|th)?\s*' . $timeGroup . '\s*(.*)$/i',
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $input, $m)) {
+            $result = parseDurationDateMatch($m, $dayNames, $monthNames, $ordinals);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+    }
+
+    return null;
+}
+
+function parseDurationDateMatch(
+    array $m,
+    array $dayNames,
+    array $monthNames,
+    array $ordinals,
+): ?ParseResult {
+    $baseTimestamp = strtotime('today');
+
+    if (strtolower($m[1]) === 'today') {
+        $timeOffset = 2;
+    } elseif (strtolower($m[1]) === 'tomorrow') {
+        $baseTimestamp += 86400;
+        $timeOffset = 2;
+    } elseif (isset($dayNames[strtolower($m[1])])) {
+        $target = $dayNames[strtolower($m[1])];
+        $today = (int) date('N');
+        $diff = $target - $today;
+        if ($diff <= 0) {
+            $diff += 7;
+        }
+        $baseTimestamp += $diff * 86400;
+        $timeOffset = 2;
+    } elseif (in_array(strtolower($m[1]), ['week', 'month', 'year', 'yr', 'mo', 'wk', 'wks'])) {
+        $unit = strtolower($m[1]);
+        switch ($unit) {
+            case 'week':
+            case 'wk':
+            case 'wks':
+                $today = (int) date('N');
+                $daysUntilMon = (8 - $today) % 7;
+                if ($daysUntilMon === 0) {
+                    $daysUntilMon = 7;
+                }
+                $baseTimestamp += $daysUntilMon * 86400;
+                break;
+            case 'month':
+            case 'mo':
+                $baseTimestamp = strtotime('+1 month', $baseTimestamp);
+                break;
+            case 'year':
+            case 'yr':
+            case 'yrs':
+                $baseTimestamp = strtotime('+1 year', $baseTimestamp);
+                break;
+            default:
+                return null;
+        }
+        $timeOffset = 2;
+    } elseif (isset($ordinals[strtolower($m[1])])) {
+        $n = $ordinals[strtolower($m[1])];
+        $month = $monthNames[strtolower($m[2])];
+        $year = (int) date('Y');
+        $ts = parseDurationDateNthMonday($n, $month, $year);
+        if ($ts <= time() + 15) {
+            $ts = parseDurationDateNthMonday($n, $month, $year + 1);
+        }
+        $baseTimestamp = $ts;
+        $timeOffset = 3;
+    } elseif (isset($monthNames[strtolower($m[1])])) {
+        $month = $monthNames[strtolower($m[1])];
+        $day = (int) $m[2];
+        $year = (int) date('Y');
+        $ts = mktime(0, 0, 0, $month, $day, $year);
+        if ($ts === false || $ts <= time() + 15) {
+            $ts = mktime(0, 0, 0, $month, $day, $year + 1);
+        }
+        if ($ts === false) {
+            return null;
+        }
+        $baseTimestamp = $ts;
+        $timeOffset = 3;
+    } else {
+        return null;
+    }
+
+    $hours = 0;
+    $minutes = 0;
+    $seconds = 0;
+    for ($i = $timeOffset; $i <= $timeOffset + 4; $i += 4) {
+        if (!empty($m[$i])) {
+            $hours = (int) $m[$i];
+            $minutes = isset($m[$i + 1]) && $m[$i + 1] !== '' ? (int) $m[$i + 1] : 0;
+            $seconds = isset($m[$i + 2]) && $m[$i + 2] !== '' ? (int) $m[$i + 2] : 0;
+            $ampm = strtolower($m[$i + 3]);
+            if ($ampm === 'pm' && $hours < 12) {
+                $hours += 12;
+            }
+            if ($ampm === 'am' && $hours === 12) {
+                $hours = 0;
+            }
+            break;
+        }
+    }
+
+    $targetTime = $baseTimestamp + $hours * 3600 + $minutes * 60 + $seconds;
+    $remainder = isset($m[$timeOffset + 8]) ? trim($m[$timeOffset + 8]) : '';
+
+    if ($targetTime <= time() + 15) {
+        return null;
+    }
+
+    return new ParseResult(
+        seconds: $targetTime - time(),
+        remainder: $remainder,
+        targetTime: $targetTime,
+    );
+}
+
+function parseDurationDateNthMonday(int $n, int $month, int $year): int
+{
+    $firstDay = mktime(0, 0, 0, $month, 1, $year);
+    $dow = (int) date('N', $firstDay);
+    $daysToFirstMon = (8 - $dow) % 7;
+    $firstMonday = 1 + $daysToFirstMon;
+    $targetDay = $firstMonday + ($n - 1) * 7;
+    return mktime(0, 0, 0, $month, $targetDay, $year);
+}
+
