@@ -27,7 +27,7 @@ class Compositor
                         // skip
                     } elseif ($dp->fg === null) {
                         $dp->fg = $sp->fg;
-                        $dp->fgAlpha = 1.0;
+                        $dp->fgAlpha = $effectiveAlpha;
                         $hasChange = true;
                     } else {
                         $srcRgb = IrcPalette::getRgb($sp->fg);
@@ -50,7 +50,7 @@ class Compositor
                         // skip
                     } elseif ($dp->bg === null) {
                         $dp->bg = $sp->bg;
-                        $dp->bgAlpha = 1.0;
+                        $dp->bgAlpha = $effectiveAlpha;
                         $hasChange = true;
                     } else {
                         $srcRgb = IrcPalette::getRgb($sp->bg);
