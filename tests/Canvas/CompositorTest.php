@@ -367,4 +367,42 @@ class CompositorTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         Compositor::applyMask($dst, $src, $mask, MaskType::Luminance);
     }
+
+    public function test_blendRegion_offsets_source(): void
+    {
+        $dst = Canvas::createBlank(20, 10);
+        $src = Canvas::createBlank(5, 5);
+
+        $src->drawPoint(2, 2, new Color(4, null));
+
+        Compositor::blendRegion($dst, $src, 1.0, 5, 3);
+
+        $this->assertSame(4, $dst->data[5][7]->fg);
+        $this->assertNull($dst->data[0][0]->fg);
+    }
+
+    public function test_blendRegion_with_opacity(): void
+    {
+        $dst = Canvas::createBlank(20, 10);
+        $dst->drawPoint(7, 5, new Color(0, null));
+        $src = Canvas::createBlank(5, 5);
+        $src->drawPoint(2, 2, new Color(4, null));
+
+        Compositor::blendRegion($dst, $src, 0.5, 5, 3);
+
+        $this->assertNotNull($dst->data[5][7]->fg);
+        $this->assertNotSame(0, $dst->data[5][7]->fg);
+        $this->assertNotSame(4, $dst->data[5][7]->fg);
+    }
+
+    public function test_blendRegion_clips_at_dst_boundary(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(5, 5);
+        $src->drawPoint(0, 0, new Color(4, null));
+
+        Compositor::blendRegion($dst, $src, 1.0, 8, 8);
+
+        $this->assertSame(4, $dst->data[8][8]->fg);
+    }
 }

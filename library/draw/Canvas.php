@@ -502,11 +502,28 @@ class Canvas
         $strokeOpacity = $stroke !== null ? max(0.0, min(1.0, $stroke->opacity)) : 1.0;
 
         if ($opacity < 1.0) {
-            $temp = Canvas::createBlank($this->w, $this->h, $this->halfblocks);
-            $temp->setDithering($this->dithering);
-            $this->renderFill($temp, $snappedSubpaths, $fill, $text, $fillRule, $fillOpacity);
-            $this->renderStroke($temp, $snappedSubpaths, $stroke, $text, $strokeOpacity);
-            Compositor::blend($this, $temp, $opacity);
+            $bbox = self::computeSubpathsBbox($snappedSubpaths);
+            if ($stroke !== null) {
+                $sw = (int) ceil(max(1.0, $stroke->width));
+                $bbox['x1'] -= $sw;
+                $bbox['y1'] -= $sw;
+                $bbox['x2'] += $sw;
+                $bbox['y2'] += $sw;
+            }
+            $bbox['x1'] = max(0, $bbox['x1']);
+            $bbox['y1'] = max(0, $bbox['y1']);
+            $bbox['x2'] = min($this->w - 1, $bbox['x2']);
+            $bbox['y2'] = min($this->h - 1, $bbox['y2']);
+            $bw = $bbox['x2'] - $bbox['x1'] + 1;
+            $bh = $bbox['y2'] - $bbox['y1'] + 1;
+            if ($bw > 0 && $bh > 0) {
+                $temp = Canvas::createBlank($bw, $bh, $this->halfblocks);
+                $temp->setDithering($this->dithering);
+                $offsetSubpaths = self::offsetSubpaths($snappedSubpaths, -$bbox['x1'], -$bbox['y1']);
+                $this->renderFill($temp, $offsetSubpaths, $fill, $text, $fillRule, $fillOpacity);
+                $this->renderStroke($temp, $offsetSubpaths, $stroke, $text, $strokeOpacity);
+                Compositor::blendRegion($this, $temp, $opacity, $bbox['x1'], $bbox['y1']);
+            }
         } else {
             $this->renderFill($this, $snappedSubpaths, $fill, $text, $fillRule, $fillOpacity);
             $this->renderStroke($this, $snappedSubpaths, $stroke, $text, $strokeOpacity);
@@ -559,6 +576,36 @@ class Canvas
                 $target->strokeSubpath($sp, $stroke, $text);
             }
         }
+    }
+
+    private static function computeSubpathsBbox(array $snappedSubpaths): array
+    {
+        $minX = PHP_INT_MAX;
+        $minY = PHP_INT_MAX;
+        $maxX = PHP_INT_MIN;
+        $maxY = PHP_INT_MIN;
+        foreach ($snappedSubpaths as $sp) {
+            foreach ($sp['vertices'] as $v) {
+                if ($v[0] < $minX) $minX = $v[0];
+                if ($v[1] < $minY) $minY = $v[1];
+                if ($v[0] > $maxX) $maxX = $v[0];
+                if ($v[1] > $maxY) $maxY = $v[1];
+            }
+        }
+        return ['x1' => $minX, 'y1' => $minY, 'x2' => $maxX, 'y2' => $maxY];
+    }
+
+    private static function offsetSubpaths(array $snappedSubpaths, int $dx, int $dy): array
+    {
+        $result = [];
+        foreach ($snappedSubpaths as $sp) {
+            $vertices = [];
+            foreach ($sp['vertices'] as $v) {
+                $vertices[] = [$v[0] + $dx, $v[1] + $dy];
+            }
+            $result[] = ['vertices' => $vertices, 'closed' => $sp['closed']];
+        }
+        return $result;
     }
 
     /**
