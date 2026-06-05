@@ -752,4 +752,50 @@ class SVGParserTest extends TestCase
         $this->assertNotNull($canvas->data[5][15]->fg);
         $this->assertNotNull($canvas->data[5][25]->fg);
     }
+
+    public function test_parse_string_clipPath_basic(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c1"><rect x="0" y="0" width="5" height="5"/></clipPath></defs><rect x="0" y="0" width="10" height="10" fill="red" clip-path="url(#c1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[2][2]->fg);
+        $this->assertNull($canvas->data[8][8]->fg);
+    }
+
+    public function test_parse_string_mask_basic(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><mask id="m1"><rect x="0" y="0" width="5" height="5" fill="white"/></mask></defs><rect x="0" y="0" width="10" height="10" fill="red" mask="url(#m1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[2][2]->fg);
+        $this->assertNull($canvas->data[8][8]->fg);
+    }
+
+    public function test_parse_string_clipPath_missing_ref_renders_normally(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="red" clip-path="url(#missing)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_mask_missing_ref_renders_normally(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="red" mask="url(#missing)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[5][5]->fg);
+    }
 }

@@ -424,6 +424,8 @@ class SVGParser
             'defs' => self::parseDefsElement($el, $defs, $styles, $logger),
             'linearGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
             'radialGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
+            'clipPath' => new Group(),
+            'mask' => new Group(),
             'style' => new Group(),
             default => (function () use ($name, $logger) {
                 $logger?->warning("Unsupported SVG element: <{$name}>");
@@ -468,7 +470,7 @@ class SVGParser
             $group->addChild(self::parseElement($child, $defs, $styles, $logger, $childTransform));
         }
 
-        return $group;
+        return self::wrapWithClipMask($group, $el, $defs, $styles, $parentTransform, $logger);
     }
 
     private static function parsePathElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
@@ -557,6 +559,8 @@ class SVGParser
                 self::parseDefsElement($child, $defs, $styles, $logger);
             } elseif ($name === 'linearGradient' || $name === 'radialGradient') {
                 self::parseGradientElement($child, $defs, $styles, $logger);
+            } elseif ($name === 'clipPath' || $name === 'mask') {
+                self::parseClipMaskElement($child, $defs, $styles, $logger);
             } else {
                 self::collectAllDefs($child, $defs, $styles, $logger);
             }
@@ -578,6 +582,15 @@ class SVGParser
             }
         }
         return $group;
+    }
+
+    private static function parseClipMaskElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): void
+    {
+        $id = (string)($el['id'] ?? '');
+        if ($id === '') {
+            return;
+        }
+        $defs[$id] = $el;
     }
 
     private static function parseGradientElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): void
@@ -690,6 +703,59 @@ class SVGParser
         return self::parsePercentageOrFloat($val);
     }
 
+    private static function wrapWithClipMask(SceneNode $node, \SimpleXMLElement $el, array &$defs, array $styles, Transform $parentTransform, ?LoggerInterface $logger): SceneNode
+    {
+        $clipPathAttr = self::getEffectiveAttr($el, 'clip-path', $styles);
+        if ($clipPathAttr !== '' && preg_match('/^url\(#(.+)\)$/', $clipPathAttr, $m)) {
+            $clipId = $m[1];
+            if (isset($defs[$clipId]) && $defs[$clipId]->getName() === 'clipPath') {
+                $clipEl = $defs[$clipId];
+                $clipContent = new Group();
+                $childTransform = $parentTransform;
+                $clipTransform = self::parseOptionalTransform($clipEl, $styles);
+                if ($clipTransform !== null) {
+                    $childTransform = $parentTransform->multiply($clipTransform);
+                }
+                foreach (self::svgChildren($clipEl) as $clipChild) {
+                    $clipContent->addChild(self::parseElement($clipChild, $defs, $styles, $logger, $childTransform));
+                }
+                $clipPathUnits = match (strtolower((string)($clipEl['clipPathUnits'] ?? 'userSpaceOnUse'))) {
+                    'objectboundingbox' => GradientUnits::ObjectBoundingBox,
+                    default => GradientUnits::UserSpaceOnUse,
+                };
+                $node = new ClipNode($node, $clipContent, $clipPathUnits, $clipTransform);
+            }
+        }
+
+        $maskAttr = self::getEffectiveAttr($el, 'mask', $styles);
+        if ($maskAttr !== '' && preg_match('/^url\(#(.+)\)$/', $maskAttr, $m)) {
+            $maskId = $m[1];
+            if (isset($defs[$maskId]) && $defs[$maskId]->getName() === 'mask') {
+                $maskEl = $defs[$maskId];
+                $maskContent = new Group();
+                $maskTransform = self::parseOptionalTransform($maskEl, $styles);
+                foreach (self::svgChildren($maskEl) as $maskChild) {
+                    $maskContent->addChild(self::parseElement($maskChild, $defs, $styles, $logger, $parentTransform));
+                }
+                $maskUnits = match (strtolower((string)($maskEl['maskUnits'] ?? 'objectBoundingBox'))) {
+                    'userspaceonuse' => GradientUnits::UserSpaceOnUse,
+                    default => GradientUnits::ObjectBoundingBox,
+                };
+                $maskContentUnits = match (strtolower((string)($maskEl['maskContentUnits'] ?? 'userSpaceOnUse'))) {
+                    'objectboundingbox' => GradientUnits::ObjectBoundingBox,
+                    default => GradientUnits::UserSpaceOnUse,
+                };
+                $maskType = match (strtolower((string)($maskEl['mask-type'] ?? $maskEl['maskType'] ?? 'luminance'))) {
+                    'alpha' => MaskType::Alpha,
+                    default => MaskType::Luminance,
+                };
+                $node = new MaskNode($node, $maskContent, $maskUnits, $maskContentUnits, $maskType, $maskTransform);
+            }
+        }
+
+        return $node;
+    }
+
     private static function buildShape(Path $path, \SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $display = self::getEffectiveAttr($el, 'display', $styles);
@@ -704,7 +770,7 @@ class SVGParser
         $fillOpacity = self::parseFloatAttr($el, 'fill-opacity', $styles);
         $fillRule = self::parseFillRuleAttr($el, $styles);
 
-        return new Shape(
+        $shape = new Shape(
             path: $path,
             fill: $fill,
             stroke: $stroke,
@@ -713,6 +779,7 @@ class SVGParser
             fillOpacity: $fillOpacity,
             fillRule: $fillRule,
         );
+        return self::wrapWithClipMask($shape, $el, $defs, $styles, $parentTransform, $logger);
     }
 
     private static function parsePaintAttr(\SimpleXMLElement $el, string $attr, array &$defs, array $styles, ?LoggerInterface $logger): ?Paint
