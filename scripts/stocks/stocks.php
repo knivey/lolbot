@@ -7,12 +7,23 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use JsonMapper\JsonMapperBuilder;
 use draw;
+use Amp\Cache\LocalCache;
 use knivey\irctools;
 
 use function knivey\tools\multi_array_padding;
 
 class stocks extends \scripts\script_base
 {
+    private static ?LocalCache $cache = null;
+
+    private static function getCache(): LocalCache
+    {
+        if (self::$cache === null) {
+            self::$cache = new LocalCache();
+        }
+        return self::$cache;
+    }
+
     private function getKey(): string|false {
         if (!isset($this->config['finnhub'])) {
             $this->logger->warning("finnhub key not set in config");
@@ -221,9 +232,15 @@ class stocks extends \scripts\script_base
 
     public function getCoinPrice(string $coin): string
     {
-        $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
-        //hope this works out lol
-        $current = $json->$coin->usd;
+        $cacheKey = "price:$coin";
+        $cached = self::getCache()->get($cacheKey);
+        if ($cached !== null) {
+            $current = $cached;
+        } else {
+            $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+            $current = $json->$coin->usd;
+            self::getCache()->set($cacheKey, $current, 900);
+        }
         return "Current price for $coin: $current USD";
     }
 
