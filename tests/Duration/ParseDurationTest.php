@@ -218,7 +218,7 @@ class ParseDurationTest extends TestCase
 
     public function test_today_at_time(): void
     {
-        $result = \parseDuration('today at 3pm meeting');
+        $result = \parseDuration('today at 11:59pm meeting');
         $this->assertNotNull($result);
         $this->assertNotNull($result->targetTime);
         $this->assertSame('meeting', $result->remainder);
