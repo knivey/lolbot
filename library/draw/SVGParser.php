@@ -443,7 +443,7 @@ class SVGParser
         return $group;
     }
 
-    private static function parseGroupElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): Group
+    private static function parseGroupElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
         $fill = self::parsePaintAttr($el, 'fill', $defs, $styles, $logger);
         $stroke = self::parseStrokeAttr($el, $defs, $styles, $logger);
