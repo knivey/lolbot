@@ -4,6 +4,13 @@ namespace draw;
 
 class Compositor
 {
+    private static function clearPixelMeta(Pixel $dst): void
+    {
+        $dst->dithered = false;
+        $dst->secondBest = -1;
+        $dst->t = 0.0;
+    }
+
     private static function copyPixelMeta(Pixel $dst, Pixel $src, string $channel): void
     {
         if ($channel === 'fg') {
@@ -67,6 +74,7 @@ class Compositor
                         $b = max(0, min(255, $b));
                         $dp->fg = IrcPalette::nearestColor($r, $g, $b);
                         $dp->fgAlpha = 1.0;
+                        self::clearPixelMeta($dp);
                         $hasChange = true;
                     }
                 }
@@ -142,6 +150,7 @@ class Compositor
                         $b = max(0, min(255, $b));
                         $dp->fg = IrcPalette::nearestColor($r, $g, $b);
                         $dp->fgAlpha = 1.0;
+                        self::clearPixelMeta($dp);
                         $hasChange = true;
                     }
                 }
@@ -235,6 +244,7 @@ class Compositor
                         $b = max(0, min(255, $b));
                         $dp->fg = IrcPalette::nearestColor($r, $g, $b);
                         $dp->fgAlpha = 1.0;
+                        self::clearPixelMeta($dp);
                         $hasChange = true;
                     }
                 }
