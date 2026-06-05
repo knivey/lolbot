@@ -29,6 +29,14 @@ class ParseDurationTest extends TestCase
         $this->assertSame('', $result->remainder);
     }
 
+    public function test_compact_H_and_M_case_sensitive(): void
+    {
+        $result = \parseDuration('2H15M');
+        $this->assertNotNull($result);
+        $this->assertSame(2 * 3600 + 15 * 2627778, $result->seconds);
+        $this->assertSame('', $result->remainder);
+    }
+
     public function test_compact_days(): void
     {
         $result = \parseDuration('3d12h go to bed');

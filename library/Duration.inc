@@ -312,13 +312,13 @@ function parseDurationDate(string $input): ?ParseResult
     $monthPattern = implode('|', array_keys($monthNames));
     $ordinalPattern = implode('|', array_keys($ordinals));
     $timePattern = '(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(am|pm)';
-    $timeGroup = '(?:' . $timePattern . ')?\s*(?:at\s+(?:' . $timePattern . '))?';
+    $timeGroup = '(?:(?:at\s+)?' . $timePattern . ')?';
 
     $patterns = [
         '/^(today)\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(tomorrow)\s*' . $timeGroup . '\s*(.*)$/i',
         '/^next\s+(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
-        '/^next\s+(week|month|year|yr|mo|wks?)\b\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^next\s+(week|month|year|yrs?|mo|wks?)\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $ordinalPattern . ')\s+week\s+of\s+(' . $monthPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $monthPattern . ')\s+(\d{1,2})(?:st|nd|rd|th)?\s*' . $timeGroup . '\s*(.*)$/i',
     ];
@@ -341,6 +341,7 @@ function parseDurationDateMatch(
     array $monthNames,
     array $ordinals,
 ): ?ParseResult {
+    $now = time();
     $baseTimestamp = strtotime('today');
 
     if (strtolower($m[1]) === 'today') {
@@ -357,7 +358,7 @@ function parseDurationDateMatch(
         }
         $baseTimestamp += $diff * 86400;
         $timeOffset = 2;
-    } elseif (in_array(strtolower($m[1]), ['week', 'month', 'year', 'yr', 'mo', 'wk', 'wks'])) {
+    } elseif (in_array(strtolower($m[1]), ['week', 'month', 'year', 'yr', 'yrs', 'mo', 'wk', 'wks'])) {
         $unit = strtolower($m[1]);
         switch ($unit) {
             case 'week':
@@ -388,8 +389,11 @@ function parseDurationDateMatch(
         $month = $monthNames[strtolower($m[2])];
         $year = (int) date('Y');
         $ts = parseDurationDateNthMonday($n, $month, $year);
-        if ($ts <= time() + 15) {
+        if ((int) date('n', $ts) !== $month || $ts <= $now + 15) {
             $ts = parseDurationDateNthMonday($n, $month, $year + 1);
+            if ((int) date('n', $ts) !== $month) {
+                return null;
+            }
         }
         $baseTimestamp = $ts;
         $timeOffset = 3;
@@ -398,7 +402,7 @@ function parseDurationDateMatch(
         $day = (int) $m[2];
         $year = (int) date('Y');
         $ts = mktime(0, 0, 0, $month, $day, $year);
-        if ($ts === false || $ts <= time() + 15) {
+        if ($ts === false || $ts <= $now + 15) {
             $ts = mktime(0, 0, 0, $month, $day, $year + 1);
         }
         if ($ts === false) {
@@ -413,31 +417,28 @@ function parseDurationDateMatch(
     $hours = 0;
     $minutes = 0;
     $seconds = 0;
-    for ($i = $timeOffset; $i <= $timeOffset + 4; $i += 4) {
-        if (!empty($m[$i])) {
-            $hours = (int) $m[$i];
-            $minutes = isset($m[$i + 1]) && $m[$i + 1] !== '' ? (int) $m[$i + 1] : 0;
-            $seconds = isset($m[$i + 2]) && $m[$i + 2] !== '' ? (int) $m[$i + 2] : 0;
-            $ampm = strtolower($m[$i + 3]);
-            if ($ampm === 'pm' && $hours < 12) {
-                $hours += 12;
-            }
-            if ($ampm === 'am' && $hours === 12) {
-                $hours = 0;
-            }
-            break;
+    if (!empty($m[$timeOffset])) {
+        $hours = (int) $m[$timeOffset];
+        $minutes = isset($m[$timeOffset + 1]) && $m[$timeOffset + 1] !== '' ? (int) $m[$timeOffset + 1] : 0;
+        $seconds = isset($m[$timeOffset + 2]) && $m[$timeOffset + 2] !== '' ? (int) $m[$timeOffset + 2] : 0;
+        $ampm = strtolower($m[$timeOffset + 3]);
+        if ($ampm === 'pm' && $hours < 12) {
+            $hours += 12;
+        }
+        if ($ampm === 'am' && $hours === 12) {
+            $hours = 0;
         }
     }
 
     $targetTime = $baseTimestamp + $hours * 3600 + $minutes * 60 + $seconds;
-    $remainder = isset($m[$timeOffset + 8]) ? trim($m[$timeOffset + 8]) : '';
+    $remainder = isset($m[$timeOffset + 4]) ? trim($m[$timeOffset + 4]) : '';
 
-    if ($targetTime <= time() + 15) {
+    if ($targetTime <= $now + 15) {
         return null;
     }
 
     return new ParseResult(
-        seconds: $targetTime - time(),
+        seconds: $targetTime - $now,
         remainder: $remainder,
         targetTime: $targetTime,
     );
