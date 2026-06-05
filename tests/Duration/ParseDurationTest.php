@@ -607,4 +607,70 @@ class ParseDurationTest extends TestCase
         $result = \parseDuration('hello world foo bar');
         $this->assertNull($result);
     }
+
+    // --- Timezone-aware parsing ---
+
+    public function test_tomorrow_with_timezone(): void
+    {
+        $result = \parseDuration('tomorrow 3pm eat ice cream', 'America/New_York');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('eat ice cream', $result->remainder);
+    }
+
+    public function test_tomorrow_timezone_differs_from_utc(): void
+    {
+        $resultUtc = \parseDuration('tomorrow 3pm test', 'UTC');
+        $resultNy = \parseDuration('tomorrow 3pm test', 'America/New_York');
+        $this->assertNotNull($resultUtc);
+        $this->assertNotNull($resultNy);
+        $this->assertNotNull($resultUtc->targetTime);
+        $this->assertNotNull($resultNy->targetTime);
+        $this->assertNotEquals($resultUtc->targetTime, $resultNy->targetTime);
+    }
+
+    public function test_next_tuesday_with_timezone(): void
+    {
+        $result = \parseDuration('next tuesday 11am meeting', 'Europe/London');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('meeting', $result->remainder);
+    }
+
+    public function test_bare_dayname_with_timezone(): void
+    {
+        $result = \parseDuration('sunday 11am ssl really', 'America/Chicago');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('ssl really', $result->remainder);
+    }
+
+    public function test_named_month_with_timezone(): void
+    {
+        $result = \parseDuration('aug 15 3pm pay rent', 'Asia/Tokyo');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('pay rent', $result->remainder);
+    }
+
+    public function test_duration_not_affected_by_timezone(): void
+    {
+        $resultUtc = \parseDuration('1h30m do stuff', 'UTC');
+        $resultNy = \parseDuration('1h30m do stuff', 'America/New_York');
+        $this->assertNotNull($resultUtc);
+        $this->assertNotNull($resultNy);
+        $this->assertSame($resultUtc->seconds, $resultNy->seconds);
+        $this->assertNull($resultUtc->targetTime);
+        $this->assertNull($resultNy->targetTime);
+    }
+
+    public function test_invalid_timezone_throws(): void
+    {
+        $this->expectException(\Exception::class);
+        \parseDuration('tomorrow 3pm test', 'Invalid/Timezone');
+    }
 }
