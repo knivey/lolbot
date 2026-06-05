@@ -171,7 +171,7 @@ class ParseResult
     ) {}
 }
 
-function parseDuration(string $input): ?ParseResult
+function parseDuration(string $input, ?string $tzName = null): ?ParseResult
 {
     $input = trim($input);
     if ($input === '') {
@@ -184,7 +184,7 @@ function parseDuration(string $input): ?ParseResult
         return new ParseResult($seconds, trim($remainder));
     }
 
-    $result = parseDurationDate($input);
+    $result = parseDurationDate($input, $tzName);
     if ($result !== null) {
         return $result;
     }
@@ -275,7 +275,7 @@ function parseDurationRegex(string $input, string &$remainder = ''): ?int
     return (int) $total;
 }
 
-function parseDurationDate(string $input): ?ParseResult
+function parseDurationDate(string $input, ?string $tzName = null): ?ParseResult
 {
     $dayNames = [
         'monday'    => 1, 'mon'  => 1,
@@ -327,7 +327,7 @@ function parseDurationDate(string $input): ?ParseResult
 
     foreach ($patterns as $pattern) {
         if (preg_match($pattern, $input, $m)) {
-            $result = parseDurationDateMatch($m, $dayNames, $monthNames, $ordinals);
+            $result = parseDurationDateMatch($m, $dayNames, $monthNames, $ordinals, $tzName);
             if ($result !== null) {
                 return $result;
             }
@@ -342,54 +342,104 @@ function parseDurationDateMatch(
     array $dayNames,
     array $monthNames,
     array $ordinals,
+    ?string $tzName = null,
 ): ?ParseResult {
     $now = time();
-    $baseTimestamp = strtotime('today');
+
+    if ($tzName !== null) {
+        $tz = new \DateTimeZone($tzName);
+        $nowDt = new \DateTime('now', $tz);
+        $baseDt = new \DateTime('today', $tz);
+    } else {
+        $baseTimestamp = strtotime('today');
+    }
 
     if (strtolower($m[1]) === 'today') {
         $timeOffset = 2;
     } elseif (strtolower($m[1]) === 'tomorrow') {
-        $baseTimestamp += 86400;
+        if ($tzName !== null) {
+            $baseDt->modify('+1 day');
+        } else {
+            $baseTimestamp += 86400;
+        }
         $timeOffset = 2;
     } elseif (isset($dayNames[strtolower($m[1])])) {
         $target = $dayNames[strtolower($m[1])];
-        $today = (int) date('N');
+        if ($tzName !== null) {
+            $today = (int) $nowDt->format('N');
+        } else {
+            $today = (int) date('N');
+        }
         $diff = $target - $today;
         if ($diff <= 0) {
             $diff += 7;
         }
-        $baseTimestamp += $diff * 86400;
+        if ($tzName !== null) {
+            $baseDt->modify("+{$diff} days");
+        } else {
+            $baseTimestamp += $diff * 86400;
+        }
         $timeOffset = 2;
     } elseif (in_array(strtolower($m[1]), ['week', 'month', 'year', 'yr', 'yrs', 'mo', 'wk', 'wks'])) {
         $unit = strtolower($m[1]);
-        switch ($unit) {
-            case 'week':
-            case 'wk':
-            case 'wks':
-                $today = (int) date('N');
-                $daysUntilMon = (8 - $today) % 7;
-                if ($daysUntilMon === 0) {
-                    $daysUntilMon = 7;
-                }
-                $baseTimestamp += $daysUntilMon * 86400;
-                break;
-            case 'month':
-            case 'mo':
-                $baseTimestamp = strtotime('+1 month', $baseTimestamp);
-                break;
-            case 'year':
-            case 'yr':
-            case 'yrs':
-                $baseTimestamp = strtotime('+1 year', $baseTimestamp);
-                break;
-            default:
-                return null;
+        if ($tzName !== null) {
+            switch ($unit) {
+                case 'week':
+                case 'wk':
+                case 'wks':
+                    $today = (int) $nowDt->format('N');
+                    $daysUntilMon = (8 - $today) % 7;
+                    if ($daysUntilMon === 0) {
+                        $daysUntilMon = 7;
+                    }
+                    $baseDt->modify("+{$daysUntilMon} days");
+                    break;
+                case 'month':
+                case 'mo':
+                    $baseDt->modify('+1 month');
+                    break;
+                case 'year':
+                case 'yr':
+                case 'yrs':
+                    $baseDt->modify('+1 year');
+                    break;
+                default:
+                    return null;
+            }
+        } else {
+            switch ($unit) {
+                case 'week':
+                case 'wk':
+                case 'wks':
+                    $today = (int) date('N');
+                    $daysUntilMon = (8 - $today) % 7;
+                    if ($daysUntilMon === 0) {
+                        $daysUntilMon = 7;
+                    }
+                    $baseTimestamp += $daysUntilMon * 86400;
+                    break;
+                case 'month':
+                case 'mo':
+                    $baseTimestamp = strtotime('+1 month', $baseTimestamp);
+                    break;
+                case 'year':
+                case 'yr':
+                case 'yrs':
+                    $baseTimestamp = strtotime('+1 year', $baseTimestamp);
+                    break;
+                default:
+                    return null;
+            }
         }
         $timeOffset = 2;
     } elseif (isset($ordinals[strtolower($m[1])])) {
         $n = $ordinals[strtolower($m[1])];
         $month = $monthNames[strtolower($m[2])];
-        $year = (int) date('Y');
+        if ($tzName !== null) {
+            $year = (int) $nowDt->format('Y');
+        } else {
+            $year = (int) date('Y');
+        }
         $ts = parseDurationDateNthMonday($n, $month, $year);
         if ((int) date('n', $ts) !== $month || $ts <= $now + 15) {
             $ts = parseDurationDateNthMonday($n, $month, $year + 1);
@@ -397,29 +447,52 @@ function parseDurationDateMatch(
                 return null;
             }
         }
-        $baseTimestamp = $ts;
+        if ($tzName !== null) {
+            $baseDt = new \DateTime('@' . $ts, $tz);
+            $baseDt->setTimezone($tz);
+            $baseDt->setTime(0, 0, 0);
+        } else {
+            $baseTimestamp = $ts;
+        }
         $timeOffset = 3;
     } elseif (isset($monthNames[strtolower($m[1])])) {
         $month = $monthNames[strtolower($m[1])];
         $day = (int) $m[2];
-        $year = (int) date('Y');
-        $ts = mktime(0, 0, 0, $month, $day, $year);
-        if ($ts === false || $ts <= $now + 15) {
-            $ts = mktime(0, 0, 0, $month, $day, $year + 1);
+        if ($tzName !== null) {
+            $year = (int) $nowDt->format('Y');
+            $baseDt = new \DateTime("{$year}-{$month}-{$day}", $tz);
+            if ($baseDt->getTimestamp() <= $now + 15) {
+                $baseDt = new \DateTime(($year + 1) . "-{$month}-{$day}", $tz);
+            }
+        } else {
+            $year = (int) date('Y');
+            $ts = mktime(0, 0, 0, $month, $day, $year);
+            if ($ts === false || $ts <= $now + 15) {
+                $ts = mktime(0, 0, 0, $month, $day, $year + 1);
+            }
+            if ($ts === false) {
+                return null;
+            }
+            $baseTimestamp = $ts;
         }
-        if ($ts === false) {
-            return null;
-        }
-        $baseTimestamp = $ts;
         $timeOffset = 3;
     } elseif (!empty($m[1]) && preg_match('/^\d{1,2}/', $m[1]) && isset($m[5]) && isset($dayNames[strtolower($m[5])])) {
         $target = $dayNames[strtolower($m[5])];
-        $today = (int) date('N');
-        $diff = $target - $today;
-        if ($diff <= 0) {
-            $diff += 7;
+        if ($tzName !== null) {
+            $today = (int) $nowDt->format('N');
+            $diff = $target - $today;
+            if ($diff <= 0) {
+                $diff += 7;
+            }
+            $targetDt = (clone $baseDt)->modify("+{$diff} days");
+        } else {
+            $today = (int) date('N');
+            $diff = $target - $today;
+            if ($diff <= 0) {
+                $diff += 7;
+            }
+            $targetTs = $baseTimestamp + $diff * 86400;
         }
-        $baseTimestamp += $diff * 86400;
         $hours = (int) $m[1];
         $minutes = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 0;
         $seconds = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : 0;
@@ -430,7 +503,12 @@ function parseDurationDateMatch(
         if ($ampm === 'am' && $hours === 12) {
             $hours = 0;
         }
-        $targetTime = $baseTimestamp + $hours * 3600 + $minutes * 60 + $seconds;
+        if ($tzName !== null) {
+            $targetDt->setTime($hours, $minutes, $seconds);
+            $targetTime = $targetDt->getTimestamp();
+        } else {
+            $targetTime = $targetTs + $hours * 3600 + $minutes * 60 + $seconds;
+        }
         $remainder = isset($m[6]) ? trim($m[6]) : '';
         if ($targetTime <= $now + 15) {
             return null;
@@ -460,7 +538,12 @@ function parseDurationDateMatch(
         }
     }
 
-    $targetTime = $baseTimestamp + $hours * 3600 + $minutes * 60 + $seconds;
+    if ($tzName !== null) {
+        $baseDt->setTime($hours, $minutes, $seconds);
+        $targetTime = $baseDt->getTimestamp();
+    } else {
+        $targetTime = $baseTimestamp + $hours * 3600 + $minutes * 60 + $seconds;
+    }
     $remainder = isset($m[$timeOffset + 4]) ? trim($m[$timeOffset + 4]) : '';
 
     if ($targetTime <= $now + 15) {
