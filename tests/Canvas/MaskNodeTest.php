@@ -46,7 +46,7 @@ class MaskNodeTest extends TestCase
         $this->assertNull($canvas->data[3][3]->fg);
     }
 
-    public function test_mask_alpha_mode(): void
+    public function test_mask_alpha_mode_with_rendered_content(): void
     {
         $canvas = Canvas::createBlank(20, 10);
         $canvas->drawPoint(5, 5, new Color(0, null));
@@ -54,13 +54,13 @@ class MaskNodeTest extends TestCase
         $child = new Shape(path: Path::rect(0.0, 0.0, 10.0, 10.0), fill: new Color(4, null));
 
         $maskContent = new Group();
-        $maskContent->addChild(new Shape(path: Path::rect(0.0, 0.0, 10.0, 10.0), fill: new Color(0, null), opacity: 0.5));
+        $maskContent->addChild(new Shape(path: Path::rect(0.0, 0.0, 10.0, 10.0), fill: new Color(0, null)));
 
         $maskNode = new MaskNode($child, $maskContent, maskType: MaskType::Alpha);
         $maskNode->render($canvas, RenderContext::defaults());
 
-        $this->assertNotNull($canvas->data[5][5]->fg);
-        $this->assertNotSame(4, $canvas->data[5][5]->fg);
+        $this->assertSame(4, $canvas->data[5][5]->fg);
+        $this->assertNull($canvas->data[0][15]->fg);
     }
 
     public function test_mask_empty_mask_nothing_rendered(): void

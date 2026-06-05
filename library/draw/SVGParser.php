@@ -737,10 +737,6 @@ class SVGParser
                 foreach (self::svgChildren($maskEl) as $maskChild) {
                     $maskContent->addChild(self::parseElement($maskChild, $defs, $styles, $logger, $parentTransform));
                 }
-                $maskUnits = match (strtolower((string)($maskEl['maskUnits'] ?? 'objectBoundingBox'))) {
-                    'userspaceonuse' => GradientUnits::UserSpaceOnUse,
-                    default => GradientUnits::ObjectBoundingBox,
-                };
                 $maskContentUnits = match (strtolower((string)($maskEl['maskContentUnits'] ?? 'userSpaceOnUse'))) {
                     'objectboundingbox' => GradientUnits::ObjectBoundingBox,
                     default => GradientUnits::UserSpaceOnUse,
@@ -749,7 +745,7 @@ class SVGParser
                     'alpha' => MaskType::Alpha,
                     default => MaskType::Luminance,
                 };
-                $node = new MaskNode($node, $maskContent, $maskUnits, $maskContentUnits, $maskType, $maskTransform);
+                $node = new MaskNode($node, $maskContent, $maskContentUnits, $maskType, $maskTransform);
             }
         }
 

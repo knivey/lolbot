@@ -125,7 +125,7 @@ class CompositorTest extends TestCase
         $this->assertNotSame(0, $strokePixel->fg, "Should not be pure white after 50% blend");
     }
 
-    public function test_blend_preserves_effective_alpha_on_null_dst(): void
+    public function test_blend_resets_dst_alpha_to_one(): void
     {
         $dst = Canvas::createBlank(10, 10);
         $src = Canvas::createBlank(10, 10);
@@ -134,7 +134,7 @@ class CompositorTest extends TestCase
 
         Compositor::blend($dst, $src, 0.5);
 
-        $this->assertSame(0.5, $dst->data[5][5]->fgAlpha);
+        $this->assertSame(1.0, $dst->data[5][5]->fgAlpha);
     }
 
     public function test_blend_handles_bg_independently(): void

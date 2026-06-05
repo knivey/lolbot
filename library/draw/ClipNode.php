@@ -68,18 +68,4 @@ class ClipNode implements SceneNode
         }
         return null;
     }
-
-    public static function copyVisiblePixels(Canvas $dst, Canvas $src): void
-    {
-        for ($y = 0; $y < $dst->h; $y++) {
-            for ($x = 0; $x < $dst->w; $x++) {
-                $sp = $src->data[$y][$x];
-                if ($sp->fg !== null || $sp->bg !== null) {
-                    $dp = $dst->data[$y][$x];
-                    $dp->fg = $sp->fg ?? $dp->fg;
-                    $dp->bg = $sp->bg ?? $dp->bg;
-                }
-            }
-        }
-    }
 }

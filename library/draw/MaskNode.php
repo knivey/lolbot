@@ -7,7 +7,6 @@ class MaskNode implements SceneNode
     public function __construct(
         public readonly SceneNode $child,
         public readonly Group $maskContent,
-        public readonly GradientUnits $maskUnits = GradientUnits::ObjectBoundingBox,
         public readonly GradientUnits $maskContentUnits = GradientUnits::UserSpaceOnUse,
         public readonly MaskType $maskType = MaskType::Luminance,
         public readonly ?Transform $transform = null,
