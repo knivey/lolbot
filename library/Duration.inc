@@ -77,7 +77,7 @@ function string2Seconds(string $duration): int|string {
                     return "No value given for time identifier $chunk";
                 }
             	$total += $num * $Duration_periods[$chunk];
-            } else {
+    } else {
             	return "$chunk is an unknown time identifier";
             }
             if($total > PHP_INT_MAX) {
@@ -323,6 +323,7 @@ function parseDurationDate(string $input, ?string $tzName = null): ?ParseResult
         '/^(' . $monthPattern . ')\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^' . $timePattern . '\s+(?:next\s+|this\s+)?(' . $dayPattern . ')\b\s*(.*)$/i',
+        '/^(\d{4})\s*' . $timeGroup . '\s*(.*)$/i',
     ];
 
     foreach ($patterns as $pattern) {
@@ -530,6 +531,17 @@ function parseDurationDateMatch(
             remainder: $remainder,
             targetTime: $targetTime,
         );
+    } elseif (preg_match('/^\d{4}$/', $m[1]) && (int) $m[1] > (int) date('Y')) {
+        $year = (int) $m[1];
+        if ($tzName !== null) {
+            $baseDt = new \DateTime("{$year}-01-01", $tz);
+        } else {
+            $baseTimestamp = mktime(0, 0, 0, 1, 1, $year);
+            if ($baseTimestamp === false) {
+                return null;
+            }
+        }
+        $timeOffset = 2;
     } else {
         return null;
     }

@@ -709,4 +709,34 @@ class ParseDurationTest extends TestCase
         $result = \parseDuration('aug 15 ' . date('Y') . ' test');
         $this->assertNull($result);
     }
+
+    public function test_bare_future_year(): void
+    {
+        $result = \parseDuration('2027 new year new me');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('new year new me', $result->remainder);
+    }
+
+    public function test_bare_future_year_with_time(): void
+    {
+        $result = \parseDuration('2027 3pm party');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('party', $result->remainder);
+    }
+
+    public function test_bare_current_year_returns_null(): void
+    {
+        $result = \parseDuration(date('Y') . ' test');
+        $this->assertNull($result);
+    }
+
+    public function test_bare_past_year_returns_null(): void
+    {
+        $result = \parseDuration('2024 test');
+        $this->assertNull($result);
+    }
 }
