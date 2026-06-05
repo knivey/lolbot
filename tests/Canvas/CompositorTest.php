@@ -5,6 +5,7 @@ namespace Tests\Canvas;
 use draw\Canvas;
 use draw\Color;
 use draw\Compositor;
+use draw\MaskType;
 use draw\Path;
 use draw\StrokeStyle;
 use PHPUnit\Framework\TestCase;
@@ -210,5 +211,160 @@ class CompositorTest extends TestCase
 
         $outerPixel = $dst->data[0][0];
         $this->assertSame(0, $outerPixel->fg);
+    }
+
+    public function test_applyClip_keeps_pixels_inside_clip(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $clip = Canvas::createBlank(10, 10);
+
+        $src->drawPoint(5, 5, new Color(4, null));
+        $clip->drawPoint(5, 5, new Color(0, null));
+
+        Compositor::applyClip($dst, $src, $clip);
+
+        $this->assertSame(4, $dst->data[5][5]->fg);
+    }
+
+    public function test_applyClip_removes_pixels_outside_clip(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $clip = Canvas::createBlank(10, 10);
+
+        $src->drawPoint(5, 5, new Color(4, null));
+
+        Compositor::applyClip($dst, $src, $clip);
+
+        $this->assertNull($dst->data[5][5]->fg);
+    }
+
+    public function test_applyClip_with_opacity(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $clip = Canvas::createBlank(10, 10);
+
+        $dst->drawPoint(5, 5, new Color(0, null));
+        $src->drawPoint(5, 5, new Color(4, null));
+        $clip->drawPoint(5, 5, new Color(0, null));
+
+        Compositor::applyClip($dst, $src, $clip, 0.5);
+
+        $this->assertNotNull($dst->data[5][5]->fg);
+        $this->assertNotSame(0, $dst->data[5][5]->fg);
+        $this->assertNotSame(4, $dst->data[5][5]->fg);
+    }
+
+    public function test_applyClip_preserves_dst_outside_clip(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $clip = Canvas::createBlank(10, 10);
+
+        $dst->drawPoint(3, 3, new Color(0, null));
+        $src->drawPoint(5, 5, new Color(4, null));
+        $clip->drawPoint(5, 5, new Color(0, null));
+
+        Compositor::applyClip($dst, $src, $clip);
+
+        $this->assertSame(0, $dst->data[3][3]->fg);
+        $this->assertSame(4, $dst->data[5][5]->fg);
+    }
+
+    public function test_applyClip_throws_on_size_mismatch(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(5, 5);
+        $clip = Canvas::createBlank(10, 10);
+
+        $this->expectException(\InvalidArgumentException::class);
+        Compositor::applyClip($dst, $src, $clip);
+    }
+
+    public function test_applyMask_luminance_keeps_full_white_mask(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $maskCanvas = Canvas::createBlank(10, 10);
+
+        $src->drawPoint(5, 5, new Color(4, null));
+        $maskCanvas->drawPoint(5, 5, new Color(0, null));
+
+        Compositor::applyMask($dst, $src, $maskCanvas, MaskType::Luminance);
+
+        $this->assertSame(4, $dst->data[5][5]->fg);
+    }
+
+    public function test_applyMask_luminance_removes_black_mask(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $mask = Canvas::createBlank(10, 10);
+
+        $src->drawPoint(5, 5, new Color(4, null));
+        $mask->drawPoint(5, 5, new Color(1, null));
+
+        Compositor::applyMask($dst, $src, $mask, MaskType::Luminance);
+
+        $this->assertNull($dst->data[5][5]->fg);
+    }
+
+    public function test_applyMask_alpha_uses_fg_alpha(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $mask = Canvas::createBlank(10, 10);
+
+        $dst->drawPoint(5, 5, new Color(0, null));
+        $src->drawPoint(5, 5, new Color(4, null));
+        $mp = $mask->data[5][5];
+        $mp->fg = 0;
+        $mp->fgAlpha = 0.5;
+
+        Compositor::applyMask($dst, $src, $mask, MaskType::Alpha);
+
+        $this->assertNotNull($dst->data[5][5]->fg);
+        $this->assertNotSame(4, $dst->data[5][5]->fg);
+    }
+
+    public function test_applyMask_alpha_removes_zero_alpha(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $mask = Canvas::createBlank(10, 10);
+
+        $src->drawPoint(5, 5, new Color(4, null));
+        $mp = $mask->data[5][5];
+        $mp->fg = 0;
+        $mp->fgAlpha = 0.0;
+
+        Compositor::applyMask($dst, $src, $mask, MaskType::Alpha);
+
+        $this->assertNull($dst->data[5][5]->fg);
+    }
+
+    public function test_applyMask_no_mask_pixel_removes_source(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(10, 10);
+        $mask = Canvas::createBlank(10, 10);
+
+        $src->drawPoint(5, 5, new Color(4, null));
+
+        Compositor::applyMask($dst, $src, $mask, MaskType::Luminance);
+
+        $this->assertNull($dst->data[5][5]->fg);
+    }
+
+    public function test_applyMask_throws_on_size_mismatch(): void
+    {
+        $dst = Canvas::createBlank(10, 10);
+        $src = Canvas::createBlank(5, 5);
+        $mask = Canvas::createBlank(10, 10);
+
+        $this->expectException(\InvalidArgumentException::class);
+        Compositor::applyMask($dst, $src, $mask, MaskType::Luminance);
     }
 }
