@@ -251,8 +251,16 @@ class stocks extends \scripts\script_base
      */
     public function getCoinChart(string $coin): array
     {
-        $data = async_get_contents("https://api.coingecko.com/api/v3/coins/$coin/market_chart?vs_currency=usd&days=7");
-        $json = json_decode($data);
+        $chartCacheKey = "chart:$coin";
+        $priceCacheKey = "price:$coin";
+
+        $chartJson = self::getCache()->get($chartCacheKey);
+        if ($chartJson === null) {
+            $chartJson = json_decode(async_get_contents("https://api.coingecko.com/api/v3/coins/$coin/market_chart?vs_currency=usd&days=7"));
+            if ($chartJson !== null) {
+                self::getCache()->set($chartCacheKey, $chartJson, 900);
+            }
+        }
 
         $w = 86; // api gives hourly for 7 days cut out half those data points and give room for box
         $h = 30;
@@ -269,12 +277,9 @@ class stocks extends \scripts\script_base
             $canvas->drawPoint($x, $h - 1, new draw\Color(15));
         }
 
-
-
-
         $prices = [];
         $cnt = 0;
-        foreach ($json->prices as $p) {
+        foreach ($chartJson->prices as $p) {
             if ($cnt++ % 2 == 0) {
                 continue;
             }
@@ -308,13 +313,20 @@ class stocks extends \scripts\script_base
             $i--;
         }
 
-        $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+        $current = self::getCache()->get($priceCacheKey);
+        if ($current === null) {
+            $json = json_decode(async_get_contents("https://api.coingecko.com/api/v3/simple/price?ids=$coin&vs_currencies=usd&include_24hr_change=true"));
+            $current = $json->$coin->usd;
+            if ($current !== null) {
+                self::getCache()->set($priceCacheKey, $current, 900);
+            }
+        }
+
         $out = explode("\n", (string)$canvas);
         foreach($out as &$line)
             $line = irctools\fixColors($line);
 
         //hope this works out lol
-        $current = $json->$coin->usd;
         $out[] = "7 day min price: $min USD";
         $out[] = "7 day max price: $max USD";
         $out[] = "Current price: $current USD";
