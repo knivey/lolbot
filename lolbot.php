@@ -329,7 +329,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
                 if ($router->cmdExists($cmd)) {
                     try {
                         $router->call($cmd, $text, $args, $bot);
-                    } catch (\knivey\cmdr\exceptions\ParseException $e) {
+                    } catch (\Exception $e) {
                         $bot->notice($args->nick, $e->getMessage());
                     } catch (\Throwable $e) {
                         echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
