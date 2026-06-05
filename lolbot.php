@@ -117,6 +117,7 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 
 require_once 'library/Nicks.php';
 require_once 'library/Channels.php';
+require_once 'library/extract_opts_and_args.php';
 
 \Revolt\EventLoop::setErrorHandler(function(\Throwable $error) {
     echo "Uncaught error: " . $error->getMessage() . "\n";
@@ -328,20 +329,16 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
                 if ($router->cmdExists($cmd)) {
                     try {
                         $router->call($cmd, $text, $args, $bot);
+                    } catch (\knivey\cmdr\exceptions\ParseException $e) {
+                        $bot->notice($args->nick, $e->getMessage());
                     } catch (\Throwable $e) {
                         echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
                         $bot->notice($args->nick, "error running command :(");
                     }
                 } else {
                     //call other cmd handlers
-                    $tmpText = $text;
-                    $opts = parseOpts($tmpText, []);
-                    $cmdArgs = \knivey\tools\makeArgs($tmpText);
-                    if (!is_array($cmdArgs))
-                        $cmdArgs = [];
-                    if (count($cmdArgs) == 1 && $cmdArgs[0] == "")
-                        $cmdArgs = [];
-                    $alias->handleCmd($args, $bot, $cmd, $cmdArgs);
+                    [$invOpts, $posArgs] = extractOptsAndArgs($text);
+                    $alias->handleCmd($args, $bot, $cmd, $posArgs, $invOpts);
                 }
             });
         } catch (Exception $e) {
