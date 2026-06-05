@@ -741,7 +741,8 @@ class SVGParser
                     'objectboundingbox' => GradientUnits::ObjectBoundingBox,
                     default => GradientUnits::UserSpaceOnUse,
                 };
-                $maskType = match (strtolower((string)($maskEl['mask-type'] ?? $maskEl['maskType'] ?? 'luminance'))) {
+                $maskTypeVal = self::getEffectiveAttr($maskEl, 'mask-type', $styles);
+                $maskType = match (strtolower($maskTypeVal ?: 'luminance')) {
                     'alpha' => MaskType::Alpha,
                     default => MaskType::Luminance,
                 };
