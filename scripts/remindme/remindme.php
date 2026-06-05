@@ -11,6 +11,8 @@ use scripts\remindme\entities\reminder;
 use scripts\script_base;
 
 use function knivey\tools\makeArgs;
+use function Symfony\Component\String\u;
+use scripts\remindme\entities\UserTimezone;
 
 class remindme extends script_base
 {
@@ -18,6 +20,14 @@ class remindme extends script_base
     private array $cmdLimit = [];
     /** @var array<string, int> */
     private array $limitWarns = [];
+
+    private function getUserTimezone(string $nick): ?UserTimezone
+    {
+        global $entityManager;
+        $nickLower = u($nick)->lower();
+        return $entityManager->getRepository(UserTimezone::class)
+            ->findOneBy(["nick" => $nickLower, "network" => $this->network]);
+    }
 
     #[Cmd("in", "remindme")]
     #[Syntax("<timemsg>...")]
@@ -36,7 +46,10 @@ class remindme extends script_base
         $this->cmdLimit[$host] = time() + 2;
         unset($this->limitWarns[$host]);
 
-        $parsed = \parseDuration($cmdArgs['timemsg']);
+        $userTz = $this->getUserTimezone($args->nick);
+        $tzName = $userTz?->timezone;
+
+        $parsed = \parseDuration($cmdArgs['timemsg'], $tzName);
         if ($parsed === null) {
             $bot->pm($args->chan, "Couldn't understand that time. Try: 1h30m, 1 hour 15 min, 2 days, next tuesday, tomorrow 3pm, next month, aug 15");
             return;
@@ -44,6 +57,11 @@ class remindme extends script_base
 
         if ($parsed->remainder === '') {
             $bot->pm($args->chan, "You need to tell me what to remind you about!");
+            return;
+        }
+
+        if ($parsed->targetTime !== null && $tzName === null) {
+            $bot->pm($args->chan, "You need to set your timezone first: .settz America/New_York (e.g. .settz America/New_York, Europe/London, Asia/Tokyo, UTC)");
             return;
         }
 
@@ -67,13 +85,53 @@ class remindme extends script_base
         $entityManager->flush();
 
         if ($parsed->targetTime !== null) {
-            $dt = Carbon::createFromTimestamp($parsed->targetTime);
+            $dt = Carbon::createFromTimestamp($parsed->targetTime, $tzName);
             $fromNow = $dt->shortRelativeToNowDiffForHumans(Carbon::now(), 10);
             $bot->pm($args->chan, "Ok, I'll remind you on " . $dt->toCookieString() . " ($fromNow)");
         } else {
             $bot->pm($args->chan, "Ok, I'll remind you in " . \Duration_toString($in));
         }
         $this->sendDelayed($bot, $r, $in);
+    }
+
+    #[Cmd("settimezone", "settz")]
+    #[Syntax("[timezone]")]
+    #[Desc("Set your timezone (e.g. America/New_York, Europe/London). With no args, shows your current setting.")]
+    public function settimezone(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        global $entityManager;
+        $tzInput = trim($cmdArgs['timezone'] ?? '');
+
+        if ($tzInput === '') {
+            $userTz = $this->getUserTimezone($args->nick);
+            if ($userTz) {
+                $bot->pm($args->chan, "Your timezone is set to {$userTz->timezone}");
+            } else {
+                $bot->pm($args->chan, "You don't have a timezone set. Use .settz <timezone> (e.g. .settz America/New_York, Europe/London, Asia/Tokyo, UTC)");
+            }
+            return;
+        }
+
+        try {
+            new \DateTimeZone($tzInput);
+        } catch (\Exception $e) {
+            $bot->pm($args->chan, "Invalid timezone. Examples: America/New_York, Europe/London, Asia/Tokyo, UTC");
+            return;
+        }
+
+        $nickLower = u($args->nick)->lower();
+        $userTz = $entityManager->getRepository(UserTimezone::class)
+            ->findOneBy(["nick" => $nickLower, "network" => $this->network]);
+        if (!$userTz) {
+            $userTz = new UserTimezone();
+        }
+        $userTz->nick = $nickLower;
+        $userTz->timezone = $tzInput;
+        $userTz->network = $this->network;
+        $entityManager->persist($userTz);
+        $entityManager->flush();
+
+        $bot->pm($args->chan, "Timezone set to $tzInput");
     }
 
     /*
