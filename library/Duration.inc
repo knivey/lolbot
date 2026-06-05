@@ -460,9 +460,17 @@ function parseDurationDateMatch(
         $day = (int) $m[2];
         if ($tzName !== null) {
             $year = (int) $nowDt->format('Y');
-            $baseDt = new \DateTime("{$year}-{$month}-{$day}", $tz);
+            try {
+                $baseDt = new \DateTime("{$year}-{$month}-{$day}", $tz);
+            } catch (\Exception $e) {
+                return null;
+            }
             if ($baseDt->getTimestamp() <= $now + 15) {
-                $baseDt = new \DateTime(($year + 1) . "-{$month}-{$day}", $tz);
+                try {
+                    $baseDt = new \DateTime(($year + 1) . "-{$month}-{$day}", $tz);
+                } catch (\Exception $e) {
+                    return null;
+                }
             }
         } else {
             $year = (int) date('Y');

@@ -673,4 +673,10 @@ class ParseDurationTest extends TestCase
         $this->expectException(\Exception::class);
         \parseDuration('tomorrow 3pm test', 'Invalid/Timezone');
     }
+
+    public function test_invalid_day_of_month_with_timezone_returns_null(): void
+    {
+        $result = \parseDuration('feb 41 test', 'America/New_York');
+        $this->assertNull($result);
+    }
 }
