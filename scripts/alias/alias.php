@@ -192,9 +192,10 @@ class alias extends script_base
      * @param \Irc\Client $bot
      * @param string $cmd
      * @param array<string> $cmdArgs
+     * @param array<string, string|null> $invOpts
      * @return bool
      */
-    function handleCmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, string $cmd, array $cmdArgs): bool
+    function handleCmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, string $cmd, array $cmdArgs, array $invOpts = []): bool
     {
         global $entityManager;
         try {
@@ -246,6 +247,17 @@ class alias extends script_base
             if (!$this->router->cmdExists($alias->cmd)) {
                 $bot->msg($args->chan, "Error with alias, bot command {$alias->cmd} not found");
                 return true;
+            }
+            if (!empty($invOpts)) {
+                $optStr = '';
+                foreach ($invOpts as $name => $val) {
+                    if ($val !== null) {
+                        $optStr .= "$name=$val ";
+                    } else {
+                        $optStr .= "$name ";
+                    }
+                }
+                $value = trim($value . ' ' . trim($optStr));
             }
             try {
                 $this->router->call($alias->cmd, $value, $args, $bot);
