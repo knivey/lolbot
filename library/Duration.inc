@@ -320,7 +320,7 @@ function parseDurationDate(string $input, ?string $tzName = null): ?ParseResult
         '/^(?:next|this)\s+(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(?:next|this)\s+(week|month|year|yrs?|mo|wks?)\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $ordinalPattern . ')\s+week\s+of\s+(' . $monthPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
-        '/^(' . $monthPattern . ')\s+(\d{1,2})(?:st|nd|rd|th)?\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^(' . $monthPattern . ')\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^' . $timePattern . '\s+(?:next\s+|this\s+)?(' . $dayPattern . ')\b\s*(.*)$/i',
     ];
@@ -458,32 +458,36 @@ function parseDurationDateMatch(
     } elseif (isset($monthNames[strtolower($m[1])])) {
         $month = $monthNames[strtolower($m[1])];
         $day = (int) $m[2];
+        $year = !empty($m[3]) ? (int) $m[3] : null;
+        if ($year !== null && $year <= (int) date('Y')) {
+            return null;
+        }
         if ($tzName !== null) {
-            $year = (int) $nowDt->format('Y');
+            $useYear = $year ?? (int) $nowDt->format('Y');
             try {
-                $baseDt = new \DateTime("{$year}-{$month}-{$day}", $tz);
+                $baseDt = new \DateTime("{$useYear}-{$month}-{$day}", $tz);
             } catch (\Exception $e) {
                 return null;
             }
-            if ($baseDt->getTimestamp() <= $now + 15) {
+            if ($year === null && $baseDt->getTimestamp() <= $now + 15) {
                 try {
-                    $baseDt = new \DateTime(($year + 1) . "-{$month}-{$day}", $tz);
+                    $baseDt = new \DateTime(((int) $nowDt->format('Y') + 1) . "-{$month}-{$day}", $tz);
                 } catch (\Exception $e) {
                     return null;
                 }
             }
         } else {
-            $year = (int) date('Y');
-            $ts = mktime(0, 0, 0, $month, $day, $year);
-            if ($ts === false || $ts <= $now + 15) {
-                $ts = mktime(0, 0, 0, $month, $day, $year + 1);
+            $useYear = $year ?? (int) date('Y');
+            $ts = mktime(0, 0, 0, $month, $day, $useYear);
+            if ($year === null && ($ts === false || $ts <= $now + 15)) {
+                $ts = mktime(0, 0, 0, $month, $day, $useYear + 1);
             }
             if ($ts === false) {
                 return null;
             }
             $baseTimestamp = $ts;
         }
-        $timeOffset = 3;
+        $timeOffset = 4;
     } elseif (!empty($m[1]) && preg_match('/^\d{1,2}/', $m[1]) && isset($m[5]) && isset($dayNames[strtolower($m[5])])) {
         $target = $dayNames[strtolower($m[5])];
         if ($tzName !== null) {
