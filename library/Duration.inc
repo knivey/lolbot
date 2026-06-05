@@ -226,7 +226,7 @@ function parseDurationRegex(string $input, string &$remainder = ''): ?int
     $singleLetter = implode('', array_keys($Duration_periods));
     $wordAlternation = implode('|', array_keys($wordUnits));
 
-    $pattern = '/^(\d+\s*[' . preg_quote($singleLetter, '/') . '](?![a-zA-Z])\s*|(\d+)\s*(' . $wordAlternation . ')\s*)+/i';
+    $pattern = '/^([\d.]+\s*[' . preg_quote($singleLetter, '/') . '](?![a-zA-Z])\s*|([\d.]+)\s*(' . $wordAlternation . ')\s*)+/i';
 
     if (!preg_match($pattern, $input, $matches, PREG_OFFSET_CAPTURE)) {
         return null;
@@ -237,14 +237,14 @@ function parseDurationRegex(string $input, string &$remainder = ''): ?int
     $remainder = substr($input, $matchEnd);
 
     $total = 0;
-    $tokenPattern = '/(\d+)\s*([' . preg_quote($singleLetter, '/') . '])(?![a-zA-Z])|(\d+)\s*(' . $wordAlternation . ')/i';
+    $tokenPattern = '/([\d.]+)\s*([' . preg_quote($singleLetter, '/') . '])(?![a-zA-Z])|([\d.]+)\s*(' . $wordAlternation . ')/i';
     if (!preg_match_all($tokenPattern, $matched, $tokens, PREG_SET_ORDER)) {
         return null;
     }
 
     foreach ($tokens as $token) {
         if (!empty($token[2])) {
-            $num = (int) $token[1];
+            $num = (float) $token[1];
             $unit = $token[2];
             if (!isset($Duration_periods[$unit])) {
                 $unitLower = strtolower($unit);
@@ -255,7 +255,7 @@ function parseDurationRegex(string $input, string &$remainder = ''): ?int
             }
             $total += $num * $Duration_periods[$unit];
         } elseif (!empty($token[4])) {
-            $num = (int) $token[3];
+            $num = (float) $token[3];
             $unit = strtolower($token[4]);
             if (!isset($wordUnits[$unit])) {
                 return null;
@@ -317,10 +317,12 @@ function parseDurationDate(string $input): ?ParseResult
     $patterns = [
         '/^(today)\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(tomorrow)\s*' . $timeGroup . '\s*(.*)$/i',
-        '/^next\s+(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
-        '/^next\s+(week|month|year|yrs?|mo|wks?)\b\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^(?:next|this)\s+(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^(?:next|this)\s+(week|month|year|yrs?|mo|wks?)\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $ordinalPattern . ')\s+week\s+of\s+(' . $monthPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $monthPattern . ')\s+(\d{1,2})(?:st|nd|rd|th)?\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
+        '/^' . $timePattern . '\s+(?:next\s+|this\s+)?(' . $dayPattern . ')\b\s*(.*)$/i',
     ];
 
     foreach ($patterns as $pattern) {
@@ -410,6 +412,34 @@ function parseDurationDateMatch(
         }
         $baseTimestamp = $ts;
         $timeOffset = 3;
+    } elseif (!empty($m[1]) && preg_match('/^\d{1,2}/', $m[1]) && isset($m[5]) && isset($dayNames[strtolower($m[5])])) {
+        $target = $dayNames[strtolower($m[5])];
+        $today = (int) date('N');
+        $diff = $target - $today;
+        if ($diff <= 0) {
+            $diff += 7;
+        }
+        $baseTimestamp += $diff * 86400;
+        $hours = (int) $m[1];
+        $minutes = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 0;
+        $seconds = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : 0;
+        $ampm = strtolower($m[4]);
+        if ($ampm === 'pm' && $hours < 12) {
+            $hours += 12;
+        }
+        if ($ampm === 'am' && $hours === 12) {
+            $hours = 0;
+        }
+        $targetTime = $baseTimestamp + $hours * 3600 + $minutes * 60 + $seconds;
+        $remainder = isset($m[6]) ? trim($m[6]) : '';
+        if ($targetTime <= $now + 15) {
+            return null;
+        }
+        return new ParseResult(
+            seconds: $targetTime - $now,
+            remainder: $remainder,
+            targetTime: $targetTime,
+        );
     } else {
         return null;
     }

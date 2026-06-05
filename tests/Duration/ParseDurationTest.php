@@ -264,6 +264,60 @@ class ParseDurationTest extends TestCase
 
     // --- Date expressions: next <dayname> ---
 
+    public function test_bare_dayname_with_time(): void
+    {
+        $result = \parseDuration('sunday 11am ssl really');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('ssl really', $result->remainder);
+    }
+
+    public function test_bare_dayname_no_time(): void
+    {
+        $result = \parseDuration('sunday ssl really');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('ssl really', $result->remainder);
+    }
+
+    public function test_this_dayname(): void
+    {
+        $result = \parseDuration('this sunday ssl really');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('ssl really', $result->remainder);
+    }
+
+    public function test_time_before_dayname(): void
+    {
+        $result = \parseDuration('11am sunday ssl really');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertGreaterThan(time() + 15, $result->targetTime);
+        $this->assertSame('ssl really', $result->remainder);
+    }
+
+    // --- Decimal durations ---
+
+    public function test_decimal_day(): void
+    {
+        $result = \parseDuration('2.5d ssl really');
+        $this->assertNotNull($result);
+        $this->assertSame((int) (2.5 * 86400), $result->seconds);
+        $this->assertSame('ssl really', $result->remainder);
+    }
+
+    public function test_decimal_hours(): void
+    {
+        $result = \parseDuration('1.5 hours do stuff');
+        $this->assertNotNull($result);
+        $this->assertSame((int) (1.5 * 3600), $result->seconds);
+        $this->assertSame('do stuff', $result->remainder);
+    }
+
     public function test_next_tuesday(): void
     {
         $result = \parseDuration('next tuesday go buy groceries');
