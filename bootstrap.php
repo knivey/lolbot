@@ -24,7 +24,8 @@ $paths = [
     __DIR__ . "/entities",
     __DIR__ . "/scripts/linktitles/entities",
     __DIR__ . "/scripts/weather/entities",
-    __DIR__ . "/scripts/lastfm/entities"
+    __DIR__ . "/scripts/lastfm/entities",
+    __DIR__ . "/scripts/remindme/entities"
 ];
 
 $ORMconfig = ORMSetup::createAttributeMetadataConfiguration($paths, $isDevMode);
