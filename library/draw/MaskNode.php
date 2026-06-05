@@ -24,6 +24,7 @@ class MaskNode implements SceneNode
 
         $maskCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
         $maskCanvas->setTransform($canvas->getTransform());
+        $maskCanvas->setDithering($canvas->getDithering());
         if ($this->transform !== null) {
             $maskCanvas->concatTransform($this->transform);
         }
@@ -36,6 +37,7 @@ class MaskNode implements SceneNode
 
         $childCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
         $childCanvas->setTransform($canvas->getTransform());
+        $childCanvas->setDithering($canvas->getDithering());
         $this->child->render($childCanvas, $ctx);
 
         Compositor::applyMask($canvas, $childCanvas, $maskCanvas, $this->maskType);

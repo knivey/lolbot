@@ -4,6 +4,15 @@ namespace draw;
 
 class Compositor
 {
+    private static function copyPixelMeta(Pixel $dst, Pixel $src, string $channel): void
+    {
+        if ($channel === 'fg') {
+            $dst->dithered = $src->dithered;
+            $dst->secondBest = $src->secondBest;
+            $dst->t = $src->t;
+        }
+    }
+
     public static function blend(Canvas $dst, Canvas $src, float $opacity = 1.0): void
     {
         if ($src->w !== $dst->w || $src->h !== $dst->h) {
@@ -45,6 +54,7 @@ class Compositor
                     } elseif ($dp->fg === null) {
                         $dp->fg = $sp->fg;
                         $dp->fgAlpha = 1.0;
+                        self::copyPixelMeta($dp, $sp, 'fg');
                         $hasChange = true;
                     } else {
                         $srcRgb = IrcPalette::getRgb($sp->fg);
@@ -119,6 +129,7 @@ class Compositor
                     } elseif ($dp->fg === null) {
                         $dp->fg = $sp->fg;
                         $dp->fgAlpha = 1.0;
+                        self::copyPixelMeta($dp, $sp, 'fg');
                         $hasChange = true;
                     } else {
                         $srcRgb = IrcPalette::getRgb($sp->fg);
@@ -211,6 +222,7 @@ class Compositor
                     } elseif ($dp->fg === null) {
                         $dp->fg = $sp->fg;
                         $dp->fgAlpha = 1.0;
+                        self::copyPixelMeta($dp, $sp, 'fg');
                         $hasChange = true;
                     } else {
                         $srcRgb = IrcPalette::getRgb($sp->fg);

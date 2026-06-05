@@ -5,8 +5,11 @@ namespace Tests\Canvas;
 use draw\Canvas;
 use draw\ClipNode;
 use draw\Color;
+use draw\ColorStop;
+use draw\Dithering;
 use draw\GradientUnits;
 use draw\Group;
+use draw\LinearGradient;
 use draw\Path;
 use draw\RenderContext;
 use draw\Shape;
@@ -119,5 +122,34 @@ class ClipNodeTest extends TestCase
         $clipNode->render($canvas, RenderContext::defaults());
 
         $this->assertTrue($beforeTransform->equals($canvas->getTransform()));
+    }
+
+    public function test_clip_preserves_dithering_through_temp_canvas(): void
+    {
+        $canvas = Canvas::createBlank(30, 10);
+        $canvas->setDithering(Dithering::ShaderBlocks);
+
+        $gradient = new LinearGradient(0.0, 0.0, 30.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $child = new Shape(path: Path::rect(0.0, 0.0, 30.0, 10.0), fill: $gradient);
+
+        $clipContent = new Group();
+        $clipContent->addChild(new Shape(path: Path::rect(0.0, 0.0, 30.0, 10.0), fill: new Color(0, null)));
+
+        $clipNode = new ClipNode($child, $clipContent);
+        $clipNode->render($canvas, RenderContext::defaults());
+
+        $ditheredCount = 0;
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 30; $x++) {
+                if ($canvas->data[$y][$x]->dithered) {
+                    $ditheredCount++;
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $ditheredCount, 'Expected dithered pixels when rendering gradient through ClipNode');
     }
 }

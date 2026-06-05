@@ -23,6 +23,7 @@ class ClipNode implements SceneNode
 
         $clipCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
         $clipCanvas->setTransform($canvas->getTransform());
+        $clipCanvas->setDithering($canvas->getDithering());
         if ($this->transform !== null) {
             $clipCanvas->concatTransform($this->transform);
         }
@@ -35,6 +36,7 @@ class ClipNode implements SceneNode
 
         $childCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
         $childCanvas->setTransform($canvas->getTransform());
+        $childCanvas->setDithering($canvas->getDithering());
         $this->child->render($childCanvas, $ctx);
 
         Compositor::applyClip($canvas, $childCanvas, $clipCanvas);

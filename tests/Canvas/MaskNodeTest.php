@@ -4,7 +4,10 @@ namespace Tests\Canvas;
 
 use draw\Canvas;
 use draw\Color;
+use draw\ColorStop;
+use draw\Dithering;
 use draw\Group;
+use draw\LinearGradient;
 use draw\MaskNode;
 use draw\MaskType;
 use draw\Path;
@@ -132,5 +135,34 @@ class MaskNodeTest extends TestCase
         $maskNode->render($canvas, RenderContext::defaults());
 
         $this->assertTrue($beforeTransform->equals($canvas->getTransform()));
+    }
+
+    public function test_mask_preserves_dithering_through_temp_canvas(): void
+    {
+        $canvas = Canvas::createBlank(30, 10);
+        $canvas->setDithering(Dithering::ShaderBlocks);
+
+        $gradient = new LinearGradient(0.0, 0.0, 30.0, 0.0, [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(1.0, 0, 0, 255),
+        ]);
+
+        $child = new Shape(path: Path::rect(0.0, 0.0, 30.0, 10.0), fill: $gradient);
+
+        $maskContent = new Group();
+        $maskContent->addChild(new Shape(path: Path::rect(0.0, 0.0, 30.0, 10.0), fill: new Color(0, null)));
+
+        $maskNode = new MaskNode($child, $maskContent, maskType: MaskType::Alpha);
+        $maskNode->render($canvas, RenderContext::defaults());
+
+        $ditheredCount = 0;
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 30; $x++) {
+                if ($canvas->data[$y][$x]->dithered) {
+                    $ditheredCount++;
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $ditheredCount, 'Expected dithered pixels when rendering gradient through MaskNode');
     }
 }
