@@ -22,6 +22,7 @@ class ClipNode implements SceneNode
         $childBbox = self::computeBbox($this->child);
 
         $clipCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
+        $clipCanvas->setTransform($canvas->getTransform());
         if ($this->transform !== null) {
             $clipCanvas->concatTransform($this->transform);
         }
@@ -33,6 +34,7 @@ class ClipNode implements SceneNode
         $this->clipContent->render($clipCanvas, $ctx);
 
         $childCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
+        $childCanvas->setTransform($canvas->getTransform());
         $this->child->render($childCanvas, $ctx);
 
         Compositor::applyClip($canvas, $childCanvas, $clipCanvas);

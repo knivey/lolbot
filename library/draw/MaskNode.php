@@ -23,6 +23,7 @@ class MaskNode implements SceneNode
         $childBbox = ClipNode::computeBbox($this->child);
 
         $maskCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
+        $maskCanvas->setTransform($canvas->getTransform());
         if ($this->transform !== null) {
             $maskCanvas->concatTransform($this->transform);
         }
@@ -34,6 +35,7 @@ class MaskNode implements SceneNode
         $this->maskContent->render($maskCanvas, $ctx);
 
         $childCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
+        $childCanvas->setTransform($canvas->getTransform());
         $this->child->render($childCanvas, $ctx);
 
         Compositor::applyMask($canvas, $childCanvas, $maskCanvas, $this->maskType);
