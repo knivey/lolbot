@@ -364,20 +364,21 @@ class linktitles extends script_base
         }
     }
 
-    private function isProxyExcluded(string $host): bool
+    private function isProxyExcluded(string $url): bool
     {
         global $config;
+        $host = parse_url($url, PHP_URL_HOST) ?: '';
         $excludes = $config['linktitles_proxy_exclude'] ?? [];
         foreach ($excludes as $pattern) {
             if (preg_match(\knivey\tools\globToRegex($pattern) . 'i', $host)) {
-                $this->logger->info("linktitles: proxy excluded for {$host} (glob match: {$pattern})");
+                $this->logger->info("linktitles: proxy excluded for {$url} (glob match: {$pattern})");
                 return true;
             }
         }
         $regexExcludes = $config['linktitles_proxy_exclude_regex'] ?? [];
         foreach ($regexExcludes as $pattern) {
-            if (preg_match($pattern, $host)) {
-                $this->logger->info("linktitles: proxy excluded for {$host} (regex match: {$pattern})");
+            if (preg_match($pattern, $url)) {
+                $this->logger->info("linktitles: proxy excluded for {$url} (regex match: {$pattern})");
                 return true;
             }
         }
@@ -393,8 +394,7 @@ class linktitles extends script_base
 
         $proxy = $config['linktitles_proxy'] ?? null;
         if ($proxy !== null) {
-            $host = parse_url($url, PHP_URL_HOST);
-            if ($host !== false && $host !== null && !$this->isProxyExcluded($host)) {
+            if (!$this->isProxyExcluded($url)) {
                 $user = $config['linktitles_proxy_user'] ?? null;
                 $pass = $config['linktitles_proxy_pass'] ?? null;
                 $connector = new Socks5SocketConnector($proxy, $user, $pass);
