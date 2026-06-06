@@ -26,7 +26,7 @@ class linktitles_set extends Command
 
     protected function configure(): void
     {
-        $this->addOption("network", "N", InputOption::VALUE_REQUIRED, "Network ID (required)");
+        $this->addOption("network", "N", InputOption::VALUE_REQUIRED, "Network ID (required unless --channel is given)");
         $this->addOption("channel", "C", InputOption::VALUE_REQUIRED, "Channel ID (optional, for per-channel setting)");
         $this->addArgument("setting", InputArgument::OPTIONAL, "Setting name");
         $this->addArgument("value", InputArgument::OPTIONAL, "New value");
@@ -35,16 +35,6 @@ class linktitles_set extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
 
-        $networkId = $input->getOption("network");
-        if ($networkId === null) {
-            throw new \InvalidArgumentException("--network is required");
-        }
-
-        $network = $entityManager->getRepository(Network::class)->find($networkId);
-        if (!$network) {
-            throw new \InvalidArgumentException("Network by that ID not found");
-        }
-
         $channelId = $input->getOption("channel");
         $channel = null;
         if ($channelId !== null) {
@@ -52,6 +42,18 @@ class linktitles_set extends Command
             if (!$channel) {
                 throw new \InvalidArgumentException("Channel by that ID not found");
             }
+        }
+
+        $networkId = $input->getOption("network");
+        if ($channelId !== null) {
+            $network = $channel->bot->network;
+        } elseif ($networkId !== null) {
+            $network = $entityManager->getRepository(Network::class)->find($networkId);
+            if (!$network) {
+                throw new \InvalidArgumentException("Network by that ID not found");
+            }
+        } else {
+            throw new \InvalidArgumentException("--network or --channel is required");
         }
 
         $repo = $entityManager->getRepository(linktitles_setting::class);
@@ -96,14 +98,50 @@ class linktitles_set extends Command
     private function showSettings(InputInterface $input, OutputInterface $output, ?linktitles_setting $setting, Network $network, ?Channel $channel): void
     {
         $io = new SymfonyStyle($input, $output);
-        $scope = $channel ? "network:{$network->name} channel:{$channel->name}" : "network:{$network->name}";
-        $io->title("Linktitles settings ($scope)");
+        global $entityManager;
 
+        if ($channel) {
+            $io->title("Linktitles settings (network:{$network->name} channel:{$channel->name})");
+            $rows = [];
+            foreach ($this->settings as $s) {
+                $val = $setting?->$s ?? ($s === 'ai_vision_disabled' ? 'false' : '');
+                $label = $setting !== null ? 'set' : 'inherited';
+                $rows[] = [$s, (is_bool($val) ? ($val ? 'true' : 'false') : (string)$val), $label];
+            }
+            $io->table(["Setting", "Value", "Source"], $rows);
+            return;
+        }
+
+        $io->title("Linktitles settings (network:{$network->name})");
         $rows = [];
         foreach ($this->settings as $s) {
             $val = $setting?->$s ?? ($s === 'ai_vision_disabled' ? 'false' : '');
             $rows[] = [$s, is_bool($val) ? ($val ? 'true' : 'false') : (string)$val];
         }
         $io->table(["Setting", "Value"], $rows);
+
+        $channelSettings = $entityManager->getRepository(linktitles_setting::class)->findBy(['network' => null]);
+        $botIds = [];
+        foreach ($network->getBots() as $bot) {
+            $botIds[] = $bot->id;
+        }
+
+        $channelRows = [];
+        foreach ($channelSettings as $cs) {
+            if ($cs->channel === null || !in_array($cs->channel->bot->id, $botIds)) {
+                continue;
+            }
+            $vals = [];
+            foreach ($this->settings as $s) {
+                $v = $cs->$s;
+                $vals[] = is_bool($v) ? ($v ? 'true' : 'false') : (string)$v;
+            }
+            $channelRows[] = array_merge(["{$cs->channel->id}:{$cs->channel->name}"], $vals);
+        }
+
+        if (count($channelRows) > 0) {
+            $io->section("Channel overrides");
+            $io->table(array_merge(["Channel"], $this->settings), $channelRows);
+        }
     }
 }
