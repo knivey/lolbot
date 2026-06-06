@@ -278,7 +278,7 @@ class linktitles extends script_base
             try {
                 $img->readImageBlob($body);
                 $img->setImageFormat('jpeg');
-                $img->setJPEGCompressionQuality($quality);
+                $img->setImageCompressionQuality($quality);
                 $img->thumbnailImage($maxDim, $maxDim, true);
                 $base64 = base64_encode($img->getImageBlob());
             } finally {
