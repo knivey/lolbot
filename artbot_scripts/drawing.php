@@ -5,7 +5,19 @@ namespace artbot_scripts;
 use draw\Canvas;
 use draw\Color;
 use draw\ColorStop;
+use draw\Compositor;
 use draw\Dithering;
+use draw\FilterNode;
+use draw\FilterPipeline;
+use draw\GaussianBlurPrimitive;
+use draw\OffsetPrimitive;
+use draw\ColorMatrixPrimitive;
+use draw\MergePrimitive;
+use draw\DropShadowPrimitive;
+use draw\Group;
+use draw\Shape;
+use draw\RenderContext;
+use draw\IrcPalette;
 use draw\LinearGradient;
 use draw\LineCap;
 use draw\LineJoin;
@@ -417,10 +429,10 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor', 'shadertest', 'gradtransform'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor', 'shadertest', 'gradtransform', 'blur', 'shadow', 'saturate', 'glow', 'filters'];
 
 #[Cmd("demo")]
-#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest, gradtransform). Random if no arg.")]
+#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest, gradtransform, blur, shadow, saturate, glow, filters). Random if no arg.")]
 #[Syntax('[name]')]
 #[Option("--dither", "Dithering mode: spatial, shader, or all")]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
@@ -472,6 +484,11 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'twocolor' => demoTwoColor($art),
         'shadertest' => demoShaderTest($art),
         'gradtransform' => demoGradTransform($art),
+        'blur' => demoBlur($art),
+        'shadow' => demoShadow($art),
+        'saturate' => demoSaturate($art),
+        'glow' => demoGlow($art),
+        'filters' => demoFilters($art),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -1174,4 +1191,243 @@ function demoGradTransform(Canvas $art): void
         $path->lineTo($x2, $y2);
         $art->drawPath($path, null, new StrokeStyle($rayGrad, width: 2.0));
     }
+}
+
+function demoBlur(Canvas $art): void
+{
+    $colors = [new Color(4, null), new Color(9, null), new Color(12, null), new Color(7, null), new Color(13, null)];
+    $radii = [0.5, 1.0, 1.5, 2.0, 3.0];
+    $positions = [
+        [12, 12], [30, 12], [50, 12], [68, 12],
+        [20, 32], [45, 32], [65, 32],
+    ];
+
+    for ($i = 0; $i < min(count($positions), count($colors)); $i++) {
+        $cx = $positions[$i][0];
+        $cy = $positions[$i][1];
+        $r = rand(4, 7);
+        $shape = new Shape(
+            path: Path::circle((float)$cx, (float)$cy, (float)$r),
+            fill: $colors[$i],
+        );
+
+        $filterNode = new FilterNode($shape, [
+            new GaussianBlurPrimitive($radii[$i] ?? 1.0),
+        ]);
+        $filterNode->render($art, RenderContext::defaults());
+    }
+}
+
+function demoShadow(Canvas $art): void
+{
+    $shadowColors = [[0, 0, 0], [255, 0, 0], [0, 0, 200], [0, 150, 0]];
+
+    $rect1 = new Shape(
+        path: Path::rect(10.0, 8.0, 15.0, 10.0),
+        fill: new Color(9, null),
+    );
+    $shadow1 = new FilterNode($rect1, [
+        new DropShadowPrimitive(2.0, 1.0, 0.5, $shadowColors[0], 0.8),
+    ]);
+    $shadow1->render($art, RenderContext::defaults());
+
+    $rect2 = new Shape(
+        path: Path::rect(40.0, 6.0, 12.0, 12.0),
+        fill: new Color(12, null),
+    );
+    $shadow2 = new FilterNode($rect2, [
+        new DropShadowPrimitive(3.0, 2.0, 1.0, $shadowColors[1], 0.9),
+    ]);
+    $shadow2->render($art, RenderContext::defaults());
+
+    $circle1 = new Shape(
+        path: Path::circle(62.0, 14.0, 7.0),
+        fill: new Color(4, null),
+    );
+    $shadow3 = new FilterNode($circle1, [
+        new DropShadowPrimitive(2.0, 1.0, 0.5, $shadowColors[2], 0.7),
+    ]);
+    $shadow3->render($art, RenderContext::defaults());
+
+    $group = new Group();
+    $group->addChild(new Shape(path: Path::rect(8.0, 28.0, 20.0, 8.0), fill: new Color(7, null)));
+    $group->addChild(new Shape(path: Path::rect(14.0, 32.0, 20.0, 8.0), fill: new Color(8, null)));
+    $shadow4 = new FilterNode($group, [
+        new DropShadowPrimitive(4.0, 2.0, 1.5, $shadowColors[3], 0.6),
+    ]);
+    $shadow4->render($art, RenderContext::defaults());
+
+    $textShape = new Shape(
+        path: Path::rect(50.0, 30.0, 22.0, 10.0),
+        fill: new Color(0, null),
+        stroke: new StrokeStyle(new Color(4, null), width: 1.5),
+    );
+    $shadow5 = new FilterNode($textShape, [
+        new DropShadowPrimitive(2.0, 1.0, 0.0, [100, 0, 150], 0.8),
+    ]);
+    $shadow5->render($art, RenderContext::defaults());
+}
+
+function demoSaturate(Canvas $art): void
+{
+    $shapes = [
+        ['label' => 's=0', 'sat' => 0.0, 'cx' => 10.0],
+        ['label' => 's=0.25', 'sat' => 0.25, 'cx' => 25.0],
+        ['label' => 's=0.5', 'sat' => 0.5, 'cx' => 40.0],
+        ['label' => 's=0.75', 'sat' => 0.75, 'cx' => 55.0],
+        ['label' => 's=1.0', 'sat' => 1.0, 'cx' => 70.0],
+    ];
+
+    foreach ($shapes as $s) {
+        $shape = new Shape(
+            path: Path::circle($s['cx'], 15.0, 8.0),
+            fill: new Color(4, null),
+        );
+        $filterNode = new FilterNode($shape, [
+            new ColorMatrixPrimitive('saturate', [$s['sat']]),
+        ]);
+        $filterNode->render($art, RenderContext::defaults());
+    }
+
+    $hueAngles = [0, 60, 120, 180, 240, 300];
+    for ($i = 0; $i < count($hueAngles); $i++) {
+        $cx = 8.0 + $i * 13;
+        $shape = new Shape(
+            path: Path::rect($cx, 30.0, 10.0, 10.0),
+            fill: new Color(9, null),
+        );
+        $filterNode = new FilterNode($shape, [
+            new ColorMatrixPrimitive('hueRotate', [(float)$hueAngles[$i]]),
+        ]);
+        $filterNode->render($art, RenderContext::defaults());
+    }
+}
+
+function demoGlow(Canvas $art): void
+{
+    $glowColors = [
+        ['shape' => new Color(4, null), 'glow' => [255, 0, 0]],
+        ['shape' => new Color(9, null), 'glow' => [0, 255, 100]],
+        ['shape' => new Color(12, null), 'glow' => [0, 100, 255]],
+    ];
+
+    $positions = [[15, 14], [40, 14], [65, 14]];
+
+    for ($i = 0; $i < 3; $i++) {
+        $cx = $positions[$i][0];
+        $cy = $positions[$i][1];
+        $r = 6.0;
+
+        $shape = new Shape(
+            path: Path::circle((float)$cx, (float)$cy, $r),
+            fill: $glowColors[$i]['shape'],
+        );
+
+        $alphaCanvas = Canvas::createBlank($art->w, $art->h, $art->halfblocks);
+        $shape->render($alphaCanvas, RenderContext::defaults());
+
+        $blurPipeline = new FilterPipeline($alphaCanvas);
+        $blurred = (new GaussianBlurPrimitive(2.0))->apply($alphaCanvas, $blurPipeline);
+
+        $glowCode = IrcPalette::nearestColor($glowColors[$i]['glow'][0], $glowColors[$i]['glow'][1], $glowColors[$i]['glow'][2]);
+        $glowCanvas = Canvas::createBlank($art->w, $art->h, $art->halfblocks);
+        for ($y = 0; $y < $blurred->h; $y++) {
+            for ($x = 0; $x < $blurred->w; $x++) {
+                $bp = $blurred->data[$y][$x];
+                if ($bp->fg !== null) {
+                    $p = $glowCanvas->data[$y][$x];
+                    $p->fg = $glowCode;
+                    $p->fgAlpha = min(1.0, $bp->fgAlpha * 0.7);
+                }
+            }
+        }
+
+        Compositor::blend($art, $glowCanvas);
+        $shape->render($art, RenderContext::defaults());
+    }
+
+    $numLines = rand(3, 6);
+    for ($i = 0; $i < $numLines; $i++) {
+        $x1 = rand(10, 70);
+        $y1 = rand(30, 42);
+        $angle = deg2rad(rand(-30, 30));
+        $len = rand(10, 25);
+        $x2 = $x1 + cos($angle) * $len;
+        $y2 = $y1 + sin($angle) * $len;
+
+        $lineShape = new Shape(
+            path: Path::line((float)$x1, (float)$y1, (float)$x2, (float)$y2),
+            stroke: new StrokeStyle(new Color(7, null), width: 2.0),
+        );
+
+        $alphaCanvas = Canvas::createBlank($art->w, $art->h, $art->halfblocks);
+        $lineShape->render($alphaCanvas, RenderContext::defaults());
+
+        $blurPipeline = new FilterPipeline($alphaCanvas);
+        $blurred = (new GaussianBlurPrimitive(1.5))->apply($alphaCanvas, $blurPipeline);
+
+        $glowCanvas = Canvas::createBlank($art->w, $art->h, $art->halfblocks);
+        for ($y = 0; $y < $blurred->h; $y++) {
+            for ($x = 0; $x < $blurred->w; $x++) {
+                $bp = $blurred->data[$y][$x];
+                if ($bp->fg !== null) {
+                    $p = $glowCanvas->data[$y][$x];
+                    $p->fg = 8;
+                    $p->fgAlpha = min(1.0, $bp->fgAlpha * 0.6);
+                }
+            }
+        }
+
+        Compositor::blend($art, $glowCanvas);
+        $lineShape->render($art, RenderContext::defaults());
+    }
+}
+
+function demoFilters(Canvas $art): void
+{
+    $shape1 = new Shape(path: Path::rect(2.0, 2.0, 16.0, 10.0), fill: new Color(4, null));
+    (new FilterNode($shape1, [
+        new GaussianBlurPrimitive(1.5),
+    ]))->render($art, RenderContext::defaults());
+
+    $shape2 = new Shape(path: Path::rect(22.0, 2.0, 16.0, 10.0), fill: new Color(9, null));
+    (new FilterNode($shape2, [
+        new DropShadowPrimitive(2.0, 1.0, 0.5, [0, 0, 200], 0.8),
+    ]))->render($art, RenderContext::defaults());
+
+    $shape3 = new Shape(path: Path::rect(42.0, 2.0, 16.0, 10.0), fill: new Color(7, null));
+    (new FilterNode($shape3, [
+        new ColorMatrixPrimitive('saturate', [0.0]),
+    ]))->render($art, RenderContext::defaults());
+
+    $shape4 = new Shape(path: Path::rect(62.0, 2.0, 16.0, 10.0), fill: new Color(12, null));
+    (new FilterNode($shape4, [
+        new ColorMatrixPrimitive('hueRotate', [180.0]),
+    ]))->render($art, RenderContext::defaults());
+
+    $shape5 = new Shape(path: Path::rect(2.0, 17.0, 16.0, 10.0), fill: new Color(8, null));
+    (new FilterNode($shape5, [
+        new OffsetPrimitive(3.0, 2.0),
+    ]))->render($art, RenderContext::defaults());
+
+    $shape6 = new Shape(path: Path::rect(22.0, 17.0, 16.0, 10.0), fill: new Color(13, null));
+    (new FilterNode($shape6, [
+        new ColorMatrixPrimitive('luminanceToAlpha', []),
+    ]))->render($art, RenderContext::defaults());
+
+    $group = new Group();
+    $group->addChild(new Shape(path: Path::circle(65.0, 22.0, 6.0), fill: new Color(4, null)));
+    $group->addChild(new Shape(path: Path::circle(72.0, 26.0, 5.0), fill: new Color(9, null)));
+    (new FilterNode($group, [
+        new GaussianBlurPrimitive(0.8),
+        new ColorMatrixPrimitive('saturate', [1.5]),
+    ]))->render($art, RenderContext::defaults());
+
+    $bigShape = new Shape(path: Path::rect(5.0, 32.0, 70.0, 12.0), fill: new Color(4, null));
+    (new FilterNode($bigShape, [
+        new GaussianBlurPrimitive(2.0),
+        new OffsetPrimitive(2.0, 1.0),
+    ]))->render($art, RenderContext::defaults());
+    $bigShapeOrig = new Shape(path: Path::rect(5.0, 32.0, 70.0, 12.0), fill: new Color(4, null));
+    $bigShapeOrig->render($art, RenderContext::defaults());
 }
