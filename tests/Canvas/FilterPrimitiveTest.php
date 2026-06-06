@@ -31,8 +31,8 @@ class FilterPrimitiveTest extends TestCase
         $absolute = $region->toAbsolute(10.0, 5.0, 20.0, 10.0);
         $this->assertSame(8.0, $absolute['x']);
         $this->assertSame(4.0, $absolute['y']);
-        $this->assertSame(24.0, $absolute['width']);
-        $this->assertSame(12.0, $absolute['height']);
+        $this->assertSame(24.0, $absolute['w']);
+        $this->assertSame(12.0, $absolute['h']);
     }
 
     public function test_filter_region_to_absolute_identity(): void
@@ -41,7 +41,7 @@ class FilterPrimitiveTest extends TestCase
         $absolute = $region->toAbsolute(10.0, 5.0, 20.0, 10.0);
         $this->assertSame(10.0, $absolute['x']);
         $this->assertSame(5.0, $absolute['y']);
-        $this->assertSame(20.0, $absolute['width']);
-        $this->assertSame(10.0, $absolute['height']);
+        $this->assertSame(20.0, $absolute['w']);
+        $this->assertSame(10.0, $absolute['h']);
     }
 }

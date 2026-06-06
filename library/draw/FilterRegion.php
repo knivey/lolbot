@@ -18,15 +18,15 @@ class FilterRegion
     }
 
     /**
-     * @return array{x: float, y: float, width: float, height: float}
+     * @return array{x: float, y: float, w: float, h: float}
      */
     public function toAbsolute(float $bboxX, float $bboxY, float $bboxW, float $bboxH): array
     {
         return [
             'x' => $bboxX + $this->x * $bboxW,
             'y' => $bboxY + $this->y * $bboxH,
-            'width' => $this->width * $bboxW,
-            'height' => $this->height * $bboxH,
+            'w' => $this->width * $bboxW,
+            'h' => $this->height * $bboxH,
         ];
     }
 }
