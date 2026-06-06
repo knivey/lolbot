@@ -18,12 +18,21 @@ use scripts\script_base;
 
 use function Amp\Future\awaitAll;
 
+use Amp\TimeoutCancellation;
+use Knivey\OpenAi\HttpClient as OpenAiHttpClient;
+use Knivey\OpenAi\OpenAiClient;
+use Knivey\OpenAi\Request\ChatRequest;
+use Knivey\OpenAi\Request\Message;
+use Knivey\OpenAi\Request\Content\TextPart;
+use Knivey\OpenAi\Request\Content\ImagePart;
+
 class linktitles extends script_base
 {
     public \Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher;
 
     //adding buffer limit is an extra precaution to the body size limit
     const bufferLimit = 1024*1024*40;
+    const defaultVisionPrompt = 'very short summary on one line. dont describe the format e.g. "the image", "the chart", "a meme", just the subject/content/data. dont add unnecessary moral judgments like "outdated", "controversial", "offensive", "antisemitic". keep it short!';
 
 //feature requested by terps
 //sends all urls into a log channel for easier viewing url history
@@ -121,7 +130,6 @@ class linktitles extends script_base
                     continue;
                 }
 
-                //TODO move these handlers to their own UrlEvents
                 if (preg_match("@^image/(.*)$@i", $response->getHeader("content-type"), $m)) {
                     $size = $response->getHeader("content-length");
                     if ($size !== null && is_numeric($size))
@@ -133,6 +141,10 @@ class linktitles extends script_base
                         $out = "[ $m[1] image $size ]";
                     } else {
                         $out = "[ $m[1] image $size $d[0]x$d[1] ]";
+                    }
+                    $aiDesc = $this->getAiDescription($body);
+                    if ($aiDesc !== null) {
+                        $out = "$out — $aiDesc";
                     }
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
@@ -219,6 +231,65 @@ class linktitles extends script_base
         }
     }
 
+
+    private function getAiDescription(string $body): ?string
+    {
+        global $config;
+        if (!isset($config['ai_vision_key'])) {
+            return null;
+        }
+
+        try {
+            $maxDim = (int)($config['ai_vision_max_dim'] ?? 1024);
+            $quality = (int)($config['ai_vision_jpg_quality'] ?? 85);
+
+            $img = new \Imagick();
+            try {
+                $img->readImageBlob($body);
+                $img->setImageFormat('jpeg');
+                $img->setJPEGCompressionQuality($quality);
+                $img->thumbnailImage($maxDim, $maxDim, true);
+                $base64 = base64_encode($img->getImageBlob());
+            } finally {
+                $img->clear();
+            }
+
+            $ampClient = HttpClientBuilder::buildDefault();
+            $openAiHttp = new OpenAiHttpClient($config['ai_vision_key'], $ampClient, new TimeoutCancellation(10));
+            $client = new OpenAiClient(
+                apiKey: $config['ai_vision_key'],
+                baseUrl: $config['ai_vision_base_url'] ?? 'https://api.openai.com/v1',
+                httpClient: $openAiHttp,
+            );
+
+            $prompt = $config['ai_vision_prompt'] ?? self::defaultVisionPrompt;
+            $model = $config['ai_vision_model'] ?? 'gpt-4o';
+
+            $response = $client->chatCompletion(new ChatRequest(
+                model: $model,
+                messages: [
+                    Message::user([
+                        new TextPart($prompt),
+                        ImagePart::base64($base64, 'image/jpeg'),
+                    ]),
+                ],
+            ));
+
+            $description = $response->choices[0]->message->content ?? null;
+            if ($description === null || trim($description) === '') {
+                return null;
+            }
+            $description = trim($description);
+            $description = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F]/', '', $description);
+            if (mb_strwidth($description) > 200) {
+                $description = mb_strimwidth($description, 0, 197, '...');
+            }
+            return $description;
+        } catch (\Exception $e) {
+            $this->logger->warning("AI vision description failed: " . $e->getMessage());
+            return null;
+        }
+    }
 
     private function isProxyExcluded(string $host): bool
     {
