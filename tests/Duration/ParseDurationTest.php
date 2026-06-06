@@ -222,7 +222,8 @@ class ParseDurationTest extends TestCase
         $testHour = ($hour + 2) % 24;
         $ampm = $testHour >= 12 ? 'pm' : 'am';
         $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
-        $result = \parseDuration("today at {$displayHour}{$ampm} meeting");
+        $prefix = ($hour + 2) >= 24 ? 'tomorrow' : 'today';
+        $result = \parseDuration("{$prefix} at {$displayHour}{$ampm} meeting");
         $this->assertNotNull($result);
         $this->assertNotNull($result->targetTime);
         $this->assertSame('meeting', $result->remainder);
