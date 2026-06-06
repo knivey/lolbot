@@ -30,11 +30,11 @@ The `postDataJSON` is HTML-entity-encoded JSON assigned to a `postDataJSON=` att
 
 ### 2. Album pages: `imgur.com/a/ID`
 
-Extract the ID from the URL, construct `i.imgur.com/ID.jpg`, and fetch with an image-appropriate `Accept` header to get the actual image metadata (content-type, dimensions, file size). Shows basic image info.
+Album IDs are not valid image IDs on `i.imgur.com` — fetching `i.imgur.com/FpuLRBp.jpg` returns a 302 to `removed.png`. Instead, fetch the album's HTML page and extract the cover image ID from the `og:image` meta tag (e.g. `content="https://i.imgur.com/vOFL64u.jpeg?fb"` → ID is `vOFL64u`). Then fetch `i.imgur.com/{imageId}.jpg` with `Accept: */*` to get the actual image metadata.
 
 ### 3. Single image pages: `imgur.com/ID`
 
-Same as album pages — extract ID, fetch `i.imgur.com/ID.jpg` directly.
+Same two-step approach as album pages — fetch the HTML, extract the image ID from `og:image`, then fetch the direct image. For `/ID` pages the URL ID and the `og:image` ID are usually the same, but the HTML fetch is still needed since the ID alone isn't sufficient to construct a working direct image URL (the Accept header trick is required to avoid the 302 redirect).
 
 ### 4. Direct image/video links: `i.imgur.com/ID.ext`
 
@@ -48,7 +48,7 @@ The handler uses its own HTTP requests with these headers:
 - `User-Agent`: same as linktitles config (`linktitles_useragent`)
 - `Accept: */*` — prevents imgur from 302-redirecting direct image URLs to HTML pages
 
-Gallery page requests use the standard linktitles Accept header since we want HTML back.
+Gallery page and album/image page requests use the standard linktitles Accept header since we want HTML back. The `Accept: */*` header is only used when fetching direct binary content from `i.imgur.com`.
 
 ## Output Formats
 
