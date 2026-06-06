@@ -1119,6 +1119,29 @@ function demoShaderTest(Canvas $art): void
     $art->drawPath(Path::rect($bx + 5, $by + 2, 3, 4), $doorColor, null);
     $art->drawPath(Path::rect($bx + 1, $by + 1, 2, 2), new Color(11, null), null);
     $art->drawPath(Path::rect($bx + 9, $by + 1, 2, 2), new Color(11, null), null);
+
+    $chimneyX = $bx + 9;
+    $chimneyTop = $by - 4;
+    $art->drawPath(Path::rect($chimneyX, $chimneyTop, 2, 3), new Color(5, null), null);
+
+    $smokeColor = new Color(15, null);
+    $smokeX = $chimneyX + 1;
+    $smokeY = $chimneyTop;
+    $puffs = rand(8, 12);
+    for ($i = 0; $i < $puffs; $i++) {
+        $opacity = max(0.08, 0.65 - ($i * $i * 0.008));
+        $radius = 0.5 + ($i * 0.15);
+        $offsetX = rand(-1, 1);
+        $art->drawPath(
+            Path::circle($smokeX + $offsetX, $smokeY - ($i * 1.5), $radius),
+            $smokeColor,
+            null,
+            '',
+            \draw\FillRule::NonZero,
+            1.0,
+            $opacity,
+        );
+    }
 }
 
 function demoGradTransform(Canvas $art): void

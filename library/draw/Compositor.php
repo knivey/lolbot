@@ -34,6 +34,7 @@ class Compositor
     public static function blendRegion(Canvas $dst, Canvas $src, float $opacity, int $dstX, int $dstY): void
     {
         $opacity = max(0.0, min(1.0, $opacity));
+        $dithering = $dst->getDithering();
 
         for ($y = 0; $y < $src->h; $y++) {
             $dy = $dstY + $y;
@@ -72,9 +73,18 @@ class Compositor
                         $r = max(0, min(255, $r));
                         $g = max(0, min(255, $g));
                         $b = max(0, min(255, $b));
-                        $dp->fg = IrcPalette::nearestColor($r, $g, $b);
-                        $dp->fgAlpha = 1.0;
-                        self::clearPixelMeta($dp);
+                        if ($dithering === Dithering::ShaderBlocks || $dithering === Dithering::ShaderBlocksAll) {
+                            $result = IrcPalette::nearestColorWithMeta($r, $g, $b, $dithering, $dx, $dy);
+                            $dp->fg = $result->code;
+                            $dp->fgAlpha = 1.0;
+                            $dp->dithered = $result->dithered;
+                            $dp->secondBest = $result->secondBest;
+                            $dp->t = $result->t;
+                        } else {
+                            $dp->fg = IrcPalette::nearestColor($r, $g, $b, $dithering, $dx, $dy);
+                            $dp->fgAlpha = 1.0;
+                            self::clearPixelMeta($dp);
+                        }
                         $hasChange = true;
                     }
                 }
@@ -96,7 +106,7 @@ class Compositor
                         $r = max(0, min(255, $r));
                         $g = max(0, min(255, $g));
                         $b = max(0, min(255, $b));
-                        $dp->bg = IrcPalette::nearestColor($r, $g, $b);
+                        $dp->bg = IrcPalette::nearestColor($r, $g, $b, $dithering, $dx, $dy);
                         $dp->bgAlpha = 1.0;
                         $hasChange = true;
                     }
