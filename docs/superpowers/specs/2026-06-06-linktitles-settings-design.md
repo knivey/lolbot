@@ -45,13 +45,13 @@ In `linktitles.php`, before calling `getAiDescription()`, add a check:
 New command: `linktitles:set` registered in `admin-cli.php`
 
 ```
-php admin-cli.php linktitles:set <network_id> ai_vision_disabled 1
-php admin-cli.php linktitles:set <network_id> ai_vision_disabled 0
-php admin-cli.php linktitles:set --channel <channel_id> ai_vision_disabled 1
-php admin-cli.php linktitles:set --channel <channel_id> ai_vision_disabled 0
+php admin-cli.php linktitles:set --network <network_id> ai_vision_disabled 1
+php admin-cli.php linktitles:set --network <network_id> ai_vision_disabled 0
+php admin-cli.php linktitles:set --network <network_id> --channel <channel_id> ai_vision_disabled 1
+php admin-cli.php linktitles:set --network <network_id> --channel <channel_id> ai_vision_disabled 0
 ```
 
-- First arg is network_id (required, for network-level settings)
+- `--network` is always required to prevent accidental misconfiguration
 - `--channel` option sets per-channel instead (channel_id only, network_id not stored)
 - Without `--channel`, sets network-level
 - Shows current settings when called with no value arg
