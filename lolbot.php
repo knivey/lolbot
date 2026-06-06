@@ -85,6 +85,7 @@ use scripts\invidious\invidious;
 use scripts\github\github;
 use scripts\tiktok\tiktok;
 use scripts\reddit\reddit;
+use scripts\imgur\imgur;
 
 require_once 'scripts/translate/translate.php';
 require_once 'scripts/yoda/yoda.php';
@@ -217,6 +218,10 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $tiktok = new tiktok($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tiktok", [$logHandler]), $nicks, $chans, $router);
     $tiktok->setEventProvider($eventProvider);
     $router->loadMethods($tiktok);
+
+    $imgur = new imgur($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:imgur", [$logHandler]), $nicks, $chans, $router);
+    $imgur->setEventProvider($eventProvider, $linktitles);
+    $router->loadMethods($imgur);
 
     $client->on('welcome', function (WelcomeEvent $e, \Irc\Client $bot) use ($dbBot) {
         foreach (explode("\n", $dbBot->onConnect) as $line) {
