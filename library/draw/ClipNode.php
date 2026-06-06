@@ -67,7 +67,7 @@ class ClipNode implements SceneNode
             }
             return $result;
         }
-        if ($node instanceof ClipNode || $node instanceof MaskNode) {
+        if ($node instanceof ClipNode || $node instanceof MaskNode || $node instanceof FilterNode) {
             return self::computeBbox($node->child);
         }
         return null;
