@@ -69,7 +69,7 @@ class linktitles extends script_base
     /**
      * @var array<string, string>
      */
-    private array $ai_desc_cache = [];
+    private static array $ai_desc_cache = [];
     private static LocalCache $httpCache;
     /**
      * @var array<string, list<int>>
@@ -161,7 +161,7 @@ class linktitles extends script_base
                     } else {
                         $out = "[ $m[1] image $size $d[0]x$d[1] ]";
                     }
-                    $aiDesc = $this->isAiVisionDisabled($chan) ? null : ($this->ai_desc_cache[$word] ?? $this->getAiDescription($body, $word));
+                    $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$word] ?? $this->getAiDescription($body, $word));
                     if ($aiDesc !== null) {
                         $out = "[ $m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc ]";
                     }
@@ -342,7 +342,7 @@ class linktitles extends script_base
             if (mb_strwidth($description) > 200) {
                 $description = mb_strimwidth($description, 0, 197, '...');
             }
-            $this->ai_desc_cache[$url] = $description;
+            self::$ai_desc_cache[$url] = $description;
             return $description;
         } catch (\Exception $e) {
             $this->logger->warning("AI vision description failed: " . $e->getMessage());
