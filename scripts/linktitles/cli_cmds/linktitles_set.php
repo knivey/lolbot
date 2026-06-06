@@ -1,5 +1,5 @@
 <?php
-namespace lolbot\cli_cmds;
+namespace scripts\linktitles\cli_cmds;
 /**
  * @psalm-suppress InvalidGlobal
  */
