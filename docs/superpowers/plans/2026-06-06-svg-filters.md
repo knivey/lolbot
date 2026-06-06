@@ -1785,23 +1785,23 @@ class FilterNode implements SceneNode
         $region = $this->filterRegion ?? FilterRegion::defaults();
 
         if ($this->filterUnits === GradientUnits::ObjectBoundingBox && $childBbox !== null) {
-            $absRegion = $region->toAbsolute(
-                $childBbox['x'], $childBbox['y'],
-                $childBbox['w'], $childBbox['h'],
-            );
+        $absRegion = $region->toAbsolute(
+            $childBbox['x'], $childBbox['y'],
+            $childBbox['w'], $childBbox['h'],
+        );
         } else {
             $absRegion = [
                 'x' => $region->x,
                 'y' => $region->y,
-                'width' => $region->width,
-                'height' => $region->height,
+                'w' => $region->width,
+                'h' => $region->height,
             ];
         }
 
         $regionX = (int) floor(max(0, $absRegion['x']));
         $regionY = (int) floor(max(0, $absRegion['y']));
-        $regionW = (int) ceil(min($canvas->w - $regionX, $absRegion['width']));
-        $regionH = (int) ceil(min($canvas->h - $regionY, $absRegion['height']));
+        $regionW = (int) ceil(min($canvas->w - $regionX, $absRegion['w']));
+        $regionH = (int) ceil(min($canvas->h - $regionY, $absRegion['h']));
 
         if ($regionW <= 0 || $regionH <= 0) {
             return;
