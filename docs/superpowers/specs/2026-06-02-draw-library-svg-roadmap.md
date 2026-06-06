@@ -296,7 +296,15 @@ tracking winding count, toggle a boolean at each intersection.
 8. ~~**Scene tree / Groups** — `<g>` elements, property inheritance (fill, stroke, transform, opacity), child overrides parent~~ **DONE**
 9. ~~**SVG parser** — XML parser mapping SVG elements to scene tree~~ **DONE**
 10. ~~**Clip/Mask** — clipping regions and masks~~ **DONE**
-11. **Filters** — blur, shadow, color matrix
+11. ~~**Filters** — blur, shadow, color matrix~~ **DONE**
+    - `feGaussianBlur` — 3-pass box blur approximating Gaussian in RGB space
+    - `feOffset` — pixel translation by dx/dy
+    - `feColorMatrix` — per-pixel matrix (matrix, saturate, hueRotate, luminanceToAlpha)
+    - `feMerge` — composite multiple named inputs via source-over
+    - `feDropShadow` — shorthand expanding to blur + offset + flood + mask + merge
+    - Named result chaining via `in`/`result` attributes
+    - Built-in sources: SourceGraphic, SourceAlpha, BackgroundImage, BackgroundAlpha
+    - Sub-region rendering via filter region + bbox computation
 12. **Text** — SVG text elements
 13. **Use/Symbol/Defs** — reusable elements
 14. **IRC enhancements** — higher resolution, better color, Unicode lines
