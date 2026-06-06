@@ -6,8 +6,9 @@ use Psr\Log\LoggerInterface;
 
 class FilterPipeline
 {
+    /** @var array<string, Canvas> */
     private array $results = [];
-    private ?Canvas $lastResult = null;
+    private Canvas $lastResult;
     private bool $bgWarned = false;
 
     public function __construct(
