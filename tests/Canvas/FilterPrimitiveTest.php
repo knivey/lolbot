@@ -7,6 +7,7 @@ use draw\Color;
 use draw\FilterPipeline;
 use draw\FilterRegion;
 use draw\IrcPalette;
+use draw\OffsetPrimitive;
 use PHPUnit\Framework\TestCase;
 
 class FilterPrimitiveTest extends TestCase
@@ -139,5 +140,86 @@ class FilterPrimitiveTest extends TestCase
         $pipeline->setResult('step1', $result);
 
         $this->assertSame($result, $pipeline->getLastResult());
+    }
+
+    public function test_offset_shifts_pixels_right_and_down(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(2, 2, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new OffsetPrimitive(3.0, 2.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNull($result->data[2][2]->fg);
+        $this->assertSame(4, $result->data[4][5]->fg);
+    }
+
+    public function test_offset_negative_values(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(7, 7, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new OffsetPrimitive(-3.0, -2.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNull($result->data[7][7]->fg);
+        $this->assertSame(4, $result->data[5][4]->fg);
+    }
+
+    public function test_offset_out_of_bounds_pixels_lost(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(1, 1, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new OffsetPrimitive(-5.0, -5.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNull($result->data[0][0]->fg);
+    }
+
+    public function test_offset_with_named_input(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(2, 2, new Color(4, null));
+
+        $other = Canvas::createBlank(10, 10);
+        $other->drawPoint(5, 5, new Color(0, null));
+
+        $pipeline = new FilterPipeline($source);
+        $pipeline->setResult('other', $other);
+
+        $primitive = new OffsetPrimitive(1.0, 0.0, input: 'other');
+        $result = $primitive->apply($other, $pipeline);
+
+        $this->assertNull($result->data[5][5]->fg);
+        $this->assertSame(0, $result->data[5][6]->fg);
+    }
+
+    public function test_offset_stores_named_result(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(2, 2, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new OffsetPrimitive(1.0, 0.0, result: 'shifted');
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame($result, $pipeline->getResult('shifted'));
+    }
+
+    public function test_offset_zero_produces_copy(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new OffsetPrimitive(0.0, 0.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame(4, $result->data[5][5]->fg);
+        $this->assertNotSame($source, $result);
     }
 }
