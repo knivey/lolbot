@@ -22,23 +22,7 @@ class FilterNode implements SceneNode
 
     public function render(Canvas $canvas, RenderContext $ctx): void
     {
-        $childBbox = ClipNode::computeBbox($this->child);
-        $region = $this->filterRegion ?? FilterRegion::defaults();
-
-        if ($this->filterUnits === GradientUnits::ObjectBoundingBox && $childBbox !== null) {
-            $absRegion = $region->toAbsolute(
-                $childBbox['x'], $childBbox['y'],
-                $childBbox['w'], $childBbox['h'],
-            );
-        } else {
-            $absRegion = [
-                'x' => $region->x,
-                'y' => $region->y,
-                'w' => $region->width,
-                'h' => $region->height,
-            ];
-        }
-
+        // Filter region support is deferred — currently renders to a full-size offscreen canvas.
         $childCanvas = Canvas::createBlank($canvas->w, $canvas->h, $canvas->halfblocks);
         $childCanvas->setTransform($canvas->getTransform());
         $childCanvas->setDithering($canvas->getDithering());
@@ -52,6 +36,7 @@ class FilterNode implements SceneNode
             if ($inputName !== null) {
                 $resolvedInput = $pipeline->getResult($inputName);
                 if ($resolvedInput === null) {
+                    $this->logger?->warning("SVG filter primitive references unknown input '{$inputName}', skipping");
                     continue;
                 }
             } else {
