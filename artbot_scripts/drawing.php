@@ -1074,9 +1074,9 @@ function demoShaderTest(Canvas $art): void
 
     $starColor = new Color(0, null);
     $starPositions = [
-        [5, 3], [12, 6], [25, 2], [35, 5], [42, 1],
+        [5, 3], [25, 2], [35, 5], [42, 1],
         [50, 4], [58, 2], [65, 6], [72, 3], [78, 1],
-        [8, 8], [20, 9], [33, 7], [48, 8], [55, 10],
+        [8, 8], [33, 7], [48, 8], [55, 10],
         [62, 7], [70, 9], [75, 5], [3, 12], [30, 12],
     ];
     foreach ($starPositions as [$sx, $sy]) {
@@ -1085,14 +1085,15 @@ function demoShaderTest(Canvas $art): void
 
     $treeGreen = new Color(3, null);
     $treeBrown = new Color(17, null);
-    $trees = [[10, 38], [25, 37], [40, 39], [55, 36], [68, 38]];
+    $trees = [[10, 38], [25, 37], [40, 39], [60, 37], [68, 38]];
     foreach ($trees as [$tx, $ty]) {
-        $h = rand(6, 10);
+        $h = ($tx == 60) ? rand(10, 13) : rand(6, 10);
+        $w = ($tx == 60) ? 4 : 3;
         $art->drawPath(Path::rect($tx, $ty - 2, 1, 3), $treeBrown, null);
         $art->drawPath(
             Path::polygon([
-                [$tx - 3, $ty - 2],
-                [$tx + 4, $ty - 2],
+                [$tx - $w, $ty - 2],
+                [$tx + $w + 1, $ty - 2],
                 [$tx + 0.5, $ty - $h],
             ]),
             $treeGreen,
