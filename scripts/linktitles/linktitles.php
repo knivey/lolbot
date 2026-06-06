@@ -158,61 +158,7 @@ class linktitles extends script_base
                     continue;
                 }
                 if (preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
-                    $size = $response->getHeader("content-length");
-                    if ($size !== null && is_numeric($size))
-                        $size = \knivey\tools\convert((int)$size);
-                    else
-                        $size = "?b";
-
-                    if (!shell_exec('which mediainfo')) {
-                        echo "mediainfo not found, only giving basic url info\n";
-                        $out = "[ $m[1] {$response->getHeader("content-type")} ]";
-                        $bot->pm($chan, "  $out");
-                        $this->logUrl($bot, $nick, $chan, $text, $out);
-                        self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
-                        continue;
-                    }
-                    $fn = "tmp_" . bin2hex(random_bytes(8)) . ".{$m[1]}";
-                    file_put_contents($fn, $body);
-                    $mi = simplexml_load_string(shell_exec("mediainfo $fn --Output=XML"));
-                    unlink($fn);
-
-                    if (!isset($mi->media) || !isset($mi->media->track)) {
-                        echo "linktitles video error\n";
-                        var_dump($mi);
-                    }
-                    $vt = null;
-                    $at = null;
-                    foreach ($mi->media->track as $track) {
-                        if ($track['type'] == 'Video')
-                            $vt = $track;
-                        if ($track['type'] == 'Audio')
-                            $at = $track;
-                    }
-                    $videoFormat = $vt->Format;
-                    if (isset($vt->FrameRate))
-                        $frameRate = round((float)$vt->FrameRate) . 'fps';
-                    else
-                        $frameRate = $vt->FrameRate_Mode ?? '?';
-
-
-                    $resX = $vt->Width ?? '?';
-                    $resY = $vt->Height ?? '?';
-
-                    if (isset($vt->Duration)) {
-                        $dur = \Duration_toString((int)round((float)$vt->Duration)) . ' long';
-                    } else {
-                        $dur = 'unknown duration';
-                    }
-
-                    if ($at == null) {
-                        $audio = "No audio track";
-                    } else {
-                        $audio = "{$at->Format} audio";
-                    }
-
-
-                    $out = "[ $dur $m[1] video ({$videoFormat}) $size {$resX}x{$resY} @ {$frameRate}, $audio ]";
+                    $out = "[ " . $this->formatVideoResponse($body, $m[1], $response->getHeader("content-length")) . " ]";
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
                     self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
@@ -370,6 +316,58 @@ class linktitles extends script_base
             $out = "$m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc";
         }
         return $out;
+    }
+
+    public function formatVideoResponse(string $body, string $ext, ?string $contentLength): string
+    {
+        $size = $contentLength;
+        if ($size !== null && is_numeric($size))
+            $size = \knivey\tools\convert((int)$size);
+        else
+            $size = "?b";
+
+        if (!shell_exec('which mediainfo')) {
+            return "$ext video $size";
+        }
+        $fn = "tmp_" . bin2hex(random_bytes(8)) . ".$ext";
+        file_put_contents($fn, $body);
+        $mi = simplexml_load_string(shell_exec("mediainfo $fn --Output=XML"));
+        unlink($fn);
+
+        if (!isset($mi->media) || !isset($mi->media->track)) {
+            echo "linktitles video error\n";
+            var_dump($mi);
+        }
+        $vt = null;
+        $at = null;
+        foreach ($mi->media->track as $track) {
+            if ($track['type'] == 'Video')
+                $vt = $track;
+            if ($track['type'] == 'Audio')
+                $at = $track;
+        }
+        $videoFormat = $vt->Format;
+        if (isset($vt->FrameRate))
+            $frameRate = round((float)$vt->FrameRate) . 'fps';
+        else
+            $frameRate = $vt->FrameRate_Mode ?? '?';
+
+        $resX = $vt->Width ?? '?';
+        $resY = $vt->Height ?? '?';
+
+        if (isset($vt->Duration)) {
+            $dur = \Duration_toString((int)round((float)$vt->Duration)) . ' long';
+        } else {
+            $dur = 'unknown duration';
+        }
+
+        if ($at == null) {
+            $audio = "No audio track";
+        } else {
+            $audio = "{$at->Format} audio";
+        }
+
+        return "$dur $ext video ({$videoFormat}) $size {$resX}x{$resY} @ {$frameRate}, $audio";
     }
 
     private function isProxyExcluded(string $url): bool
