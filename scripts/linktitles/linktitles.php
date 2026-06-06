@@ -142,7 +142,7 @@ class linktitles extends script_base
                     } else {
                         $out = "[ $m[1] image $size $d[0]x$d[1] ]";
                     }
-                    $aiDesc = $this->getAiDescription($body);
+                    $aiDesc = $this->isAiVisionDisabled($chan) ? null : $this->getAiDescription($body);
                     if ($aiDesc !== null) {
                         $out = "$out — $aiDesc";
                     }
@@ -231,6 +231,37 @@ class linktitles extends script_base
         }
     }
 
+
+    private function isAiVisionDisabled(string $chan): bool
+    {
+        global $entityManager;
+        $repo = $entityManager->getRepository(entities\linktitles_setting::class);
+
+        $channelEntity = null;
+        foreach ($this->bot->getChannels() as $ch) {
+            if (strtolower($ch->name) === strtolower($chan)) {
+                $channelEntity = $ch;
+                break;
+            }
+        }
+
+        if ($channelEntity !== null) {
+            $setting = $repo->findOneBy(['channel' => $channelEntity]);
+            if ($setting !== null && $setting->ai_vision_disabled) {
+                return true;
+            }
+        }
+
+        $setting = $repo->findOneBy([
+            'network' => $this->network,
+            'channel' => null,
+        ]);
+        if ($setting !== null && $setting->ai_vision_disabled) {
+            return true;
+        }
+
+        return false;
+    }
 
     private function getAiDescription(string $body): ?string
     {

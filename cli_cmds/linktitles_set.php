@@ -82,7 +82,7 @@ class linktitles_set extends Command
 
         $val = $input->getArgument("value");
         match ($input->getArgument("setting")) {
-            "ai_vision_disabled" => $setting->ai_vision_disabled = filter_var($val, FILTER_VALIDATE_BOOLEAN),
+            "ai_vision_disabled" => $setting->ai_vision_disabled = filter_var($val, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? throw new \InvalidArgumentException("Value must be true or false"),
         };
 
         $entityManager->persist($setting);
