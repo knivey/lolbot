@@ -214,6 +214,7 @@ class imgur extends script_base
         }
 
         $out = "[Imgur] {$title} — " . implode(', ', $parts);
+        $out = str_replace(["\r", "\n"], "  ", $out);
         $event->reply($out);
     }
 
