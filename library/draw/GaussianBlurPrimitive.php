@@ -51,6 +51,7 @@ class GaussianBlurPrimitive implements FilterPrimitive
     private static function boxBlurH(Canvas $src, int $radius): Canvas
     {
         $dst = Canvas::createBlank($src->w, $src->h, $src->halfblocks);
+        $kernelSize = $radius * 2 + 1;
 
         for ($y = 0; $y < $src->h; $y++) {
             for ($x = 0; $x < $src->w; $x++) {
@@ -95,19 +96,19 @@ class GaussianBlurPrimitive implements FilterPrimitive
                 $dp = $dst->data[$y][$x];
                 if ($fgCount > 0) {
                     $dp->fg = IrcPalette::nearestColor(
-                        (int) round($fgR / $fgCount),
-                        (int) round($fgG / $fgCount),
-                        (int) round($fgB / $fgCount),
+                        (int) round($fgR / $kernelSize),
+                        (int) round($fgG / $kernelSize),
+                        (int) round($fgB / $kernelSize),
                     );
-                    $dp->fgAlpha = 1.0;
+                    $dp->fgAlpha = $fgCount / $kernelSize;
                 }
                 if ($bgCount > 0) {
                     $dp->bg = IrcPalette::nearestColor(
-                        (int) round($bgR / $bgCount),
-                        (int) round($bgG / $bgCount),
-                        (int) round($bgB / $bgCount),
+                        (int) round($bgR / $kernelSize),
+                        (int) round($bgG / $kernelSize),
+                        (int) round($bgB / $kernelSize),
                     );
-                    $dp->bgAlpha = 1.0;
+                    $dp->bgAlpha = $bgCount / $kernelSize;
                 }
             }
         }
@@ -118,6 +119,7 @@ class GaussianBlurPrimitive implements FilterPrimitive
     private static function boxBlurV(Canvas $src, int $radius): Canvas
     {
         $dst = Canvas::createBlank($src->w, $src->h, $src->halfblocks);
+        $kernelSize = $radius * 2 + 1;
 
         for ($y = 0; $y < $src->h; $y++) {
             for ($x = 0; $x < $src->w; $x++) {
@@ -162,19 +164,19 @@ class GaussianBlurPrimitive implements FilterPrimitive
                 $dp = $dst->data[$y][$x];
                 if ($fgCount > 0) {
                     $dp->fg = IrcPalette::nearestColor(
-                        (int) round($fgR / $fgCount),
-                        (int) round($fgG / $fgCount),
-                        (int) round($fgB / $fgCount),
+                        (int) round($fgR / $kernelSize),
+                        (int) round($fgG / $kernelSize),
+                        (int) round($fgB / $kernelSize),
                     );
-                    $dp->fgAlpha = 1.0;
+                    $dp->fgAlpha = $fgCount / $kernelSize;
                 }
                 if ($bgCount > 0) {
                     $dp->bg = IrcPalette::nearestColor(
-                        (int) round($bgR / $bgCount),
-                        (int) round($bgG / $bgCount),
-                        (int) round($bgB / $bgCount),
+                        (int) round($bgR / $kernelSize),
+                        (int) round($bgG / $kernelSize),
+                        (int) round($bgB / $kernelSize),
                     );
-                    $dp->bgAlpha = 1.0;
+                    $dp->bgAlpha = $bgCount / $kernelSize;
                 }
             }
         }
