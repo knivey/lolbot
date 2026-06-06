@@ -370,12 +370,14 @@ class linktitles extends script_base
         $excludes = $config['linktitles_proxy_exclude'] ?? [];
         foreach ($excludes as $pattern) {
             if (preg_match(\knivey\tools\globToRegex($pattern) . 'i', $host)) {
+                $this->logger->info("linktitles: proxy excluded for {$host} (glob match: {$pattern})");
                 return true;
             }
         }
         $regexExcludes = $config['linktitles_proxy_exclude_regex'] ?? [];
         foreach ($regexExcludes as $pattern) {
             if (preg_match($pattern, $host)) {
+                $this->logger->info("linktitles: proxy excluded for {$host} (regex match: {$pattern})");
                 return true;
             }
         }
