@@ -33,8 +33,8 @@ class MergePrimitive implements FilterPrimitive
             return $output;
         }
 
-        $lastInput = $pipeline->getResult($this->mergeInputs[count($this->mergeInputs) - 1]);
-        if ($lastInput === null) {
+        $firstInput = $pipeline->getResult($this->mergeInputs[0]);
+        if ($firstInput === null) {
             $output = Canvas::createBlank($input->w, $input->h, $input->halfblocks);
             if ($this->result !== null) {
                 $pipeline->setResult($this->result, $output);
@@ -42,10 +42,10 @@ class MergePrimitive implements FilterPrimitive
             return $output;
         }
 
-        $output = Canvas::createBlank($lastInput->w, $lastInput->h, $lastInput->halfblocks);
-        Compositor::blend($output, $lastInput);
+        $output = Canvas::createBlank($firstInput->w, $firstInput->h, $firstInput->halfblocks);
+        Compositor::blend($output, $firstInput);
 
-        for ($i = count($this->mergeInputs) - 2; $i >= 0; $i--) {
+        for ($i = 1; $i < count($this->mergeInputs); $i++) {
             $layer = $pipeline->getResult($this->mergeInputs[$i]);
             if ($layer !== null) {
                 Compositor::blend($output, $layer);

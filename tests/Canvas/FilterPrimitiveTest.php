@@ -477,11 +477,11 @@ class FilterPrimitiveTest extends TestCase
         $other->drawPoint(5, 5, new Color(0, null));
         $pipeline->setResult('layer2', $other);
 
-        $primitive = new MergePrimitive(['layer2', 'SourceGraphic']);
+        $primitive = new MergePrimitive(['SourceGraphic', 'layer2']);
         $result = $primitive->apply($source, $pipeline);
 
         $this->assertNotNull($result->data[5][5]->fg);
-        $this->assertNotSame(4, $result->data[5][5]->fg, 'Second input should overwrite first');
+        $this->assertSame(0, $result->data[5][5]->fg, 'Last input should paint on top');
     }
 
     public function test_merge_with_named_result(): void
