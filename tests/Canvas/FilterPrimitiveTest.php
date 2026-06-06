@@ -8,6 +8,7 @@ use draw\FilterPipeline;
 use draw\FilterRegion;
 use draw\IrcPalette;
 use draw\ColorMatrixPrimitive;
+use draw\DropShadowPrimitive;
 use draw\GaussianBlurPrimitive;
 use draw\MergePrimitive;
 use draw\OffsetPrimitive;
@@ -494,5 +495,80 @@ class FilterPrimitiveTest extends TestCase
         $result = $primitive->apply($source, $pipeline);
 
         $this->assertSame($result, $pipeline->getResult('merged'));
+    }
+
+    public function test_drop_shadow_produces_shadow_offset(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new DropShadowPrimitive(2.0, 1.0, 0.5, [0, 0, 0], 1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][5]->fg, 'Original pixel should remain');
+        $this->assertNotNull($result->data[6][7]->fg, 'Shadow pixel should appear at offset');
+    }
+
+    public function test_drop_shadow_zero_blur_creates_hard_shadow(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new DropShadowPrimitive(1.0, 0.0, 0.0, [0, 0, 0], 1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][6]->fg, 'Hard shadow at offset');
+    }
+
+    public function test_drop_shadow_custom_flood_color(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new DropShadowPrimitive(2.0, 1.0, 0.0, [255, 0, 0], 1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $shadowRgb = IrcPalette::getRgb($result->data[6][7]->fg);
+        $this->assertGreaterThan(200, $shadowRgb[0], 'Shadow should be reddish');
+    }
+
+    public function test_drop_shadow_with_blur_spreads(): void
+    {
+        $source = Canvas::createBlank(20, 10);
+        $source->drawPoint(10, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new DropShadowPrimitive(3.0, 1.0, 2.0, [0, 0, 0], 1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $shadowPixels = 0;
+        $originalRgb = IrcPalette::getRgb(4);
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 20; $x++) {
+                $p = $result->data[$y][$x];
+                if ($p->fg !== null) {
+                    $rgb = IrcPalette::getRgb($p->fg);
+                    if (abs($rgb[0] - $originalRgb[0]) > 30 || abs($rgb[1] - $originalRgb[1]) > 30) {
+                        $shadowPixels++;
+                    }
+                }
+            }
+        }
+        $this->assertGreaterThan(0, $shadowPixels, 'Blurred shadow should spread beyond original shape');
+    }
+
+    public function test_drop_shadow_preserves_original(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new DropShadowPrimitive(5.0, 3.0, 1.0, [0, 0, 0], 1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame(4, $result->data[5][5]->fg, 'Original pixel color should be preserved');
     }
 }
