@@ -300,8 +300,9 @@ class linktitles extends script_base
             $response = $client->chatCompletion(new ChatRequest(
                 model: $model,
                 messages: [
+                    Message::system($prompt),
                     Message::user([
-                        new TextPart($prompt),
+                        new TextPart('describe this image'),
                         ImagePart::base64($base64, 'image/jpeg'),
                     ]),
                 ],
