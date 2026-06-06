@@ -70,7 +70,10 @@ Manages the flow of intermediate results between primitives:
 - Dict of `name => Canvas` for named results
 - Pre-populated with built-in sources:
   - `SourceGraphic` — original child render (full sub-region canvas)
-  - `SourceAlpha` — alpha channel only (fg/bg rendered as white on transparent)
+  - `SourceAlpha` — alpha channel only. Derived from SourceGraphic: pixels with
+    fg color become white fg at the original `fgAlpha`, pixels with bg color
+    become white bg at the original `bgAlpha`, text is preserved. This gives
+    a luminance mask of the element's shape.
   - `BackgroundImage` — empty canvas + logger warning
   - `BackgroundAlpha` — empty canvas + logger warning
 - After each primitive applies, if `getResult()` is non-null, output is stored in dict
@@ -82,6 +85,9 @@ Value object holding `x, y, width, height` as fractional values. Defaults to
 SVG spec's `-10%, -10%, 120%, 120%` of the element's bounding box (represented
 as `-0.1, -0.1, 1.2, 1.2`). When `filterUnits` is `ObjectBoundingBox`, these are
 multiplied by the child's bbox. When `UserSpaceOnUse`, they're absolute pixel values.
+
+The default filter region adds 10% padding on each side so that blur and offset
+don't get clipped at the element's edges.
 
 ### FilterUnits enum
 
@@ -100,8 +106,10 @@ attributes are interpreted.
 Parameters: `stdDeviation` (float)
 
 Implementation: 3-pass box blur (horizontal → vertical → horizontal) approximating
-a Gaussian. On each pass, a 1D box kernel of width `ceil(stdDeviation * 3)` is
-applied. Edge handling: extend edge pixels (clamp).
+a Gaussian. Per-pass box radius: `floor(stdDeviation * sqrt(12/3) / 2 + 0.5)`.
+Each pass applies a 1D box kernel of width `(2 * boxRadius + 1)`. Three passes
+of box blur closely approximate a true Gaussian. Edge handling: extend edge
+pixels (clamp).
 
 Per-pixel:
 1. De-quantize IRC color to RGB via `IrcPalette` lookup
@@ -166,10 +174,13 @@ Parameters: `dx`, `dy`, `stdDeviation`, `floodColor` (RGB), `floodOpacity` (floa
 
 Implemented as a shorthand that expands internally during `apply()`:
 
-1. Extract alpha from input → blur with `stdDeviation`
+1. Extract alpha from input (pixels with fg/bg become white at their original
+   alpha, everything else transparent) → blur with `stdDeviation`
 2. Offset the blurred alpha by `dx`, `dy`
 3. Flood-fill a canvas with `floodColor` at `floodOpacity`
-4. Composite the flood fill with the offset alpha (alpha-mask the flood)
+4. Alpha-mask the flood fill with the offset blurred alpha (per-pixel: multiply
+   flood pixel's alpha by the shadow alpha pixel's brightness). This is done
+   inline — no `feComposite` primitive class needed.
 5. Merge the shadow with the original `SourceGraphic`
 
 This matches the SVG spec's expansion of `feDropShadow`.
