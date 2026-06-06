@@ -120,7 +120,10 @@ class linktitles_set extends Command
         }
         $io->table(["Setting", "Value"], $rows);
 
-        $channelSettings = $entityManager->getRepository(linktitles_setting::class)->findBy(['network' => null]);
+        $qb = $entityManager->getRepository(linktitles_setting::class)->createQueryBuilder('s');
+        $channelSettings = $qb->where('s.channel IS NOT NULL')
+            ->getQuery()
+            ->getResult();
         $botIds = [];
         foreach ($network->getBots() as $bot) {
             $botIds[] = $bot->id;
