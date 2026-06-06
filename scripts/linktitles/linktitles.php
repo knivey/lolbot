@@ -306,6 +306,7 @@ class linktitles extends script_base
                         ImagePart::base64($base64, 'image/jpeg'),
                     ]),
                 ],
+                reasoningEffort: $config['ai_vision_reasoning_effort'] ?? null,
             ));
 
             $description = $response->choices[0]->message->content ?? null;
