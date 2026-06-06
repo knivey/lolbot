@@ -255,7 +255,8 @@ class linktitles extends script_base
             }
 
             $ampClient = HttpClientBuilder::buildDefault();
-            $openAiHttp = new OpenAiHttpClient($config['ai_vision_key'], $ampClient, new TimeoutCancellation(10));
+            $timeout = (int)($config['ai_vision_timeout'] ?? 10);
+            $openAiHttp = new OpenAiHttpClient($config['ai_vision_key'], $ampClient, new TimeoutCancellation($timeout));
             $client = new OpenAiClient(
                 apiKey: $config['ai_vision_key'],
                 baseUrl: $config['ai_vision_base_url'] ?? 'https://api.openai.com/v1',

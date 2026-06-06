@@ -117,4 +117,5 @@ filehole: "https://jonesfilesandfootmassage.com"
 #ai_vision_model: "gpt-4o"
 #ai_vision_max_dim: 1024
 #ai_vision_jpg_quality: 85
+#ai_vision_timeout: 10
 #ai_vision_prompt: 'very short summary on one line. dont describe the format e.g. "the image", "the chart", "a meme", just the subject/content/data. dont add unnecessary moral judgments like "outdated", "controversial", "offensive", "antisemitic". keep it short!'
