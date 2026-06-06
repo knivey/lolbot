@@ -151,21 +151,7 @@ class linktitles extends script_base
                 }
 
                 if (preg_match("@^image/(.*)$@i", $response->getHeader("content-type"), $m)) {
-                    $size = $response->getHeader("content-length");
-                    if ($size !== null && is_numeric($size))
-                        $size = \knivey\tools\convert((int)$size);
-                    else
-                        $size = "?b";
-                    $d = getimagesizefromstring($body);
-                    if (!$d) {
-                        $out = "[ $m[1] image $size ]";
-                    } else {
-                        $out = "[ $m[1] image $size $d[0]x$d[1] ]";
-                    }
-                    $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$word] ?? $this->getAiDescription($body, $word));
-                    if ($aiDesc !== null) {
-                        $out = "[ $m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc ]";
-                    }
+                    $out = "[ " . $this->formatImageResponse($body, $response->getHeader("content-type"), $response->getHeader("content-length"), $chan, $word) . " ]";
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
                     self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
@@ -362,6 +348,28 @@ class linktitles extends script_base
             $this->logger->warning("AI vision description failed: " . $e->getMessage());
             return null;
         }
+    }
+
+    public function formatImageResponse(string $body, string $contentType, ?string $contentLength, string $chan, string $url = ''): string
+    {
+        preg_match("@^image/(.*)$@i", $contentType, $m);
+        $size = $contentLength;
+        if ($size !== null && is_numeric($size))
+            $size = \knivey\tools\convert((int)$size);
+        else
+            $size = "?b";
+        $d = getimagesizefromstring($body);
+        if (!$d) {
+            $out = "$m[1] image $size";
+        } else {
+            $out = "$m[1] image $size $d[0]x$d[1]";
+        }
+        $cacheKey = $url ?: $chan;
+        $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey));
+        if ($aiDesc !== null) {
+            $out = "$m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc";
+        }
+        return $out;
     }
 
     private function isProxyExcluded(string $url): bool
