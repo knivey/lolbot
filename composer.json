@@ -9,7 +9,6 @@
         "ext-pdo_sqlite": "*",
         "ext-simplexml": "*",
         "amphp/amp": "^3",
-        "amphp/file": "^3.1",
         "amphp/http-client": "^5",
         "amphp/http-client-cookies": "^2",
         "amphp/http-server": "^3",
@@ -69,7 +68,7 @@
         "ramsey/composer-repl": "^1.5",
         "phpstan/phpstan": "^2.0",
         "friendsofphp/php-cs-fixer": "^3.64",
-        "phpunit/phpunit": "^10"
+        "phpunit/phpunit": "^13"
     },
     "scripts": {
         "phpstan": "php -d memory_limit=1G vendor/bin/phpstan analyse",
