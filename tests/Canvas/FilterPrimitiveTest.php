@@ -9,6 +9,7 @@ use draw\FilterRegion;
 use draw\IrcPalette;
 use draw\ColorMatrixPrimitive;
 use draw\GaussianBlurPrimitive;
+use draw\MergePrimitive;
 use draw\OffsetPrimitive;
 use draw\Pixel;
 use PHPUnit\Framework\TestCase;
@@ -422,5 +423,76 @@ class FilterPrimitiveTest extends TestCase
         $this->assertNotNull($result->data[5][5]->bg);
         $rgb = IrcPalette::getRgb($result->data[5][5]->bg);
         $this->assertEqualsWithDelta($rgb[0], $rgb[1], 5, 'Desaturated bg should be grey');
+    }
+
+    public function test_merge_combines_two_inputs(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(3, 3, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+
+        $other = Canvas::createBlank(10, 10);
+        $other->drawPoint(7, 7, new Color(0, null));
+        $pipeline->setResult('shadow', $other);
+
+        $primitive = new MergePrimitive(['SourceGraphic', 'shadow']);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame(4, $result->data[3][3]->fg);
+        $this->assertSame(0, $result->data[7][7]->fg);
+    }
+
+    public function test_merge_single_input_copies(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new MergePrimitive(['SourceGraphic']);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame(4, $result->data[5][5]->fg);
+    }
+
+    public function test_merge_empty_inputs_produces_blank(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new MergePrimitive([]);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNull($result->data[5][5]->fg);
+    }
+
+    public function test_merge_overlapping_pixels_blend(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+
+        $other = Canvas::createBlank(10, 10);
+        $other->drawPoint(5, 5, new Color(0, null));
+        $pipeline->setResult('layer2', $other);
+
+        $primitive = new MergePrimitive(['layer2', 'SourceGraphic']);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][5]->fg);
+        $this->assertNotSame(4, $result->data[5][5]->fg, 'Second input should overwrite first');
+    }
+
+    public function test_merge_with_named_result(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new MergePrimitive(['SourceGraphic'], result: 'merged');
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame($result, $pipeline->getResult('merged'));
     }
 }
