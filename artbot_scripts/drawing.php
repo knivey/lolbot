@@ -1219,9 +1219,9 @@ function demoGradTransform(Canvas $art): void
 
 function demoBlur(Canvas $art): void
 {
-    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(1, null), null);
+    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(96, null), null);
 
-    $blurAmounts = [0.0, 2.0, 5.0, 8.0];
+    $blurAmounts = [0.0, 1.0, 2.5, 5.0];
     $spacing = 20;
     $cy = 14.0;
     $startX = 10;
@@ -1245,32 +1245,33 @@ function demoBlur(Canvas $art): void
     }
 
     $cy2 = 35.0;
-    $blurPairs = [[0.0, 3.0], [0.0, 5.0], [0.0, 7.0]];
-    $pairSpacing = 80 / 3;
+    $pairs = [
+        ['blur' => 3.0, 'leftX' => 6.0, 'rightX' => 18.0],
+        ['blur' => 5.0, 'leftX' => 46.0, 'rightX' => 58.0],
+    ];
+    $rectW = 10.0;
+    $rectH = 10.0;
 
-    for ($i = 0; $i < 3; $i++) {
-        $leftX = $pairSpacing * $i + 4;
-        $rightX = $leftX + 10;
-
-        $leftGrad = new LinearGradient($leftX, 0, $leftX + 8, 0, [
+    foreach ($pairs as $pair) {
+        $leftGrad = new LinearGradient($pair['leftX'], 0, $pair['leftX'] + $rectW, 0, [
             new ColorStop(0.0, 255, 0, 0),
             new ColorStop(0.33, 255, 255, 0),
             new ColorStop(0.66, 0, 0, 255),
             new ColorStop(1.0, 255, 0, 255),
         ]);
-        $rightGrad = new LinearGradient($rightX, 0, $rightX + 8, 0, [
+        $rightGrad = new LinearGradient($pair['rightX'], 0, $pair['rightX'] + $rectW, 0, [
             new ColorStop(0.0, 255, 0, 0),
             new ColorStop(0.33, 255, 255, 0),
             new ColorStop(0.66, 0, 0, 255),
             new ColorStop(1.0, 255, 0, 255),
         ]);
 
-        (new Shape(path: Path::rect($leftX, $cy2 - 5, 8, 10), fill: $leftGrad))
+        (new Shape(path: Path::rect($pair['leftX'], $cy2 - 5, $rectW, $rectH), fill: $leftGrad))
             ->render($art, RenderContext::defaults());
 
-        $rightShape = new Shape(path: Path::rect($rightX, $cy2 - 5, 8, 10), fill: $rightGrad);
+        $rightShape = new Shape(path: Path::rect($pair['rightX'], $cy2 - 5, $rectW, $rectH), fill: $rightGrad);
         (new FilterNode($rightShape, [
-            new GaussianBlurPrimitive($blurPairs[$i][1]),
+            new GaussianBlurPrimitive($pair['blur']),
         ]))->render($art, RenderContext::defaults());
     }
 }

@@ -58,12 +58,12 @@ class GaussianBlurPrimitive implements FilterPrimitive
                 $fgR = 0.0;
                 $fgG = 0.0;
                 $fgB = 0.0;
-                $fgCount = 0;
+                $fgWeight = 0.0;
 
                 $bgR = 0.0;
                 $bgG = 0.0;
                 $bgB = 0.0;
-                $bgCount = 0;
+                $bgWeight = 0.0;
 
                 for ($k = -$radius; $k <= $radius; $k++) {
                     $sx = $x + $k;
@@ -78,37 +78,39 @@ class GaussianBlurPrimitive implements FilterPrimitive
 
                     if ($sp->fg !== null) {
                         $rgb = IrcPalette::getRgb($sp->fg);
-                        $fgR += $rgb[0];
-                        $fgG += $rgb[1];
-                        $fgB += $rgb[2];
-                        $fgCount++;
+                        $a = $sp->fgAlpha;
+                        $fgR += $rgb[0] * $a;
+                        $fgG += $rgb[1] * $a;
+                        $fgB += $rgb[2] * $a;
+                        $fgWeight += $a;
                     }
 
                     if ($sp->bg !== null) {
                         $rgb = IrcPalette::getRgb($sp->bg);
-                        $bgR += $rgb[0];
-                        $bgG += $rgb[1];
-                        $bgB += $rgb[2];
-                        $bgCount++;
+                        $a = $sp->bgAlpha;
+                        $bgR += $rgb[0] * $a;
+                        $bgG += $rgb[1] * $a;
+                        $bgB += $rgb[2] * $a;
+                        $bgWeight += $a;
                     }
                 }
 
                 $dp = $dst->data[$y][$x];
-                if ($fgCount > 0) {
+                if ($fgWeight > 0.001) {
                     $dp->fg = IrcPalette::nearestColor(
-                        (int) round($fgR / $kernelSize),
-                        (int) round($fgG / $kernelSize),
-                        (int) round($fgB / $kernelSize),
+                        (int) round($fgR / $fgWeight),
+                        (int) round($fgG / $fgWeight),
+                        (int) round($fgB / $fgWeight),
                     );
-                    $dp->fgAlpha = $fgCount / $kernelSize;
+                    $dp->fgAlpha = $fgWeight / $kernelSize;
                 }
-                if ($bgCount > 0) {
+                if ($bgWeight > 0.001) {
                     $dp->bg = IrcPalette::nearestColor(
-                        (int) round($bgR / $kernelSize),
-                        (int) round($bgG / $kernelSize),
-                        (int) round($bgB / $kernelSize),
+                        (int) round($bgR / $bgWeight),
+                        (int) round($bgG / $bgWeight),
+                        (int) round($bgB / $bgWeight),
                     );
-                    $dp->bgAlpha = $bgCount / $kernelSize;
+                    $dp->bgAlpha = $bgWeight / $kernelSize;
                 }
             }
         }
@@ -126,12 +128,12 @@ class GaussianBlurPrimitive implements FilterPrimitive
                 $fgR = 0.0;
                 $fgG = 0.0;
                 $fgB = 0.0;
-                $fgCount = 0;
+                $fgWeight = 0.0;
 
                 $bgR = 0.0;
                 $bgG = 0.0;
                 $bgB = 0.0;
-                $bgCount = 0;
+                $bgWeight = 0.0;
 
                 for ($k = -$radius; $k <= $radius; $k++) {
                     $sy = $y + $k;
@@ -146,37 +148,39 @@ class GaussianBlurPrimitive implements FilterPrimitive
 
                     if ($sp->fg !== null) {
                         $rgb = IrcPalette::getRgb($sp->fg);
-                        $fgR += $rgb[0];
-                        $fgG += $rgb[1];
-                        $fgB += $rgb[2];
-                        $fgCount++;
+                        $a = $sp->fgAlpha;
+                        $fgR += $rgb[0] * $a;
+                        $fgG += $rgb[1] * $a;
+                        $fgB += $rgb[2] * $a;
+                        $fgWeight += $a;
                     }
 
                     if ($sp->bg !== null) {
                         $rgb = IrcPalette::getRgb($sp->bg);
-                        $bgR += $rgb[0];
-                        $bgG += $rgb[1];
-                        $bgB += $rgb[2];
-                        $bgCount++;
+                        $a = $sp->bgAlpha;
+                        $bgR += $rgb[0] * $a;
+                        $bgG += $rgb[1] * $a;
+                        $bgB += $rgb[2] * $a;
+                        $bgWeight += $a;
                     }
                 }
 
                 $dp = $dst->data[$y][$x];
-                if ($fgCount > 0) {
+                if ($fgWeight > 0.001) {
                     $dp->fg = IrcPalette::nearestColor(
-                        (int) round($fgR / $kernelSize),
-                        (int) round($fgG / $kernelSize),
-                        (int) round($fgB / $kernelSize),
+                        (int) round($fgR / $fgWeight),
+                        (int) round($fgG / $fgWeight),
+                        (int) round($fgB / $fgWeight),
                     );
-                    $dp->fgAlpha = $fgCount / $kernelSize;
+                    $dp->fgAlpha = $fgWeight / $kernelSize;
                 }
-                if ($bgCount > 0) {
+                if ($bgWeight > 0.001) {
                     $dp->bg = IrcPalette::nearestColor(
-                        (int) round($bgR / $kernelSize),
-                        (int) round($bgG / $kernelSize),
-                        (int) round($bgB / $kernelSize),
+                        (int) round($bgR / $bgWeight),
+                        (int) round($bgG / $bgWeight),
+                        (int) round($bgB / $bgWeight),
                     );
-                    $dp->bgAlpha = $bgCount / $kernelSize;
+                    $dp->bgAlpha = $bgWeight / $kernelSize;
                 }
             }
         }
