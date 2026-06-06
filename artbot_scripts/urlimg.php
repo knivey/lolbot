@@ -320,7 +320,7 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                 $avgL = $lSum / $blockPixels;
                 $avgA = $aSum / $blockPixels;
                 $avgB = $bSum / $blockPixels;
-                $match_index = IrcPalette::nearestColorFromLab($avgL, $avgA, $avgB, $limit16);
+                $match_index = IrcPalette::nearestColorFromLab($avgL, $avgA, $avgB, $limit16, 40.0, 15.0);
                 $luminosity = $avgL / 100.0;
 
                 if($cmdArgs->optEnabled("--halfblock")) {
@@ -350,7 +350,7 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
                     $avgL2 = $lSum2 / $blockPixels;
                     $avgA2 = $aSum2 / $blockPixels;
                     $avgB2 = $bSum2 / $blockPixels;
-                    $match_index2 = IrcPalette::nearestColorFromLab($avgL2, $avgA2, $avgB2, $limit16);
+                    $match_index2 = IrcPalette::nearestColorFromLab($avgL2, $avgA2, $avgB2, $limit16, 40.0, 15.0);
                 }
 
                 if($cmdArgs->optEnabled("--halfblock")) {
