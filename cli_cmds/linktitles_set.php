@@ -28,8 +28,9 @@ class linktitles_set extends Command
     {
         $this->addOption("network", "N", InputOption::VALUE_REQUIRED, "Network ID (required unless --channel is given)");
         $this->addOption("channel", "C", InputOption::VALUE_REQUIRED, "Channel ID (optional, for per-channel setting)");
+        $this->addOption("reset", "R", InputOption::VALUE_NONE, "Reset channel setting to inherited (deletes the settings row)");
         $this->addArgument("setting", InputArgument::OPTIONAL, "Setting name");
-        $this->addArgument("value", InputArgument::OPTIONAL, "New value");
+        $this->addArgument("value", InputArgument::OPTIONAL, "New value (use 'inherit' to reset to inherited)");
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
@@ -69,6 +70,18 @@ class linktitles_set extends Command
 
         if (!in_array($input->getArgument("setting"), $this->settings)) {
             throw new \InvalidArgumentException("No setting by that name. Available: " . implode(", ", $this->settings));
+        }
+
+        if ($input->getOption("reset") || strtolower($input->getArgument("value") ?? '') === 'inherit') {
+            if ($setting !== null) {
+                $entityManager->remove($setting);
+                $entityManager->flush();
+                $output->writeln("Setting reset to inherited");
+            } else {
+                $output->writeln("No setting to reset (already inherited)");
+            }
+            $this->showSettings($input, $output, null, $network, $channel);
+            return Command::SUCCESS;
         }
 
         if ($input->getArgument("value") === null) {
