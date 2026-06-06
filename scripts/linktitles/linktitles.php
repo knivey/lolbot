@@ -121,7 +121,7 @@ class linktitles extends script_base
                 $req->setHeader("Accept", "text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8");
                 $req->setHeader("Accept-Language", "en-US, en;q=0.9");
                 $req->setTransferTimeout(4000);
-                $req->setBodySizeLimit(1024 * 1024 * 8);
+                $req->setBodySizeLimit(1024 * 1024 * 16);
                 /** @var Response $response */
                 $response = $client->request($req);
                 $body = $response->getBody()->buffer(limit: self::bufferLimit);
