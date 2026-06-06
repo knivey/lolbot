@@ -7,6 +7,7 @@ use draw\Color;
 use draw\FilterPipeline;
 use draw\FilterRegion;
 use draw\IrcPalette;
+use draw\ColorMatrixPrimitive;
 use draw\GaussianBlurPrimitive;
 use draw\OffsetPrimitive;
 use draw\Pixel;
@@ -315,5 +316,111 @@ class FilterPrimitiveTest extends TestCase
         $result = $primitive->apply($source, $pipeline);
 
         $this->assertNotNull($result->data[5][4]->bg, 'Blur should spread bg channel');
+    }
+
+    public function test_color_matrix_identity_preserves_color(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $matrix = [
+            1, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 0, 1, 0, 0,
+            0, 0, 0, 1, 0,
+        ];
+        $primitive = new ColorMatrixPrimitive('matrix', $matrix);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame(4, $result->data[5][5]->fg);
+    }
+
+    public function test_color_matrix_saturate_zero_produces_grey(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new ColorMatrixPrimitive('saturate', [0.0]);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][5]->fg);
+        $rgb = IrcPalette::getRgb($result->data[5][5]->fg);
+        $this->assertEqualsWithDelta($rgb[0], $rgb[1], 5, 'R and G should be close in desaturated');
+        $this->assertEqualsWithDelta($rgb[1], $rgb[2], 5, 'G and B should be close in desaturated');
+    }
+
+    public function test_color_matrix_saturate_one_preserves_color(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new ColorMatrixPrimitive('saturate', [1.0]);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame(4, $result->data[5][5]->fg);
+    }
+
+    public function test_color_matrix_hue_rotate_shifts_color(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $originalRgb = IrcPalette::getRgb(4);
+
+        $primitive = new ColorMatrixPrimitive('hueRotate', [90.0]);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][5]->fg);
+        $resultRgb = IrcPalette::getRgb($result->data[5][5]->fg);
+        $this->assertFalse(
+            $resultRgb[0] === $originalRgb[0] && $resultRgb[1] === $originalRgb[1] && $resultRgb[2] === $originalRgb[2],
+            'Hue rotation should change the color',
+        );
+    }
+
+    public function test_color_matrix_luminance_to_alpha(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new ColorMatrixPrimitive('luminanceToAlpha', []);
+        $result = $primitive->apply($source, $pipeline);
+
+        $pixel = $result->data[5][5];
+        $this->assertNotNull($pixel->fg);
+        $this->assertLessThan(1.0, $pixel->fgAlpha, 'Luminance to alpha should reduce alpha');
+    }
+
+    public function test_color_matrix_skips_transparent_pixels(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new ColorMatrixPrimitive('saturate', [0.0]);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNull($result->data[5][5]->fg);
+    }
+
+    public function test_color_matrix_handles_bg_channel(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $p = new Pixel();
+        $p->bg = 4;
+        $p->bgAlpha = 1.0;
+        $source->data[5][5] = $p;
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new ColorMatrixPrimitive('saturate', [0.0]);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][5]->bg);
+        $rgb = IrcPalette::getRgb($result->data[5][5]->bg);
+        $this->assertEqualsWithDelta($rgb[0], $rgb[1], 5, 'Desaturated bg should be grey');
     }
 }
