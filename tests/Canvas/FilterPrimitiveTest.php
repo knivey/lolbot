@@ -7,7 +7,9 @@ use draw\Color;
 use draw\FilterPipeline;
 use draw\FilterRegion;
 use draw\IrcPalette;
+use draw\GaussianBlurPrimitive;
 use draw\OffsetPrimitive;
+use draw\Pixel;
 use PHPUnit\Framework\TestCase;
 
 class FilterPrimitiveTest extends TestCase
@@ -221,5 +223,97 @@ class FilterPrimitiveTest extends TestCase
 
         $this->assertSame(4, $result->data[5][5]->fg);
         $this->assertNotSame($source, $result);
+    }
+
+    public function test_blur_spreads_single_pixel(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new GaussianBlurPrimitive(1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][5]->fg);
+        $this->assertNotNull($result->data[5][4]->fg, 'Pixel to the left should have color from blur spread');
+        $this->assertNotNull($result->data[5][6]->fg, 'Pixel to the right should have color from blur spread');
+    }
+
+    public function test_blur_zero_stddev_returns_same_image(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new GaussianBlurPrimitive(0.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertSame(4, $result->data[5][5]->fg);
+        $this->assertNull($result->data[5][6]->fg);
+    }
+
+    public function test_blur_preserves_transparency(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new GaussianBlurPrimitive(1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNull($result->data[0][0]->fg, 'Far-away pixels should remain transparent');
+    }
+
+    public function test_blur_large_radius_creates_wide_spread(): void
+    {
+        $source = Canvas::createBlank(20, 10);
+        $source->drawPoint(10, 5, new Color(4, null));
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new GaussianBlurPrimitive(3.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $filledCount = 0;
+        for ($y = 0; $y < 10; $y++) {
+            for ($x = 0; $x < 20; $x++) {
+                if ($result->data[$y][$x]->fg !== null) {
+                    $filledCount++;
+                }
+            }
+        }
+        $this->assertGreaterThan(1, $filledCount, 'Large blur should spread to many pixels');
+    }
+
+    public function test_blur_with_named_input_and_result(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $source->drawPoint(5, 5, new Color(4, null));
+
+        $other = Canvas::createBlank(10, 10);
+        $other->drawPoint(3, 3, new Color(0, null));
+
+        $pipeline = new FilterPipeline($source);
+        $pipeline->setResult('other', $other);
+
+        $primitive = new GaussianBlurPrimitive(1.0, input: 'other', result: 'blurred');
+        $result = $primitive->apply($other, $pipeline);
+
+        $this->assertSame($result, $pipeline->getResult('blurred'));
+        $this->assertNotNull($result->data[3][3]->fg);
+    }
+
+    public function test_blur_handles_bg_channel(): void
+    {
+        $source = Canvas::createBlank(10, 10);
+        $p = new Pixel();
+        $p->bg = 4;
+        $p->bgAlpha = 1.0;
+        $source->data[5][5] = $p;
+
+        $pipeline = new FilterPipeline($source);
+        $primitive = new GaussianBlurPrimitive(1.0);
+        $result = $primitive->apply($source, $pipeline);
+
+        $this->assertNotNull($result->data[5][4]->bg, 'Blur should spread bg channel');
     }
 }
