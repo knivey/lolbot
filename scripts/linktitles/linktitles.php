@@ -24,6 +24,7 @@ use Knivey\OpenAi\HttpClient as OpenAiHttpClient;
 use Knivey\OpenAi\OpenAiClient;
 use Knivey\OpenAi\Request\ChatRequest;
 use Knivey\OpenAi\Request\Message;
+use Knivey\OpenAi\Request\Reasoning;
 use Knivey\OpenAi\Request\Content\TextPart;
 use Knivey\OpenAi\Request\Content\ImagePart;
 
@@ -321,6 +322,19 @@ class linktitles extends script_base
             $prompt = $config['ai_vision_prompt'] ?? self::defaultVisionPrompt;
             $model = $config['ai_vision_model'] ?? 'gpt-4o';
 
+            $reasoning = null;
+            $reasoningConfig = $config['ai_vision_reasoning'] ?? null;
+            if ($reasoningConfig !== null) {
+                $reasoning = new Reasoning(
+                    effort: $reasoningConfig['effort'] ?? null,
+                    maxTokens: isset($reasoningConfig['max_tokens']) ? (int)$reasoningConfig['max_tokens'] : null,
+                    exclude: isset($reasoningConfig['exclude']) ? (bool)$reasoningConfig['exclude'] : null,
+                    enabled: isset($reasoningConfig['enabled']) ? (bool)$reasoningConfig['enabled'] : null,
+                );
+            } elseif (isset($config['ai_vision_reasoning_effort'])) {
+                $reasoning = Reasoning::effort($config['ai_vision_reasoning_effort']);
+            }
+
             $response = $client->chatCompletion(new ChatRequest(
                 model: $model,
                 messages: [
@@ -330,7 +344,7 @@ class linktitles extends script_base
                         ImagePart::base64($base64, 'image/jpeg'),
                     ]),
                 ],
-                reasoningEffort: $config['ai_vision_reasoning_effort'] ?? null,
+                reasoning: $reasoning,
             ));
 
             $description = $response->choices[0]->message->content ?? null;
@@ -356,6 +370,12 @@ class linktitles extends script_base
         $excludes = $config['linktitles_proxy_exclude'] ?? [];
         foreach ($excludes as $pattern) {
             if (preg_match(\knivey\tools\globToRegex($pattern) . 'i', $host)) {
+                return true;
+            }
+        }
+        $regexExcludes = $config['linktitles_proxy_exclude_regex'] ?? [];
+        foreach ($regexExcludes as $pattern) {
+            if (preg_match($pattern, $host)) {
                 return true;
             }
         }

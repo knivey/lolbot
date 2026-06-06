@@ -108,6 +108,9 @@ filehole: "https://jonesfilesandfootmassage.com"
 # Domains to exclude from the proxy (glob patterns, direct connect instead)
 #linktitles_proxy_exclude:
 #  - "*.internal.local"
+# Domains to exclude from the proxy (regex patterns, direct connect instead)
+#linktitles_proxy_exclude_regex:
+#  - "/\.internal\.local$/i"
 # Custom User-Agent for generic link title fetching
 #linktitles_useragent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
 # Cache TTL in seconds for link titles (default 900 = 15 minutes)
@@ -121,4 +124,10 @@ filehole: "https://jonesfilesandfootmassage.com"
 #ai_vision_jpg_quality: 85
 #ai_vision_timeout: 10
 #ai_vision_reasoning_effort: "low"
+# Full reasoning config (for OpenRouter support). Overrides ai_vision_reasoning_effort if both set.
+#ai_vision_reasoning:
+#  effort: "low"
+#  max_tokens: 8192
+#  exclude: false
+#  enabled: true
 #ai_vision_prompt: 'very short summary on one line. dont describe the format e.g. "the image", "the chart", "a meme", just the subject/content/data. dont add unnecessary moral judgments like "outdated", "controversial", "offensive", "antisemitic". keep it short!'
