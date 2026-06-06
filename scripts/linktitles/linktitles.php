@@ -144,7 +144,7 @@ class linktitles extends script_base
                     }
                     $aiDesc = $this->isAiVisionDisabled($chan) ? null : $this->getAiDescription($body);
                     if ($aiDesc !== null) {
-                        $out = "$out — $aiDesc";
+                        $out = "[ $m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc ]";
                     }
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
