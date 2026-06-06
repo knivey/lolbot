@@ -110,6 +110,8 @@ filehole: "https://jonesfilesandfootmassage.com"
 #  - "*.internal.local"
 # Custom User-Agent for generic link title fetching
 #linktitles_useragent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
+# Cache TTL in seconds for link titles (default 900 = 15 minutes)
+#linktitles_cache_ttl: 900
 
 # AI vision settings for image URL descriptions (requires knivey/amphp-openai)
 #ai_vision_key: "sk-..."

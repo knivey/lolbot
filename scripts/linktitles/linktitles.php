@@ -1,6 +1,7 @@
 <?php
 namespace scripts\linktitles;
 
+use Amp\Cache\LocalCache;
 use Amp\Http\Client\Connection\ConnectionLimitingPool;
 use Amp\Http\Client\Connection\DefaultConnectionFactory;
 use Amp\Http\Client\Cookie\CookieInterceptor;
@@ -29,6 +30,11 @@ use Knivey\OpenAi\Request\Content\ImagePart;
 class linktitles extends script_base
 {
     public \Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher;
+
+    public function init(): void
+    {
+        self::$httpCache ??= new LocalCache(256);
+    }
 
     //adding buffer limit is an extra precaution to the body size limit
     const bufferLimit = 1024*1024*40;
@@ -64,6 +70,7 @@ class linktitles extends script_base
      * @var array<string, string>
      */
     private array $ai_desc_cache = [];
+    private static LocalCache $httpCache;
     /**
      * @var array<string, list<int>>
      */
@@ -115,6 +122,14 @@ class linktitles extends script_base
             }
             $this->logger->info("no URL events handled, falling back to normal title extraction");
 
+            $cacheKey = 'linktitles:' . md5($word);
+            $cached = self::$httpCache->get($cacheKey);
+            if ($cached !== null) {
+                $bot->pm($chan, "  $cached");
+                $this->logUrl($bot, $nick, $chan, $text, $cached);
+                continue;
+            }
+
             $word = preg_replace("@^https?://(www\.)?reddit.com@i", "https://old.reddit.com", $word);
 
             try {
@@ -152,6 +167,7 @@ class linktitles extends script_base
                     }
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
+                    self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
                     continue;
                 }
                 if (preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
@@ -166,6 +182,7 @@ class linktitles extends script_base
                         $out = "[ $m[1] {$response->getHeader("content-type")} ]";
                         $bot->pm($chan, "  $out");
                         $this->logUrl($bot, $nick, $chan, $text, $out);
+                        self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
                         continue;
                     }
                     $fn = "tmp_" . bin2hex(random_bytes(8)) . ".{$m[1]}";
@@ -211,6 +228,7 @@ class linktitles extends script_base
                     $out = "[ $dur $m[1] video ({$videoFormat}) $size {$resX}x{$resY} @ {$frameRate}, $audio ]";
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
+                    self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
                     continue;
                 }
 
@@ -226,8 +244,10 @@ class linktitles extends script_base
                 $title = str_replace("\r", " ", $title);
                 $title = str_replace("\x01", "[CTCP]", $title);
                 $title = substr(trim($title), 0, 300);
-                $bot->pm($chan, "  [ $title ]");
-                $this->logUrl($bot, $nick, $chan, $text, "[ $title ]");
+                $out = "[ $title ]";
+                $bot->pm($chan, "  $out");
+                $this->logUrl($bot, $nick, $chan, $text, $out);
+                self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
             } catch (\Exception $error) {
                 $this->logUrl($bot, $nick, $chan, $text, "Err: {$error->getMessage()}");
                 echo "Link titles exception: {$error->getMessage()}\n";
