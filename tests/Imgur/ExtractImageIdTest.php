@@ -3,6 +3,7 @@
 namespace Tests\Imgur;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class ExtractImageIdTest extends TestCase
 {
@@ -24,6 +25,40 @@ class ExtractImageIdTest extends TestCase
     {
         $html = '<html><body>no image here</body></html>';
         $result = \scripts\imgur\imgur::extractImageIdFromHtml($html);
+        $this->assertNull($result);
+    }
+
+    public function testExtractsSingleIdFromEmbed(): void
+    {
+        $html = '<img src="https://i.imgur.com/vOFL64us.jpg">';
+        $result = \scripts\imgur\imgur::extractImageIdsFromEmbed($html);
+        $this->assertNotNull($result);
+        $this->assertCount(1, $result);
+        $this->assertSame('vOFL64us', $result[0]);
+    }
+
+    public function testExtractsMultipleIdsFromEmbed(): void
+    {
+        $html = '<img src="https://i.imgur.com/abc123s.jpg"><img src="https://i.imgur.com/def456s.jpg">';
+        $result = \scripts\imgur\imgur::extractImageIdsFromEmbed($html);
+        $this->assertNotNull($result);
+        $this->assertCount(2, $result);
+        $this->assertSame('abc123s', $result[0]);
+        $this->assertSame('def456s', $result[1]);
+    }
+
+    public function testDeduplicatesIdsFromEmbed(): void
+    {
+        $html = '<img src="https://i.imgur.com/abc123s.jpg"><img src="https://i.imgur.com/abc123s.jpg">';
+        $result = \scripts\imgur\imgur::extractImageIdsFromEmbed($html);
+        $this->assertNotNull($result);
+        $this->assertCount(1, $result);
+    }
+
+    public function testReturnsNullWhenNoImagesInEmbed(): void
+    {
+        $html = '<html><body>nothing here</body></html>';
+        $result = \scripts\imgur\imgur::extractImageIdsFromEmbed($html);
         $this->assertNull($result);
     }
 }

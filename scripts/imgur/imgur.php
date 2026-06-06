@@ -106,6 +106,15 @@ class imgur extends script_base
         return $m[1];
     }
 
+    public static function extractImageIdsFromEmbed(string $html): ?array
+    {
+        preg_match_all('@i\.imgur\.com/([A-Za-z0-9]+)\.\w+@i', $html, $matches);
+        if (empty($matches[1])) {
+            return null;
+        }
+        return array_values(array_unique($matches[1]));
+    }
+
     public function handleEvents(UrlEvent $event): void
     {
         if ($event->handled) {
@@ -126,9 +135,9 @@ class imgur extends script_base
                 if ($galleryId !== null) {
                     $this->handleGallery($event, $galleryId);
                 } elseif ($albumId !== null) {
-                    $this->handleAlbumOrSingle($event, $albumId);
+                    $this->handleAlbum($event, $albumId);
                 } elseif ($singleId !== null) {
-                    $this->handleAlbumOrSingle($event, $singleId);
+                    $this->handleSingleImage($event, $singleId);
                 } elseif ($direct !== null) {
                     $this->handleDirect($event, $direct['id'], $direct['ext']);
                 }
@@ -218,7 +227,23 @@ class imgur extends script_base
         $event->reply($out);
     }
 
-    private function handleAlbumOrSingle(UrlEvent $event, string $id): void
+    private function handleAlbum(UrlEvent $event, string $id): void
+    {
+        $embedUrl = "{$event->url}/embed";
+        $html = $this->fetchHtml($embedUrl);
+        $imageIds = self::extractImageIdsFromEmbed($html);
+        if ($imageIds === null || count($imageIds) === 0) {
+            return;
+        }
+        if (count($imageIds) > 1) {
+            $out = "[Imgur] Album — " . count($imageIds) . " images";
+            $event->reply($out);
+            return;
+        }
+        $this->fetchAndFormatMedia($event, $imageIds[0]);
+    }
+
+    private function handleSingleImage(UrlEvent $event, string $id): void
     {
         $html = $this->fetchHtml($event->url);
         $imageId = self::extractImageIdFromHtml($html);
