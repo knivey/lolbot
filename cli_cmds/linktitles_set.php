@@ -120,30 +120,39 @@ class linktitles_set extends Command
         }
         $io->table(["Setting", "Value"], $rows);
 
+        $networkVal = $setting?->ai_vision_disabled ?? false;
+
         $qb = $entityManager->getRepository(linktitles_setting::class)->createQueryBuilder('s');
         $channelSettings = $qb->where('s.channel IS NOT NULL')
             ->getQuery()
             ->getResult();
-        $botIds = [];
-        foreach ($network->getBots() as $bot) {
-            $botIds[] = $bot->id;
+        $channelMap = [];
+        foreach ($channelSettings as $cs) {
+            if ($cs->channel !== null) {
+                $channelMap[$cs->channel->id] = $cs;
+            }
         }
 
         $channelRows = [];
-        foreach ($channelSettings as $cs) {
-            if ($cs->channel === null || !in_array($cs->channel->bot->id, $botIds)) {
-                continue;
+        foreach ($network->getBots() as $bot) {
+            foreach ($bot->getChannels() as $ch) {
+                $cs = $channelMap[$ch->id] ?? null;
+                $rows = ["{$ch->id}:{$ch->name}"];
+                foreach ($this->settings as $s) {
+                    if ($cs !== null) {
+                        $v = $cs->$s;
+                        $rows[] = (is_bool($v) ? ($v ? 'true' : 'false') : (string)$v) . ' (set)';
+                    } else {
+                        $v = $s === 'ai_vision_disabled' ? $networkVal : false;
+                        $rows[] = (is_bool($v) ? ($v ? 'true' : 'false') : (string)$v) . ' (inherited)';
+                    }
+                }
+                $channelRows[] = $rows;
             }
-            $vals = [];
-            foreach ($this->settings as $s) {
-                $v = $cs->$s;
-                $vals[] = is_bool($v) ? ($v ? 'true' : 'false') : (string)$v;
-            }
-            $channelRows[] = array_merge(["{$cs->channel->id}:{$cs->channel->name}"], $vals);
         }
 
         if (count($channelRows) > 0) {
-            $io->section("Channel overrides");
+            $io->section("Channel settings");
             $io->table(array_merge(["Channel"], $this->settings), $channelRows);
         }
     }
