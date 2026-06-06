@@ -75,9 +75,46 @@ View counts are human-readable (e.g., `7.5K`, `1.2M`) using the existing `\knive
 - If a direct image fetch fails or returns unexpected content, return without replying (let generic handling try).
 - Network errors are caught and logged, same as other URL handlers.
 
+## Refactoring: Extracting Shared Logic from linktitles
+
+The imgur handler needs the same image/video content handling that exists inline in `linktitles::linktitles()` (lines 153-233). Rather than duplicating this code, extract it into `public static` methods on the `linktitles` class that both linktitles and the imgur handler can call.
+
+### Methods to extract
+
+**`linktitles::formatImageResponse(string $body, string $contentType, ?string $contentLength, string $chan, Bot $bot, Network $network): string`**
+
+Extracted from lines 153-172. Takes the raw response body, content-type header, content-length header, channel name, bot instance, and network. Returns the formatted string (e.g. `[ jpeg image 397KB 720x700 — AI description ]`). Internally calls `getAiDescription` and `isAiVisionDisabled` (both also made static).
+
+**`linktitles::formatVideoResponse(string $body, string $ext, string $contentType, ?string $contentLength): string`**
+
+Extracted from lines 174-233. Takes the raw response body, file extension, content-type header, and content-length header. Returns the formatted string (e.g. `[ 15s mp4 video (AVC) 2.1MB 1080x1920 @ 30fps, AAC audio ]`). Uses `mediainfo` if available.
+
+**`linktitles::getAiDescription(string $body, string $url): ?string`**
+
+Changed from `private` to `public static`. The only `$this` usage is `$this->logger->warning(...)` on line 362 — replace with `echo`. All other dependencies are already via `global $config` or static caches (`self::$ai_desc_cache`).
+
+**`linktitles::isAiVisionDisabled(string $chan, Bot $bot, Network $network): bool`**
+
+Changed from `private` to `public static`. The `$this->bot` and `$this->network` references become parameters. Uses `global $entityManager` (already does).
+
+### How the imgur handler calls these
+
+For direct image/video fetches (URL patterns 2, 3, 4), the imgur handler fetches the binary content with `Accept: */*`, then calls:
+
+```php
+$out = "[Imgur] " . linktitles::formatImageResponse($body, $contentType, $contentLength, $event->chan, $this->bot, $this->network);
+```
+
+The gallery handler (pattern 1) uses `postDataJSON` and doesn't need these methods.
+
+### Changes to linktitles::linktitles()
+
+The inline image and video blocks (lines 153-233) are replaced with calls to the new static methods. No behavioral change — same output, same logic, just factored out.
+
 ## Files Changed
 
 | File | Change |
 |------|--------|
 | `scripts/imgur/imgur.php` | New file — the handler class |
+| `scripts/linktitles/linktitles.php` | Extract image/video formatting into static methods, refactor inline blocks to use them |
 | `lolbot.php` | Instantiate and register the imgur handler (3 lines) |
