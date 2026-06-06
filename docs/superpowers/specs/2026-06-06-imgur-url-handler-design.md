@@ -94,11 +94,11 @@ The imgur handler stores the linktitles instance and calls methods on it directl
 
 **`linktitles::formatImageResponse(string $body, string $contentType, ?string $contentLength, string $chan): string`**
 
-Extracted from lines 153-172. Takes the raw response body, content-type header, content-length header, and channel name. Returns the formatted string (e.g. `[ jpeg image 397KB 720x700 — AI description ]`). Internally calls `$this->getAiDescription` and `$this->isAiVisionDisabled` as before — no changes to those methods' signatures.
+Extracted from lines 153-172. Takes the raw response body, content-type header, content-length header, and channel name. Returns the content string without brackets (e.g. `jpeg image 397KB 720x700 — AI description`). Internally calls `$this->getAiDescription` and `$this->isAiVisionDisabled` as before — no changes to those methods' signatures. The caller (both linktitles and imgur handler) is responsible for wrapping with `[ ]` or `[Imgur]`.
 
 **`linktitles::formatVideoResponse(string $body, string $ext, ?string $contentLength): string`**
 
-Extracted from lines 174-233. Takes the raw response body, file extension, and content-length header. Returns the formatted string (e.g. `[ 15s mp4 video (AVC) 2.1MB 1080x1920 @ 30fps, AAC audio ]`). Uses `mediainfo` if available.
+Extracted from lines 174-233. Takes the raw response body, file extension, and content-length header. Returns the content string without brackets (e.g. `15s mp4 video (AVC) 2.1MB 1080x1920 @ 30fps, AAC audio`). Uses `mediainfo` if available.
 
 ### How the imgur handler calls these
 
