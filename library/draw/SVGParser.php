@@ -426,6 +426,7 @@ class SVGParser
             'radialGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
             'clipPath' => new Group(),
             'mask' => new Group(),
+            'filter' => new Group(),
             'style' => new Group(),
             default => (function () use ($name, $logger) {
                 $logger?->warning("Unsupported SVG element: <{$name}>");
@@ -559,7 +560,7 @@ class SVGParser
                 self::parseDefsElement($child, $defs, $styles, $logger);
             } elseif ($name === 'linearGradient' || $name === 'radialGradient') {
                 self::parseGradientElement($child, $defs, $styles, $logger);
-            } elseif ($name === 'clipPath' || $name === 'mask') {
+            } elseif ($name === 'clipPath' || $name === 'mask' || $name === 'filter') {
                 self::parseClipMaskElement($child, $defs, $styles, $logger);
             } else {
                 self::collectAllDefs($child, $defs, $styles, $logger);
@@ -750,7 +751,150 @@ class SVGParser
             }
         }
 
+        $filterAttr = self::getEffectiveAttr($el, 'filter', $styles);
+        if ($filterAttr !== '' && preg_match('/^url\(#(.+)\)$/', $filterAttr, $m)) {
+            $filterId = $m[1];
+            if (isset($defs[$filterId]) && $defs[$filterId]->getName() === 'filter') {
+                $filterEl = $defs[$filterId];
+                $filterNode = self::parseFilterElement($filterEl, $defs, $styles, $logger);
+                if ($filterNode !== null) {
+                    $filterNode = new FilterNode(
+                        $node,
+                        $filterNode->primitives,
+                        $filterNode->filterRegion,
+                        $filterNode->filterUnits,
+                        $logger,
+                    );
+                    $node = $filterNode;
+                }
+            }
+        }
+
         return $node;
+    }
+
+    private static function parseFilterElement(\SimpleXMLElement $el, array $defs, array $styles, ?LoggerInterface $logger): ?FilterNode
+    {
+        $filterUnits = match (strtolower((string)($el['filterUnits'] ?? 'objectBoundingBox'))) {
+            'userspaceonuse' => GradientUnits::UserSpaceOnUse,
+            default => GradientUnits::ObjectBoundingBox,
+        };
+
+        $filterRegion = null;
+        $x = (string)($el['x'] ?? '');
+        if ($x !== '') {
+            $filterRegion = new FilterRegion(
+                self::parsePercentOrFloat($el['x'], -0.1),
+                self::parsePercentOrFloat($el['y'], -0.1),
+                self::parsePercentOrFloat($el['width'], 1.2),
+                self::parsePercentOrFloat($el['height'], 1.2),
+            );
+        }
+
+        $primitives = [];
+        foreach (self::svgChildren($el) as $child) {
+            $name = $child->getName();
+            $primitive = match ($name) {
+                'feGaussianBlur' => new GaussianBlurPrimitive(
+                    (float)($child['stdDeviation'] ?? 0),
+                    input: self::parseOptionalString($child['in']),
+                    result: self::parseOptionalString($child['result']),
+                ),
+                'feOffset' => new OffsetPrimitive(
+                    (float)($child['dx'] ?? 0),
+                    (float)($child['dy'] ?? 0),
+                    input: self::parseOptionalString($child['in']),
+                    result: self::parseOptionalString($child['result']),
+                ),
+                'feColorMatrix' => self::parseColorMatrixPrimitive($child),
+                'feMerge' => self::parseMergePrimitive($child),
+                'feDropShadow' => new DropShadowPrimitive(
+                    (float)($child['dx'] ?? 2),
+                    (float)($child['dy'] ?? 2),
+                    (float)($child['stdDeviation'] ?? 2),
+                    self::parseFloodColor($child),
+                    (float)($child['flood-opacity'] ?? 1),
+                    input: self::parseOptionalString($child['in']),
+                    result: self::parseOptionalString($child['result']),
+                ),
+                default => null,
+            };
+            if ($primitive === null) {
+                $logger?->warning("Unsupported filter primitive: <{$name}>");
+                continue;
+            }
+            $primitives[] = $primitive;
+        }
+
+        return new FilterNode(
+            new Group(),
+            $primitives,
+            $filterRegion,
+            $filterUnits,
+            $logger,
+        );
+    }
+
+    private static function parsePercentOrFloat(\SimpleXMLElement $attr, float $default): float
+    {
+        $val = trim((string) $attr);
+        if ($val === '') {
+            return $default;
+        }
+        if (str_ends_with($val, '%')) {
+            return (float) substr($val, 0, -1) / 100.0;
+        }
+        return (float) $val;
+    }
+
+    private static function parseOptionalString(?\SimpleXMLElement $attr): ?string
+    {
+        if ($attr === null) {
+            return null;
+        }
+        $val = trim((string) $attr);
+        return $val !== '' ? $val : null;
+    }
+
+    private static function parseColorMatrixPrimitive(\SimpleXMLElement $el): ColorMatrixPrimitive
+    {
+        $type = (string)($el['type'] ?? 'matrix');
+        $valuesStr = (string)($el['values'] ?? '');
+        $values = array_map('floatval', preg_split('/[\s,]+/', trim($valuesStr)) ?: []);
+
+        return new ColorMatrixPrimitive(
+            $type,
+            $values,
+            input: self::parseOptionalString($el['in']),
+            result: self::parseOptionalString($el['result']),
+        );
+    }
+
+    private static function parseMergePrimitive(\SimpleXMLElement $el): MergePrimitive
+    {
+        $inputs = [];
+        foreach (self::svgChildren($el) as $child) {
+            if ($child->getName() === 'feMergeNode') {
+                $in = trim((string)($child['in'] ?? ''));
+                if ($in !== '') {
+                    $inputs[] = $in;
+                }
+            }
+        }
+        return new MergePrimitive($inputs, result: self::parseOptionalString($el['result']));
+    }
+
+    private static function parseFloodColor(\SimpleXMLElement $el): array
+    {
+        $colorStr = trim((string)($el['flood-color'] ?? 'black'));
+        if ($colorStr === '' || $colorStr === 'black') {
+            return [0, 0, 0];
+        }
+        $parsed = SvgColor::parse($colorStr);
+        if ($parsed !== null) {
+            return $parsed;
+        }
+        return [0, 0, 0];
     }
 
     private static function buildShape(Path $path, \SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode

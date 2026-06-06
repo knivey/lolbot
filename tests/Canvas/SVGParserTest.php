@@ -5,6 +5,7 @@ namespace Tests\Canvas;
 use draw\Canvas;
 use draw\Color;
 use draw\Group;
+use draw\IrcPalette;
 use draw\Path;
 use draw\SVGDocument;
 use draw\Shape;
@@ -868,5 +869,111 @@ class SVGParserTest extends TestCase
 
         $this->assertSame(4, $canvas->data[2][2]->fg);
         $this->assertNull($canvas->data[8][8]->fg);
+    }
+
+    public function test_parse_string_filter_with_offset(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><filter id="f1"><feOffset dx="3" dy="0"/></filter></defs><rect x="2" y="2" width="3" height="3" fill="red" filter="url(#f1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+
+        $this->assertNull($canvas->data[3][3]->fg, 'Original position should be empty');
+        $this->assertSame(4, $canvas->data[3][6]->fg, 'Shape should be shifted right by 3');
+    }
+
+    public function test_parse_string_filter_with_blur(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><filter id="f1"><feGaussianBlur stdDeviation="1"/></filter></defs><rect x="5" y="3" width="3" height="3" fill="red" filter="url(#f1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+
+        $this->assertNotNull($canvas->data[4][6]->fg, 'Center of blurred shape should have color');
+    }
+
+    public function test_parse_string_filter_with_color_matrix_saturate(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><filter id="f1"><feColorMatrix type="saturate" values="0"/></filter></defs><rect x="2" y="2" width="3" height="3" fill="red" filter="url(#f1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertNotNull($canvas->data[3][3]->fg);
+        $rgb = IrcPalette::getRgb($canvas->data[3][3]->fg);
+        $this->assertEqualsWithDelta($rgb[0], $rgb[1], 5, 'Desaturated red should be greyish');
+    }
+
+    public function test_parse_string_filter_with_drop_shadow(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><filter id="f1"><feDropShadow dx="3" dy="1" stdDeviation="0" flood-color="black"/></filter></defs><rect x="2" y="2" width="3" height="3" fill="red" filter="url(#f1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg, 'Original rect should still be red');
+        $this->assertNotNull($canvas->data[4][6]->fg, 'Shadow should appear at offset');
+    }
+
+    public function test_parse_string_filter_with_merge(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><filter id="f1"><feOffset dx="3" dy="0" result="shifted"/><feMerge><feMergeNode in="shifted"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="2" y="2" width="3" height="3" fill="red" filter="url(#f1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg, 'Original position from merge');
+        $this->assertSame(4, $canvas->data[3][6]->fg, 'Shifted position from merge');
+    }
+
+    public function test_parse_string_filter_unknown_primitive_skipped(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><filter id="f1"><feTurbulence type="fractalNoise"/></filter></defs><rect x="2" y="2" width="3" height="3" fill="red" filter="url(#f1)"/></svg>';
+
+        $logger = new \Psr\Log\NullLogger();
+        $doc = SVGParser::parseString($svg, $logger);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg, 'Shape should render without filter');
+    }
+
+    public function test_parse_string_filter_missing_reference_ignored(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="3" height="3" fill="red" filter="url(#nonexistent)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertSame(4, $canvas->data[3][3]->fg, 'Shape should render without filter');
+    }
+
+    public function test_parse_string_filter_in_defs_not_rendered(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><filter id="f1"><feOffset dx="3" dy="0"/></filter></defs></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(10, 10);
+        $doc->render($canvas);
+
+        $this->assertNull($canvas->data[5][5]->fg);
+    }
+
+    public function test_parse_string_filter_combined_with_clip(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="c1"><rect x="0" y="0" width="5" height="5"/></clipPath><filter id="f1"><feOffset dx="3" dy="0"/></filter></defs><rect x="2" y="2" width="5" height="5" fill="red" clip-path="url(#c1)" filter="url(#f1)"/></svg>';
+        $doc = SVGParser::parseString($svg);
+
+        $canvas = Canvas::createBlank(20, 10);
+        $doc->render($canvas);
+
+        $this->assertNull($canvas->data[3][3]->fg, 'Original clipped area should be empty after offset');
     }
 }
