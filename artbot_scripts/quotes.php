@@ -8,6 +8,7 @@ use knivey\cmdr\Validate;
 
 use \RedBeanPHP\R as R;
 
+require_once __DIR__ . '/../library/strip_timestamp.php';
 
 #[Cmd("addquote", "quoteadd")]
 #[Desc("add a quote, used this then paste the quotes to the chat and type @endquote, OR if its one line you can @addquote quoteline")]
@@ -85,19 +86,6 @@ function endquote(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
     $id = R::store($quote);
     $bot->pm($ctx->quoteRecordings[$nick]['chan'], "Quote recording finished ;) saved to id: $id");
     unset($ctx->quoteRecordings[$nick]);
-}
-
-function stripTimestamp(string $line): string {
-    //var_dump($line);
-    if(!preg_match("@^( *\[? *[\d:\-\\\/ ]+ *(?:am|pm)? *[\d:\-\\\/ ]* *]? *).+$@i", $line, $m)) {
-        return $line;
-    }
-    $test = str_replace(['[',']'], '', $m[1]);
-    //var_dump($test);
-    if(!strtotime(trim($test))) {
-        return $line;
-    }
-    return substr($line, strlen($m[1]));
 }
 
 #[Cmd("cancelquote")]
