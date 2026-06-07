@@ -330,8 +330,56 @@ class Path
     public function merge(Path $other): self
     {
         $result = clone $this;
-        $result->segments = array_merge($this->segments, $other->segments);
+        $t = $other->transform;
+        if ($t !== null) {
+            $transformed = [];
+            foreach ($other->segments as $seg) {
+                $transformed[] = self::transformSegment($seg, $t);
+            }
+            $result->segments = array_merge($this->segments, $transformed);
+        } else {
+            $result->segments = array_merge($this->segments, $other->segments);
+        }
         return $result;
+    }
+
+    private static function transformSegment(PathSegment $seg, Transform $t): PathSegment
+    {
+        if ($seg instanceof MoveTo) {
+            $ep = $t->apply(...$seg->endPoint());
+            return new MoveTo($ep[0], $ep[1]);
+        }
+        if ($seg instanceof LineTo) {
+            $ep = $t->apply(...$seg->endPoint());
+            return new LineTo($ep[0], $ep[1]);
+        }
+        if ($seg instanceof CubicBezier) {
+            $props = (fn () => [$this->c1x, $this->c1y, $this->c2x, $this->c2y, $this->x, $this->y])->call($seg);
+            [$c1, $c2, $ep] = [
+                $t->apply($props[0], $props[1]),
+                $t->apply($props[2], $props[3]),
+                $t->apply($props[4], $props[5]),
+            ];
+            return new CubicBezier($c1[0], $c1[1], $c2[0], $c2[1], $ep[0], $ep[1]);
+        }
+        if ($seg instanceof QuadraticBezier) {
+            $props = (fn () => [$this->cpx, $this->cpy, $this->x, $this->y])->call($seg);
+            [$cp, $ep] = [
+                $t->apply($props[0], $props[1]),
+                $t->apply($props[2], $props[3]),
+            ];
+            return new QuadraticBezier($cp[0], $cp[1], $ep[0], $ep[1]);
+        }
+        if ($seg instanceof ClosePath) {
+            $ep = $t->apply(...$seg->endPoint());
+            return new ClosePath($ep[0], $ep[1]);
+        }
+        if ($seg instanceof EllipticalArc) {
+            $props = (fn () => [$this->rx, $this->ry, $this->xAxisRot, $this->largeArc, $this->sweep, $this->x, $this->y])->call($seg);
+            $ep = $t->apply($props[5], $props[6]);
+            return new EllipticalArc($props[0], $props[1], $props[2], $props[3], $props[4], $ep[0], $ep[1]);
+        }
+        return $seg;
     }
 
     /**

@@ -50,8 +50,13 @@ class FontFile
 
     public function getGlyphPath(string $char): ?Path
     {
-        if (isset($this->glyphPathCache[$char])) {
+        if (array_key_exists($char, $this->glyphPathCache)) {
             return $this->glyphPathCache[$char];
+        }
+
+        if ($char === '') {
+            $this->glyphPathCache[$char] = null;
+            return null;
         }
 
         $codepoint = mb_ord($char, 'UTF-8');
@@ -150,6 +155,10 @@ class FontFile
 
     public function getAdvanceWidth(string $char): float
     {
+        if ($char === '') {
+            return 0.0;
+        }
+
         $codepoint = mb_ord($char, 'UTF-8');
         if ($codepoint === false) {
             return 0.0;
@@ -161,6 +170,10 @@ class FontFile
 
     public function getKerning(string $left, string $right): float
     {
+        if ($left === '' || $right === '') {
+            return 0.0;
+        }
+
         $leftCP = mb_ord($left, 'UTF-8');
         $rightCP = mb_ord($right, 'UTF-8');
         if ($leftCP === false || $rightCP === false) {
