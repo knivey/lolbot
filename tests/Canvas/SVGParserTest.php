@@ -365,7 +365,7 @@ class SVGParserTest extends TestCase
                 }
             }
         };
-        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><text x="0" y="0">hello</text></svg>';
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><foobar x="0" y="0">hello</foobar></svg>';
         SVGParser::parseString($svg, $logger);
         $this->assertNotEmpty($logger->warnings);
     }

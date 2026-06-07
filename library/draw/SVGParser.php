@@ -425,6 +425,7 @@ class SVGParser
             'line' => self::parseLineElement($el, $defs, $styles, $logger, $parentTransform),
             'polyline' => self::parsePolylineElement($el, $defs, $styles, $logger, $parentTransform),
             'polygon' => self::parsePolygonElement($el, $defs, $styles, $logger, $parentTransform),
+            'text' => self::parseTextElement($el, $defs, $styles, $logger, $parentTransform),
             'defs' => self::parseDefsElement($el, $defs, $styles, $logger),
             'linearGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
             'radialGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
@@ -1389,5 +1390,116 @@ class SVGParser
             $points[] = [(float)$nums[$i], (float)$nums[$i + 1]];
         }
         return $points;
+    }
+
+    private static function parseTextElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
+    {
+        $display = self::getEffectiveAttr($el, 'display', $styles);
+        if ($display === 'none') {
+            return new Group();
+        }
+
+        $textNode = new TextNode();
+        $textNode->x = (float) self::getEffectiveAttr($el, 'x', $styles);
+        $textNode->y = (float) self::getEffectiveAttr($el, 'y', $styles);
+        $textNode->fontFamily = self::getEffectiveAttr($el, 'font-family', $styles) ?: null;
+        $textNode->fontWeight = self::getEffectiveAttr($el, 'font-weight', $styles) ?: null;
+        $textNode->fontStyle = self::getEffectiveAttr($el, 'font-style', $styles) ?: null;
+        $textNode->textAnchor = self::getEffectiveAttr($el, 'text-anchor', $styles) ?: 'start';
+        $textNode->dominantBaseline = self::getEffectiveAttr($el, 'dominant-baseline', $styles) ?: 'auto';
+
+        $fontSizeStr = self::getEffectiveAttr($el, 'font-size', $styles);
+        $textNode->fontSize = $fontSizeStr !== '' ? (float) $fontSizeStr : 16;
+
+        $textNode->fill = self::parsePaintAttr($el, 'fill', $defs, $styles, $logger);
+        $textNode->stroke = self::parseStrokeAttr($el, $defs, $styles, $logger);
+        $textNode->transform = self::parseOptionalTransform($el, $styles);
+        $textNode->opacity = self::parseFloatAttr($el, 'opacity', $styles) ?? 1.0;
+        $textNode->fillOpacity = self::parseFloatAttr($el, 'fill-opacity', $styles) ?? 1.0;
+
+        $tspans = [];
+
+        foreach (self::svgChildren($el) as $child) {
+            if ($child->getName() === 'tspan') {
+                $tspan = new TspanNode();
+                $tspan->text = self::extractTextContent($child);
+                $dxStr = self::getEffectiveAttr($child, 'dx', $styles);
+                $tspan->dx = $dxStr !== '' ? (float) $dxStr : null;
+                $dyStr = self::getEffectiveAttr($child, 'dy', $styles);
+                $tspan->dy = $dyStr !== '' ? (float) $dyStr : null;
+                $tspan->fontFamily = self::getEffectiveAttr($child, 'font-family', $styles) ?: null;
+                $fontSizeStr = self::getEffectiveAttr($child, 'font-size', $styles);
+                $tspan->fontSize = $fontSizeStr !== '' ? (float) $fontSizeStr : null;
+                $tspan->fontWeight = self::getEffectiveAttr($child, 'font-weight', $styles) ?: null;
+                $tspan->fontStyle = self::getEffectiveAttr($child, 'font-style', $styles) ?: null;
+
+                $tspanFillVal = self::getEffectiveAttr($child, 'fill', $styles);
+                if ($tspanFillVal !== '') {
+                    $tspan->fill = self::parsePaintValue($tspanFillVal, $defs, $logger);
+                }
+
+                $tspanStrokeVal = self::getEffectiveAttr($child, 'stroke', $styles);
+                if ($tspanStrokeVal !== '') {
+                    $strokeWidth = (float) self::getEffectiveAttr($child, 'stroke-width', $styles) ?: 1.0;
+                    $tspanStrokePaint = self::parsePaintValue($tspanStrokeVal, $defs, $logger);
+                    if ($tspanStrokePaint !== null) {
+                        $tspan->stroke = new StrokeStyle(
+                            paint: $tspanStrokePaint,
+                            width: $strokeWidth,
+                        );
+                    }
+                }
+
+                $tspans[] = $tspan;
+            }
+        }
+
+        $textNode->text = self::extractTextContent($el);
+        $textNode->tspans = $tspans;
+
+        return self::wrapWithClipMask($textNode, $el, $defs, $styles, $parentTransform, $logger);
+    }
+
+    private static function extractTextContent(\SimpleXMLElement $el): string
+    {
+        $dom = dom_import_simplexml($el);
+        $text = '';
+        foreach ($dom->childNodes as $node) {
+            if ($node->nodeType === XML_TEXT_NODE || $node->nodeType === XML_CDATA_SECTION_NODE) {
+                $text .= $node->textContent;
+            }
+        }
+        return $text;
+    }
+
+    private static function parsePaintValue(string $val, array &$defs, ?LoggerInterface $logger): ?Paint
+    {
+        if ($val === 'none') {
+            return new NoPaint();
+        }
+        if ($val === '') {
+            return null;
+        }
+
+        if (preg_match('/^url\(#(.+)\)$/', $val, $m)) {
+            $id = $m[1];
+            if (isset($defs[$id])) {
+                $entry = $defs[$id];
+                if ($entry instanceof Paint) {
+                    return $entry;
+                }
+                return $entry['gradient'];
+            }
+            $logger?->warning("SVG reference not found: #{$id}");
+            return new NoPaint();
+        }
+
+        $rgb = SvgColor::parse($val);
+        if ($rgb === null) {
+            return null;
+        }
+
+        $code = IrcPalette::nearestColor($rgb[0], $rgb[1], $rgb[2]);
+        return new Color($code, null);
     }
 }
