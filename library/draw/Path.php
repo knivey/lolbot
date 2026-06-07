@@ -329,17 +329,19 @@ class Path
 
     public function merge(Path $other): self
     {
-        $result = clone $this;
-        $t = $other->transform;
-        if ($t !== null) {
-            $transformed = [];
-            foreach ($other->segments as $seg) {
-                $transformed[] = self::transformSegment($seg, $t);
-            }
-            $result->segments = array_merge($this->segments, $transformed);
-        } else {
-            $result->segments = array_merge($this->segments, $other->segments);
+        $result = new self();
+
+        $mySegments = $this->segments;
+        if ($this->transform !== null) {
+            $mySegments = array_map(fn($s) => self::transformSegment($s, $this->transform), $this->segments);
         }
+
+        $otherSegments = $other->segments;
+        if ($other->transform !== null) {
+            $otherSegments = array_map(fn($s) => self::transformSegment($s, $other->transform), $other->segments);
+        }
+
+        $result->segments = array_merge($mySegments, $otherSegments);
         return $result;
     }
 
