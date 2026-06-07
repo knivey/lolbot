@@ -14,23 +14,20 @@ use draw\RenderContext;
 use draw\SVGParser;
 use draw\Transform;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
 
 #[Cmd("rain")]
 #[Syntax('[urls]...')]
+#[Option("--no-supersample", "Disable 3x supersampling")]
 function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     $urls = [];
     $preset = null;
-    $noSS = false;
     $rawArgs = explode(' ', $cmdArgs[0] ?? '');
     foreach ($rawArgs as $a) {
         $a = trim($a);
         if ($a === '') {
-            continue;
-        }
-        if ($a === '--no-supersample') {
-            $noSS = true;
             continue;
         }
         if (preg_match('/^https?:\/\//i', $a)) {
@@ -39,6 +36,8 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $preset = $a;
         }
     }
+
+    $noSS = $cmdArgs->optEnabled("--no-supersample");
 
     $defaultDir = __DIR__ . '/rain-defaults';
     $useDefaults = empty($urls) && $preset === null;
