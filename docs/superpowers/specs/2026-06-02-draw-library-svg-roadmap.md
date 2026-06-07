@@ -305,7 +305,15 @@ tracking winding count, toggle a boolean at each intersection.
     - Named result chaining via `in`/`result` attributes
     - Built-in sources: SourceGraphic, SourceAlpha, BackgroundImage, BackgroundAlpha
     - Sub-region rendering via filter region + bbox computation
-12. **Text** — SVG text elements
+12. ~~**Text** — SVG text elements~~ **DONE**
+    - `<text>` and `<tspan>` element parsing
+    - TrueType/OpenType font parsing via `dompdf/php-font-lib`
+    - Font resolution via Linux fontconfig (`fc-match`)
+    - Glyph outlines rendered as Path objects through full pipeline (fill, stroke, gradient, transform, clip, filter)
+    - Kerning and advance width metrics
+    - Core attributes: x, y, fill, stroke, font-size, font-family, font-weight, font-style, text-anchor, dominant-baseline
+    - Plain text fallback for missing glyphs
+    - **Deferred:** textPath, rotate, letter-spacing, word-spacing, textLength, writing-mode, bidi, ligatures, complex shaping
 13. **Use/Symbol/Defs** — reusable elements
 14. **IRC enhancements** — higher resolution, better color, Unicode lines
 15. ~~**CSS class support** — parse `<style>` blocks, resolve `class` attributes to fill/stroke values~~ **DONE**
