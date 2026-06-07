@@ -1506,12 +1506,9 @@ function demoFilters(Canvas $art): void
 
 function demoText(Canvas $art): void
 {
-    $darkColors = [
-        [40, 0, 0], [0, 20, 40], [20, 0, 40], [0, 30, 20],
-        [30, 15, 0], [15, 15, 30], [0, 25, 30], [25, 0, 25],
-    ];
-    $c1 = $darkColors[array_rand($darkColors)];
-    $c2 = $darkColors[array_rand($darkColors)];
+    $darkPalette = [1, 2, 5, 6, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27];
+    $c1 = IrcPalette::getRgb($darkPalette[array_rand($darkPalette)]);
+    $c2 = IrcPalette::getRgb($darkPalette[array_rand($darkPalette)]);
     $angle = mt_rand() / mt_getrandmax() * M_PI;
     $bgGrad = new LinearGradient(
         $art->w / 2 - cos($angle) * $art->w / 2, 24 - sin($angle) * 24,
@@ -1520,6 +1517,7 @@ function demoText(Canvas $art): void
             new ColorStop(0.0, $c1[0], $c1[1], $c1[2]),
             new ColorStop(1.0, $c2[0], $c2[1], $c2[2]),
         ],
+        dithering: Dithering::ShaderBlocksAll,
     );
     $art->drawPath(Path::rect(0, 0, $art->w, 48), $bgGrad, null);
 
