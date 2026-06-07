@@ -88,6 +88,31 @@ class weather extends script_base
     }
 
     /**
+     * @phpstan-pure
+     * @param array $hour Single entry from OpenWeatherMap hourly array
+     * @param \DateTimeZone $tz Timezone for time formatting
+     * @param bool $si Metric units
+     * @param bool $detailed Show wind/humidity/precip
+     * @return string Formatted entry string
+     */
+    static function formatHourlyEntry(array $hour, \DateTimeZone $tz, bool $si, bool $detailed): string
+    {
+        $time = new \DateTime('@' . $hour['dt']);
+        $time->setTimezone($tz);
+        $timeStr = $time->format('ga');
+        $condition = ucfirst($hour['weather'][0]['description']);
+        $temp = self::displayTemp($hour['temp'], $si);
+        $entry = "$timeStr: $condition $temp";
+        if ($detailed) {
+            $wind = self::windDir($hour['wind_deg']) . self::displayWindspeed($hour['wind_speed'], $si);
+            $humidity = $hour['humidity'];
+            $pop = round($hour['pop'] * 100);
+            $entry .= " $wind {$humidity}%h {$pop}%p";
+        }
+        return $entry;
+    }
+
+    /**
      * @param $query
      * @return \Amp\Future<array{'location':string,'lat':string,'lon':string}|string>
      * @throws \async_get_exception
