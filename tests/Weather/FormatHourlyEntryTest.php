@@ -26,7 +26,7 @@ class FormatHourlyEntryTest extends TestCase
         $tz = new \DateTimeZone('UTC');
         $result = weather::formatHourlyEntry($hour, $tz, false, false);
         $time = (new \DateTime('@1700000000'))->setTimezone($tz)->format('ga');
-        $this->assertStringStartsWith("$time: Clear sky", $result);
+        $this->assertStringStartsWith("\2$time:\2 Clear sky", $result);
         $this->assertStringContainsString('°F', $result);
         $this->assertStringNotContainsString('%h', $result);
         $this->assertStringNotContainsString('%p', $result);

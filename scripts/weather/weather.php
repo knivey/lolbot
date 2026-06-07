@@ -102,7 +102,7 @@ class weather extends script_base
         $timeStr = $time->format('ga');
         $condition = ucfirst($hour['weather'][0]['description']);
         $temp = self::displayTemp($hour['temp'], $si);
-        $entry = "$timeStr: $condition $temp";
+        $entry = "\2$timeStr:\2 $condition $temp";
         if ($detailed) {
             $wind = self::windDir($hour['wind_deg']) . self::displayWindspeed($hour['wind_speed'], $si);
             $humidity = $hour['humidity'];
