@@ -252,15 +252,21 @@ class linktitles extends script_base
             $img = new \Imagick();
             try {
                 $img->readImageBlob($body);
+                $origW = $img->getImageWidth();
+                $origH = $img->getImageHeight();
+                if ($origW > $maxDim || $origH > $maxDim) {
+                    $img->thumbnailImage($maxDim, $maxDim, true);
+                }
                 $img->setImageFormat('jpeg');
                 $img->setImageCompressionQuality($quality);
-                $img->thumbnailImage($maxDim, $maxDim, true);
+                $newW = $img->getImageWidth();
+                $newH = $img->getImageHeight();
                 $base64 = base64_encode($img->getImageBlob());
             } finally {
                 $img->clear();
             }
             $resizeMs = (hrtime(true) - $resizeStart) / 1e6;
-            $profile .= " resize=" . self::formatDuration($resizeMs) . " " . \knivey\tools\convert(strlen($body)) . "->" . \knivey\tools\convert((int)(strlen($base64) * 3 / 4));
+            $profile .= " resize=" . self::formatDuration($resizeMs) . " {$origW}x{$origH}->{$newW}x{$newH} " . \knivey\tools\convert(strlen($body)) . "->" . \knivey\tools\convert((int)(strlen($base64) * 3 / 4));
 
             $aiStart = hrtime(true);
             $ampClient = HttpClientBuilder::buildDefault();
