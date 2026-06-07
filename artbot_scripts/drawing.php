@@ -1504,7 +1504,7 @@ function demoFilters(Canvas $art): void
 
 function demoText(Canvas $art): void
 {
-    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2));
+    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2), null);
 
     $text = new TextNode();
     $text->text = 'Hello World';
@@ -1520,7 +1520,7 @@ function demoText(Canvas $art): void
 
 function demoTextSizing(Canvas $art): void
 {
-    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2));
+    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2), null);
 
     $rows = [
         ['text' => 'Small 10px', 'size' => 10, 'y' => 8],
