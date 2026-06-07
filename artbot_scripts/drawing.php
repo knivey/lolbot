@@ -1510,7 +1510,7 @@ function demoText(Canvas $art): void
     $art->drawPath(Path::rect(0, 0, $art->w, 48), new Color($darkBg[array_rand($darkBg)], $darkBg[array_rand($darkBg)]), null);
 
     $text = 'Hello World!';
-    $fontSize = 12.0;
+    $fontSize = 14.0;
     $fontFamily = 'DejaVu Sans';
 
     $font = FontManager::resolve($fontFamily, null, null);
