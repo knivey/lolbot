@@ -1517,7 +1517,7 @@ function demoText(Canvas $art): void
             new ColorStop(0.0, $c1[0], $c1[1], $c1[2]),
             new ColorStop(1.0, $c2[0], $c2[1], $c2[2]),
         ],
-        dithering: Dithering::ShaderBlocksAll,
+        dithering: Dithering::ShaderBlocks,
     );
     $art->drawPath(Path::rect(0, 0, $art->w, 48), $bgGrad, null);
 
