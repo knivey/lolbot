@@ -150,9 +150,7 @@ class linktitles extends script_base
                 $dlSize = strlen($body);
                 $dlProfile = "dl=" . self::formatDuration($dlMs) . " " . \knivey\tools\convert($dlSize) . " @ " . self::formatRate($dlSize, $dlMs);
                 if ($response->getStatus() != 200) {
-                    $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
-                        'url' => $word, 'type' => 'error', 'profile' => $dlProfile,
-                    ]);
+                    $this->logger->info("linktitles profile [$word] [error] $dlProfile");
                     $this->logUrl($bot, $nick, $chan, $text, "Err: {$response->getStatus()} {$response->getReason()}");
                     continue;
                 }
@@ -165,9 +163,7 @@ class linktitles extends script_base
                     continue;
                 }
                 if (preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
-                    $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
-                        'url' => $word, 'type' => 'video', 'profile' => $dlProfile,
-                    ]);
+                    $this->logger->info("linktitles profile [$word] [video] $dlProfile");
                     $out = "[ " . $this->formatVideoResponse($body, $m[1], $response->getHeader("content-length")) . " ]";
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
@@ -176,9 +172,7 @@ class linktitles extends script_base
                 }
 
                 if (!preg_match("/<title[^>]*>([^<]+)<\/title>/im", $body, $m)) {
-                    $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
-                        'url' => $word, 'type' => 'html', 'profile' => $dlProfile,
-                    ]);
+                    $this->logger->info("linktitles profile [$word] [html] $dlProfile");
                     $this->logUrl($bot, $nick, $chan, $text, "Err: No <title>");
                     continue;
                 }
@@ -190,9 +184,7 @@ class linktitles extends script_base
                 $title = str_replace("\r", " ", $title);
                 $title = str_replace("\x01", "[CTCP]", $title);
                 $title = substr(trim($title), 0, 300);
-                $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
-                    'url' => $word, 'type' => 'html', 'profile' => $dlProfile,
-                ]);
+                $this->logger->info("linktitles profile [$word] [html] $dlProfile");
                 $out = "[ $title ]";
                 $bot->pm($chan, "  $out");
                 $this->logUrl($bot, $nick, $chan, $text, $out);
@@ -345,9 +337,7 @@ class linktitles extends script_base
         $cacheKey = $url ?: $chan;
         $profile = $dlProfile;
         $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $profile, $dlMs));
-        $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
-            'url' => $url, 'type' => 'image', 'profile' => $profile,
-        ]);
+        $this->logger->info("linktitles profile [$url] [image] $profile");
         if ($aiDesc !== null) {
             $out = "$m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc";
         }
