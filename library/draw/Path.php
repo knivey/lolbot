@@ -327,6 +327,13 @@ class Path
         return $this->transform;
     }
 
+    public function merge(Path $other): self
+    {
+        $result = clone $this;
+        $result->segments = array_merge($this->segments, $other->segments);
+        return $result;
+    }
+
     /**
      * @return array{x: float, y: float, w: float, h: float}|null
      */
