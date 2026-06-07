@@ -367,6 +367,10 @@ class SVGParser
         $width = isset($xml['width']) ? (float)$xml['width'] : null;
         $height = isset($xml['height']) ? (float)$xml['height'] : null;
 
+        if ($viewBox === null && $width !== null && $height !== null && $width > 0 && $height > 0) {
+            $viewBox = [0.0, 0.0, $width, $height];
+        }
+
         return new SVGDocument($root, $viewBox, $width, $height, $logger);
     }
 
@@ -602,50 +606,146 @@ class SVGParser
         }
 
         $stops = self::parseGradientStops($el, $styles);
+
+        $href = self::getXlinkHref($el);
+        $parentEntry = null;
+        if ($href !== '') {
+            if ($href === $id) {
+                $logger?->warning("SVG gradient circular reference: #{$id} references itself");
+            } elseif (isset($defs[$href]) && is_array($defs[$href])) {
+                $parentEntry = $defs[$href];
+            } else {
+                $logger?->warning("SVG gradient href target not found: #{$href}");
+            }
+        }
+
+        if (count($stops) < 2 && $parentEntry !== null) {
+            $parentGradient = $parentEntry['gradient'];
+            if ($parentGradient instanceof LinearGradient || $parentGradient instanceof RadialGradient) {
+                $stops = $parentGradient->stops;
+            }
+        }
+
         if (count($stops) < 2) {
             return;
         }
 
-        $spread = match (strtolower((string)($el['spreadMethod'] ?? 'pad'))) {
-            'reflect' => SpreadMethod::Reflect,
-            'repeat' => SpreadMethod::Repeat,
-            default => SpreadMethod::Pad,
-        };
+        $spreadMethodAttr = (string)($el['spreadMethod'] ?? '');
+        if ($spreadMethodAttr !== '') {
+            $spread = match (strtolower($spreadMethodAttr)) {
+                'reflect' => SpreadMethod::Reflect,
+                'repeat' => SpreadMethod::Repeat,
+                default => SpreadMethod::Pad,
+            };
+        } elseif ($parentEntry !== null) {
+            $pg = $parentEntry['gradient'];
+            $spread = ($pg instanceof LinearGradient || $pg instanceof RadialGradient)
+                ? $pg->spreadMethod : SpreadMethod::Pad;
+        } else {
+            $spread = SpreadMethod::Pad;
+        }
 
-        $gradientUnits = match (strtolower((string)($el['gradientUnits'] ?? 'objectBoundingBox'))) {
-            'userspaceonuse' => GradientUnits::UserSpaceOnUse,
-            default => GradientUnits::ObjectBoundingBox,
-        };
+        $gradientUnitsAttr = (string)($el['gradientUnits'] ?? '');
+        if ($gradientUnitsAttr !== '') {
+            $gradientUnits = match (strtolower($gradientUnitsAttr)) {
+                'userspaceonuse' => GradientUnits::UserSpaceOnUse,
+                default => GradientUnits::ObjectBoundingBox,
+            };
+        } elseif ($parentEntry !== null) {
+            $gradientUnits = $parentEntry['units'];
+        } else {
+            $gradientUnits = GradientUnits::ObjectBoundingBox;
+        }
 
         $gradientTransform = null;
         $gtStr = (string)($el['gradientTransform'] ?? '');
         if ($gtStr !== '') {
             $gradientTransform = self::parseTransform($gtStr);
+        } elseif ($parentEntry !== null && $parentEntry['transform'] !== null) {
+            $gradientTransform = $parentEntry['transform'];
         }
 
         $name = $el->getName();
         if ($name === 'linearGradient') {
-            $x1 = self::parseGradientCoord($el, 'x1', 0.0);
-            $y1 = self::parseGradientCoord($el, 'y1', 0.0);
-            $x2 = self::parseGradientCoord($el, 'x2', 1.0);
-            $y2 = self::parseGradientCoord($el, 'y2', 0.0);
+            $x1 = self::parseOptionalGradientCoord($el, 'x1');
+            $y1 = self::parseOptionalGradientCoord($el, 'y1');
+            $x2 = self::parseOptionalGradientCoord($el, 'x2');
+            $y2 = self::parseOptionalGradientCoord($el, 'y2');
+            if ($parentEntry !== null && $parentEntry['gradient'] instanceof LinearGradient) {
+                $pg = $parentEntry['gradient'];
+                if ($x1 === null) {
+                    $x1 = $pg->x1;
+                }
+                if ($y1 === null) {
+                    $y1 = $pg->y1;
+                }
+                if ($x2 === null) {
+                    $x2 = $pg->x2;
+                }
+                if ($y2 === null) {
+                    $y2 = $pg->y2;
+                }
+            }
+            $x1 ??= 0.0;
+            $y1 ??= 0.0;
+            $x2 ??= 1.0;
+            $y2 ??= 0.0;
             $defs[$id] = [
                 'gradient' => new LinearGradient($x1, $y1, $x2, $y2, $stops, $spread),
                 'units' => $gradientUnits,
                 'transform' => $gradientTransform,
             ];
         } elseif ($name === 'radialGradient') {
-            $cx = self::parseGradientCoord($el, 'cx', 0.5);
-            $cy = self::parseGradientCoord($el, 'cy', 0.5);
-            $r = self::parseGradientCoord($el, 'r', 0.5);
+            $cx = self::parseOptionalGradientCoord($el, 'cx');
+            $cy = self::parseOptionalGradientCoord($el, 'cy');
+            $r = self::parseOptionalGradientCoord($el, 'r');
             $fx = self::parseOptionalGradientCoord($el, 'fx');
             $fy = self::parseOptionalGradientCoord($el, 'fy');
+            if ($parentEntry !== null && $parentEntry['gradient'] instanceof RadialGradient) {
+                $pg = $parentEntry['gradient'];
+                if ($cx === null) {
+                    $cx = $pg->cx;
+                }
+                if ($cy === null) {
+                    $cy = $pg->cy;
+                }
+                if ($r === null) {
+                    $r = $pg->r;
+                }
+                if ($fx === null) {
+                    $fx = $pg->fx;
+                }
+                if ($fy === null) {
+                    $fy = $pg->fy;
+                }
+            }
+            $cx ??= 0.5;
+            $cy ??= 0.5;
+            $r ??= 0.5;
+            $fx ??= $cx;
+            $fy ??= $cy;
             $defs[$id] = [
                 'gradient' => new RadialGradient($cx, $cy, $r, $stops, $fx, $fy, $spread),
                 'units' => $gradientUnits,
                 'transform' => $gradientTransform,
             ];
         }
+    }
+
+    private static function getXlinkHref(\SimpleXMLElement $el): string
+    {
+        $href = (string)($el['href'] ?? '');
+        if ($href !== '') {
+            return preg_replace('/^#/', '', $href);
+        }
+        $xlinkAttrs = $el->attributes('http://www.w3.org/1999/xlink');
+        if ($xlinkAttrs !== null) {
+            $href = (string)($xlinkAttrs['href'] ?? '');
+            if ($href !== '') {
+                return preg_replace('/^#/', '', $href);
+            }
+        }
+        return '';
     }
 
     private static function handleGradientElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): Group
