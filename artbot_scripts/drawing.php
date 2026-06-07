@@ -1379,17 +1379,17 @@ function demoGlow(Canvas $art): void
         $shape->render($alphaCanvas, RenderContext::defaults());
 
         $blurPipeline = new FilterPipeline($alphaCanvas);
-        $blurred = (new GaussianBlurPrimitive(2.0))->apply($alphaCanvas, $blurPipeline);
+        $blurred = (new GaussianBlurPrimitive(3.5))->apply($alphaCanvas, $blurPipeline);
 
         $glowCode = IrcPalette::nearestColor($glowColors[$i]['glow'][0], $glowColors[$i]['glow'][1], $glowColors[$i]['glow'][2]);
         $glowCanvas = Canvas::createBlank($art->w, $art->h, $art->halfblocks);
         for ($y = 0; $y < $blurred->h; $y++) {
             for ($x = 0; $x < $blurred->w; $x++) {
                 $bp = $blurred->data[$y][$x];
-                if ($bp->fg !== null) {
+                if ($bp->fg !== null && $bp->fgAlpha > 0.01) {
                     $p = $glowCanvas->data[$y][$x];
                     $p->fg = $glowCode;
-                    $p->fgAlpha = min(1.0, $bp->fgAlpha * 0.7);
+                    $p->fgAlpha = $bp->fgAlpha;
                 }
             }
         }
@@ -1416,16 +1416,16 @@ function demoGlow(Canvas $art): void
         $lineShape->render($alphaCanvas, RenderContext::defaults());
 
         $blurPipeline = new FilterPipeline($alphaCanvas);
-        $blurred = (new GaussianBlurPrimitive(1.5))->apply($alphaCanvas, $blurPipeline);
+        $blurred = (new GaussianBlurPrimitive(2.5))->apply($alphaCanvas, $blurPipeline);
 
         $glowCanvas = Canvas::createBlank($art->w, $art->h, $art->halfblocks);
         for ($y = 0; $y < $blurred->h; $y++) {
             for ($x = 0; $x < $blurred->w; $x++) {
                 $bp = $blurred->data[$y][$x];
-                if ($bp->fg !== null) {
+                if ($bp->fg !== null && $bp->fgAlpha > 0.01) {
                     $p = $glowCanvas->data[$y][$x];
                     $p->fg = 8;
-                    $p->fgAlpha = min(1.0, $bp->fgAlpha * 0.6);
+                    $p->fgAlpha = $bp->fgAlpha;
                 }
             }
         }
