@@ -110,27 +110,10 @@ class TextNode implements SceneNode
             $penY += $run->dy;
         }
 
-        $runFont = $font;
-        $runScale = $scale;
-        if ($run->fontFamily !== null || $run->fontSize !== null || $run->fontWeight !== null || $run->fontStyle !== null) {
-            $runFontFamily = $run->fontFamily ?? $this->fontFamily ?? 'sans-serif';
-            $runWeight = $run->fontWeight ?? $this->fontWeight;
-            $runStyle = $run->fontStyle ?? $this->fontStyle;
-            try {
-                $runFont = FontManager::resolve($runFontFamily, $runWeight, $runStyle);
-                $runScale = ($run->fontSize ?? $effectiveFontSize) / $runFont->unitsPerEm;
-            } catch (\Throwable) {
-                $runFont = $font;
-                $runScale = $scale;
-            }
-        }
+        [$runFont, $runScale] = $this->resolveRunFont($run, $font, $scale, $effectiveFontSize);
 
         $runFill = $run->fill ?? $effective->fill;
         $runStroke = $run->stroke ?? $effective->stroke;
-
-        if ($runFont !== null) {
-            $runScale = ($run->fontSize ?? $effectiveFontSize) / $runFont->unitsPerEm;
-        }
 
         $chars = mb_str_split($run->text);
         $prevChar = null;
@@ -201,23 +184,29 @@ class TextNode implements SceneNode
         };
     }
 
+    /** @return array{?FontFile, float} */
+    private function resolveRunFont(TextRun $run, ?FontFile $parentFont, float $parentScale, float $effectiveFontSize): array
+    {
+        if ($run->fontFamily === null && $run->fontSize === null && $run->fontWeight === null && $run->fontStyle === null) {
+            return [$parentFont, $parentScale];
+        }
+
+        $runFontFamily = $run->fontFamily ?? $this->fontFamily ?? 'sans-serif';
+        $runWeight = $run->fontWeight ?? $this->fontWeight;
+        $runStyle = $run->fontStyle ?? $this->fontStyle;
+
+        try {
+            $runFont = FontManager::resolve($runFontFamily, $runWeight, $runStyle);
+            $runScale = ($run->fontSize ?? $effectiveFontSize) / $runFont->unitsPerEm;
+            return [$runFont, $runScale];
+        } catch (\Throwable) {
+            return [$parentFont, $parentScale];
+        }
+    }
+
     private function measureRunWidth(TextRun $run, ?FontFile $font, float $scale, float $effectiveFontSize): float
     {
-        $runFont = $font;
-        $runScale = $scale;
-
-        if ($run->fontFamily !== null || $run->fontSize !== null || $run->fontWeight !== null || $run->fontStyle !== null) {
-            $runFontFamily = $run->fontFamily ?? $this->fontFamily ?? 'sans-serif';
-            $runWeight = $run->fontWeight ?? $this->fontWeight;
-            $runStyle = $run->fontStyle ?? $this->fontStyle;
-            try {
-                $runFont = FontManager::resolve($runFontFamily, $runWeight, $runStyle);
-                $runScale = ($run->fontSize ?? $effectiveFontSize) / $runFont->unitsPerEm;
-            } catch (\Throwable) {
-                $runFont = $font;
-                $runScale = $scale;
-            }
-        }
+        [$runFont, $runScale] = $this->resolveRunFont($run, $font, $scale, $effectiveFontSize);
 
         if ($runFont === null) {
             return mb_strlen($run->text) * $effectiveFontSize * 0.6;

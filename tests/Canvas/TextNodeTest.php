@@ -156,6 +156,6 @@ class TextNodeTest extends TestCase
         $node->fill = new Color(0, null);
 
         $canvas = $this->renderToCanvas($node);
-        $this->assertTrue(true);
+        $this->assertInstanceOf(Canvas::class, $canvas);
     }
 }
