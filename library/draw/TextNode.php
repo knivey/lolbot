@@ -151,7 +151,7 @@ class TextNode implements SceneNode
                 }
             } else {
                 $effectiveFill = ($runFill instanceof NoPaint) ? null : $runFill;
-                if ($effectiveFill !== null) {
+                if ($effectiveFill !== null && !ctype_space($char)) {
                     $canvas->drawPoint($glyphX, $penY, $effectiveFill, $char);
                 }
             }
