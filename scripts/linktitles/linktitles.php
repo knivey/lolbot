@@ -142,22 +142,32 @@ class linktitles extends script_base
                 $req->setHeader("Accept-Language", "en-US, en;q=0.9");
                 $req->setTransferTimeout(4000);
                 $req->setBodySizeLimit(1024 * 1024 * 16);
+                $dlStart = hrtime(true);
                 /** @var Response $response */
                 $response = $client->request($req);
                 $body = $response->getBody()->buffer(limit: self::bufferLimit);
+                $dlMs = (hrtime(true) - $dlStart) / 1e6;
+                $dlSize = strlen($body);
+                $dlProfile = "dl=" . self::formatDuration($dlMs) . " " . \knivey\tools\convert($dlSize) . " @ " . self::formatRate($dlSize, $dlMs);
                 if ($response->getStatus() != 200) {
+                    $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
+                        'url' => $word, 'type' => 'error', 'profile' => $dlProfile,
+                    ]);
                     $this->logUrl($bot, $nick, $chan, $text, "Err: {$response->getStatus()} {$response->getReason()}");
                     continue;
                 }
 
                 if (preg_match("@^image/(.*)$@i", $response->getHeader("content-type"), $m)) {
-                    $out = "[ " . $this->formatImageResponse($body, $response->getHeader("content-type"), $response->getHeader("content-length"), $chan, $word) . " ]";
+                    $out = "[ " . $this->formatImageResponse($body, $response->getHeader("content-type"), $response->getHeader("content-length"), $chan, $word, $dlMs, $dlProfile) . " ]";
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
                     self::$httpCache->set($cacheKey, $out, (int)($config['linktitles_cache_ttl'] ?? 900));
                     continue;
                 }
                 if (preg_match("@^video/(.*)$@i", $response->getHeader("content-type"), $m)) {
+                    $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
+                        'url' => $word, 'type' => 'video', 'profile' => $dlProfile,
+                    ]);
                     $out = "[ " . $this->formatVideoResponse($body, $m[1], $response->getHeader("content-length")) . " ]";
                     $bot->pm($chan, "  $out");
                     $this->logUrl($bot, $nick, $chan, $text, $out);
@@ -166,6 +176,9 @@ class linktitles extends script_base
                 }
 
                 if (!preg_match("/<title[^>]*>([^<]+)<\/title>/im", $body, $m)) {
+                    $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
+                        'url' => $word, 'type' => 'html', 'profile' => $dlProfile,
+                    ]);
                     $this->logUrl($bot, $nick, $chan, $text, "Err: No <title>");
                     continue;
                 }
@@ -177,6 +190,9 @@ class linktitles extends script_base
                 $title = str_replace("\r", " ", $title);
                 $title = str_replace("\x01", "[CTCP]", $title);
                 $title = substr(trim($title), 0, 300);
+                $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
+                    'url' => $word, 'type' => 'html', 'profile' => $dlProfile,
+                ]);
                 $out = "[ $title ]";
                 $bot->pm($chan, "  $out");
                 $this->logUrl($bot, $nick, $chan, $text, $out);
@@ -220,9 +236,14 @@ class linktitles extends script_base
         return false;
     }
 
-    private function getAiDescription(string $body, string $url): ?string
+    private function getAiDescription(string $body, string $url, string &$profile = '', float $dlMs = 0.0): ?string
     {
         global $config;
+        $profileParts = [];
+        if ($dlMs > 0) {
+            $profileParts[] = "dl=" . self::formatDuration($dlMs);
+        }
+
         if (!isset($config['ai_vision_key'])) {
             return null;
         }
@@ -231,6 +252,7 @@ class linktitles extends script_base
             $maxDim = (int)($config['ai_vision_max_dim'] ?? 1024);
             $quality = (int)($config['ai_vision_jpg_quality'] ?? 85);
 
+            $resizeStart = hrtime(true);
             $img = new \Imagick();
             try {
                 $img->readImageBlob($body);
@@ -241,11 +263,14 @@ class linktitles extends script_base
             } finally {
                 $img->clear();
             }
+            $resizeMs = (hrtime(true) - $resizeStart) / 1e6;
+            $profileParts[] = "resize=" . self::formatDuration($resizeMs) . " " . \knivey\tools\convert(strlen($body)) . "->" . \knivey\tools\convert((int)(strlen($base64) * 3 / 4));
 
+            $aiStart = hrtime(true);
             $ampClient = HttpClientBuilder::buildDefault();
             $timeout = (int)($config['ai_vision_timeout'] ?? 10);
             $openAiHttp = new OpenAiHttpClient($config['ai_vision_key'], $ampClient, new TimeoutCancellation($timeout));
-            $client = new OpenAiClient(
+            $aiClient = new OpenAiClient(
                 apiKey: $config['ai_vision_key'],
                 baseUrl: $config['ai_vision_base_url'] ?? 'https://api.openai.com/v1',
                 httpClient: $openAiHttp,
@@ -267,7 +292,7 @@ class linktitles extends script_base
                 $reasoning = Reasoning::effort($config['ai_vision_reasoning_effort']);
             }
 
-            $response = $client->chatCompletion(new ChatRequest(
+            $response = $aiClient->chatCompletion(new ChatRequest(
                 model: $model,
                 messages: [
                     Message::system($prompt),
@@ -278,9 +303,13 @@ class linktitles extends script_base
                 ],
                 reasoning: $reasoning,
             ));
+            $aiMs = (hrtime(true) - $aiStart) / 1e6;
+            $profileParts[] = "ai($model)=" . self::formatDuration($aiMs);
 
             $description = $response->choices[0]->message->content ?? null;
             if ($description === null || trim($description) === '') {
+                $profileParts[] = "total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
+                $profile = implode(" ", $profileParts);
                 return null;
             }
             $description = trim($description);
@@ -289,14 +318,17 @@ class linktitles extends script_base
                 $description = mb_strimwidth($description, 0, 197, '...');
             }
             self::$ai_desc_cache[$url] = $description;
+            $profileParts[] = "total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
+            $profile = implode(" ", $profileParts);
             return $description;
         } catch (\Exception $e) {
+            $profile = implode(" ", $profileParts) . " ai_error=" . $e->getMessage();
             $this->logger->warning("AI vision description failed: " . $e->getMessage());
             return null;
         }
     }
 
-    public function formatImageResponse(string $body, string $contentType, ?string $contentLength, string $chan, string $url = ''): string
+    public function formatImageResponse(string $body, string $contentType, ?string $contentLength, string $chan, string $url = '', float $dlMs = 0.0, string $dlProfile = ''): string
     {
         preg_match("@^image/(.*)$@i", $contentType, $m);
         $size = $contentLength;
@@ -311,7 +343,11 @@ class linktitles extends script_base
             $out = "$m[1] image $size $d[0]x$d[1]";
         }
         $cacheKey = $url ?: $chan;
-        $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey));
+        $profile = $dlProfile;
+        $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $profile, $dlMs));
+        $this->logger->info("linktitles profile [{url}] [{type}] {profile}", [
+            'url' => $url, 'type' => 'image', 'profile' => $profile,
+        ]);
         if ($aiDesc !== null) {
             $out = "$m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc";
         }
@@ -439,6 +475,26 @@ class linktitles extends script_base
             }
         }
         return false;
+    }
+
+    private static function formatDuration(float $ms): string
+    {
+        if ($ms < 1) {
+            return round($ms * 1000) . 'µs';
+        }
+        if ($ms < 1000) {
+            return round($ms, 1) . 'ms';
+        }
+        return round($ms / 1000, 2) . 's';
+    }
+
+    private static function formatRate(int $bytes, float $ms): string
+    {
+        if ($ms <= 0) {
+            return '?B/s';
+        }
+        $bytesPerSec = $bytes / ($ms / 1000);
+        return \knivey\tools\convert((int)round($bytesPerSec)) . '/s';
     }
 
 }
