@@ -281,7 +281,7 @@ class weather extends script_base
                 $second6 = implode(', ', array_slice($entries, 6, 6));
                 $bot->pm($args->chan, "\2{$location->name}:\2 Hourly: $first6");
                 if ($second6 != '') {
-                    $bot->pm($args->chan, "\2{$location->name}:\2 Hourly: $second6");
+                    $bot->pm($args->chan, $second6);
                 }
             } elseif (!$fc) {
                 $bot->pm($args->chan, "\2{$location->name}:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind " . self::windDir($cur['wind_deg']) . " at $windSpeed Sun: $sunrise - $sunset");
