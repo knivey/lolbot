@@ -25,6 +25,7 @@ use draw\Path;
 use draw\RadialGradient;
 use draw\SpreadMethod;
 use draw\StrokeStyle;
+use draw\TextNode;
 use draw\Transform;
 
 use knivey\cmdr\attributes\Cmd;
@@ -429,10 +430,10 @@ function mystify(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args
 }
 
 
-$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor', 'shadertest', 'gradtransform', 'blur', 'shadow', 'saturate', 'glow', 'filters'];
+$demos = ['flowers', 'spiral', 'mondrian', 'bubbles', 'vortex', 'transform', 'strokes', 'gradient', 'opacity', 'linework', 'topo', 'dithered', 'twocolor', 'shadertest', 'gradtransform', 'blur', 'shadow', 'saturate', 'glow', 'filters', 'text', 'textsizing'];
 
 #[Cmd("demo")]
-#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest, gradtransform, blur, shadow, saturate, glow, filters). Random if no arg.")]
+#[Desc("Draw a Path API demo (flowers, spiral, mondrian, bubbles, vortex, gradient, opacity, linework, topo, dithered, twocolor, shadertest, gradtransform, blur, shadow, saturate, glow, filters, text, textsizing). Random if no arg.")]
 #[Syntax('[name]')]
 #[Option("--dither", "Dithering mode: spatial, shader, or all")]
 function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
@@ -489,6 +490,8 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         'saturate' => demoSaturate($art),
         'glow' => demoGlow($art),
         'filters' => demoFilters($art),
+        'text' => demoText($art),
+        'textsizing' => demoTextSizing($art),
     };
 
     \pumpToChan($bot, $args->chan, explode("\n", trim($art, "\n")));
@@ -1496,5 +1499,46 @@ function demoFilters(Canvas $art): void
 
         $filtered = new Shape(path: $filtPath, fill: $pair['fill']);
         (new FilterNode($filtered, $pair['filter']))->render($art, RenderContext::defaults());
+    }
+}
+
+function demoText(Canvas $art): void
+{
+    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2));
+
+    $text = new TextNode();
+    $text->text = 'Hello World';
+    $text->x = 40;
+    $text->y = 24;
+    $text->fontSize = 28;
+    $text->fontFamily = 'DejaVu Sans';
+    $text->textAnchor = 'middle';
+    $text->dominantBaseline = 'central';
+    $text->fill = new Color(0, null);
+    $text->render($art, RenderContext::defaults());
+}
+
+function demoTextSizing(Canvas $art): void
+{
+    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2));
+
+    $rows = [
+        ['text' => 'Small 10px', 'size' => 10, 'y' => 8],
+        ['text' => 'Medium 18px', 'size' => 18, 'y' => 24],
+        ['text' => 'Large 28px', 'size' => 28, 'y' => 42],
+    ];
+
+    $colors = [new Color(11, null), new Color(9, null), new Color(4, null)];
+    foreach ($rows as $i => $row) {
+        $text = new TextNode();
+        $text->text = $row['text'];
+        $text->x = 40;
+        $text->y = $row['y'];
+        $text->fontSize = $row['size'];
+        $text->fontFamily = 'DejaVu Sans';
+        $text->textAnchor = 'middle';
+        $text->dominantBaseline = 'central';
+        $text->fill = $colors[$i];
+        $text->render($art, RenderContext::defaults());
     }
 }
