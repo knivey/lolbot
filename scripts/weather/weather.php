@@ -161,7 +161,7 @@ class weather extends script_base
 
     #[Cmd("weather", "wz", "wea")]
     #[Syntax('[query]...')]
-    #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast")]
+    #[Options("--si", "--metric", "--us", "--imperial", "--fc", "--forecast", "--hourly", "--hr", "--detailed", "--d")]
     function weather(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $config, $entityManager;
@@ -179,6 +179,7 @@ class weather extends script_base
         }
         $si = false;
         $fc = false;
+        $hourly = false;
 
         if (($cmdArgs->optEnabled("--si") || $cmdArgs->optEnabled("--metric")) &&
             ($cmdArgs->optEnabled("--us") || $cmdArgs->optEnabled("--imperial"))) {
@@ -186,9 +187,18 @@ class weather extends script_base
             return;
         }
 
+        if (($cmdArgs->optEnabled("--fc") || $cmdArgs->optEnabled("--forecast")) &&
+            ($cmdArgs->optEnabled("--hourly") || $cmdArgs->optEnabled("--hr"))) {
+            $bot->msg($args->chan, "Choose either --fc or --hourly not both");
+            return;
+        }
+
         $query = $cmdArgs['query'] ?? '';
         if ($cmdArgs->optEnabled("--fc") || $cmdArgs->optEnabled("--forecast")) {
             $fc = true;
+        }
+        if ($cmdArgs->optEnabled("--hourly") || $cmdArgs->optEnabled("--hr")) {
+            $hourly = true;
         }
 
         try {
@@ -237,7 +247,8 @@ class weather extends script_base
 
             //Now use lat lon to get weather
 
-            $url = "https://api.openweathermap.org/data/3.0/onecall?lat={$location->lat}&lon={$location->long}&appid=$config[openweatherKey]&exclude=minutely,hourly";
+            $exclude = $hourly ? "minutely" : "minutely,hourly";
+            $url = "https://api.openweathermap.org/data/3.0/onecall?lat={$location->lat}&lon={$location->long}&appid=$config[openweatherKey]&exclude=$exclude";
             $body = async_get_contents($url);
 
             $j = json_decode($body, true);
@@ -258,7 +269,17 @@ class weather extends script_base
             }
             $temp = self::displayTemp($cur['temp'], $si);
             $windSpeed = self::displayWindspeed($cur['wind_speed'], $si);
-            if (!$fc) {
+            if ($hourly) {
+                $detailed = $cmdArgs->optEnabled("--detailed") || $cmdArgs->optEnabled("--d");
+                $entries = [];
+                $cnt = 0;
+                foreach ($j['hourly'] as $h) {
+                    if ($cnt++ >= 12) break;
+                    $entries[] = self::formatHourlyEntry($h, $tz, $si, $detailed);
+                }
+                $out = implode(', ', $entries);
+                $bot->pm($args->chan, "\2{$location->name}:\2 Hourly: $out");
+            } elseif (!$fc) {
                 $bot->pm($args->chan, "\2{$location->name}:\2 Currently " . $cur['weather'][0]['description'] . " $temp $cur[humidity]% humidity, UVI of $cur[uvi], wind " . self::windDir($cur['wind_deg']) . " at $windSpeed Sun: $sunrise - $sunset");
             } else {
                 $out = '';
