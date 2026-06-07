@@ -239,10 +239,6 @@ class linktitles extends script_base
     private function getAiDescription(string $body, string $url, string &$profile = '', float $dlMs = 0.0): ?string
     {
         global $config;
-        $profileParts = [];
-        if ($dlMs > 0) {
-            $profileParts[] = "dl=" . self::formatDuration($dlMs);
-        }
 
         if (!isset($config['ai_vision_key'])) {
             return null;
@@ -264,7 +260,7 @@ class linktitles extends script_base
                 $img->clear();
             }
             $resizeMs = (hrtime(true) - $resizeStart) / 1e6;
-            $profileParts[] = "resize=" . self::formatDuration($resizeMs) . " " . \knivey\tools\convert(strlen($body)) . "->" . \knivey\tools\convert((int)(strlen($base64) * 3 / 4));
+            $profile .= " resize=" . self::formatDuration($resizeMs) . " " . \knivey\tools\convert(strlen($body)) . "->" . \knivey\tools\convert((int)(strlen($base64) * 3 / 4));
 
             $aiStart = hrtime(true);
             $ampClient = HttpClientBuilder::buildDefault();
@@ -304,12 +300,11 @@ class linktitles extends script_base
                 reasoning: $reasoning,
             ));
             $aiMs = (hrtime(true) - $aiStart) / 1e6;
-            $profileParts[] = "ai($model)=" . self::formatDuration($aiMs);
+            $profile .= " ai($model)=" . self::formatDuration($aiMs);
 
             $description = $response->choices[0]->message->content ?? null;
             if ($description === null || trim($description) === '') {
-                $profileParts[] = "total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
-                $profile = implode(" ", $profileParts);
+                $profile .= " total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
                 return null;
             }
             $description = trim($description);
@@ -318,11 +313,10 @@ class linktitles extends script_base
                 $description = mb_strimwidth($description, 0, 197, '...');
             }
             self::$ai_desc_cache[$url] = $description;
-            $profileParts[] = "total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
-            $profile = implode(" ", $profileParts);
+            $profile .= " total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
             return $description;
         } catch (\Exception $e) {
-            $profile = implode(" ", $profileParts) . " ai_error=" . $e->getMessage();
+            $profile .= " ai_error=" . $e->getMessage();
             $this->logger->warning("AI vision description failed: " . $e->getMessage());
             return null;
         }
