@@ -1506,30 +1506,32 @@ function demoFilters(Canvas $art): void
 
 function demoText(Canvas $art): void
 {
-    $art->drawPath(Path::rect(0, 0, $art->w, $art->w > 80 ? 48 : 48), new Color(1, 1), null);
+    $art->drawPath(Path::rect(0, 0, $art->w, 48), new Color(1, 1), null);
 
     $text = 'Hello World!';
-    $fontSize = 10.0;
+    $fontSize = 12.0;
     $fontFamily = 'DejaVu Sans';
 
     $font = FontManager::resolve($fontFamily, null, null);
     $scale = $fontSize / $font->unitsPerEm;
 
     $chars = mb_str_split($text);
+    $charWidths = [];
     $totalWidth = 0.0;
     $prevChar = null;
-    foreach ($chars as $char) {
-        if ($prevChar !== null) {
-            $totalWidth += $font->getKerning($prevChar, $char) * $scale;
-        }
-        $totalWidth += $font->getAdvanceWidth($char) * $scale;
+    foreach ($chars as $i => $char) {
+        $kerning = ($prevChar !== null) ? $font->getKerning($prevChar, $char) * $scale : 0.0;
+        $advance = $font->getAdvanceWidth($char) * $scale;
+        $charWidths[$i] = $kerning + $advance;
+        $totalWidth += $charWidths[$i];
         $prevChar = $char;
     }
 
     $startX = ($art->w - $totalWidth) / 2;
     $baseY = 24;
-    $amplitude = 6;
-    $wavelength = $totalWidth * 0.8;
+    $amplitude = rand(4, 8);
+    $wavelength = $totalWidth * (0.6 + (mt_rand() / mt_getrandmax()) * 0.6);
+    $phase = (mt_rand() / mt_getrandmax()) * 2 * M_PI;
 
     $rainbow = new LinearGradient(
         $startX, 0,
@@ -1546,16 +1548,9 @@ function demoText(Canvas $art): void
     );
 
     $penX = $startX;
-    $prevChar = null;
-    foreach ($chars as $char) {
-        $kerning = 0.0;
-        if ($prevChar !== null) {
-            $kerning = $font->getKerning($prevChar, $char) * $scale;
-        }
-        $penX += $kerning;
-
+    foreach ($chars as $i => $char) {
         $offset = $penX - $startX;
-        $y = $baseY + $amplitude * sin(2 * M_PI * $offset / $wavelength);
+        $y = $baseY + $amplitude * sin($phase + 2 * M_PI * $offset / $wavelength);
 
         $textNode = new TextNode();
         $textNode->text = $char;
@@ -1567,8 +1562,7 @@ function demoText(Canvas $art): void
         $textNode->fill = $rainbow;
         $textNode->render($art, RenderContext::defaults());
 
-        $penX += $font->getAdvanceWidth($char) * $scale;
-        $prevChar = $char;
+        $penX += $charWidths[$i];
     }
 }
 
