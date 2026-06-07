@@ -6,6 +6,7 @@ use draw\Canvas;
 use draw\Color;
 use draw\ColorStop;
 use draw\Compositor;
+use draw\FontManager;
 use draw\Dithering;
 use draw\FilterNode;
 use draw\FilterPipeline;
@@ -451,7 +452,8 @@ function demo(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         $bot->pm($args->chan, "random demo: \x02$name\x02");
     }
 
-    $art = Canvas::createBlank(80, 48, true);
+    $w = in_array($name, ['text', 'textsizing']) ? 100 : 80;
+    $art = Canvas::createBlank($w, 48, true);
     $art->fillColor(0, 0, new Color(1, 1));
 
     $ditherVal = $cmdArgs->getOpt('--dither');
@@ -1504,23 +1506,75 @@ function demoFilters(Canvas $art): void
 
 function demoText(Canvas $art): void
 {
-    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2), null);
+    $art->drawPath(Path::rect(0, 0, $art->w, $art->w > 80 ? 48 : 48), new Color(1, 1), null);
 
-    $text = new TextNode();
-    $text->text = 'Hello World';
-    $text->x = 40;
-    $text->y = 24;
-    $text->fontSize = 28;
-    $text->fontFamily = 'DejaVu Sans';
-    $text->textAnchor = 'middle';
-    $text->dominantBaseline = 'central';
-    $text->fill = new Color(0, null);
-    $text->render($art, RenderContext::defaults());
+    $text = 'Hello World!';
+    $fontSize = 10.0;
+    $fontFamily = 'DejaVu Sans';
+
+    $font = FontManager::resolve($fontFamily, null, null);
+    $scale = $fontSize / $font->unitsPerEm;
+
+    $chars = mb_str_split($text);
+    $totalWidth = 0.0;
+    $prevChar = null;
+    foreach ($chars as $char) {
+        if ($prevChar !== null) {
+            $totalWidth += $font->getKerning($prevChar, $char) * $scale;
+        }
+        $totalWidth += $font->getAdvanceWidth($char) * $scale;
+        $prevChar = $char;
+    }
+
+    $startX = ($art->w - $totalWidth) / 2;
+    $baseY = 24;
+    $amplitude = 6;
+    $wavelength = $totalWidth * 0.8;
+
+    $rainbow = new LinearGradient(
+        $startX, 0,
+        $startX + $totalWidth, 0,
+        [
+            new ColorStop(0.0, 255, 0, 0),
+            new ColorStop(0.17, 255, 127, 0),
+            new ColorStop(0.33, 255, 255, 0),
+            new ColorStop(0.5, 0, 255, 0),
+            new ColorStop(0.67, 0, 0, 255),
+            new ColorStop(0.83, 75, 0, 130),
+            new ColorStop(1.0, 148, 0, 211),
+        ],
+    );
+
+    $penX = $startX;
+    $prevChar = null;
+    foreach ($chars as $char) {
+        $kerning = 0.0;
+        if ($prevChar !== null) {
+            $kerning = $font->getKerning($prevChar, $char) * $scale;
+        }
+        $penX += $kerning;
+
+        $offset = $penX - $startX;
+        $y = $baseY + $amplitude * sin(2 * M_PI * $offset / $wavelength);
+
+        $textNode = new TextNode();
+        $textNode->text = $char;
+        $textNode->x = $penX;
+        $textNode->y = $y;
+        $textNode->fontSize = $fontSize;
+        $textNode->fontFamily = $fontFamily;
+        $textNode->dominantBaseline = 'central';
+        $textNode->fill = $rainbow;
+        $textNode->render($art, RenderContext::defaults());
+
+        $penX += $font->getAdvanceWidth($char) * $scale;
+        $prevChar = $char;
+    }
 }
 
 function demoTextSizing(Canvas $art): void
 {
-    $art->drawPath(Path::rect(0, 0, 80, 48), new Color(2, 2), null);
+    $art->drawPath(Path::rect(0, 0, $art->w, 48), new Color(2, 2), null);
 
     $rows = [
         ['text' => 'Small 10px', 'size' => 10, 'y' => 8],
