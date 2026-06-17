@@ -44,6 +44,10 @@ database:
 
 
 # Crypto script (scripts/crypto) tunables. All optional with sensible defaults.
+# CoinGecko API token-bucket limiter (sized to the free Demo tier, 30 calls/min):
+#crypto_api_burst: 30      # max calls allowed in a burst before throttling
+#crypto_api_rate: 30       # refill rate in calls per minute
+#crypto_api_maxwait: 10    # if a call would wait longer than this (seconds), warn with ETA instead of delaying
 # Per-channel anti-spam cooldown (!btc/!eth/!doge/!bch/!coin/!findcoin share one bucket per channel):
 #crypto_rate_cmds: 3
 #crypto_rate_secs: 20

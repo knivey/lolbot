@@ -83,17 +83,19 @@ their duplicated bodies collapse into the shared `showCoin()` core.
 
 - **`coinApiGet(string $url): string`** — the single chokepoint for every CoinGecko HTTP
   call. Replaces `async_get_contents` inside `getCoinPrice`, `getCoinChart`, and
-  `searchCoins`. Enforces the Layer A global guard (see below); throws
-  `ApiRateLimitException` when the global ceiling is exceeded.
+  `searchCoins`. Enforces the Layer A token-bucket guard (see below); spaces calls via
+  `\Amp\delay` and throws `ApiRateLimitException` (carrying the ETA in seconds) only when a
+  needed wait would exceed `crypto_api_maxwait`.
 
 ### `!coin <name>` handler
 
 1. `searchCoins($name)`.
 2. `matchCoin($name, $results)`.
 3. Empty results or `null` match → `pm("\2Coin:\2 No coin found for '{name}' (try !findcoin {name})")` and return.
-4. Else `showCoin($args, $bot, $matched->id)`.
+4. Else announce the selection: `pm("\2Coin:\2 {name} ({symbol}) — {id}")` (so fuzzy matches
+   like `!coin bit` make it clear which coin was chosen), then `showCoin($args, $bot, $matched->id)`.
 5. The preamble (steps 1-2) is wrapped so that:
-   - `catch (ApiRateLimitException)` → `apiWarn($args, $bot)` → return.
+   - `catch (ApiRateLimitException)` → `apiWarn($args, $bot, $e)` (ETA from the exception) → return.
    - `catch (\Exception)` → `pm("\2Coin:\2 Error getting data")` → return.
    (Catch `ApiRateLimitException` before `\Exception`, since the former subclasses the
    latter. The `showCoin` call in step 4 handles its own `ApiRateLimitException`
@@ -119,16 +121,32 @@ Protects CoinGecko API access across **all** networks/connections (the `crypto` 
 instantiated per-bot, but the guard state is `static`, so it is process-global — this is
 the cross-network protection the existing per-instance `LocalCache` does not provide).
 
-- `private static int $apiRatelimit = 0;` on the `crypto` class.
-- Implemented inside `coinApiGet` in the **brave pattern** (`scripts/brave/brave.php:9-31`):
-  `if (time() < self::$apiRatelimit) throw new ApiRateLimitException;` else
-  `self::$apiRatelimit = time() + 2;` *before* the `async_get_contents` await.
-- Hard-coded **2-second** global ceiling (matches brave's `time() + 2`; not configurable).
-- **No mutex required.** Although the bot is single-threaded cooperative async, Amp
-  coroutines interleave at `await` points. The reservation is set **synchronously before**
-  the await, so any coroutine that interleaves during the HTTP call already sees the
-  updated `self::$apiRatelimit` — there is no read→await→write window to race on.
+Implemented inside `coinApiGet` as a **token bucket** sized to CoinGecko's free Demo tier
+(30 calls/min, burst 30):
+
+- `private static float $apiTokens` (starts at capacity) + `private static float
+  $apiLastRefill` on the `crypto` class.
+- On each call: refill synchronously based on elapsed time. If ≥1 token is available,
+  consume one and proceed **immediately** (so a single command's multiple sequential calls
+  — e.g. `!coin` does search → chart → price — burst instantly). If empty, compute the wait
+  until the next token.
+  - If `wait ≤ crypto_api_maxwait` (default 10s): reserve into debt synchronously, then
+    `\Amp\delay($wait)` (self-suspending in Amp v3) to space the call.
+  - If `wait > crypto_api_maxwait`: throw `ApiRateLimitException` whose message is the ETA
+    in seconds (so the warning can say "try again in Ns" instead of hanging the command).
+- Config: `crypto_api_burst` (default 30), `crypto_api_rate` (calls/min, default 30),
+  `crypto_api_maxwait` (seconds, default 10).
+- **No mutex required.** Every bucket mutation (refill, consume, reserve) happens
+  **synchronously before** the `delay()` suspension, so concurrent coroutines always observe
+  the updated token count — there is no read→await→write window to race on. (A fixed
+  1-call-per-2s spacer would have been more restrictive than CoinGecko's actual 30/min limit,
+  which allows bursting up to 30 calls at once.)
 - Fires only on a cache miss (cache hits return before reaching `coinApiGet`).
+
+> **Revision note:** An earlier version of this spec specified Layer A as a 2-second
+> throw-limiter (the brave pattern). Manual testing showed that broke any single command
+> making more than one CoinGecko call (the 2nd call always threw), so `!coin`/`!findcoin`
+> failed on a cold cache. The token-bucket design above replaces it.
 
 ### Rate limiting — Layer B: per-channel anti-spam cooldown
 
@@ -154,8 +172,8 @@ Two separate helpers, two distinct messages, two separate per-channel cooldown t
 - **`spamWarn($args, $bot): void`** — Layer B message:
   `pm("\2Coin:\2 You're running crypto commands too fast, slow down.")`.
   Cooldown tracked in `private array $chanWarn = [];` keyed by chan.
-- **`apiWarn($args, $bot): void`** — Layer A message:
-  `pm("\2Coin:\2 API rate limit reached, try again in a moment.")`.
+- **`apiWarn($args, $bot, $e): void`** — Layer A message, includes the ETA from the
+  exception: `pm("\2Coin:\2 API rate limit reached, try again in {eta}s.")`.
   Cooldown tracked in `private array $apiWarnChan = [];` keyed by chan.
 - Both use the same cooldown duration: `$wc = (int)($config['crypto_warn_secs'] ?? 30);`.
   A helper emits its message only if `time() - ($track[$chan] ?? 0) >= $wc`, then sets
@@ -184,12 +202,15 @@ Layer A gives API-feedback, and both are cooled.
 
 | Key | Default | Purpose |
 |---|---|---|
+| `crypto_api_burst` | `30` | CoinGecko token-bucket burst capacity (Layer A). |
+| `crypto_api_rate` | `30` | CoinGecko refill rate, calls per minute (Layer A). |
+| `crypto_api_maxwait` | `10` | Seconds; a longer wait warns with ETA instead of delaying (Layer A). |
 | `crypto_rate_cmds` | `3` | Max crypto commands per window per channel (Layer B). |
 | `crypto_rate_secs` | `20` | Layer B window length in seconds. |
 | `crypto_warn_secs` | `30` | Per-channel cooldown for both warning messages. |
 
 Naming follows the existing `linktitles_rate_urls` / `linktitles_rate_seconds` convention.
-The Layer A global ceiling is hard-coded (not configurable), matching brave.
+Layer A defaults to CoinGecko's free Demo tier (30 calls/min, burst 30).
 
 ### Testing
 
