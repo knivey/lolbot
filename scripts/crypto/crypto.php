@@ -9,6 +9,8 @@ use draw;
 use knivey\irctools;
 use async_get_exception;
 use knivey\cmdr\attributes\Cmd;
+use knivey\cmdr\attributes\Syntax;
+use function knivey\tools\multi_array_padding;
 
 class crypto extends script_base
 {
@@ -287,6 +289,85 @@ class crypto extends script_base
         }
         foreach ($chart as $l) {
             $bot->pm($args->chan, $l);
+        }
+    }
+
+    #[Cmd("coin")]
+    #[Syntax('<name>...')]
+    public function coin(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        if (!$this->checkChannelLimit($args)) {
+            $this->spamWarn($args, $bot);
+            return;
+        }
+
+        $name = $cmdArgs['name'];
+        if (!is_string($name)) {
+            throw new \UnexpectedValueException('expected string name');
+        }
+        try {
+            $results = $this->searchCoins($name);
+            $matched = self::matchCoin($name, $results);
+        } catch (ApiRateLimitException $e) {
+            $this->apiWarn($args, $bot);
+            return;
+        } catch (\Exception $e) {
+            $bot->pm($args->chan, "\2Coin:\2 Error getting data");
+            return;
+        }
+
+        if ($matched === null) {
+            $bot->pm($args->chan, "\2Coin:\2 No coin found for '$name' (try !findcoin $name)");
+            return;
+        }
+
+        $this->showCoin($args, $bot, $matched->id);
+    }
+
+    #[Cmd("findcoin")]
+    #[Syntax('<query>...')]
+    public function findcoin(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        if (!$this->checkChannelLimit($args)) {
+            $this->spamWarn($args, $bot);
+            return;
+        }
+
+        $query = $cmdArgs['query'];
+        if (!is_string($query)) {
+            throw new \UnexpectedValueException('expected string query');
+        }
+        try {
+            $results = $this->searchCoins($query);
+        } catch (ApiRateLimitException $e) {
+            $this->apiWarn($args, $bot);
+            return;
+        } catch (\Exception $e) {
+            $bot->pm($args->chan, "\2Coin:\2 Error getting data");
+            return;
+        }
+
+        if (!isset($results[0])) {
+            $bot->pm($args->chan, "\2Coin:\2 No results found");
+            return;
+        }
+
+        $results = array_slice($results, 0, 5);
+        $out = [["ID", "Name", "Symbol"]];
+        foreach ($results as $r) {
+            $out[] = [$r->id, $r->name, $r->symbol];
+        }
+        $out = multi_array_padding($out);
+        foreach ($out as $line) {
+            if (!is_array($line)) {
+                continue;
+            }
+            $bot->pm($args->chan, implode(array_map(
+                function (mixed $v): string {
+                    return is_string($v) ? $v : '';
+                },
+                $line
+            )));
         }
     }
 
