@@ -7,6 +7,8 @@ use Amp\Cache\LocalCache;
 use JsonMapper\JsonMapperBuilder;
 use draw;
 use knivey\irctools;
+use async_get_exception;
+use knivey\cmdr\attributes\Cmd;
 
 class crypto extends script_base
 {
@@ -266,5 +268,65 @@ class crypto extends script_base
             }
         }
         return $results[0] ?? null;
+    }
+
+    public function showCoin(\Irc\Event\ChatEvent $args, \Irc\Client $bot, string $id): void
+    {
+        try {
+            if ($this->server->throttle) {
+                $bot->pm($args->chan, $this->getCoinPrice($id));
+                return;
+            }
+            $chart = $this->getCoinChart($id);
+        } catch (ApiRateLimitException $e) {
+            $this->apiWarn($args, $bot);
+            return;
+        } catch (async_get_exception $e) {
+            $bot->pm($args->chan, "Error getting data");
+            return;
+        }
+        foreach ($chart as $l) {
+            $bot->pm($args->chan, $l);
+        }
+    }
+
+    #[Cmd("doge")]
+    public function doge(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        if (!$this->checkChannelLimit($args)) {
+            $this->spamWarn($args, $bot);
+            return;
+        }
+        $this->showCoin($args, $bot, 'dogecoin');
+    }
+
+    #[Cmd("bch")]
+    public function bch(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        if (!$this->checkChannelLimit($args)) {
+            $this->spamWarn($args, $bot);
+            return;
+        }
+        $this->showCoin($args, $bot, 'bitcoin-cash');
+    }
+
+    #[Cmd("eth")]
+    public function eth(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        if (!$this->checkChannelLimit($args)) {
+            $this->spamWarn($args, $bot);
+            return;
+        }
+        $this->showCoin($args, $bot, 'ethereum');
+    }
+
+    #[Cmd("btc")]
+    public function btc(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        if (!$this->checkChannelLimit($args)) {
+            $this->spamWarn($args, $bot);
+            return;
+        }
+        $this->showCoin($args, $bot, 'bitcoin');
     }
 }
