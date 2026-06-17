@@ -15,6 +15,15 @@ class crypto extends script_base
 
     private static int $apiRatelimit = 0;
 
+    /** @var array<string, list<int>> */
+    private array $chanRatelimit = [];
+
+    /** @var array<string, int> */
+    private array $chanWarn = [];
+
+    /** @var array<string, int> */
+    private array $apiWarnChan = [];
+
     /** @return LocalCache<mixed> */
     private static function getCache(): LocalCache
     {
@@ -40,6 +49,60 @@ class crypto extends script_base
         }
         self::$apiRatelimit = time() + 2;
         return async_get_contents($url);
+    }
+
+    /**
+     * Layer B: per-channel, combined sliding-window cooldown for all crypto commands.
+     *
+     * @param \Irc\Event\ChatEvent $args
+     * @return bool true if allowed, false if rate-limited
+     */
+    private function checkChannelLimit(\Irc\Event\ChatEvent $args): bool
+    {
+        $maxRaw = $this->config['crypto_rate_cmds'] ?? 3;
+        $max = is_int($maxRaw) ? $maxRaw : 3;
+        $windowRaw = $this->config['crypto_rate_secs'] ?? 20;
+        $window = is_int($windowRaw) ? $windowRaw : 20;
+        $now = time();
+        $chan = $args->chan;
+
+        $this->chanRatelimit[$chan] = array_values(array_filter(
+            $this->chanRatelimit[$chan] ?? [],
+            fn(int $ts): bool => $now - $ts < $window
+        ));
+
+        if (count($this->chanRatelimit[$chan]) >= $max) {
+            return false;
+        }
+
+        $this->chanRatelimit[$chan][] = $now;
+        return true;
+    }
+
+    private function spamWarn(\Irc\Event\ChatEvent $args, \Irc\Client $bot): void
+    {
+        $wcRaw = $this->config['crypto_warn_secs'] ?? 30;
+        $wc = is_int($wcRaw) ? $wcRaw : 30;
+        $chan = $args->chan;
+        $now = time();
+        if ($now - ($this->chanWarn[$chan] ?? 0) < $wc) {
+            return;
+        }
+        $this->chanWarn[$chan] = $now;
+        $bot->pm($args->chan, "\2Coin:\2 You're running crypto commands too fast, slow down.");
+    }
+
+    private function apiWarn(\Irc\Event\ChatEvent $args, \Irc\Client $bot): void
+    {
+        $wcRaw = $this->config['crypto_warn_secs'] ?? 30;
+        $wc = is_int($wcRaw) ? $wcRaw : 30;
+        $chan = $args->chan;
+        $now = time();
+        if ($now - ($this->apiWarnChan[$chan] ?? 0) < $wc) {
+            return;
+        }
+        $this->apiWarnChan[$chan] = $now;
+        $bot->pm($args->chan, "\2Coin:\2 API rate limit reached, try again in a moment.");
     }
 
     public function getCoinPrice(string $coin): string
