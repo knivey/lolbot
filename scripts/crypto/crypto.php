@@ -17,7 +17,11 @@ class crypto extends script_base
     /** @var LocalCache<mixed>|null */
     private static ?LocalCache $cache = null;
 
-    private static int $apiRatelimit = 0;
+    /** @var float available API tokens (CoinGecko token bucket) */
+    private static float $apiTokens = 30.0;
+
+    /** @var float microtime of last token refill */
+    private static float $apiLastRefill = 0.0;
 
     /** @var array<string, list<int>> */
     private array $chanRatelimit = [];
@@ -40,18 +44,48 @@ class crypto extends script_base
     /**
      * Single chokepoint for every CoinGecko HTTP call.
      *
-     * Enforces a process-global 2s API guard in the brave pattern
-     * (scripts/brave/brave.php): the reservation is set synchronously
-     * BEFORE the await, so no mutex is needed despite async interleaving.
+     * Token-bucket rate limiter sized to CoinGecko's free Demo tier
+     * (30 calls/min, burst 30). Allows bursting up to capacity instantly
+     * (so a single command's multiple sequential calls succeed), then
+     * spaces further calls via Amp\delay. Mutex-free: every bucket
+     * mutation happens synchronously BEFORE the delay() suspension, so
+     * concurrent coroutines always observe the updated token count.
      *
-     * @throws ApiRateLimitException when the global ceiling is exceeded
+     * Config: crypto_api_burst (default 30), crypto_api_rate (calls/min,
+     * default 30), crypto_api_maxwait (seconds, default 10). If a needed
+     * wait would exceed maxwait, throws ApiRateLimitException (carrying
+     * the ETA in seconds) instead of hanging the command.
+     *
+     * @throws ApiRateLimitException when the wait would exceed maxwait
      */
     private function coinApiGet(string $url): string
     {
-        if (time() < self::$apiRatelimit) {
-            throw new ApiRateLimitException();
+        $bRaw = $this->config['crypto_api_burst'] ?? 30;
+        $capacity = is_numeric($bRaw) ? (float)$bRaw : 30.0;
+        $rRaw = $this->config['crypto_api_rate'] ?? 30;
+        $ratePerMin = is_numeric($rRaw) ? (float)$rRaw : 30.0;
+        $mRaw = $this->config['crypto_api_maxwait'] ?? 10;
+        $maxWait = is_numeric($mRaw) ? (float)$mRaw : 10.0;
+        $ratePerSec = $ratePerMin > 0 ? $ratePerMin / 60.0 : 0.0;
+
+        $now = microtime(true);
+        if (self::$apiLastRefill > 0) {
+            self::$apiTokens = min($capacity, self::$apiTokens + ($now - self::$apiLastRefill) * $ratePerSec);
         }
-        self::$apiRatelimit = time() + 2;
+        self::$apiLastRefill = $now;
+
+        if (self::$apiTokens >= 1.0) {
+            self::$apiTokens -= 1.0;
+            return async_get_contents($url);
+        }
+
+        $wait = $ratePerSec > 0 ? (1.0 - self::$apiTokens) / $ratePerSec : INF;
+        if ($wait > $maxWait) {
+            throw new ApiRateLimitException((string)(int)ceil($wait));
+        }
+        // Reserve synchronously (go into debt) so concurrent coroutines space out
+        self::$apiTokens -= 1.0;
+        \Amp\delay($wait);
         return async_get_contents($url);
     }
 
@@ -96,7 +130,7 @@ class crypto extends script_base
         $bot->pm($args->chan, "\2Coin:\2 You're running crypto commands too fast, slow down.");
     }
 
-    private function apiWarn(\Irc\Event\ChatEvent $args, \Irc\Client $bot): void
+    private function apiWarn(\Irc\Event\ChatEvent $args, \Irc\Client $bot, ApiRateLimitException $e): void
     {
         $wcRaw = $this->config['crypto_warn_secs'] ?? 30;
         $wc = is_int($wcRaw) ? $wcRaw : 30;
@@ -106,7 +140,8 @@ class crypto extends script_base
             return;
         }
         $this->apiWarnChan[$chan] = $now;
-        $bot->pm($args->chan, "\2Coin:\2 API rate limit reached, try again in a moment.");
+        $eta = $e->getMessage();
+        $bot->pm($args->chan, "\2Coin:\2 API rate limit reached, try again in {$eta}s.");
     }
 
     public function getCoinPrice(string $coin): string
@@ -281,7 +316,7 @@ class crypto extends script_base
             }
             $chart = $this->getCoinChart($id);
         } catch (ApiRateLimitException $e) {
-            $this->apiWarn($args, $bot);
+            $this->apiWarn($args, $bot, $e);
             return;
         } catch (async_get_exception $e) {
             $bot->pm($args->chan, "Error getting data");
@@ -309,7 +344,7 @@ class crypto extends script_base
             $results = $this->searchCoins($name);
             $matched = self::matchCoin($name, $results);
         } catch (ApiRateLimitException $e) {
-            $this->apiWarn($args, $bot);
+            $this->apiWarn($args, $bot, $e);
             return;
         } catch (\Exception $e) {
             $bot->pm($args->chan, "\2Coin:\2 Error getting data");
@@ -340,7 +375,7 @@ class crypto extends script_base
         try {
             $results = $this->searchCoins($query);
         } catch (ApiRateLimitException $e) {
-            $this->apiWarn($args, $bot);
+            $this->apiWarn($args, $bot, $e);
             return;
         } catch (\Exception $e) {
             $bot->pm($args->chan, "\2Coin:\2 Error getting data");
