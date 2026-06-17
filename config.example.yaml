@@ -43,6 +43,14 @@ database:
 #iexKey: 'key'
 
 
+# Crypto script (scripts/crypto) tunables. All optional with sensible defaults.
+# Per-channel anti-spam cooldown (!btc/!eth/!doge/!bch/!coin/!findcoin share one bucket per channel):
+#crypto_rate_cmds: 3
+#crypto_rate_secs: 20
+# Cooldown for the in-channel "slow down" / "API rate limit" warnings so they aren't spammed:
+#crypto_warn_secs: 30
+
+
 # key for bing and its options
 # https://azure.microsoft.com/en-us/pricing/details/cognitive-services/search-api/
 #bingKey: 'key'
