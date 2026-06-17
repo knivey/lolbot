@@ -77,6 +77,7 @@ use scripts\tools\tools;
 use scripts\urbandict\urbandict;
 use scripts\help\help;
 use scripts\stocks\stocks;
+use scripts\crypto\crypto;
 
 use scripts\linktitles\linktitles;
 use scripts\youtube\youtube;
@@ -187,6 +188,8 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
     $router->loadMethods($help);
     $stocks = new stocks($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:stocks", [$logHandler]), $nicks, $chans, $router);
     $router->loadMethods($stocks);
+    $crypto = new crypto($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:crypto", [$logHandler]), $nicks, $chans, $router);
+    $router->loadMethods($crypto);
 
     $eventLogger = new Logger("{$dbBot->name}:linktitles:UrlEvents", [$logHandler]);
     $eventProvider = new OrderedListenerProvider();
