@@ -356,6 +356,7 @@ class crypto extends script_base
             return;
         }
 
+        $bot->pm($args->chan, "\2Coin:\2 {$matched->name} ({$matched->symbol}) — {$matched->id}");
         $this->showCoin($args, $bot, $matched->id);
     }
 
