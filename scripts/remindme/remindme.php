@@ -314,10 +314,30 @@ class remindme extends script_base
         return \Duration_array2string(array_slice($parts, 0, 3, true));
     }
 
+    /**
+     * Deliver a reminder exactly once. Guarded against the
+     * init()/sendDelayed startup race: if the entity was already marked
+     * sent (because in()'s closure fired first), skip the pm. This is
+     * safe because Amp is single-threaded and Doctrine's identity map
+     * means both racing closures share the same entity object — the
+     * first closure sets sent=true synchronously (flush is blocking),
+     * then the second sees it and bails.
+     */
+    public static function deliver(\Irc\Client $bot, reminder $r): void
+    {
+        global $entityManager;
+        if ($r->sent) {
+            return;
+        }
+        $bot->pm($r->chan, "[REMINDER: {$r->nick}] {$r->msg}");
+        $r->sent = true;
+        $entityManager->persist($r);
+        $entityManager->flush();
+    }
+
     public function sendDelayed(\Irc\Client $bot, reminder $r, int $seconds): void
     {
         \Amp\async(function () use ($bot, $r, $seconds) {
-            global $entityManager;
             if ($seconds > 0) {
                 \Amp\delay($seconds);
             }
@@ -325,10 +345,7 @@ class remindme extends script_base
             while (!$bot->isEstablished()) {
                 \Amp\delay(10);
             }
-            $bot->pm($r->chan, "[REMINDER: {$r->nick}] {$r->msg}");
-            $r->sent = true;
-            $entityManager->persist($r);
-            $entityManager->flush();
+            self::deliver($bot, $r);
         });
     }
 
@@ -349,6 +366,9 @@ class remindme extends script_base
             foreach ($rs as $r) {
                 //whoops already passed while bot was down
                 if ($r->at <= time()) {
+                    if ($r->sent) {
+                        continue;
+                    }
                     $ago = \Duration_toString(time() - $r->at);
                     $this->client->pm($r->chan, "[REMINDER: {$r->nick} (late by $ago)] {$r->msg}");
                     $r->sent = true;
