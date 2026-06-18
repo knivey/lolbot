@@ -239,6 +239,167 @@ class ParseDurationTest extends TestCase
         }
     }
 
+    // --- Bare time defaults to today ---
+
+    public function test_bare_time_defaults_to_today(): void
+    {
+        $hour = (int) date('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'pm' : 'am';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        $explicit = \parseDuration("today {$displayHour}{$ampm} recycling");
+        $bare = \parseDuration("{$displayHour}{$ampm} recycling");
+        $this->assertNotNull($explicit, 'sanity: explicit today form should parse');
+        $this->assertNotNull($bare, 'bare time should default to today');
+        $this->assertSame($explicit->targetTime, $bare->targetTime);
+        $this->assertSame('recycling', $bare->remainder);
+    }
+
+    public function test_bare_time_with_minutes_defaults_to_today(): void
+    {
+        $hour = (int) date('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'pm' : 'am';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        $explicit = \parseDuration("today {$displayHour}:30{$ampm} meeting");
+        $bare = \parseDuration("{$displayHour}:30{$ampm} meeting");
+        $this->assertNotNull($explicit);
+        $this->assertNotNull($bare);
+        $this->assertSame($explicit->targetTime, $bare->targetTime);
+        $this->assertSame('meeting', $bare->remainder);
+    }
+
+    public function test_bare_time_with_timezone(): void
+    {
+        $tzName = 'America/New_York';
+        $tz = new \DateTimeZone($tzName);
+        $nowInTz = new \DateTime('now', $tz);
+        $hour = (int) $nowInTz->format('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today in target timezone');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'pm' : 'am';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        $explicit = \parseDuration("today {$displayHour}{$ampm} recycling", $tzName);
+        $bare = \parseDuration("{$displayHour}{$ampm} recycling", $tzName);
+        $this->assertNotNull($explicit);
+        $this->assertNotNull($bare);
+        $this->assertSame($explicit->targetTime, $bare->targetTime);
+    }
+
+    public function test_bare_time_no_remainder(): void
+    {
+        $hour = (int) date('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'pm' : 'am';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        $result = \parseDuration("{$displayHour}{$ampm}");
+        $this->assertNotNull($result);
+        $this->assertSame('', $result->remainder);
+    }
+
+    public function test_bare_time_already_passed_today_rolls_to_tomorrow(): void
+    {
+        $hour = (int) date('G');
+        $pastHour = $hour - 1;
+        if ($pastHour < 0) {
+            $this->markTestSkipped('cannot test past time at midnight hour');
+        }
+        $ampm = $pastHour >= 12 ? 'pm' : 'am';
+        $displayHour = $pastHour > 12 ? $pastHour - 12 : ($pastHour === 0 ? 12 : $pastHour);
+
+        // A bare time that already passed today should roll to tomorrow,
+        // matching the explicit "tomorrow <time>" form.
+        $explicit = \parseDuration("tomorrow {$displayHour}{$ampm} thing");
+        $bare = \parseDuration("{$displayHour}{$ampm} thing");
+        $this->assertNotNull($explicit, 'sanity: tomorrow form should parse');
+        $this->assertNotNull($bare, 'bare past time should roll to tomorrow');
+        $this->assertSame($explicit->targetTime, $bare->targetTime);
+        $this->assertSame('thing', $bare->remainder);
+    }
+
+    public function test_bare_time_with_at_prefix_defaults_to_today(): void
+    {
+        $hour = (int) date('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'pm' : 'am';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        $explicit = \parseDuration("today {$displayHour}{$ampm} recycling");
+        $bare = \parseDuration("at {$displayHour}{$ampm} recycling");
+        $this->assertNotNull($explicit);
+        $this->assertNotNull($bare);
+        $this->assertSame($explicit->targetTime, $bare->targetTime);
+        $this->assertSame('recycling', $bare->remainder);
+    }
+
+    public function test_bare_time_uppercase_am_pm(): void
+    {
+        $hour = (int) date('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'PM' : 'AM';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        $explicit = \parseDuration("today " . strtolower($displayHour . $ampm) . " recycling");
+        $bare = \parseDuration("{$displayHour}{$ampm} recycling");
+        $this->assertNotNull($explicit);
+        $this->assertNotNull($bare);
+        $this->assertSame($explicit->targetTime, $bare->targetTime);
+        $this->assertSame('recycling', $bare->remainder);
+    }
+
+    public function test_bare_time_followed_by_today_returns_null(): void
+    {
+        $hour = (int) date('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'pm' : 'am';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        // "today" in the wrong spot should NOT silently target today with
+        // "today ..." as the message — bail so the user gets the error.
+        $result = \parseDuration("{$displayHour}{$ampm} today recycling");
+        $this->assertNull($result);
+    }
+
+    public function test_bare_time_followed_by_tomorrow_returns_null(): void
+    {
+        $hour = (int) date('G');
+        if ($hour + 2 >= 24) {
+            $this->markTestSkipped('test requires a future time today');
+        }
+        $testHour = $hour + 2;
+        $ampm = $testHour >= 12 ? 'pm' : 'am';
+        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
+
+        // "tomorrow" in the wrong spot should NOT silently target today with
+        // "tomorrow ..." as the message — bail so the user rephrases.
+        $result = \parseDuration("{$displayHour}{$ampm} tomorrow recycling");
+        $this->assertNull($result);
+    }
+
     // --- Date expressions: tomorrow ---
 
     public function test_tomorrow(): void
