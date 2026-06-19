@@ -70,16 +70,18 @@ class help extends script_base
 
     function showHelpPaste(string $chan, \Irc\Client $bot, string $content): void
     {
-        if (!isset($this->config['paste_host']) || !isset($this->config['paste_key'])) {
+        global $entityManager;
+        $paste = (new \lolbot\config\ServiceLocator($entityManager))->getServiceConfig('paste');
+        if (!$paste instanceof \lolbot\entities\PasteServiceConfig || $paste->host === null || $paste->key === null) {
             $bot->msg($chan, "help: paste service not configured");
             return;
         }
         try {
-            $url = \createPaste($content, "Bot Commands", $this->config['paste_host'], $this->config['paste_key']);
+            $url = \createPaste($content, "Bot Commands", $paste->host, $paste->key);
             $bot->msg($chan, "help: $url");
-    } catch (\Throwable $e) {
-        $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());
-    }
+        } catch (\Throwable $e) {
+            $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());
+        }
     }
 
     function showHelpDirect(string $chan, \Irc\Client $bot, string $lines): void
