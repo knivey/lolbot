@@ -4,6 +4,7 @@ namespace lolbot\config;
 use Doctrine\ORM\EntityManager;
 use lolbot\entities\Bot;
 use lolbot\entities\Channel;
+use lolbot\entities\Ignore;
 use lolbot\entities\Network;
 use lolbot\entities\Server;
 
@@ -152,5 +153,64 @@ class ConfigService
         $this->em->remove($server);
         $this->em->flush();
         $this->notifier->notify(new ConfigChange('server', $id, 'delete'));
+    }
+
+    // ---------------- Ignores ----------------
+
+    /**
+     * @param list<Network> $networks
+     */
+    public function addIgnore(string $hostmask, ?string $reason, array $networks): Ignore
+    {
+        $ignore = new Ignore();
+        $ignore->hostmask = $hostmask;
+        if ($reason !== null) {
+            $ignore->reason = $reason;
+        }
+        foreach ($networks as $network) {
+            if (!isset($network->id) || !$this->em->contains($network)) {
+                throw new NotFoundException("Network not found (id=" . (isset($network->id) ? $network->id : 'null') . ")");
+            }
+            $ignore->addToNetwork($network);
+        }
+        $this->em->persist($ignore);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('ignore', $ignore->id, 'create'));
+        return $ignore;
+    }
+
+    /**
+     * @param list<Network> $networks
+     */
+    public function addIgnoreNetworks(Ignore $ignore, array $networks): void
+    {
+        foreach ($networks as $network) {
+            if (!isset($network->id) || !$this->em->contains($network)) {
+                throw new NotFoundException("Network not found (id=" . (isset($network->id) ? $network->id : 'null') . ")");
+            }
+            $ignore->addToNetwork($network);
+        }
+        $this->em->persist($ignore);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('ignore', $ignore->id, 'update'));
+    }
+
+    public function getIgnore(int $id): ?Ignore
+    {
+        return $this->em->getRepository(Ignore::class)->find($id);
+    }
+
+    /** @return list<Ignore> */
+    public function listIgnores(): array
+    {
+        return $this->em->getRepository(Ignore::class)->findAll();
+    }
+
+    public function deleteIgnore(Ignore $ignore): void
+    {
+        $id = $ignore->id;
+        $this->em->remove($ignore);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('ignore', $id, 'delete'));
     }
 }
