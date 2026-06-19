@@ -28,23 +28,21 @@ class bot_add extends Command
 
     public function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        if($input->getOption("network") === null) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $netOpt = $input->getOption("network");
+        if (!is_string($netOpt)) {
             throw new \InvalidArgumentException("Must specify a network");
         }
-
-        $network = $entityManager->getRepository(Network::class)->find($input->getOption("network"));
-        if($network === null) {
+        $network = $svc->getNetwork((int)$netOpt);
+        if ($network === null) {
             throw new \InvalidArgumentException("Couldn't find that network ID");
         }
-
-        $bot = new Bot();
-        $bot->name = $input->getArgument("name");
-        $bot->network = $network;
-        $entityManager->persist($bot);
-        $entityManager->flush();
-
+        $name = $input->getArgument("name");
+        if (!is_string($name)) {
+            throw new \LogicException("'name' argument must be a string");
+        }
+        $svc->createBot($network, $name);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }

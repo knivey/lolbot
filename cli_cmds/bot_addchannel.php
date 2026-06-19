@@ -27,20 +27,21 @@ class bot_addchannel extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $bot = $entityManager->getRepository(Bot::class)->find($input->getArgument("bot"));
-        if(!$bot) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $idArg = $input->getArgument("bot");
+        if (!is_string($idArg)) {
+            throw new \LogicException("'bot' argument must be a string");
+        }
+        $bot = $svc->getBot((int)$idArg);
+        if (!$bot) {
             throw new \InvalidArgumentException("Bot ID not found");
         }
-
-        $channel = new Channel();
-        $channel->name = $input->getArgument("channel");
-        $bot->addChannel($channel);
-
-        $entityManager->persist($channel);
-        $entityManager->flush();
-
+        $name = $input->getArgument("channel");
+        if (!is_string($name)) {
+            throw new \LogicException("'channel' argument must be a string");
+        }
+        $svc->addChannel($bot, $name);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }

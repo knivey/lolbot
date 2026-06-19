@@ -19,11 +19,10 @@ class bot_list extends Command
 {
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $repo = $entityManager->getRepository(Bot::class);
-        $bots = $repo->findAll();
-        foreach ($bots as $bot) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        foreach ($svc->listBots() as $bot) {
             $output->writeln($bot);
         }
-        return  Command::SUCCESS;
+        return Command::SUCCESS;
     }
 }
