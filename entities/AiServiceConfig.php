@@ -13,22 +13,22 @@ class AiServiceConfig
     #[ORM\Column(updatable: false)]
     public int $id;
 
-    #[ORM\Column(length: 512, nullable: true)]
+    #[ORM\Column(name: 'api_key', length: 512, nullable: true)]
     public ?string $apiKey = null;
 
-    #[ORM\Column(nullable: true)]
+    #[ORM\Column(name: 'base_url', nullable: true)]
     public ?string $baseUrl = null;
 
-    #[ORM\Column]
+    #[ORM\Column(name: 'max_dim')]
     public int $maxDim = 1024;
 
-    #[ORM\Column]
+    #[ORM\Column(name: 'jpg_quality')]
     public int $jpgQuality = 85;
 
     #[ORM\Column]
     public int $timeout = 10;
 
-    #[ORM\Column(length: 32, nullable: true)]
+    #[ORM\Column(name: 'reasoning_effort', length: 32, nullable: true)]
     public ?string $reasoningEffort = null;
 
     /** @var array<string, mixed>|null */
