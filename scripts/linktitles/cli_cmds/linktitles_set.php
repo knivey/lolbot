@@ -21,7 +21,13 @@ class linktitles_set extends Command
 {
     /** @var array<string> */
     public array $settings = [
-        "ai_vision_disabled"
+        "ai_vision_disabled",
+        "enabled",
+        "url_log_chan",
+        "ai_vision_model",
+        "ai_vision_prompt",
+        "ai_vision_reasoning_effort",
+        "ai_vision_reasoning",
     ];
 
     protected function configure(): void
@@ -98,6 +104,12 @@ class linktitles_set extends Command
         $val = $input->getArgument("value");
         match ($input->getArgument("setting")) {
             "ai_vision_disabled" => $setting->ai_vision_disabled = filter_var($val, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? throw new \InvalidArgumentException("Value must be true or false"),
+            "enabled" => $setting->enabled = filter_var($val, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? throw new \InvalidArgumentException("Value must be true or false"),
+            "url_log_chan" => $setting->url_log_chan = is_string($val) ? $val : throw new \InvalidArgumentException("Value must be a string"),
+            "ai_vision_model" => $setting->ai_vision_model = is_string($val) ? $val : throw new \InvalidArgumentException("Value must be a string"),
+            "ai_vision_prompt" => $setting->ai_vision_prompt = is_string($val) ? $val : throw new \InvalidArgumentException("Value must be a string"),
+            "ai_vision_reasoning_effort" => $setting->ai_vision_reasoning_effort = is_string($val) ? $val : throw new \InvalidArgumentException("Value must be a string"),
+            "ai_vision_reasoning" => $setting->ai_vision_reasoning = self::parseReasoningJson($val),
         };
 
         $entityManager->persist($setting);
@@ -106,6 +118,35 @@ class linktitles_set extends Command
         $this->showSettings($input, $output, $setting, $network, $channel);
 
         return Command::SUCCESS;
+    }
+
+    private static function parseReasoningJson(mixed $val): array
+    {
+        if (!is_string($val)) {
+            throw new \InvalidArgumentException("Value must be valid JSON for an array");
+        }
+        $decoded = json_decode($val, true);
+        if (!is_array($decoded)) {
+            throw new \InvalidArgumentException("Value must be a valid JSON array/object");
+        }
+        return $decoded;
+    }
+
+    private static function fmtVal(mixed $v): string
+    {
+        if (is_bool($v)) {
+            return $v ? 'true' : 'false';
+        }
+        if (is_array($v)) {
+            return json_encode($v, JSON_UNESCAPED_SLASHES) ?: '';
+        }
+        if (is_string($v)) {
+            return $v;
+        }
+        if (is_int($v) || is_float($v)) {
+            return (string)$v;
+        }
+        return '';
     }
 
     private function showSettings(InputInterface $input, OutputInterface $output, ?linktitles_setting $setting, Network $network, ?Channel $channel): void
@@ -117,9 +158,9 @@ class linktitles_set extends Command
             $io->title("Linktitles settings (network:{$network->name} channel:{$channel->name})");
             $rows = [];
             foreach ($this->settings as $s) {
-                $val = $setting?->$s ?? ($s === 'ai_vision_disabled' ? 'false' : '');
+                $val = $setting?->$s ?? (in_array($s, ['ai_vision_disabled', 'enabled'], true) ? false : '');
                 $label = $setting !== null ? 'set' : 'inherited';
-                $rows[] = [$s, (is_bool($val) ? ($val ? 'true' : 'false') : (string)$val), $label];
+                $rows[] = [$s, self::fmtVal($val), $label];
             }
             $io->table(["Setting", "Value", "Source"], $rows);
             return;
@@ -128,8 +169,8 @@ class linktitles_set extends Command
         $io->title("Linktitles settings (network:{$network->name})");
         $rows = [];
         foreach ($this->settings as $s) {
-            $val = $setting?->$s ?? ($s === 'ai_vision_disabled' ? 'false' : '');
-            $rows[] = [$s, is_bool($val) ? ($val ? 'true' : 'false') : (string)$val];
+            $val = $setting?->$s ?? (in_array($s, ['ai_vision_disabled', 'enabled'], true) ? false : '');
+            $rows[] = [$s, self::fmtVal($val)];
         }
         $io->table(["Setting", "Value"], $rows);
 
@@ -154,10 +195,10 @@ class linktitles_set extends Command
                 foreach ($this->settings as $s) {
                     if ($cs !== null) {
                         $v = $cs->$s;
-                        $rows[] = (is_bool($v) ? ($v ? 'true' : 'false') : (string)$v) . ' (set)';
+                        $rows[] = self::fmtVal($v) . ' (set)';
                     } else {
-                        $v = $s === 'ai_vision_disabled' ? $networkVal : false;
-                        $rows[] = (is_bool($v) ? ($v ? 'true' : 'false') : (string)$v) . ' (inherited)';
+                        $v = in_array($s, ['ai_vision_disabled', 'enabled'], true) ? ($s === 'ai_vision_disabled' ? $networkVal : false) : '';
+                        $rows[] = self::fmtVal($v) . ' (inherited)';
                     }
                 }
                 $channelRows[] = $rows;
