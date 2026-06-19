@@ -119,7 +119,7 @@ reasoning override) in its script table.
 | `scripts/linktitles/cli_cmds/linktitles_set.php` | **Edited.** `settings` list gains `enabled`, `url_log_chan`, `ai_vision_model`, `ai_vision_prompt`, `ai_vision_reasoning_effort`, `ai_vision_reasoning` (with `inherit`/reset to fall back to the next resolution layer — AI service default for reasoning, code constant for model/prompt). |
 | `admin-cli.php` | **Edited.** Register the new commands. Doctrine migration commands unchanged (still direct EM). |
 | `lolbot.php` | **Edited.** `main()`/`startBot()` build per-bot config via `SettingsResolver` instead of `$config['bots'][$id]`; `:295` (linktitles enable) reads `linktitles_setting.enabled`. Notifier setup (`:379-382`) is **not** touched here (deferred to Sub-project 2). |
-| `artbots.php` | **Edited.** Same resolver treatment (its `artbotsconfig.yaml` has a `bots:` block too — see `migrate_artconfig.php:87`). |
+| `artbots.php` | **Not changed (this sub-project).** The art bot uses a separate config model — `artbotsconfig.yaml`'s `networks:[]` array consumed via `NetworkContext` (per-network `route`/`trigger`/`channels`/`onconnect`), not `$config['bots'][$id]`. It does bootstrap Doctrine, so its `artbot_scripts/help.php` paste read migrates with the others (see next row). Migrating the art bot's own config model is a separate future concern. |
 | `scripts/linktitles/linktitles.php` | **Edited.** AI read from `ServiceLocator->getServiceConfig('ai')` (`:235-286`); model/prompt from linktitles settings (`:273-274`); reasoning as linktitles-override ?? AI-service-default (`:277-286`). |
 | `scripts/help/help.php`, `artbot_scripts/help.php`, `scripts/alias/alias.php` | **Edited.** Read paste host/key from `ServiceLocator->getServiceConfig('paste')` (`help.php:73,78`, `alias.php:126,129`). |
 | `library/paste.php` | **Unchanged.** `createPaste($content, $title, $host, $key)` signature stays; callers fetch host/key from the service. |
@@ -205,8 +205,9 @@ default implementation is a no-op; Sub-project 2 supplies the push.
 
 ### Bot reads & consumer updates
 
-- `lolbot.php` and `artbots.php` build a per-bot config via `SettingsResolver` instead of reading
+- `lolbot.php` builds a per-bot config via `SettingsResolver` instead of reading
   `$config['bots'][$id]`. `lolbot.php:295` reads linktitles enable from `linktitles_setting.enabled`.
+  (The art bot uses a separate `networks:[]` config model and is not touched here.)
 - `scripts/linktitles/linktitles.php` reads AI from the AI service via `ServiceLocator`, its own
   model/prompt/logchan/enabled from `linktitles_setting`, and reasoning as override ?? service
   default.
@@ -270,4 +271,6 @@ PHPUnit (SQLite, per repo convention — crypto's tests are the template):
   into service configs — mechanical, reuses this framework.
 - Migrating `codesand`/`youtube` script settings into their own typed tables — mechanical, reuses the
   `linktitles_setting` pattern.
+- The art bot's own config model (`artbotsconfig.yaml` `networks:[]` / `NetworkContext`) — separate
+  concern from the channel bot's `bots:` config addressed here.
 - Named service instances (e.g. two AI providers per scope) — deferred (YAGNI).
