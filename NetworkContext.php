@@ -126,6 +126,26 @@ class NetworkContext
         return null;
     }
 
+    /**
+     * Compute single-bot pump delay (in seconds) for \Amp\delay().
+     *
+     * The --speed flag is documented as "milliseconds between lines" (20..500),
+     * while pumplag config is in seconds. Previously the speed value was passed
+     * straight into \Amp\delay() as seconds, freezing the bot for minutes.
+     *
+     * @param mixed $pumpLagConfig configured pumplag in seconds (default 0.025s when unset/non-numeric)
+     * @param string|null $speedMs --speed flag value in milliseconds
+     * @return float delay in seconds, suitable for \Amp\delay()
+     */
+    public static function pumpLagSeconds(mixed $pumpLagConfig, ?string $speedMs): float
+    {
+        $pumpLag = is_numeric($pumpLagConfig) ? (float)$pumpLagConfig : 0.025;
+        if (is_numeric($speedMs) && (float)$speedMs > 0) {
+            $pumpLag = max($pumpLag, (float)$speedMs / 1000);
+        }
+        return $pumpLag;
+    }
+
     /** @return Future<void> */
     public function startPump(string $chan, ?string $speed = null): Future
     {
@@ -144,10 +164,7 @@ class NetworkContext
                 $bot = $this->clients[0];
                 while (!empty($this->playing[$chan])) {
                     $bot->pm($chan, irctools\fixColors(array_shift($this->playing[$chan])));
-                    $pumpLag = $this->config['pumplag'] ?? 0.025;
-                    if ($speed)
-                        $pumpLag = max($pumpLag, $speed);
-                    \Amp\delay($pumpLag);
+                    \Amp\delay(self::pumpLagSeconds($this->config['pumplag'] ?? null, $speed));
                 }
                 unset($this->playing[$chan]);
                 return;
