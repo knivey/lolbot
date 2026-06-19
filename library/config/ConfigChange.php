@@ -10,5 +10,7 @@ final class ConfigChange
         public readonly string $entityType,
         public readonly ?int $id,
         public readonly string $action, // create | update | delete
+        /** @var array<string, mixed>|null */
+        public readonly ?array $data = null,
     ) {}
 }
