@@ -37,7 +37,7 @@ class ignore_list extends Command
             }
             $ignores = $network->getIgnores()->toArray();
         }
-        if ($input->getOption("orphaned") !== null) {
+        if ($input->getOption("orphaned")) {
             $ignores = array_filter($ignores, fn ($i) => count($i->getNetworks()) == 0);
         }
         $this->print_ignores($ignores, $output);
@@ -49,7 +49,7 @@ class ignore_list extends Command
      */
     function print_ignores($ignores, OutputInterface $output): void {
         foreach ($ignores as $ignore) {
-            $output->writeln($ignore);
+            $output->writeln((string)$ignore);
         }
     }
 }
