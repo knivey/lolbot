@@ -56,7 +56,8 @@
             "draw\\": "library/draw",
             "lolbot\\entities\\": "entities",
             "lolbot\\cli_cmds\\": "cli_cmds",
-            "lolbot\\config\\": "library/config"
+            "lolbot\\config\\": "library/config",
+            "library\\": "library"
         },
         "files": [
             "library/Irc/Consts.php"
