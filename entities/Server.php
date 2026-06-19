@@ -26,7 +26,7 @@ class Server
     #[ORM\Column]
     public bool $throttle = true;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     public ?string $password = null;
 
     #[ORM\ManyToOne(targetEntity: Network::class, inversedBy: "servers")]
