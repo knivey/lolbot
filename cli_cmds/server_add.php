@@ -29,39 +29,35 @@ class server_add extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $network = $entityManager->getRepository(Network::class)->find($input->getArgument("network"));
-        if(!$network) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $networkId = $input->getArgument("network");
+        if (!is_string($networkId)) {
+            throw new \LogicException("'network' argument must be a string");
+        }
+        $network = $svc->getNetwork((int)$networkId);
+        if (!$network) {
             throw new \InvalidArgumentException("Network ID not found");
         }
 
-        $server = new Server();
-        $server->address = $input->getArgument("address");
-        $server->setNetwork($network);
-
-        if($port = $input->getOption("port")) {
-            if((int)$port <= 0 || $port > 65536) {
-                throw new \InvalidArgumentException("Invalid port");
-            }
-            $server->port = (int)$port;
+        $address = $input->getArgument("address");
+        if (!is_string($address)) {
+            throw new \LogicException("'address' argument must be a string");
         }
+        $portOpt = $input->getOption("port");
+        $port = is_string($portOpt) ? (int)$portOpt : null;
 
-        if($input->getOption("ssl")) {
-            $server->ssl = true;
-        }
+        $passwordOpt = $input->getOption("password");
 
-        if($input->getOption("no-throttle")) {
-            $server->throttle = false;
-        }
-
-        if($input->getOption("password")) {
-            $server->password = $input->getOption("password");
-        }
-
-        $entityManager->persist($server);
-        $entityManager->flush();
+        $svc->addServer(
+            $network,
+            $address,
+            $port,
+            (bool)$input->getOption("ssl"),
+            !(bool)$input->getOption("no-throttle"),
+            is_string($passwordOpt) ? $passwordOpt : null,
+        );
 
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }
