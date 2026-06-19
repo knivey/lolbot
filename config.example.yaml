@@ -2,8 +2,6 @@
 #per bot config items
 bots:
   2: #bot id from database
-    # Should the bot fetch urls and display the title of the page
-    linktitles: true
     # Uncomment to start the notification listen server
     # Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
     # echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
@@ -16,12 +14,16 @@ bots:
     codesand_maxlines: 30
     #pump_host
     #pump_key
-    url_log_chan: "#urls"
     #youtube_pump_host:
     #youtube_pump_key:
     # If the bot should use p2u to send a thumbnail to channel
     #youtube_thumb: true
     #youtube_thumbwidth: 60
+    # NOTE: the items above (listen, codesand, pump_*, youtube_*) are transitional and
+    # still read from config.yaml; they will move to the DB in follow-up work.
+    # Per-bot linktitles enable and url_log_chan now live in the DB:
+    #   php admin-cli.php linktitles:set --network <id> enabled true
+    #   php admin-cli.php linktitles:set --network <id> url_log_chan '#urls'
 
 
 #configure the database (follows doctrine config)
@@ -109,9 +111,9 @@ youtube_download_shorts: false
 # file sharing service for yoda script
 filehole: "https://jonesfilesandfootmassage.com"
 
-# Paste service for help listings and long output
-#paste_host: "http://localhost:8080"
-#paste_key: "your_api_key"
+# Paste service for help listings and long output (now in the DB):
+#   php admin-cli.php service:set paste host 'http://localhost:8080'
+#   php admin-cli.php service:set paste key '...'
 
 # SOCKS5 proxy for generic link title fetching (optional, only affects URLs not handled by special handlers)
 #linktitles_proxy: "127.0.0.1:1080"
@@ -128,18 +130,9 @@ filehole: "https://jonesfilesandfootmassage.com"
 # Cache TTL in seconds for link titles (default 900 = 15 minutes)
 #linktitles_cache_ttl: 900
 
-# AI vision settings for image URL descriptions (requires knivey/amphp-openai)
-#ai_vision_key: "sk-..."
-#ai_vision_base_url: "https://api.openai.com/v1"
-#ai_vision_model: "gpt-4o"
-#ai_vision_max_dim: 1024
-#ai_vision_jpg_quality: 85
-#ai_vision_timeout: 10
-#ai_vision_reasoning_effort: "low"
-# Full reasoning config (for OpenRouter support). Overrides ai_vision_reasoning_effort if both set.
-#ai_vision_reasoning:
-#  effort: "low"
-#  max_tokens: 8192
-#  exclude: false
-#  enabled: true
-#ai_vision_prompt: 'very short summary on one line. dont describe the format e.g. "the image", "the chart", "a meme", just the subject/content/data. dont add unnecessary moral judgments like "outdated", "controversial", "offensive", "antisemitic". keep it short!'
+# AI vision settings for image URL descriptions (requires knivey/amphp-openai).
+# AI vision service config now lives in the DB:
+#   php admin-cli.php service:set ai apiKey 'sk-...'
+#   php admin-cli.php service:set ai baseUrl 'https://api.openai.com/v1'
+# Per-network/channel linktitles overrides (model, prompt, reasoning, enabled, url_log_chan):
+#   php admin-cli.php linktitles:set --network <id> ...
