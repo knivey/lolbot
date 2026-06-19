@@ -386,4 +386,16 @@ class ConfigService
             $this->notifier->notify(new ConfigChange('linktitles_setting', $setting->id, 'update'));
         }
     }
+
+    /**
+     * Generic persistence + notify for the *:set commands, which assign a
+     * whitelisted property on an already-managed entity then call this.
+     */
+    public function update(object $entity, string $type): void
+    {
+        $this->em->persist($entity);
+        $this->em->flush();
+        $id = property_exists($entity, 'id') ? ($entity->id ?? null) : null;
+        $this->notifier->notify(new ConfigChange($type, $id, 'update'));
+    }
 }
