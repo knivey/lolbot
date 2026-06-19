@@ -103,6 +103,14 @@ class tell extends script_base {
                "U pester me to pester $nick? Ok I will",
                "I accept this burden of pestering $nick",
            ],
+           "default" => [
+               "I have no idea what '$action' means but I'll pass it along to $nick anyway",
+               "'$action'? sure, whatever, I'll let $nick know",
+               "I don't speak '$action' but the message to $nick is saved",
+               "Not sure what '$action' is but $nick will hear about it",
+               "Weird flex with '$action' but ok, $nick will be notified",
+               "I'll '$action' the hell outta $nick about that, whatever that means",
+           ],
         ];
 
         switch (strtolower($action)) {
@@ -115,7 +123,7 @@ class tell extends script_base {
         case "pester":
             return $messages['pester'][array_rand($messages['pester'])];
         default:
-            return "uhhh";
+            return $messages['default'][array_rand($messages['default'])];
         }
     }
 
