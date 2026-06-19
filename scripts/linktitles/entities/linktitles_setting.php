@@ -26,6 +26,25 @@ class linktitles_setting
     #[ORM\Column]
     public bool $ai_vision_disabled = false;
 
+    #[ORM\Column]
+    public bool $enabled = false;
+
+    #[ORM\Column(nullable: true)]
+    public ?string $url_log_chan = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    public ?string $ai_vision_model = null;
+
+    #[ORM\Column(type: "text", nullable: true)]
+    public ?string $ai_vision_prompt = null;
+
+    #[ORM\Column(length: 32, nullable: true)]
+    public ?string $ai_vision_reasoning_effort = null;
+
+    /** @var array<string, mixed>|null */
+    #[ORM\Column(type: "json", nullable: true)]
+    public ?array $ai_vision_reasoning = null;
+
     public function __toString(): string
     {
         $scope = $this->channel ? "channel:{$this->channel->name}" : "network:{$this->network?->name}";
