@@ -3,8 +3,8 @@ namespace Tests\Config;
 
 use lolbot\config\ConfigService;
 use lolbot\config\DuplicateNameException;
+use lolbot\config\InvalidSettingException;
 use lolbot\config\NotFoundException;
-use lolbot\entities\Channel;
 use lolbot\entities\Network;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
@@ -23,7 +23,7 @@ class ConfigServiceCoreTest extends ConfigTestCase
     {
         $n = $this->svc->createNetwork('Libera');
         $this->assertSame('Libera', $n->name);
-        $this->assertNotNull($n->id);
+        $this->assertGreaterThan(0, $n->id);
 
         $this->expectException(DuplicateNameException::class);
         $this->svc->createNetwork('Libera');
@@ -33,7 +33,9 @@ class ConfigServiceCoreTest extends ConfigTestCase
     {
         $n = $this->svc->createNetwork('EFnet');
         $id = $n->id;
-        $this->assertSame('EFnet', $this->svc->getNetwork($id)->name);
+        $fetched = $this->svc->getNetwork($id);
+        $this->assertNotNull($fetched);
+        $this->assertSame('EFnet', $fetched->name);
 
         $this->svc->deleteNetwork($n);
         $this->assertNull($this->svc->getNetwork($id));
@@ -75,5 +77,12 @@ class ConfigServiceCoreTest extends ConfigTestCase
         $srvId = $srv->id;
         $this->svc->deleteServer($srv);
         $this->assertNull($this->svc->getServer($srvId));
+    }
+
+    public function test_add_server_rejects_invalid_port(): void
+    {
+        $net = $this->svc->createNetwork('N');
+        $this->expectException(InvalidSettingException::class);
+        $this->svc->addServer($net, 'irc.example.net', 65536);
     }
 }

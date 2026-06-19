@@ -125,7 +125,7 @@ class ConfigService
         $server->address = $address;
         $server->setNetwork($network);
         if ($port !== null) {
-            if ($port <= 0 || $port > 65536) {
+            if ($port <= 0 || $port > 65535) {
                 throw new InvalidSettingException("Invalid port");
             }
             $server->port = $port;
