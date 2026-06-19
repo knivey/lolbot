@@ -110,9 +110,14 @@ class ConfigService
     public function deleteChannel(Channel $channel): void
     {
         $id = $channel->id;
+        $botId = isset($channel->bot) ? ($channel->bot->id ?? null) : null;
+        $chanName = $channel->name;
         $this->em->remove($channel);
         $this->em->flush();
-        $this->notifier->notify(new ConfigChange('channel', $id, 'delete'));
+        $this->notifier->notify(new ConfigChange('channel', $id, 'delete', [
+            'botId' => $botId,
+            'chan' => $chanName,
+        ]));
     }
 
     // ---------------- Servers ----------------
@@ -397,5 +402,37 @@ class ConfigService
         $this->em->flush();
         $id = property_exists($entity, 'id') ? ($entity->id ?? null) : null;
         $this->notifier->notify(new ConfigChange($type, $id, 'update'));
+    }
+
+    /**
+     * Remove the whole linktitles_setting row for a scope (the reset/inherit
+     * semantics of `linktitles:set`). No-op if no row exists. Fires notify.
+     */
+    public function deleteLinktitlesSettingScope(Network $network, ?Channel $channel): void
+    {
+        $repo = $this->em->getRepository(linktitles_setting::class);
+        $setting = $repo->findOneBy([
+            'network' => $channel !== null ? null : $network,
+            'channel' => $channel,
+        ]);
+        if ($setting === null) {
+            return;
+        }
+        $id = $setting->id;
+        $this->em->remove($setting);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('linktitles_setting', $id, 'delete'));
+    }
+
+    /**
+     * Persist a linktitles_setting that the caller already populated, and fire
+     * notify. Used by linktitles:set so its mutations participate in live-sync.
+     */
+    public function saveLinktitlesSetting(linktitles_setting $setting): linktitles_setting
+    {
+        $this->em->persist($setting);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('linktitles_setting', $setting->id, 'update'));
+        return $setting;
     }
 }
