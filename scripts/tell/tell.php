@@ -32,9 +32,9 @@ class tell extends script_base {
             return;
         }
 
-        //TODO fix this to use the bots actual set trigger
-        $action = explode(" ", $args->text)[0];
-        $action = str_replace(".", "", $action);
+        $firstWord = explode(" ", $args->text)[0];
+        $trig = $this->triggerPrefix($args);
+        $action = ($trig !== '' && str_starts_with($firstWord, $trig)) ? substr($firstWord, strlen($trig)) : $firstWord;
 
         $this->addMsg($cmdArgs['nick'], $args->text, $args->nick, $args->chan, true);
         $bot->pm($args->chan, $this->actionMsg($action, $cmdArgs['nick']));
@@ -56,9 +56,9 @@ class tell extends script_base {
                 return;
             }
 
-            //TODO fix this to use the bots actual set trigger
-            $action = explode(" ", $args->text)[0];
-            $action = str_replace(".", "", $action);
+            $firstWord = explode(" ", $args->text)[0];
+            $trig = $this->triggerPrefix($args);
+            $action = ($trig !== '' && str_starts_with($firstWord, $trig)) ? substr($firstWord, strlen($trig)) : $firstWord;
 
             $this->addMsg($cmdArgs['nick'], $args->text, $args->nick, $args->chan);
             $bot->pm($args->chan, $this->actionMsg($action, $cmdArgs['nick']));
