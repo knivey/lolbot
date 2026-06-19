@@ -11,6 +11,10 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Socket\Socks5SocketConnector;
 use Doctrine\Common\Collections\Criteria;
+use lolbot\config\ServiceLocator;
+use lolbot\config\SettingsResolver;
+use lolbot\entities\AiServiceConfig;
+use lolbot\entities\Channel;
 use lolbot\entities\Network;
 use scripts\linktitles\entities\hostignore;
 use scripts\linktitles\entities\ignore_type;
@@ -49,10 +53,12 @@ class linktitles extends script_base
      */
     function logUrl(\Irc\Client $bot, string $nick, string $chan, string $line, string|array $title): void
     {
-        global $config;
-        if (!isset($config['bots'][$this->bot->id]['url_log_chan']))
+        global $entityManager;
+        $resolver = new SettingsResolver($entityManager);
+        $logChan = $resolver->urlLogChan($this->network, null);
+        if ($logChan === null) {
             return;
-        $logChan = $config['bots'][$this->bot->id]['url_log_chan'];
+        }
         static $max = 0;
         $max = max(strlen($chan), $max);
         $chan = str_pad($chan, $max);
@@ -197,18 +203,22 @@ class linktitles extends script_base
     }
 
 
+    private function channelEntityForChan(string $chan): ?Channel
+    {
+        foreach ($this->bot->getChannels() as $ch) {
+            if (strtolower($ch->name) === strtolower($chan)) {
+                return $ch;
+            }
+        }
+        return null;
+    }
+
     private function isAiVisionDisabled(string $chan): bool
     {
         global $entityManager;
         $repo = $entityManager->getRepository(entities\linktitles_setting::class);
 
-        $channelEntity = null;
-        foreach ($this->bot->getChannels() as $ch) {
-            if (strtolower($ch->name) === strtolower($chan)) {
-                $channelEntity = $ch;
-                break;
-            }
-        }
+        $channelEntity = $this->channelEntityForChan($chan);
 
         if ($channelEntity !== null) {
             $setting = $repo->findOneBy(['channel' => $channelEntity]);
@@ -228,17 +238,20 @@ class linktitles extends script_base
         return false;
     }
 
-    private function getAiDescription(string $body, string $url, string &$profile = '', float $dlMs = 0.0): ?string
+    private function getAiDescription(string $body, string $url, string $chan, string &$profile = '', float $dlMs = 0.0): ?string
     {
-        global $config;
+        global $entityManager;
 
-        if (!isset($config['ai_vision_key'])) {
+        $ai = (new ServiceLocator($entityManager))->getServiceConfig('ai');
+        if (!$ai instanceof AiServiceConfig || $ai->apiKey === null || $ai->apiKey === '') {
             return null;
         }
 
+        $setting = (new SettingsResolver($entityManager))->getLinktitlesSetting($this->network, $this->channelEntityForChan($chan));
+
         try {
-            $maxDim = (int)($config['ai_vision_max_dim'] ?? 1024);
-            $quality = (int)($config['ai_vision_jpg_quality'] ?? 85);
+            $maxDim = $ai->maxDim;
+            $quality = $ai->jpgQuality;
 
             $resizeStart = hrtime(true);
             $img = new \Imagick();
@@ -262,28 +275,37 @@ class linktitles extends script_base
 
             $aiStart = hrtime(true);
             $ampClient = HttpClientBuilder::buildDefault();
-            $timeout = (int)($config['ai_vision_timeout'] ?? 10);
-            $openAiHttp = new OpenAiHttpClient($config['ai_vision_key'], $ampClient, new TimeoutCancellation($timeout));
+            $timeout = $ai->timeout;
+            $openAiHttp = new OpenAiHttpClient($ai->apiKey, $ampClient, new TimeoutCancellation($timeout));
             $aiClient = new OpenAiClient(
-                apiKey: $config['ai_vision_key'],
-                baseUrl: $config['ai_vision_base_url'] ?? 'https://api.openai.com/v1',
+                apiKey: $ai->apiKey,
+                baseUrl: $ai->baseUrl ?? 'https://api.openai.com/v1',
                 httpClient: $openAiHttp,
             );
 
-            $prompt = $config['ai_vision_prompt'] ?? self::defaultVisionPrompt;
-            $model = $config['ai_vision_model'] ?? 'gpt-4o';
+            $prompt = self::defaultVisionPrompt;
+            $model = 'gpt-4o';
+            $reasoningConfig = $ai->reasoning;
+            $reasoningEffort = $ai->reasoningEffort;
+            if ($setting !== null) {
+                $prompt = $setting->ai_vision_prompt ?? self::defaultVisionPrompt;
+                $model = $setting->ai_vision_model ?? 'gpt-4o';
+                $reasoningConfig = $setting->ai_vision_reasoning ?? $ai->reasoning;
+                $reasoningEffort = $setting->ai_vision_reasoning_effort ?? $ai->reasoningEffort;
+            }
 
             $reasoning = null;
-            $reasoningConfig = $config['ai_vision_reasoning'] ?? null;
             if ($reasoningConfig !== null) {
+                $effortVal = $reasoningConfig['effort'] ?? null;
+                $maxTokensVal = $reasoningConfig['max_tokens'] ?? null;
                 $reasoning = new Reasoning(
-                    effort: $reasoningConfig['effort'] ?? null,
-                    maxTokens: isset($reasoningConfig['max_tokens']) ? (int)$reasoningConfig['max_tokens'] : null,
+                    effort: is_string($effortVal) ? $effortVal : null,
+                    maxTokens: is_int($maxTokensVal) ? $maxTokensVal : null,
                     exclude: isset($reasoningConfig['exclude']) ? (bool)$reasoningConfig['exclude'] : null,
                     enabled: isset($reasoningConfig['enabled']) ? (bool)$reasoningConfig['enabled'] : null,
                 );
-            } elseif (isset($config['ai_vision_reasoning_effort'])) {
-                $reasoning = Reasoning::effort($config['ai_vision_reasoning_effort']);
+            } elseif ($reasoningEffort !== null) {
+                $reasoning = Reasoning::effort($reasoningEffort);
             }
 
             $response = $aiClient->chatCompletion(new ChatRequest(
@@ -336,7 +358,7 @@ class linktitles extends script_base
         }
         $cacheKey = $url ?: $chan;
         $profile = $dlProfile;
-        $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $profile, $dlMs));
+        $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $chan, $profile, $dlMs));
         $this->logger->info("linktitles profile [$url] [image] $profile");
         if ($aiDesc !== null) {
             $out = "$m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc";
