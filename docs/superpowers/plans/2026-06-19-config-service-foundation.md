@@ -2031,3 +2031,26 @@ git commit -m "feat(cli): add config:import to backfill config.yaml values into 
 - `AiServiceConfig`, `PasteServiceConfig`, and the expanded `linktitles_setting` are persisted by Doctrine.
 
 Next: **Plan 1B — Wiring** (`admin-cli` existing commands onto `ConfigService`; migrate the `linktitles` AI consumer and `help`/`alias` paste consumers; `lolbot.php` reads via `SettingsResolver`; `config.yaml` cleanup).
+
+---
+
+## Implementation notes (deviations made during execution)
+
+These were necessary, verified departures from the literal task text above, applied while executing the plan under PHPStan level 9 and real-DB smoke tests:
+
+1. **`NoopChangeNotifier` lives in its own file** (`library/config/NoopChangeNotifier.php`), NOT co-located in `ChangeNotifier.php`. The original Task 5 text co-located them, but that violates PSR-4 (Composer cannot autoload a second class from one file). No `classmap` was added; the repo stays pure PSR-4, one class per file.
+
+2. **`AiServiceConfig` camelCase properties are explicitly mapped to snake_case columns** via `#[ORM\Column(name: 'api_key', …)]` (and `base_url`, `max_dim`, `jpg_quality`, `reasoning_effort`). The migration created snake_case columns while the entity properties are camelCase; without explicit `name:` Doctrine's `DefaultNamingStrategy` expected camelCase columns and real-DB queries failed with `no such column: t0.apiKey`. (The metadata-based test harness masked this — end-to-end CLI smoke tests caught it.) `PasteServiceConfig` was unaffected (`host`/`key` are single words).
+
+3. **Port validation bound corrected** in `ConfigService::addServer()`: `> 65536` → `> 65535` (the plan's value, copied from the legacy `server_add.php`, allowed the invalid port 65536). Plus an invalid-port test and a `CapturingNotifier` seam test were added.
+
+4. **`Bot.php` annotation fix:** `trigger`, `trigger_re`, `sasl_user`, `sasl_pass` changed from `#[ORM\Column]` to `#[ORM\Column(nullable: true)]` to match the real migrations (`setNotnull(false)`) and their `?string` PHP types. Latent bug surfaced by the test harness.
+
+5. **`ConfigService::createBot` / ignore methods** use `isset($entity->id)` (not `=== null`) and `$this->em->contains($network)` for the ignore network guard, because entity `id` properties are typed `int` (uninitialized before persist) and `detach()`ed entities still have DB rows that `find()` would re-return.
+
+6. **`SettingsResolver` accessors** use PHPStan-clean forms (`$setting !== null && $setting->enabled`; bare `?->url_log_chan`) instead of `$x?->prop ?? $default`, which trips PHPStan's `nullsafe.neverNull` rule. Semantically identical.
+
+7. **Dynamic property writes** (`$row->$key = $value`) in `ConfigService` settings setters were refactored to typed `match` dispatch + a `normalizeStringKeyedArray` helper to satisfy PHPStan level 9 with a `mixed $value` API (and add runtime type validation). Behavior unchanged.
+
+8. **`ConfigService::update(object, string)`** helper was added with Task 1B (Wiring) in mind (the `*:set` commands use it) — not present at the end of Plan 1A; it arrives in Plan 1B Task 1.
+
