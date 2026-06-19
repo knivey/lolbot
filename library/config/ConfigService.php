@@ -2,11 +2,14 @@
 namespace lolbot\config;
 
 use Doctrine\ORM\EntityManager;
+use lolbot\entities\AiServiceConfig;
 use lolbot\entities\Bot;
 use lolbot\entities\Channel;
 use lolbot\entities\Ignore;
 use lolbot\entities\Network;
+use lolbot\entities\PasteServiceConfig;
 use lolbot\entities\Server;
+use scripts\linktitles\entities\linktitles_setting;
 
 /**
  * Owns all configuration mutations and validation. The DB is the source of truth.
@@ -212,5 +215,175 @@ class ConfigService
         $this->em->remove($ignore);
         $this->em->flush();
         $this->notifier->notify(new ConfigChange('ignore', $id, 'delete'));
+    }
+
+    // ---------------- Service config (global singletons) ----------------
+
+    /** Known writable keys per service type (entity property names). */
+    private const SERVICE_KEYS = [
+        'ai' => ['apiKey', 'baseUrl', 'maxDim', 'jpgQuality', 'timeout', 'reasoningEffort', 'reasoning'],
+        'paste' => ['host', 'key'],
+    ];
+
+    public function setServiceConfigValue(string $type, string $key, mixed $value): void
+    {
+        $class = (new ServiceLocator($this->em))->entityClassFor($type);
+        if ($class === null) {
+            throw new InvalidSettingException("Unknown service type: $type");
+        }
+        if (!in_array($key, self::SERVICE_KEYS[$type] ?? [], true)) {
+            throw new InvalidSettingException("Unknown setting '$key' for service '$type'");
+        }
+        $entity = $this->findOrCreateServiceEntity($type);
+        $this->applyServiceValue($entity, $key, $value);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('service:' . $type, $entity->id, 'update'));
+    }
+
+    /** Returns the singleton row, creating it if none exists yet. */
+    private function findOrCreateServiceEntity(string $type): AiServiceConfig|PasteServiceConfig
+    {
+        if ($type === 'ai') {
+            $existing = $this->em->getRepository(AiServiceConfig::class)->findAll()[0] ?? null;
+            if ($existing !== null) {
+                return $existing;
+            }
+            $new = new AiServiceConfig();
+            $this->em->persist($new);
+            return $new;
+        }
+        $existing = $this->em->getRepository(PasteServiceConfig::class)->findAll()[0] ?? null;
+        if ($existing !== null) {
+            return $existing;
+        }
+        $new = new PasteServiceConfig();
+        $this->em->persist($new);
+        return $new;
+    }
+
+    /** Validates the value's type and writes it to the matching typed property. */
+    private function applyServiceValue(AiServiceConfig|PasteServiceConfig $entity, string $key, mixed $value): void
+    {
+        if ($entity instanceof AiServiceConfig) {
+            match ($key) {
+                'apiKey' => $entity->apiKey = is_string($value) || $value === null ? $value : throw new InvalidSettingException("apiKey must be a string or null"),
+                'baseUrl' => $entity->baseUrl = is_string($value) || $value === null ? $value : throw new InvalidSettingException("baseUrl must be a string or null"),
+                'maxDim' => $entity->maxDim = is_int($value) ? $value : throw new InvalidSettingException("maxDim must be an int"),
+                'jpgQuality' => $entity->jpgQuality = is_int($value) ? $value : throw new InvalidSettingException("jpgQuality must be an int"),
+                'timeout' => $entity->timeout = is_int($value) ? $value : throw new InvalidSettingException("timeout must be an int"),
+                'reasoningEffort' => $entity->reasoningEffort = is_string($value) || $value === null ? $value : throw new InvalidSettingException("reasoningEffort must be a string or null"),
+                'reasoning' => $entity->reasoning = $this->normalizeStringKeyedArray($value, 'reasoning'),
+                default => throw new \LogicException('unreachable: whitelist mismatch'),
+            };
+            return;
+        }
+        match ($key) {
+            'host' => $entity->host = is_string($value) || $value === null ? $value : throw new InvalidSettingException("host must be a string or null"),
+            'key' => $entity->key = is_string($value) || $value === null ? $value : throw new InvalidSettingException("key must be a string or null"),
+            default => throw new \LogicException('unreachable: whitelist mismatch'),
+        };
+    }
+
+    /**
+     * Validates that $value is null or an array keyed by strings, returning a
+     * provably string-keyed array (so it satisfies array<string, mixed> properties).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function normalizeStringKeyedArray(mixed $value, string $field): ?array
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (!is_array($value)) {
+            throw new InvalidSettingException("$field must be an array or null");
+        }
+        $out = [];
+        foreach ($value as $k => $v) {
+            if (!is_string($k)) {
+                throw new InvalidSettingException("$field must be keyed by strings");
+            }
+            $out[$k] = $v;
+        }
+        return $out;
+    }
+
+    // ---------------- Script settings (linktitles) ----------------
+
+    /** Writable linktitles_setting keys (property names). */
+    private const LINKTITLES_KEYS = [
+        'enabled', 'url_log_chan', 'ai_vision_disabled',
+        'ai_vision_model', 'ai_vision_prompt',
+        'ai_vision_reasoning_effort', 'ai_vision_reasoning',
+    ];
+
+    private function findOrCreateLinktitlesSetting(Network $network, ?Channel $channel): linktitles_setting
+    {
+        $repo = $this->em->getRepository(linktitles_setting::class);
+        $setting = $repo->findOneBy([
+            'network' => $channel !== null ? null : $network,
+            'channel' => $channel,
+        ]);
+        if ($setting === null) {
+            $setting = new linktitles_setting();
+            $setting->network = $channel !== null ? null : $network;
+            $setting->channel = $channel;
+            $this->em->persist($setting);
+        }
+        return $setting;
+    }
+
+    public function setLinktitlesSetting(Network $network, ?Channel $channel, string $key, mixed $value): linktitles_setting
+    {
+        if (!in_array($key, self::LINKTITLES_KEYS, true)) {
+            throw new InvalidSettingException("Unknown linktitles setting: $key");
+        }
+        $setting = $this->findOrCreateLinktitlesSetting($network, $channel);
+        $this->applyLinktitlesValue($setting, $key, $value);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('linktitles_setting', $setting->id, 'update'));
+        return $setting;
+    }
+
+    /** Validates the value's type and writes it to the matching typed property. */
+    private function applyLinktitlesValue(linktitles_setting $setting, string $key, mixed $value): void
+    {
+        match ($key) {
+            'enabled' => $setting->enabled = is_bool($value) ? $value : throw new InvalidSettingException("enabled must be a bool"),
+            'url_log_chan' => $setting->url_log_chan = is_string($value) || $value === null ? $value : throw new InvalidSettingException("url_log_chan must be a string or null"),
+            'ai_vision_disabled' => $setting->ai_vision_disabled = is_bool($value) ? $value : throw new InvalidSettingException("ai_vision_disabled must be a bool"),
+            'ai_vision_model' => $setting->ai_vision_model = is_string($value) || $value === null ? $value : throw new InvalidSettingException("ai_vision_model must be a string or null"),
+            'ai_vision_prompt' => $setting->ai_vision_prompt = is_string($value) || $value === null ? $value : throw new InvalidSettingException("ai_vision_prompt must be a string or null"),
+            'ai_vision_reasoning_effort' => $setting->ai_vision_reasoning_effort = is_string($value) || $value === null ? $value : throw new InvalidSettingException("ai_vision_reasoning_effort must be a string or null"),
+            'ai_vision_reasoning' => $setting->ai_vision_reasoning = $this->normalizeStringKeyedArray($value, 'ai_vision_reasoning'),
+            default => throw new \LogicException('unreachable: whitelist mismatch'),
+        };
+    }
+
+    public function resetLinktitlesSetting(Network $network, ?Channel $channel, string $key): void
+    {
+        if (!in_array($key, self::LINKTITLES_KEYS, true)) {
+            throw new InvalidSettingException("Unknown linktitles setting: $key");
+        }
+        $repo = $this->em->getRepository(linktitles_setting::class);
+        $setting = $repo->findOneBy([
+            'network' => $channel !== null ? null : $network,
+            'channel' => $channel,
+        ]);
+        if ($setting !== null) {
+            // Booleans reset to false; every other field resets to null.
+            // $key is narrowed to LINKTITLES_KEYS by the in_array guard above.
+            match ($key) {
+                'enabled' => $setting->enabled = false,
+                'ai_vision_disabled' => $setting->ai_vision_disabled = false,
+                'url_log_chan' => $setting->url_log_chan = null,
+                'ai_vision_model' => $setting->ai_vision_model = null,
+                'ai_vision_prompt' => $setting->ai_vision_prompt = null,
+                'ai_vision_reasoning_effort' => $setting->ai_vision_reasoning_effort = null,
+                'ai_vision_reasoning' => $setting->ai_vision_reasoning = null,
+            };
+            $this->em->flush();
+            $this->notifier->notify(new ConfigChange('linktitles_setting', $setting->id, 'update'));
+        }
     }
 }
