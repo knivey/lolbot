@@ -113,6 +113,20 @@ class config_import extends Command
             }
         }
 
+        // --- Global AI model/prompt are now linktitles (network-scoped) settings ---
+        foreach ($entityManager->getRepository(\lolbot\entities\Network::class)->findAll() as $network) {
+            if (isset($config['ai_vision_model']) && is_string($config['ai_vision_model'])) {
+                $svc->setLinktitlesSetting($network, null, 'ai_vision_model', $config['ai_vision_model']);
+                $output->writeln("imported ai_vision_model for network {$network->name}");
+                $imported++;
+            }
+            if (isset($config['ai_vision_prompt']) && is_string($config['ai_vision_prompt'])) {
+                $svc->setLinktitlesSetting($network, null, 'ai_vision_prompt', $config['ai_vision_prompt']);
+                $output->writeln("imported ai_vision_prompt for network {$network->name}");
+                $imported++;
+            }
+        }
+
         $output->writeln("<info>Imported $imported value(s).</info>");
         return Command::SUCCESS;
     }
