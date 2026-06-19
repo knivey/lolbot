@@ -120,6 +120,9 @@ class weather extends script_base
     function getLocation(string $query): \Amp\Future
     {
         return \Amp\async(function () use ($query) {
+            if (preg_match('/^\d{5}$/', $query)) {
+                $query .= ', usa';
+            }
             $loc = self::$location_cache->getItem($query);
             if(!$loc->isHit()) {
                 while (microtime_float() - self::$last_location_time < 2) {
