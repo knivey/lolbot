@@ -55,7 +55,8 @@
             "Irc\\Event\\": "library/Irc/Event",
             "draw\\": "library/draw",
             "lolbot\\entities\\": "entities",
-            "lolbot\\cli_cmds\\": "cli_cmds"
+            "lolbot\\cli_cmds\\": "cli_cmds",
+            "lolbot\\config\\": "library/config"
         },
         "files": [
             "library/Irc/Consts.php"
