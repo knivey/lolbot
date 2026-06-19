@@ -344,6 +344,49 @@ class Client extends EventEmitter
 
         return $this;
     }
+
+    /**
+     * Update the server this client connects/reconnects to. Takes effect on the
+     * next reconnect (call reconnect() to force one). Rebuilds the connect
+     * context the same way the constructor does.
+     */
+    public function setServer(string $server, string $port = self::DEFAULT_PORT, bool $ssl = false, ?string $password = null, ?bool $throttle = null, ?string $bindIP = null): static
+    {
+        $this->server = $server;
+        $this->port = $port;
+        $this->ssl = $ssl;
+        if ($bindIP !== null) {
+            $this->bindIP = $bindIP;
+        }
+        // Rebuild connect context exactly as the constructor does.
+        if ($this->bindIP != '0') {
+            $this->connectContext = (new ConnectContext)->withBindTo($this->bindIP);
+        } else {
+            $this->connectContext = (new ConnectContext);
+        }
+        if ($this->ssl) {
+            $this->connectContext = $this->connectContext->withTlsContext((new ClientTlsContext($this->server))->withoutPeerVerification());
+        }
+        if ($password !== null) {
+            $this->serverPassword = $password;
+        }
+        if ($throttle !== null) {
+            $this->doThrottle = $throttle;
+        }
+        return $this;
+    }
+
+    /**
+     * Force a reconnect: close the current socket so the go() reconnect loop
+     * reconnects to $this->server (which setServer may have changed). Safe no-op
+     * if there is no live socket.
+     */
+    public function reconnect(): void
+    {
+        if (isset($this->socket) && !$this->socket->isClosed()) {
+            $this->socket->close();
+        }
+    }
 /* currently not used but if we enabled them it would have two intervals, one for normal and one longer for error
     also a retry amount
 
