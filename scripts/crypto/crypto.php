@@ -144,6 +144,25 @@ class crypto extends script_base
         $bot->pm($args->chan, "\2Coin:\2 API rate limit reached, try again in {$eta}s.");
     }
 
+    /**
+     * Returns the bot's command trigger prefix for use in messages (e.g. ";findcoin").
+     * Handles both char triggers ($bot->trigger) and regex triggers ($bot->trigger_re),
+     * mirroring the dispatch logic in lolbot.php.
+     */
+    private function triggerPrefix(\Irc\Event\ChatEvent $args): string
+    {
+        if ($this->bot->trigger !== null && $this->bot->trigger !== '') {
+            return $this->bot->trigger;
+        }
+        if ($this->bot->trigger_re !== null && $this->bot->trigger_re !== '') {
+            $trig = "/(^{$this->bot->trigger_re}).+$/";
+            if (preg_match($trig, $args->text, $m)) {
+                return $m[1] ?? '';
+            }
+        }
+        return '';
+    }
+
     public function getCoinPrice(string $coin): string
     {
         $cacheKey = "price:$coin";
@@ -352,7 +371,8 @@ class crypto extends script_base
         }
 
         if ($matched === null) {
-            $bot->pm($args->chan, "\2Coin:\2 No coin found for '$name' (try !findcoin $name)");
+            $trig = $this->triggerPrefix($args);
+            $bot->pm($args->chan, "\2Coin:\2 No coin found for '$name' (try {$trig}findcoin $name)");
             return;
         }
 

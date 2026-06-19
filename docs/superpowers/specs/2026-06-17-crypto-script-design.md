@@ -91,7 +91,7 @@ their duplicated bodies collapse into the shared `showCoin()` core.
 
 1. `searchCoins($name)`.
 2. `matchCoin($name, $results)`.
-3. Empty results or `null` match → `pm("\2Coin:\2 No coin found for '{name}' (try !findcoin {name})")` and return.
+3. Empty results or `null` match → `pm("\2Coin:\2 No coin found for '{name}' (try {trigger}findcoin {name})")` and return, where `{trigger}` is the bot's actual command trigger (char or regex-derived via a `triggerPrefix()` helper, never hardcoded `!`).
 4. Else announce the selection: `pm("\2Coin:\2 {name} ({symbol}) — {id}")` (so fuzzy matches
    like `!coin bit` make it clear which coin was chosen), then `showCoin($args, $bot, $matched->id)`.
 5. The preamble (steps 1-2) is wrapped so that:
