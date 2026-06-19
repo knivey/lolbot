@@ -51,6 +51,10 @@ $application->add(new cli_cmds\server_del());
 $application->add(new cli_cmds\server_set());
 
 $application->add(new cli_cmds\showdb());
+$application->add(new cli_cmds\service_get());
+$application->add(new cli_cmds\service_set());
+$application->add(new cli_cmds\service_list());
+$application->add(new cli_cmds\config_import());
 $application->add(new scripts\linktitles\cli_cmds\linktitles_set());
 
 $application->add(new scripts\linktitles\cli_cmds\ignore_add());

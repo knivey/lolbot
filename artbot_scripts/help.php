@@ -69,13 +69,14 @@ function formatHelpMarkdown(iterable $cmds): string
 
 function showHelpPaste(\Irc\Client $bot, string $chan, string $content): void
 {
-    global $config;
-    if (!isset($config['paste_host']) || !isset($config['paste_key'])) {
+    global $entityManager;
+    $paste = (new \lolbot\config\ServiceLocator($entityManager))->getServiceConfig('paste');
+    if (!$paste instanceof \lolbot\entities\PasteServiceConfig || $paste->host === null || $paste->key === null) {
         $bot->msg($chan, "help: paste service not configured");
         return;
     }
     try {
-        $url = \createPaste($content, "Bot Commands", $config['paste_host'], $config['paste_key']);
+        $url = \createPaste($content, "Bot Commands", $paste->host, $paste->key);
         $bot->msg($chan, "help: $url");
     } catch (\Throwable $e) {
         $bot->msg($chan, "help: trouble creating paste :( " . $e->getMessage());

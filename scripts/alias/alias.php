@@ -123,10 +123,12 @@ class alias extends script_base
             return;
         }
         $usePaste = $cmdArgs->optEnabled('--web') || count($aliases) > 20;
-        if ($usePaste && isset($this->config['paste_host'], $this->config['paste_key'])) {
+        global $entityManager;
+        $paste = (new \lolbot\config\ServiceLocator($entityManager))->getServiceConfig('paste');
+        if ($usePaste && $paste instanceof \lolbot\entities\PasteServiceConfig && $paste->host !== null && $paste->key !== null) {
             try {
                 $content = $this->formatAliasesMarkdown($aliases, $args->chan);
-                $url = \createPaste($content, "Aliases for {$args->chan}", $this->config['paste_host'], $this->config['paste_key']);
+                $url = \createPaste($content, "Aliases for {$args->chan}", $paste->host, $paste->key);
                 $rpl($url, 'list');
                 return;
             } catch (\Throwable $e) {

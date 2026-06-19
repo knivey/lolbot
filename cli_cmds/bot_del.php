@@ -23,17 +23,17 @@ class bot_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $repo = $entityManager->getRepository(Bot::class);
-        $bot = $repo->find($input->getArgument('bot'));
-        if($bot == null) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $idArg = $input->getArgument('bot');
+        if (!is_string($idArg)) {
+            throw new \LogicException("'bot' argument must be a string");
+        }
+        $bot = $svc->getBot((int)$idArg);
+        if ($bot === null) {
             throw new \InvalidArgumentException("Couldn't find a bot with that ID");
         }
-
-        $entityManager->remove($bot);
-        $entityManager->flush();
-
+        $svc->deleteBot($bot);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }

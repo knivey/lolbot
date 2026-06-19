@@ -996,3 +996,23 @@ git commit -m "chore(config): retire migrated keys from config.yaml (ai_vision/p
 - `vendor/bin/phpunit` green; PHPStan introduces no new errors on touched paths.
 
 This completes **Sub-project 1**. Next: **Sub-project 2** — live config sync (#109): consolidate the notifier to one global listen with per-bot-id routes, implement the HTTP-push `ChangeNotifier` (originating from the mutating client, pushed to each bot's configured notifier port — no registration), and add bot-side hot-apply (join/part, reload settings, spawn/drop connections).
+
+---
+
+## Implementation notes (deviations made during execution)
+
+1. **PHPStan level-9 arg handling in refactored commands.** Symfony `getArgument()`/`getOption()` return `mixed`; the refactored `cli_cmds/*` commands add `is_string`/`is_array`/`(int)`/`(bool)` guards (the `(int)$x` cast on `mixed` trips PHPStan's `cast.int`, so narrow to `string` first). Mirrors the pattern in `service_set.php`. Behavior unchanged.
+2. **`server:set` now coerces** `port`→int and `ssl`/`throttle`→bool (was a raw string assignment). Correctness improvement (entity fields are typed); behavior for the existing string settings (`address`/`password`) unchanged.
+3. **`ignore:list` pre-existing bug fixed** (`dda0a45`): `InputOption::VALUE_NONE` returns `false` when absent, so the original `!== null` orphaned-filter check was always truthy — `ignore:list` silently showed only orphaned ignores. Now `if ($input->getOption("orphaned"))`. Also cast Ignore to `(string)` in `print_ignores` (`writeln` is `string|iterable`).
+4. **`linktitles:set` rendering/validation hardened** (`2e7bcf5`): added `parseReasoningJson` (validates the decoded JSON is an array — a scalar like `5` previously TypeError'd) and `fmtVal` (renders the `ai_vision_reasoning` array as JSON instead of "Array to string conversion").
+5. **Paste consumers** narrow `getServiceConfig('paste')` with `instanceof PasteServiceConfig` (returns `?object`).
+6. **`linktitles` AI consumer** uses `!$ai instanceof AiServiceConfig` (narrow `?object`), an `if ($setting !== null)` block instead of `?-> ?? fallback` (`nullsafe.neverNull`), and `is_string`/`is_int` guards in the Reasoning build — all PHPStan-driven, behavior-preserving. `logUrl` resolves `url_log_chan` at network scope (matches the original per-bot behavior; channel-scoped url_log_chan is not meaningful).
+7. **`config:import` backfills `ai_vision_model`/`ai_vision_prompt`** (`213900f`) — closes a migration gap that could silently lose the configured model on import.
+8. **`Bot.php` nullable annotations** fixed in Plan 1A (carried here): `trigger`/`trigger_re`/`sasl_user`/`sasl_pass` → `nullable: true` to match the real migrations and `?string` types.
+
+## Carry-forward to Sub-project 2 (from final review)
+
+- **Route `scripts/linktitles/cli_cmds/linktitles_set.php` through `ConfigService`** so its mutations fire `notify()`. It still uses direct `$entityManager` (so live-sync would miss `linktitles:set` edits). Note its reset/inherit path deletes the *whole* scope row, whereas `ConfigService::resetLinktitlesSetting` nulls a single field — Sub-project 2 should add a `ConfigService::deleteLinktitlesSettingScope(network, channel)` (row delete + notify) and route both set and reset through ConfigService, preserving the row-delete semantics.
+- **`SettingsResolver` is linktitles-only** (no legacy `config.yaml` fallback merge). Transitional scripts (codesand/youtube/pump) read `$config['bots'][...]` directly; expand the resolver as each migrates.
+- Implement the HTTP-push `ChangeNotifier`, consolidate `listen` to one global route, add bot-side hot-apply.
+

@@ -23,17 +23,17 @@ class server_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $repo = $entityManager->getRepository(Server::class);
-        $server = $repo->find($input->getArgument('server'));
-        if($server == null) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $serverId = $input->getArgument('server');
+        if (!is_string($serverId)) {
+            throw new \LogicException("'server' argument must be a string");
+        }
+        $server = $svc->getServer((int)$serverId);
+        if ($server === null) {
             throw new \InvalidArgumentException("Couldn't find a server with that ID");
         }
-
-        $entityManager->remove($server);
-        $entityManager->flush();
-
+        $svc->deleteServer($server);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }

@@ -35,31 +35,42 @@ class server_set extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $server = $entityManager->getRepository(Server::class)->find($input->getArgument("server"));
-        if(!$server) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $serverId = $input->getArgument("server");
+        if (!is_string($serverId)) {
+            throw new \LogicException("'server' argument must be a string");
+        }
+        $server = $svc->getServer((int)$serverId);
+        if (!$server) {
             throw new \InvalidArgumentException("Server by that ID not found");
         }
 
-        if($input->getArgument("setting") === null) {
+        if ($input->getArgument("setting") === null) {
             $output->writeln($server);
             return Command::SUCCESS;
         }
 
-        if(!in_array($input->getArgument("setting"), $this->settings)) {
+        $setting = $input->getArgument("setting");
+        if (!is_string($setting) || !in_array($setting, $this->settings, true)) {
             throw new \InvalidArgumentException("No setting by that name");
         }
 
-        if($input->getArgument("value") === null) {
+        if ($input->getArgument("value") === null) {
             $output->writeln($server);
             return Command::SUCCESS;
         }
 
-        $server->{$input->getArgument("setting")} = $input->getArgument("value");
-
-
-        $entityManager->persist($server);
-        $entityManager->flush();
-
+        $raw = $input->getArgument("value");
+        $value = match ($setting) {
+            'port' => is_string($raw) ? (int)$raw : 0,
+            'ssl', 'throttle' => is_string($raw)
+                ? (filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+                    ?? throw new \InvalidArgumentException("Value must be true or false"))
+                : false,
+            default => is_string($raw) ? $raw : '',
+        };
+        $server->$setting = $value;
+        $svc->update($server, "server");
         showdb::showdb();
 
         return Command::SUCCESS;

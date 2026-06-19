@@ -19,19 +19,19 @@ class Bot
     #[ORM\Column(length: 512, unique: true)]
     public string $name;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     public ?string $trigger = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     public ?string $trigger_re = null;
 
     #[ORM\Column]
     public string $onConnect = "";
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     public ?string $sasl_user;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     public ?string $sasl_pass;
 
     #[ORM\Column]

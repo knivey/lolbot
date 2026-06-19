@@ -25,16 +25,17 @@ class bot_delchannel extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $channel = $entityManager->getRepository(Channel::class)->find($input->getArgument("channel"));
-        if(!$channel) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $idArg = $input->getArgument("channel");
+        if (!is_string($idArg)) {
+            throw new \LogicException("'channel' argument must be a string");
+        }
+        $channel = $entityManager->getRepository(\lolbot\entities\Channel::class)->find((int)$idArg);
+        if (!$channel) {
             throw new \InvalidArgumentException("Channel ID not found");
         }
-
-        $entityManager->remove($channel);
-        $entityManager->flush();
-
+        $svc->deleteChannel($channel);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }

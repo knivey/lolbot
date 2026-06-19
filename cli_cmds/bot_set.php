@@ -37,33 +37,36 @@ class bot_set extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $bot = $entityManager->getRepository(Bot::class)->find($input->getArgument("bot"));
-        if(!$bot) {
-            throw new \InvalidArgumentException("Server by that ID not found");
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $idArg = $input->getArgument("bot");
+        if (!is_string($idArg)) {
+            throw new \LogicException("'bot' argument must be a string");
+        }
+        $bot = $svc->getBot((int)$idArg);
+        if (!$bot) {
+            throw new \InvalidArgumentException("Bot by that ID not found");
         }
 
-        if($input->getArgument("setting") === null) {
+        if ($input->getArgument("setting") === null) {
             $this->showsets($input, $output, $bot);
             return Command::SUCCESS;
         }
 
-        if(!in_array($input->getArgument("setting"), $this->settings)) {
+        $setting = $input->getArgument("setting");
+        if (!is_string($setting) || !in_array($setting, $this->settings, true)) {
             throw new \InvalidArgumentException("No setting by that name");
         }
 
-        if($input->getArgument("value") === null) {
+        if ($input->getArgument("value") === null) {
             $this->showsets($input, $output, $bot);
             return Command::SUCCESS;
         }
 
-        $bot->{$input->getArgument("setting")} = $input->getArgument("value");
-
-
-        $entityManager->persist($bot);
-        $entityManager->flush();
+        $value = $input->getArgument("value");
+        $bot->$setting = is_string($value) ? $value : '';
+        $svc->update($bot, "bot");
 
         $this->showsets($input, $output, $bot);
-
         return Command::SUCCESS;
     }
 

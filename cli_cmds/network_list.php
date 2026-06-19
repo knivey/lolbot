@@ -19,9 +19,8 @@ class network_list extends Command
 {
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $repo = $entityManager->getRepository(Network::class);
-        $networks = $repo->findAll();
-        foreach ($networks as $network) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        foreach ($svc->listNetworks() as $network) {
             $output->writeln($network);
         }
         return Command::SUCCESS;

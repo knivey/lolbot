@@ -5,23 +5,22 @@ namespace lolbot\cli_cmds;
  */
 global $entityManager;
 
+use lolbot\config\ServiceLocator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-use lolbot\entities\Bot;
-
-#[AsCommand("bot:list")]
-class bot_list extends Command
+#[AsCommand("service:list")]
+class service_list extends Command
 {
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
-        foreach ($svc->listBots() as $bot) {
-            $output->writeln($bot);
+        $locator = new ServiceLocator($entityManager);
+        foreach ($locator->serviceTypes() as $type) {
+            $cfg = $locator->getServiceConfig($type);
+            $state = $cfg === null ? '<comment>(unset)</comment>' : '<info>(set)</info>';
+            $output->writeln("$type $state");
         }
         return Command::SUCCESS;
     }

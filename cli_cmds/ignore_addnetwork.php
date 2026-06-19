@@ -28,30 +28,32 @@ class ignore_addnetwork extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        if(count($input->getOption("network")) == 0) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $nets = $input->getOption("network");
+        if (!is_array($nets) || count($nets) == 0) {
             throw new \InvalidArgumentException("Must specify a network");
         }
 
-        $ignore = $entityManager->getRepository(Ignore::class)->find($input->getArgument("ignore"));
-        if($ignore === null) {
+        $ignoreId = $input->getArgument("ignore");
+        $ignore = $svc->getIgnore(is_string($ignoreId) ? (int)$ignoreId : 0);
+        if ($ignore === null) {
             throw new \InvalidArgumentException("Couldn't find that ignore ID");
         }
 
-        /** @var EntityRepository<Network> $repo */
-        $repo = $entityManager->getRepository(Network::class);
-        foreach($input->getOption("network") as $net) {
-            $network = $repo->find($net);
-            if ($network === null) {
-                throw new \InvalidArgumentException("Couldn't find that network ID ($net)");
+        $networks = [];
+        foreach ($nets as $netId) {
+            if (!is_string($netId)) {
+                throw new \LogicException("'network' option values must be strings");
             }
-            $ignore->addToNetwork($network);
+            $network = $svc->getNetwork((int)$netId);
+            if ($network === null) {
+                throw new \InvalidArgumentException("Couldn't find that network ID ($netId)");
+            }
+            $networks[] = $network;
         }
-
-        $entityManager->persist($ignore);
-        $entityManager->flush();
+        $svc->addIgnoreNetworks($ignore, $networks);
 
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }

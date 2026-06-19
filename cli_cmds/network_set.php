@@ -31,29 +31,33 @@ class network_set extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $network = $entityManager->getRepository(Network::class)->find($input->getArgument("network"));
-        if(!$network) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $idArg = $input->getArgument("network");
+        if (!is_string($idArg)) {
+            throw new \LogicException("'network' argument must be a string");
+        }
+        $network = $svc->getNetwork((int)$idArg);
+        if (!$network) {
             throw new \InvalidArgumentException("Network by that ID not found");
         }
 
-        if($input->getArgument("setting") === null) {
+        if ($input->getArgument("setting") === null) {
             $output->writeln($network);
+            return Command::SUCCESS;
         }
 
-        if(!in_array($input->getArgument("setting"), $this->settings)) {
+        if (!in_array($input->getArgument("setting"), $this->settings, true)) {
             throw new \InvalidArgumentException("No network setting by that name");
         }
 
-        if($input->getArgument("value") === null) {
+        if ($input->getArgument("value") === null) {
             $output->writeln($network);
+            return Command::SUCCESS;
         }
 
-        $network->{$input->getArgument("setting")} = $input->getArgument("value");
-
-
-        $entityManager->persist($network);
-        $entityManager->flush();
-
+        $setting = $input->getArgument("setting");
+        $network->$setting = $input->getArgument("value");
+        $svc->update($network, "network");
         showdb::showdb();
 
         return Command::SUCCESS;

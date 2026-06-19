@@ -30,31 +30,33 @@ class ignore_add extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
+        $svc = new \lolbot\config\ConfigService($entityManager);
 
-        if(count($input->getOption("network")) == 0) {
+        $nets = $input->getOption("network");
+        if (!is_array($nets) || count($nets) == 0) {
             throw new \InvalidArgumentException("Must specify a network");
         }
 
-        $ignore = new Ignore();
-        $ignore->hostmask = $input->getArgument('hostmask');
-        if($input->getArgument('reason') !== null)
-            $ignore->reason = $input->getArgument('reason');
-
-        /** @var EntityRepository<Network> $repo */
-        $repo = $entityManager->getRepository(Network::class);
-        foreach($input->getOption("network") as $net) {
-            $network = $repo->find($net);
-            if ($network === null) {
-                throw new \InvalidArgumentException("Couldn't find that network ID ($net)");
+        $networks = [];
+        foreach ($nets as $netId) {
+            if (!is_string($netId)) {
+                throw new \LogicException("'network' option values must be strings");
             }
-            $ignore->addToNetwork($network);
+            $network = $svc->getNetwork((int)$netId);
+            if ($network === null) {
+                throw new \InvalidArgumentException("Couldn't find that network ID ($netId)");
+            }
+            $networks[] = $network;
         }
 
-        $entityManager->persist($ignore);
-        $entityManager->flush();
+        $hostmask = $input->getArgument('hostmask');
+        if (!is_string($hostmask)) {
+            throw new \LogicException("'hostmask' argument must be a string");
+        }
+        $reason = $input->getArgument('reason');
+        $svc->addIgnore($hostmask, is_string($reason) ? $reason : null, $networks);
 
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }
