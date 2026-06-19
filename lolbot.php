@@ -147,7 +147,8 @@ $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxL
 
 function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot): \Irc\Client
 {
-    global $config, $logHandler;
+    global $config, $logHandler, $entityManager;
+    $linktitlesEnabled = (new \lolbot\config\SettingsResolver($entityManager))->linktitlesEnabled($network, null);
     //TODO add support and check for per bot servers first
     $server = $network->selectServer();
     $log = new Logger($dbBot->name);
@@ -275,7 +276,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
         }
     });
 
-    $client->on('chat', function (ChatEvent $args, \Irc\Client $bot) use ($alias, $linktitles, $network, $dbBot, $router) {
+    $client->on('chat', function (ChatEvent $args, \Irc\Client $bot) use ($alias, $linktitles, $network, $dbBot, $router, $linktitlesEnabled) {
         try {
             global $config, $entityManager, $ignoreCache;
 
@@ -292,7 +293,7 @@ function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot):
                 return;
 
 
-            if ($config['bots'][$dbBot->id]['linktitles'] ?? false) {
+            if ($linktitlesEnabled) {
                 async(fn() => $linktitles->linktitles($bot, $args->nick, $args->chan, $args->identhost, $args->text));
             }
 
