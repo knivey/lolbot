@@ -23,17 +23,17 @@ class network_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $repo = $entityManager->getRepository(Network::class);
-        $network = $repo->find($input->getArgument('network'));
-        if($network == null) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $idArg = $input->getArgument('network');
+        if (!is_string($idArg)) {
+            throw new \LogicException("'network' argument must be a string");
+        }
+        $network = $svc->getNetwork((int)$idArg);
+        if ($network === null) {
             throw new \InvalidArgumentException("Couldn't find that network ID");
         }
-
-        $entityManager->remove($network);
-        $entityManager->flush();
-
+        $svc->deleteNetwork($network);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }

@@ -23,18 +23,13 @@ class network_add extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $network = $entityManager->getRepository(Network::class)->findOneBy(["name" => $input->getArgument("name")]);
-        if($network !== null) {
-            throw new \InvalidArgumentException("Network already exists with that name");
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $name = $input->getArgument("name");
+        if (!is_string($name)) {
+            throw new \LogicException("'name' argument must be a string");
         }
-
-        $network = new Network();
-        $network->name = $input->getArgument("name");
-        $entityManager->persist($network);
-        $entityManager->flush();
-
+        $svc->createNetwork($name);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }
