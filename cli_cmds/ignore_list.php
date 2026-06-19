@@ -27,16 +27,17 @@ class ignore_list extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        if(null !== $id = $input->getOption("network")) {
-            if (null === $network = $entityManager->getRepository(Network::class)->find($id)) {
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $ignores = $svc->listIgnores();
+        $netOpt = $input->getOption("network");
+        if ($netOpt !== null) {
+            $network = $svc->getNetwork(is_string($netOpt) ? (int)$netOpt : 0);
+            if ($network === null) {
                 throw new \InvalidArgumentException("Network by that ID not found");
             }
-            $this->print_ignores($network->getIgnores(), $output);
-            return Command::SUCCESS;
+            $ignores = $network->getIgnores()->toArray();
         }
-        $repo = $entityManager->getRepository(Ignore::class);
-        $ignores = $repo->findAll();
-        if($input->getOption("orphaned") !== null){
+        if ($input->getOption("orphaned") !== null) {
             $ignores = array_filter($ignores, fn ($i) => count($i->getNetworks()) == 0);
         }
         $this->print_ignores($ignores, $output);

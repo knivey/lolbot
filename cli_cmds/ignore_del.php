@@ -23,16 +23,14 @@ class ignore_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $repo = $entityManager->getRepository(Ignore::class);
-        $ignore = $repo->find($input->getArgument('ignore'));
-        if($ignore == null) {
-            throw new \InvalidArgumentException("Couldn't find and ignore by that ID");
+        $svc = new \lolbot\config\ConfigService($entityManager);
+        $ignoreId = $input->getArgument('ignore');
+        $ignore = $svc->getIgnore(is_string($ignoreId) ? (int)$ignoreId : 0);
+        if ($ignore === null) {
+            throw new \InvalidArgumentException("Couldn't find an ignore by that ID");
         }
-        $entityManager->remove($ignore);
-        $entityManager->flush();
-
+        $svc->deleteIgnore($ignore);
         showdb::showdb();
-
         return Command::SUCCESS;
     }
 }
