@@ -69,11 +69,6 @@ function web_dispatch(string $method, string $path): void
     echo "Not found";
 }
 
-function web_home(): never
-{
-    web_render('home.twig', ['active' => 'overview', 'authed' => !web_is_auth_open(), 'section' => 'Overview']);
-}
-
 function web_login_form(?string $error = null): never
 {
     echo web_app()['twig']->render('login.twig', ['error' => $error]);
