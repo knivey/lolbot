@@ -25,6 +25,11 @@ bots:
 # config changes to it (POST /_control/apply) using `control_key`.
 listen: "127.0.0.1:1339"
 control_key: "change-me"
+# Web control panel (Sub-project 3): served from web/ out-of-process.
+# Dev:   php -S 127.0.0.1:8088 -t web/ web/index.php
+# Prod:  nginx + php-fpm (or a reverse proxy → php-fpm). The same web/index.php
+#        runs under both. The panel reuses `control_key` for login (leave unset
+#        only for loopback/SSH-tunnel access).
 
 
 #configure the database (follows doctrine config)

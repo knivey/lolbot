@@ -257,3 +257,83 @@ Enables live-apply so config changes take effect without a bot restart.
 - [ ] Notifier now lives at `POST /notifier/{botid}/privmsg/{chan}` and
       `/owncast/{chan}` (still `notifier_keys.yaml`); update any outside apps
       that posted to the old per-bot `/privmsg/{chan}` URL to include the bot id.
+
+---
+
+## Sub-project 3: web control panel (after Sub-project 2)
+
+An out-of-process PHP web UI (Twig templates + HTMX) served from `web/`, letting
+operators edit config from a browser. Mutations go through the same `ConfigService`
+as the CLI and push live via the Sub-project-2 `/_control/*` surface, so bots
+join/part/rename/jump without a restart.
+
+### Setup
+
+`twig/twig` is already a composer dependency (installed during the project), so
+there is no extra install step beyond the usual:
+
+```bash
+composer install
+```
+
+The panel reuses the top-level `config.yaml` keys `listen` and `control_key`
+already added in Sub-project 2 — nothing new to add to `config.yaml`.
+
+### Running it (dev)
+
+PHP's built-in server is enough for local use:
+
+```bash
+php -S 127.0.0.1:8088 -t web/ web/index.php
+```
+
+Then open `http://127.0.0.1:8088/`.
+
+### Running it (prod)
+
+nginx + php-fpm (or a reverse proxy → php-fpm). The same `web/index.php` runs
+under both. `SCRIPT_FILENAME` is pinned to `index.php` so the front controller
+handles all routing; static assets resolve via the `location /` `try_files` first:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name lolbot.panel.example;
+    # ssl_certificate ...
+    root /path/to/lolbot/web;
+    location / { try_files $uri /index.php$is_args$args; }
+    location ~ \.php$ { fastcgi_pass unix:/run/php/php-fpm.sock; include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param HTTPS on; }
+}
+```
+
+### Auth
+
+- Set `control_key` (top-level `config.yaml`) to require browser login. The same
+  key also authenticates the Sub-project-2 `/_control/*` routes and the status
+  endpoint below.
+- Leave `control_key` **unset** ONLY for loopback/SSH-tunnel access — with no key
+  the panel is open to anyone who can reach `listen`.
+- The panel is reverse-proxy aware: it honors `X-Forwarded-Proto` when setting
+  the secure session cookie, so it works correctly behind an HTTPS-terminating
+  proxy.
+
+### Live runtime status
+
+The panel reads live runtime status from one new bot endpoint:
+
+```
+GET /_control/status
+```
+
+It uses core-key auth (the same `control_key`, sent via the `key:` header). The
+running bot (`lolbot.php`) serves it alongside the Sub-project-2 `/_control/*`
+routes. The panel uses it to show whether the bot is up and other live state.
+
+### Behavior
+
+Every panel mutation flows through `ConfigService` + the Sub-project-2 live-sync
+push (`POST /_control/apply`). Bots join/part/rename/jump live — no restart
+needed. If a bot is down, the change is persisted and applies on its next start.
+
