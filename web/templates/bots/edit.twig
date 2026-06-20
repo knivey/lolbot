@@ -24,7 +24,7 @@
   {% include 'bots/_actions.twig' with {botId: bot.id, csrf: csrf(), queued: ''} %}
   {% include 'bots/_channels.twig' with {bot: bot, csrf: csrf()} %}
   <form class="inline" method="post" action="/bots/{{ bot.id }}/delete"
-        onsubmit="return confirm('Delete bot {{ bot.name }}?')">
+        onsubmit="return confirm('Delete this bot?')">
     {{ m.csrf_field() }} <button class="btn ghost" type="submit">Delete bot</button>
   </form>
 {% endif %}

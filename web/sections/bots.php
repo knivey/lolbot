@@ -65,6 +65,7 @@ function web_bots_update(int $id): never
     $bot = $app['svc']->getBot($id);
     if ($bot === null) { http_response_code(404); echo "No such bot"; exit; }
     $bot->name        = trim(is_string($_POST['name'] ?? null) ? $_POST['name'] : $bot->name);
+    if ($bot->name === '') { web_bots_edit($id, 'Name required'); }
     $trigRaw          = is_string($_POST['trigger'] ?? null) ? $_POST['trigger'] : '';
     $bot->trigger     = $trigRaw !== '' ? trim($trigRaw) : null;
     $trigReRaw        = is_string($_POST['trigger_re'] ?? null) ? $_POST['trigger_re'] : '';
@@ -74,7 +75,8 @@ function web_bots_update(int $id): never
     $bot->sasl_user   = $saslUserRaw !== '' ? trim($saslUserRaw) : null;
     $saslPassRaw      = is_string($_POST['sasl_pass'] ?? null) ? $_POST['sasl_pass'] : '';
     $bot->sasl_pass   = $saslPassRaw !== '' ? trim($saslPassRaw) : null;
-    $bot->bindIp      = is_string($_POST['bindIp'] ?? null) ? trim($_POST['bindIp']) : '0';
+    $bindIpRaw        = is_string($_POST['bindIp'] ?? null) ? trim($_POST['bindIp']) : '0';
+    $bot->bindIp      = $bindIpRaw !== '' ? $bindIpRaw : '0';
     try {
         $app['svc']->update($bot, 'bot'); // pushes apply → nick/trigger live; sasl/bindIp/onConnect need respawn
     } catch (\Throwable $e) {
@@ -100,7 +102,7 @@ function web_bots_add_channel(int $botId): never
     $bot = $app['svc']->getBot($botId);
     $chan = trim(is_string($_POST['channel'] ?? null) ? $_POST['channel'] : '');
     if ($bot !== null && $chan !== '') {
-        try { $app['svc']->addChannel($bot, $chan); } catch (\Throwable $e) { web_bots_edit($botId, $e->getMessage()); }
+        try { $app['svc']->addChannel($bot, $chan); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
     }
     web_bots_channels_fragment($botId);
 }
@@ -110,7 +112,8 @@ function web_bots_del_channel(int $botId, int $chanId): never
     $app = web_app();
     try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
     $chan = $app['em']->find(\lolbot\entities\Channel::class, $chanId);
-    if ($chan !== null) { $app['svc']->deleteChannel($chan); } // pushes apply → part
+    if ($chan === null || $chan->bot->id !== $botId) { web_error_fragment('No such channel', 404); }
+    try { $app['svc']->deleteChannel($chan); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
     web_bots_channels_fragment($botId);
 }
 
