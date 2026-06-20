@@ -1468,13 +1468,10 @@ function web_linktitles_save(int $netId): never
     try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
     $net = $app['svc']->getNetwork($netId);
     if ($net === null) { http_response_code(404); echo "No such network"; exit; }
-    foreach (['enabled','urlLogChan','aiVisionModel','aiVisionPrompt','aiVisionReasoningEffort'] as $k) {
-        if (!array_key_exists($k, $_POST)) continue;
-        $raw = trim((string)$_POST[$k]);
-        if ($k === 'enabled') {
-            $app['svc']->setLinktitlesSetting($net, null, 'enabled', $raw === '1');
-            continue;
-        }
+    // Checkbox: absent means false.
+    $app['svc']->setLinktitlesSetting($net, null, 'enabled', array_key_exists('enabled', $_POST));
+    foreach (['url_log_chan','ai_vision_model','ai_vision_prompt','ai_vision_reasoning_effort'] as $k) {
+        $raw = trim(is_string($_POST[$k] ?? null) ? $_POST[$k] : '');
         if ($raw === '') { $app['svc']->resetLinktitlesSetting($net, null, $k); continue; }
         $app['svc']->setLinktitlesSetting($net, null, $k, $raw);
     }
@@ -1506,10 +1503,10 @@ In dispatch:
     <form method="post" action="/linktitles/{{ n.id }}">{{ m.csrf_field() }}
       <div class="field"><label>enabled</label>
         <label><input type="checkbox" name="enabled" value="1" {{ r and r.enabled ? 'checked' }}></label></div>
-      {{ m.field('urlLogChan','url log chan', r ? r.urlLogChan : '') }}
-      {{ m.field('aiVisionModel','ai model', r ? r.aiVisionModel : '') }}
-      {{ m.textarea('aiVisionPrompt','ai prompt', r ? r.aiVisionPrompt : '') }}
-      {{ m.field('aiVisionReasoningEffort','reasoning effort', r ? r.aiVisionReasoningEffort : '') }}
+      {{ m.field('url_log_chan','url log chan', r ? r.url_log_chan : '') }}
+      {{ m.field('ai_vision_model','ai model', r ? r.ai_vision_model : '') }}
+      {{ m.textarea('ai_vision_prompt','ai prompt', r ? r.ai_vision_prompt : '') }}
+      {{ m.field('ai_vision_reasoning_effort','reasoning effort', r ? r.ai_vision_reasoning_effort : '') }}
       {{ m.submit('Save') }}
     </form>
   </div>
