@@ -2,6 +2,7 @@
 // (method, path) -> handler. Section tasks append their routes before the 404 fallback.
 require_once __DIR__ . '/sections/bots.php';
 require_once __DIR__ . '/sections/networks.php';
+require_once __DIR__ . '/sections/ignores.php';
 
 function web_dispatch(string $method, string $path): void
 {
@@ -48,6 +49,10 @@ function web_dispatch(string $method, string $path): void
     if ($method === 'POST' && preg_match('#^/networks/(\d+)/delete$#', $path, $m)) { web_networks_delete((int)$m[1]); }
     if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers$#', $path, $m)) { web_networks_add_server((int)$m[1]); }
     if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)/delete$#', $path, $m)) { web_networks_del_server((int)$m[1], (int)$m[2]); }
+
+    if ($method === 'GET' && $path === '/ignores') { web_ignores_list(); }
+    if ($method === 'POST' && $path === '/ignores') { web_ignores_create(); }
+    if ($method === 'POST' && preg_match('#^/ignores/(\d+)/delete$#', $path, $m)) { web_ignores_delete((int)$m[1]); }
 
     http_response_code(404);
     echo "Not found";
