@@ -4,7 +4,9 @@ require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/app.php';
 
 // Reverse-proxy aware secure cookie.
-$proto = ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ($_SERVER['HTTPS'] ?? '') === 'on' ? 'https' : 'http');
+$proto = (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https' || (($_SERVER['HTTPS'] ?? '') === 'on'))
+    ? 'https'
+    : 'http';
 session_set_cookie_params([
     'lifetime' => 0, 'path' => '/',
     'httponly' => true, 'samesite' => 'Lax',
@@ -12,8 +14,9 @@ session_set_cookie_params([
 ]);
 session_start();
 
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$method = is_string($_SERVER['REQUEST_METHOD'] ?? null) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+$rawUri = is_string($_SERVER['REQUEST_URI'] ?? null) ? $_SERVER['REQUEST_URI'] : '/';
+$path = parse_url($rawUri, PHP_URL_PATH) ?: '/';
 // Normalise trailing slash (except root).
 if ($path !== '/' && substr($path, -1) === '/') $path = rtrim($path, '/');
 
