@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>lolbot control — {{ section }}</title>
+  <link rel="stylesheet" href="/assets/panel.css">
+  <script src="/assets/htmx.min.js"></script>
+</head>
+<body>
+<div class="shell">
+  <nav class="topbar">
+    <span class="brand">🤖 lolbot control</span>
+    <span class="who">{% if authed %}operator · <a href="/logout">logout</a>{% else %}<em>open</em>{% endif %}</span>
+  </nav>
+  <div class="body">
+    <aside class="sidebar">
+      <a href="/" class="{{ active == 'overview' ? 'sel' }}">Overview</a>
+      <a href="/bots" class="{{ active == 'bots' ? 'sel' }}">Bots</a>
+      <a href="/networks" class="{{ active == 'networks' ? 'sel' }}">Networks</a>
+      <a href="/ignores" class="{{ active == 'ignores' ? 'sel' }}">Ignores</a>
+      <a href="/services" class="{{ active == 'services' ? 'sel' }}">Services</a>
+      <a href="/linktitles" class="{{ active == 'linktitles' ? 'sel' }}">Linktitles</a>
+    </aside>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>
