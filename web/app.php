@@ -10,6 +10,7 @@ function web_app(): array
         new \Twig\Loader\FilesystemLoader(__DIR__ . '/templates'),
         ['strict_variables' => false, 'autoescape' => 'html'],
     );
+    $twig->addFunction(new \Twig\TwigFunction('csrf', 'web_twig_csrf'));
     return [
         'twig' => $twig,
         'svc' => new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier()),

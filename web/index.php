@@ -2,6 +2,7 @@
 // Front controller — runs identically under php-fpm (nginx) and `php -S`.
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/app.php';
+require_once __DIR__ . '/auth.php';
 
 // Reverse-proxy aware secure cookie.
 $proto = (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https' || (($_SERVER['HTTPS'] ?? '') === 'on'))
