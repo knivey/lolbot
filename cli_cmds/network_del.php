@@ -23,7 +23,7 @@ class network_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $idArg = $input->getArgument('network');
         if (!is_string($idArg)) {
             throw new \LogicException("'network' argument must be a string");

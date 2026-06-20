@@ -28,7 +28,7 @@ class ignore_addnetwork extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $nets = $input->getOption("network");
         if (!is_array($nets) || count($nets) == 0) {
             throw new \InvalidArgumentException("Must specify a network");

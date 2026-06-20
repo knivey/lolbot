@@ -35,7 +35,7 @@ class config_import extends Command
         }
         /** @var array<string, mixed> $config */
         $force = (bool)$input->getOption("force");
-        $svc = new ConfigService($entityManager);
+        $svc = new ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $locator = new ServiceLocator($entityManager);
 
         $imported = 0;

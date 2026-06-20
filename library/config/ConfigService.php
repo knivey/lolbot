@@ -436,3 +436,20 @@ class ConfigService
         return $setting;
     }
 }
+
+/**
+ * Build the ChangeNotifier for a CLI/web mutating client:
+ * HttpPushChangeNotifier when config.yaml has both `listen` and `control_key`,
+ * else NoopChangeNotifier (so the CLI works when the bot isn't running).
+ */
+function build_change_notifier(): ChangeNotifier
+{
+    /** @var array<string, mixed> $config */
+    global $config;
+    $listen = isset($config['listen']) && is_string($config['listen']) ? $config['listen'] : null;
+    $key = isset($config['control_key']) && is_string($config['control_key']) ? $config['control_key'] : null;
+    if ($listen !== null && $key !== null) {
+        return new HttpPushChangeNotifier('http://' . $listen, $key);
+    }
+    return new NoopChangeNotifier();
+}

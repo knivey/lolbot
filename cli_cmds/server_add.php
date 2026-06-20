@@ -29,7 +29,7 @@ class server_add extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $networkId = $input->getArgument("network");
         if (!is_string($networkId)) {
             throw new \LogicException("'network' argument must be a string");

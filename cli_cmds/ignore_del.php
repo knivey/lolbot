@@ -23,7 +23,7 @@ class ignore_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $ignoreId = $input->getArgument('ignore');
         $ignore = $svc->getIgnore(is_string($ignoreId) ? (int)$ignoreId : 0);
         if ($ignore === null) {

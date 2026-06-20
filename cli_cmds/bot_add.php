@@ -28,7 +28,7 @@ class bot_add extends Command
 
     public function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $netOpt = $input->getOption("network");
         if (!is_string($netOpt)) {
             throw new \InvalidArgumentException("Must specify a network");

@@ -44,7 +44,7 @@ class service_set extends Command
         // Coerce ints/bools/json by reflection of the entity property type.
         $value = self::coerce(new \ReflectionProperty($class, $key), $raw);
 
-        $svc = new ConfigService($entityManager);
+        $svc = new ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $svc->setServiceConfigValue($type, $key, $value);
 
         if (is_array($value)) {

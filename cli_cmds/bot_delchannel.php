@@ -25,7 +25,7 @@ class bot_delchannel extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $idArg = $input->getArgument("channel");
         if (!is_string($idArg)) {
             throw new \LogicException("'channel' argument must be a string");

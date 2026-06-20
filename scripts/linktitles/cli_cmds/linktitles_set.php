@@ -80,7 +80,7 @@ class linktitles_set extends Command
 
         if ($input->getOption("reset") || strtolower($input->getArgument("value") ?? '') === 'inherit') {
             if ($setting !== null) {
-                $svc = new \lolbot\config\ConfigService($entityManager);
+                $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
                 $svc->deleteLinktitlesSettingScope($network, $channel);
                 $output->writeln("Setting reset to inherited");
             } else {
@@ -112,7 +112,7 @@ class linktitles_set extends Command
             "ai_vision_reasoning" => $setting->ai_vision_reasoning = self::parseReasoningJson($val),
         };
 
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $svc->saveLinktitlesSetting($setting);
 
         $this->showSettings($input, $output, $setting, $network, $channel);

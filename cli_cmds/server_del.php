@@ -23,7 +23,7 @@ class server_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $serverId = $input->getArgument('server');
         if (!is_string($serverId)) {
             throw new \LogicException("'server' argument must be a string");

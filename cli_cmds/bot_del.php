@@ -23,7 +23,7 @@ class bot_del extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
-        $svc = new \lolbot\config\ConfigService($entityManager);
+        $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
         $idArg = $input->getArgument('bot');
         if (!is_string($idArg)) {
             throw new \LogicException("'bot' argument must be a string");
