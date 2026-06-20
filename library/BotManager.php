@@ -438,4 +438,42 @@ class BotManager
             echo "live-sync apply error for {$c->entityType}/{$c->action}: " . $e->getMessage() . "\n";
         }
     }
+
+    /**
+     * Live runtime status for one bot, read from its \Irc\Client.
+     *
+     * @return array{id:int,name:string,network:string,connected:bool,nick:string,channels:list<string>,server:string}|null
+     */
+    public function botStatus(int $botId): ?array
+    {
+        $client = $this->clients[$botId] ?? null;
+        $bot = $this->bots[$botId] ?? null;
+        if ($client === null || $bot === null) {
+            return null;
+        }
+        return [
+            'id' => $bot->id,
+            'name' => $bot->name,
+            'network' => $bot->network->name,
+            'connected' => $client->isEstablished(),
+            'nick' => $client->getNick(),
+            'channels' => array_values($client->getJoinedChannels()),
+            'server' => $client->getServerDesc(),
+        ];
+    }
+
+    /**
+     * @return list<array{id:int,name:string,network:string,connected:bool,nick:string,channels:list<string>,server:string}>
+     */
+    public function allBotStatuses(): array
+    {
+        $out = [];
+        foreach (array_keys($this->clients) as $botId) {
+            $s = $this->botStatus((int)$botId);
+            if ($s !== null) {
+                $out[] = $s;
+            }
+        }
+        return $out;
+    }
 }

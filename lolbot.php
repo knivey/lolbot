@@ -212,6 +212,20 @@ function main(): void {
         $router->addRoute('POST', '/_control/jump/{botid}', $makeLifecycle('jump'));
         $router->addRoute('POST', '/_control/respawn/{botid}', $makeLifecycle('respawn'));
 
+        // GET /_control/status  — JSON live status of all running bots (for the web panel).
+        $router->addRoute('GET', '/_control/status', new \Amp\Http\Server\RequestHandler\ClosureRequestHandler(
+            function (\Amp\Http\Server\Request $request) use ($mgr, $coreKey) {
+                if ($coreKey === '' || !hash_equals($coreKey, (string)$request->getHeader('key'))) {
+                    return new \Amp\Http\Server\Response(403, ['content-type' => 'text/plain'], "Invalid key");
+                }
+                return new \Amp\Http\Server\Response(
+                    200,
+                    ['content-type' => 'application/json'],
+                    json_encode(['bots' => $mgr->allBotStatuses()], JSON_UNESCAPED_SLASHES),
+                );
+            }
+        ));
+
         // Scripts register their routes on the shared server. (Defined in Task 6.)
         if (function_exists('\\scripts\\notifier\\notifier_register')) {
             \scripts\notifier\notifier_register($router, $mgr);

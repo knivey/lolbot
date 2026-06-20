@@ -272,6 +272,11 @@ class Client extends EventEmitter
         return $this->nick;
     }
 
+    public function getServerDesc(): string
+    {
+        return $this->server . ':' . $this->port . ($this->ssl ? ' ssl' : '');
+    }
+
     public function isCurrentNick(string $nick): bool
     {
         return strtolower($nick) == strtolower($this->nick);
