@@ -1,0 +1,18 @@
+{% if bots is empty %}
+  <p class="badge-bad">No live status — bot not running or unreachable.</p>
+{% else %}
+  {% for b in bots %}
+  <div class="card">
+    <strong>{{ b.name }}</strong>
+    <span class="{{ b.connected ? 'badge-ok' : 'badge-bad' }}">{{ b.connected ? '🟢 connected' : '🔴 disconnected' }}</span>
+    <span class="muted">· nick {{ b.nick }} · {{ b.channels|length }} chans · {{ b.server }} · {{ b.network }}</span>
+    <div style="margin-top:6px">
+      {% for act in ['reconnect','jump','respawn'] %}
+        <form class="inline" method="post" action="/bots/{{ b.id }}/{{ act }}" hx-post="/bots/{{ b.id }}/{{ act }}" hx-swap="none">
+          <input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn ghost" type="submit">{{ act }}</button>
+        </form>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+{% endif %}

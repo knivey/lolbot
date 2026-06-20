@@ -1,5 +1,6 @@
 <?php
 // (method, path) -> handler. Section tasks append their routes before the 404 fallback.
+require_once __DIR__ . '/sections/overview.php';
 require_once __DIR__ . '/sections/bots.php';
 require_once __DIR__ . '/sections/networks.php';
 require_once __DIR__ . '/sections/ignores.php';
@@ -31,7 +32,8 @@ function web_dispatch(string $method, string $path): void
     // Everything else requires auth (no-op when open).
     web_require_auth();
 
-    if ($method === 'GET' && ($path === '/' || $path === '')) { web_home(); }
+    if ($method === 'GET' && ($path === '/' || $path === '')) { web_overview(); }
+    if ($method === 'GET' && $path === '/_status') { web_overview_status(); }
 
     if ($method === 'GET' && $path === '/bots') { web_bots_list(); }
     if ($method === 'GET' && $path === '/bots/new') { web_bots_new(); }

@@ -1,0 +1,7 @@
+{% extends 'base.twig' %}
+{% block content %}
+<h1>Overview</h1>
+<div id="status" hx-get="/_status" hx-trigger="load, every 5s" hx-swap="innerHTML">
+  <p class="muted">loading live status…</p>
+</div>
+{% endblock %}
