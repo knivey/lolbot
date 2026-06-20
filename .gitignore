@@ -19,3 +19,4 @@ opencode.json
 .worktrees/
 .phpunit.cache
 .php-cs-fixer.cache
+.superpowers/
