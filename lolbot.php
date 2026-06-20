@@ -131,293 +131,114 @@ require_once 'library/extract_opts_and_args.php';
     }
 });
 
-/**
- * @var \Irc\Client[]
- */
-$clients = [];
-/**
- * notify servers
- * @var Amp\Http\Server\HttpServer[] $servers
- */
-$servers = [];
-
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 global $ORMconfig;
 $ignoreCache = new ArrayAdapter(defaultLifetime: 5, storeSerialized: false, maxLifetime: 10, maxItems: 100);
 
-function startBot(lolbot\entities\Network $network, lolbot\entities\Bot $dbBot): \Irc\Client
-{
-    global $config, $logHandler, $entityManager;
-    $linktitlesEnabled = (new \lolbot\config\SettingsResolver($entityManager))->linktitlesEnabled($network, null);
-    //TODO add support and check for per bot servers first
-    $server = $network->selectServer();
-    $log = new Logger($dbBot->name);
-    $log->pushHandler($logHandler);
-    $client = new \Irc\Client($dbBot->name, $server->address, $log, (string)$server->port, $dbBot->bindIp, $server->ssl);
-    $client->setThrottle($server->throttle);
-    $client->setServerPassword($server->password ?? '');
-    if (isset($dbBot->sasl_user) && isset($dbBot->sasl_pass)) {
-        $client->setSasl($dbBot->sasl_user, $dbBot->sasl_pass);
-    }
-    $nicks = new Nicks($client);
-    $chans = new Channels($client);
-
-    $router = new Cmdr();
-    $router->loadFuncs();
-
-    $bomb_game = new bomb_game($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:bomb_game", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($bomb_game);
-    $alias = new alias($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:alias", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($alias);
-    $weather = new weather($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:weather", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($weather);
-    $lastfm = new lastfm($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:lastfm", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($lastfm);
-    $remindme = new remindme($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:remindme", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($remindme);
-    $tell = new tell($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tell", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($tell);
-    $seen = new seen($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:seen", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($seen);
-    $codesand = new codesand($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:codesand", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($codesand);
-    $tools = new tools($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tools", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($tools);
-    $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($urbandict);
-    $help = new help($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:help", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($help);
-    $stocks = new stocks($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:stocks", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($stocks);
-    $crypto = new crypto($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:crypto", [$logHandler]), $nicks, $chans, $router);
-    $router->loadMethods($crypto);
-
-    $eventLogger = new Logger("{$dbBot->name}:linktitles:UrlEvents", [$logHandler]);
-    $eventProvider = new OrderedListenerProvider();
-    $eventDispatcher = new Dispatcher($eventProvider, $eventLogger);
-    $linktitles = new linktitles($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:linktitles", [$logHandler]), $nicks, $chans, $router);
-    $linktitles->eventDispatcher = $eventDispatcher;
-    $router->loadMethods($linktitles);
-
-    $youtube = new youtube($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:youtube", [$logHandler]), $nicks, $chans, $router);
-    $youtube->setEventProvider($eventProvider);
-    $router->loadMethods($youtube);
-
-    $twitter = new twitter($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:twitter", [$logHandler]), $nicks, $chans, $router);
-    $twitter->setEventProvider($eventProvider);
-    $router->loadMethods($twitter);
-
-    $invidious = new invidious($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:invidious", [$logHandler]), $nicks, $chans, $router);
-    $invidious->setEventProvider($eventProvider);
-    $router->loadMethods($invidious);
-
-    $github = new github($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:github", [$logHandler]), $nicks, $chans, $router);
-    $github->setEventProvider($eventProvider);
-    $router->loadMethods($github);
-
-    $reddit = new reddit($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:reddit", [$logHandler]), $nicks, $chans, $router);
-    $reddit->setEventProvider($eventProvider);
-    $router->loadMethods($reddit);
-
-    $tiktok = new tiktok($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:tiktok", [$logHandler]), $nicks, $chans, $router);
-    $tiktok->setEventProvider($eventProvider);
-    $router->loadMethods($tiktok);
-
-    $imgur = new imgur($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:imgur", [$logHandler]), $nicks, $chans, $router);
-    $imgur->setEventProvider($eventProvider, $linktitles);
-    $router->loadMethods($imgur);
-
-    $client->on('welcome', function (WelcomeEvent $e, \Irc\Client $bot) use ($dbBot) {
-        foreach (explode("\n", $dbBot->onConnect) as $line) {
-            if($line == "")
-                continue;
-            $line = str_replace('$me', $bot->getNick(), $line);
-            $bot->send($line);
-        }
-        $join = [];
-        foreach ($dbBot->getChannels() as $channel)
-            $join[] = $channel->name;
-        $bot->join(implode(',', $join));
-    });
-
-    EventLoop::repeat(10, function() use ($client, $dbBot) {
-        if(!$client->isEstablished()) {
-            return;
-        }
-        if($client->isCurrentNick($dbBot->name)) {
-            return;
-        }
-        $client->nick($dbBot->name);
-    });
-
-    $client->on('kick', function (KickEvent $args, \Irc\Client $bot) {
-        if ($args->target == $bot->getNick())
-            $bot->join($args->chan);
-    });
-
-    //Stop abuse from an IRCOP called sylar
-    $client->on('mode', function (ModeEvent $args, \Irc\Client $bot) {
-        if ($args->target == $bot->getNick()) {
-            $adding = true;
-            foreach (str_split($args->args[0]) as $mode) {
-                switch ($mode) {
-                    case '+':
-                        $adding = true;
-                        break;
-                    case '-':
-                        $adding = false;
-                        break;
-                    case 'd':
-                    case 'D':
-                        if ($adding)
-                            $bot->send("MODE {$bot->getNick()} -{$mode}");
-                }
-            }
-        }
-    });
-
-    $client->on('chat', function (ChatEvent $args, \Irc\Client $bot) use ($alias, $linktitles, $network, $dbBot, $router, $linktitlesEnabled) {
-        try {
-            global $config, $entityManager, $ignoreCache;
-
-            $ignored = $ignoreCache->getItem($args->fullhost);
-            if (!$ignored->isHit()) {
-                $ignoreRepository = $entityManager->getRepository(Ignore::class);
-                if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
-                    $ignored->set(true);
-                else
-                    $ignored->set(false);
-                $ignoreCache->save($ignored);
-            }
-            if ($ignored->get())
-                return;
-
-
-            if ($linktitlesEnabled) {
-                async(fn() => $linktitles->linktitles($bot, $args->nick, $args->chan, $args->identhost, $args->text));
-            }
-
-            if ($dbBot->trigger != "") {
-                if (substr($args->text, 0, 1) != $dbBot->trigger) {
-                    return;
-                }
-                $text = substr($args->text, 1);
-            } elseif ($dbBot->trigger_re != "") {
-                $trig = "/(^{$dbBot->trigger_re}).+$/";
-                if (!preg_match($trig, $args->text, $m)) {
-                    return;
-                }
-                $text = substr($args->text, strlen($m[1]));
-            } else {
-                echo "No trigger defined\n";
-                return;
-            }
-
-
-            $ar = explode(' ', $text);
-            if (array_shift($ar) == 'ping') {
-                $bot->msg($args->chan, "Pong");
-            }
-            /*
-            $ar = explode(' ', $text);
-            if (array_shift($ar) == 'test') {
-                $lines = $chans->dump();
-                foreach($lines as $line)
-                    $bot->msg($args->nick, $line);
-                return;
-            }*/
-
-
-            $text = explode(' ', $text);
-            $cmd = array_shift($text);
-            $text = implode(' ', $text);
-            if (trim($cmd) == '')
-                return;
-
-            async(function () use ($cmd, $text, $args, $bot, $router, $alias): void {
-                if ($router->cmdExists($cmd)) {
-                    try {
-                        $router->call($cmd, $text, $args, $bot);
-                    } catch (\Exception $e) {
-                        $bot->notice($args->nick, $e->getMessage());
-                    } catch (\Throwable $e) {
-                        echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
-                        $bot->notice($args->nick, "error running command :(");
-                    }
-                } else {
-                    //call other cmd handlers
-                    [$invOpts, $posArgs] = extractOptsAndArgs($text);
-                    $alias->handleCmd($args, $bot, $cmd, $posArgs, $invOpts);
-                }
-            });
-        } catch (Exception $e) {
-            echo "UNCAUGHT EXCEPTION $e\n";
-        }
-    });
-    $client->on('pm', function (PmEvent $args, \Irc\Client $bot) use ($router) {
-        $text = explode(' ', $args->text);
-        $cmd = array_shift($text);
-        $text = implode(' ', $text);
-        if (trim($cmd) == '')
-            return;
-
-        try {
-            $router->callPriv($cmd, $text, $args, $bot);
-        } catch (Exception $e) {
-            $bot->notice($args->nick, $e->getMessage());
-        }
-    });
-    $client->go();
-    return $client;
-}
-
 function main(): void {
-    global $clients, $entityManager, $config, $servers, $logHandler;
+    global $entityManager, $config, $logHandler;
+    $mgr = new \library\BotManager($entityManager);
+
+    // Start every existing bot.
     $nets = $entityManager->getRepository(Network::class)->findAll();
     foreach ($nets as $network) {
         foreach ($network->getBots() as $bot) {
-            $clients[$bot->id] = startBot($network, $bot);
-            if(isset($config['bots'][$bot->id]['listen'])) {
-                $logger = new Logger("{$bot->name}:notifier");
-                $logger->pushHandler($logHandler);
-                $servers[$bot->id] = \scripts\notifier\notifier($clients[$bot->id], $config['bots'][$bot->id]['listen'], $logger);
-            }
+            $mgr->spawn($network, $bot);
         }
     }
 
-    //TODO first time attempt gracefull, second catch force it
-    EventLoop::onSignal(SIGINT, function () use ($servers, $clients): void {
-        shutdown($clients, $servers, "Caught SIGINT GOODBYE!!!!");
-    });
+    // Global REST server (single listen + control_key), if configured.
+    $server = null;
+    if (isset($config['listen'])) {
+        $logger = new Logger("control");
+        $logger->pushHandler($logHandler);
+        $server = \Amp\Http\Server\SocketHttpServer::createForDirectAccess($logger);
+        $server->expose($config['listen']);
+        $router = new \Amp\Http\Server\Router($server, $logger, new \Amp\Http\Server\DefaultErrorHandler());
+        $coreKey = is_string($config['control_key'] ?? null) ? $config['control_key'] : '';
 
-    EventLoop::onSignal(SIGTERM, function () use ($servers, $clients): void {
-        shutdown($clients, $servers, "Caught SIGTERM GOODBYE!!!!");
+        // POST /_control/apply  {entityType, id, action, data?}
+        $router->addRoute('POST', '/_control/apply', new \Amp\Http\Server\RequestHandler\ClosureRequestHandler(
+            function (\Amp\Http\Server\Request $request) use ($mgr, $coreKey) {
+                if ($coreKey === '' || !hash_equals($coreKey, (string)$request->getHeader('key'))) {
+                    return new \Amp\Http\Server\Response(403, ['content-type' => 'text/plain'], "Invalid key");
+                }
+                $payload = json_decode($request->getBody()->buffer(), true);
+                if (!is_array($payload) || !isset($payload['entityType'], $payload['action'])) {
+                    return new \Amp\Http\Server\Response(400, ['content-type' => 'text/plain'], "Bad payload");
+                }
+                $data = null;
+                if (isset($payload['data']) && is_array($payload['data'])) {
+                    $data = [];
+                    foreach ($payload['data'] as $k => $v) {
+                        $data[(string)$k] = $v;
+                    }
+                }
+                $change = new \lolbot\config\ConfigChange(
+                    (string)$payload['entityType'],
+                    isset($payload['id']) ? (int)$payload['id'] : null,
+                    (string)$payload['action'],
+                    $data,
+                );
+                \Amp\async(fn() => $mgr->apply($change));
+                return new \Amp\Http\Server\Response(200, ['content-type' => 'text/plain'], "applied");
+            }
+        ));
+
+        // Manual lifecycle: /_control/reconnect/{botid}, /jump/{botid}, /respawn/{botid}
+        $makeLifecycle = function (string $method) use ($mgr, $coreKey) {
+            return new \Amp\Http\Server\RequestHandler\ClosureRequestHandler(
+                function (\Amp\Http\Server\Request $request) use ($mgr, $coreKey, $method) {
+                    if ($coreKey === '' || !hash_equals($coreKey, (string)$request->getHeader('key'))) {
+                        return new \Amp\Http\Server\Response(403, ['content-type' => 'text/plain'], "Invalid key");
+                    }
+                    $args = $request->getAttribute(\Amp\Http\Server\Router::class);
+                    $rawBotId = is_array($args) && isset($args['botid']) ? $args['botid'] : 0;
+                    $botId = is_numeric($rawBotId) ? (int)$rawBotId : 0;
+                    if (!isset($mgr->clients[$botId])) {
+                        return new \Amp\Http\Server\Response(404, ['content-type' => 'text/plain'], "No such bot");
+                    }
+                    \Amp\async(fn() => match ($method) {
+                        'reconnect' => $mgr->reconnect($botId),
+                        'jump' => $mgr->jump($botId),
+                        'respawn' => $mgr->respawn($botId),
+                        default => null,
+                    });
+                    return new \Amp\Http\Server\Response(200, ['content-type' => 'text/plain'], "$method queued");
+                }
+            );
+        };
+        $router->addRoute('POST', '/_control/reconnect/{botid}', $makeLifecycle('reconnect'));
+        $router->addRoute('POST', '/_control/jump/{botid}', $makeLifecycle('jump'));
+        $router->addRoute('POST', '/_control/respawn/{botid}', $makeLifecycle('respawn'));
+
+        // Scripts register their routes on the shared server. (Defined in Task 6.)
+        if (function_exists('\\scripts\\notifier\\notifier_register')) {
+            \scripts\notifier\notifier_register($router, $mgr);
+        }
+
+        $server->start($router, new \Amp\Http\Server\DefaultErrorHandler());
+    }
+
+    EventLoop::onSignal(SIGINT, function () use ($mgr, $server): void {
+        shutdown($mgr, $server, "Caught SIGINT GOODBYE!!!!");
+    });
+    EventLoop::onSignal(SIGTERM, function () use ($mgr, $server): void {
+        shutdown($mgr, $server, "Caught SIGTERM GOODBYE!!!!");
     });
 }
 
-
-/**
- * @param \Irc\Client[] $clients
- * @param \Amp\Http\Server\HttpServer[] $servers
- */
-function shutdown(array $clients, array $servers, string $msg): void {
-        echo "shutdown started: $msg\n";
-        foreach ($clients as $bot) {
-            if (!$bot->isConnected)
-                continue;
-            try {
-                $bot->sendNow("quit :$msg\r\n");
-            } catch (Exception $e) {
-                echo "Exception when sending quit\n $e\n";
-            }
-            $bot->exit();
-        }
-        foreach ($servers as $server)
-            $server->stop();
-
-        \Amp\delay(0.5); // maybe help with sending the quits
-        echo "Stopped?\n";
-        exit(0);
+function shutdown(\library\BotManager $mgr, ?\Amp\Http\Server\HttpServer $server, string $msg): void {
+    echo "shutdown started: $msg\n";
+    foreach ($mgr->clients as $bot) {
+        if (!$bot->isConnected) continue;
+        try { $bot->sendNow("quit :$msg\r\n"); } catch (\Exception $e) { echo "Exception when sending quit\n $e\n"; }
+        $bot->exit();
+    }
+    $server?->stop();
+    \Amp\delay(0.5);
+    echo "Stopped?\n";
+    exit(0);
 }
 
 main();
