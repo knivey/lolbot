@@ -94,7 +94,7 @@ function web_is_htmx(): bool
 function web_render(string $template, array $vars = []): never
 {
     $app = web_app();
-    $base = ['active' => '', 'authed' => ($app['bot_key'] === ''), 'section' => ''];
+    $base = ['active' => '', 'authed' => ($app['bot_key'] !== ''), 'section' => ''];
     echo $app['twig']->render($template, array_merge($base, $vars));
     exit;
 }
