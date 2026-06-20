@@ -1,6 +1,7 @@
 <?php
 // (method, path) -> handler. Section tasks append their routes before the 404 fallback.
 require_once __DIR__ . '/sections/bots.php';
+require_once __DIR__ . '/sections/networks.php';
 
 function web_dispatch(string $method, string $path): void
 {
@@ -38,6 +39,15 @@ function web_dispatch(string $method, string $path): void
     if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels$#', $path, $m)) { web_bots_add_channel((int)$m[1]); }
     if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels/(\d+)/delete$#', $path, $m)) { web_bots_del_channel((int)$m[1], (int)$m[2]); }
     if ($method === 'POST' && preg_match('#^/bots/(\d+)/(reconnect|jump|respawn)$#', $path, $m)) { web_bots_action((int)$m[1], $m[2]); }
+
+    if ($method === 'GET' && $path === '/networks') { web_networks_list(); }
+    if ($method === 'GET' && $path === '/networks/new') { web_networks_new(); }
+    if ($method === 'POST' && $path === '/networks') { web_networks_create(); }
+    if ($method === 'GET' && preg_match('#^/networks/(\d+)$#', $path, $m)) { web_networks_edit((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)$#', $path, $m)) { web_networks_update((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/delete$#', $path, $m)) { web_networks_delete((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers$#', $path, $m)) { web_networks_add_server((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)/delete$#', $path, $m)) { web_networks_del_server((int)$m[1], (int)$m[2]); }
 
     http_response_code(404);
     echo "Not found";

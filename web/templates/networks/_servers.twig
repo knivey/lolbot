@@ -1,0 +1,21 @@
+<div id="servers">
+  <h3>Servers <span class="muted">(change = live jump)</span></h3>
+  <table><tr><th>address</th><th>port</th><th>ssl</th><th>throttle</th><th></th></tr>
+  {% for s in net.servers %}
+    <tr><td>{{ s.address }}</td><td>{{ s.port }}</td><td>{{ s.ssl ? '✓' }}</td><td>{{ s.throttle ? '✓' }}</td>
+    <td><form class="inline" method="post" action="/networks/{{ net.id }}/servers/{{ s.id }}/delete"
+              hx-post="/networks/{{ net.id }}/servers/{{ s.id }}/delete" hx-target="#servers" hx-swap="outerHTML">
+      <input type="hidden" name="_csrf" value="{{ csrf }}"><button class="btn ghost" type="submit">−</button></form></td></tr>
+  {% endfor %}
+  </table>
+  <form method="post" action="/networks/{{ net.id }}/servers" hx-post="/networks/{{ net.id }}/servers"
+        hx-target="#servers" hx-swap="outerHTML">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <input name="address" placeholder="irc.example.net">
+    <input name="port" placeholder="6667" style="max-width:70px">
+    <label><input type="checkbox" name="ssl"> ssl</label>
+    <label><input type="checkbox" name="throttle" checked> throttle</label>
+    <input name="password" type="password" placeholder="password (opt)">
+    <button class="btn" type="submit">+ add server</button>
+  </form>
+</div>
