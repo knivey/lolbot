@@ -1,0 +1,19 @@
+<div id="channels">
+  <h3>Channels <span class="muted">(add/remove = live join/part)</span></h3>
+  <div>
+    {% for c in bot.channels %}
+      <span class="chip">{{ c.name }}
+        <form class="inline" method="post" action="/bots/{{ bot.id }}/channels/{{ c.id }}/delete"
+              hx-post="/bots/{{ bot.id }}/channels/{{ c.id }}/delete" hx-target="#channels" hx-swap="outerHTML">
+          <input type="hidden" name="_csrf" value="{{ csrf }}"> <button class="btn ghost" type="submit">−</button>
+        </form>
+      </span>
+    {% endfor %}
+  </div>
+  <form method="post" action="/bots/{{ bot.id }}/channels" hx-post="/bots/{{ bot.id }}/channels"
+        hx-target="#channels" hx-swap="outerHTML">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <input name="channel" placeholder="#channel">
+    <button class="btn" type="submit">+ add channel</button>
+  </form>
+</div>

@@ -1,0 +1,31 @@
+{% extends 'base.twig' %}
+{% import '_macros.twig' as m %}
+{% block content %}
+<h1>{{ bot ? 'Edit ' ~ bot.name : 'New bot' }}</h1>
+{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
+{% if saved|default(false) %}<p class="badge-ok">saved (live-applied; sasl/bindIp/onConnect need respawn)</p>{% endif %}
+<form {% if bot %}action="/bots/{{ bot.id }}"{% else %}action="/bots"{% endif %} method="post">
+  {{ m.csrf_field() }}
+  {{ m.field('name', 'nick', bot ? bot.name : '') }}
+  {% if not bot %}
+    <div class="field"><label>network</label>
+      <select name="network_id">{% for n in networks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
+  {% endif %}
+  {{ m.field('trigger', 'trigger', bot ? bot.trigger : '', 'text', 'e.g. !') }}
+  {{ m.field('trigger_re', 'trigger regex', bot ? bot.trigger_re : '') }}
+  {{ m.textarea('onConnect', 'onConnect', bot ? bot.onConnect : '', 'raw IRC commands, $me = nick') }}
+  {{ m.field('sasl_user', 'sasl user', bot ? bot.sasl_user : '') }}
+  {{ m.field('sasl_pass', 'sasl pass', bot ? bot.sasl_pass : '', 'password') }}
+  {{ m.field('bindIp', 'bind ip', bot ? bot.bindIp : '0') }}
+  {{ m.submit('Save') }}
+</form>
+
+{% if bot %}
+  {% include 'bots/_actions.twig' with {botId: bot.id, csrf: csrf(), queued: ''} %}
+  {% include 'bots/_channels.twig' with {bot: bot, csrf: csrf()} %}
+  <form class="inline" method="post" action="/bots/{{ bot.id }}/delete"
+        onsubmit="return confirm('Delete bot {{ bot.name }}?')">
+    {{ m.csrf_field() }} <button class="btn ghost" type="submit">Delete bot</button>
+  </form>
+{% endif %}
+{% endblock %}

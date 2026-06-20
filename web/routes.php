@@ -1,5 +1,7 @@
 <?php
 // (method, path) -> handler. Section tasks append their routes before the 404 fallback.
+require_once __DIR__ . '/sections/bots.php';
+
 function web_dispatch(string $method, string $path): void
 {
     // Static assets (containment-checked — assets are served before the auth gate).
@@ -26,6 +28,16 @@ function web_dispatch(string $method, string $path): void
     web_require_auth();
 
     if ($method === 'GET' && ($path === '/' || $path === '')) { web_home(); }
+
+    if ($method === 'GET' && $path === '/bots') { web_bots_list(); }
+    if ($method === 'GET' && $path === '/bots/new') { web_bots_new(); }
+    if ($method === 'POST' && $path === '/bots') { web_bots_create(); }
+    if ($method === 'GET' && preg_match('#^/bots/(\d+)$#', $path, $m)) { web_bots_edit((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)$#', $path, $m)) { web_bots_update((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/delete$#', $path, $m)) { web_bots_delete((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels$#', $path, $m)) { web_bots_add_channel((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels/(\d+)/delete$#', $path, $m)) { web_bots_del_channel((int)$m[1], (int)$m[2]); }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/(reconnect|jump|respawn)$#', $path, $m)) { web_bots_action((int)$m[1], $m[2]); }
 
     http_response_code(404);
     echo "Not found";

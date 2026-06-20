@@ -1,0 +1,10 @@
+<div id="actions">
+  {% if queued %}<p class="badge-ok">{{ queued }} queued</p>{% endif %}
+  {% for act in ['reconnect','jump','respawn'] %}
+    <form class="inline" method="post" action="/bots/{{ botId }}/{{ act }}"
+          hx-post="/bots/{{ botId }}/{{ act }}" hx-target="#actions" hx-swap="outerHTML">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <button class="btn ghost" type="submit">{{ act }}</button>
+    </form>
+  {% endfor %}
+</div>
