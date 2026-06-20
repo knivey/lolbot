@@ -1,0 +1,22 @@
+{% extends 'base.twig' %}
+{% import '_macros.twig' as m %}
+{% block content %}
+<h1>Linktitles</h1>
+{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
+{% for n in networks %}
+  {% set r = byNet[n.id] ?? null %}
+  <div class="card">
+    <h3>{{ n.name }}</h3>
+    <form method="post" action="/linktitles/{{ n.id }}">{{ m.csrf_field() }}
+      <div class="field"><label>enabled</label>
+        <label><input type="checkbox" name="enabled" value="1" {{ r and r.enabled ? 'checked' }}></label></div>
+      {{ m.field('url_log_chan','url log chan', r ? r.url_log_chan : '') }}
+      {{ m.field('ai_vision_model','ai model', r ? r.ai_vision_model : '') }}
+      {{ m.textarea('ai_vision_prompt','ai prompt', r ? r.ai_vision_prompt : '') }}
+      {{ m.field('ai_vision_reasoning_effort','reasoning effort', r ? r.ai_vision_reasoning_effort : '') }}
+      {{ m.submit('Save') }}
+    </form>
+  </div>
+{% endfor %}
+<p class="muted"><code>enabled</code> applies live; other fields are read per-use. Empty field = inherit/reset.</p>
+{% endblock %}

@@ -4,6 +4,7 @@ require_once __DIR__ . '/sections/bots.php';
 require_once __DIR__ . '/sections/networks.php';
 require_once __DIR__ . '/sections/ignores.php';
 require_once __DIR__ . '/sections/services.php';
+require_once __DIR__ . '/sections/linktitles.php';
 
 function web_dispatch(string $method, string $path): void
 {
@@ -58,6 +59,9 @@ function web_dispatch(string $method, string $path): void
     if ($method === 'GET' && $path === '/services') { web_services(); }
     if ($method === 'POST' && $path === '/services/ai') { web_services_save('ai'); }
     if ($method === 'POST' && $path === '/services/paste') { web_services_save('paste'); }
+
+    if ($method === 'GET' && $path === '/linktitles') { web_linktitles(); }
+    if ($method === 'POST' && preg_match('#^/linktitles/(\d+)$#', $path, $m)) { web_linktitles_save((int)$m[1]); }
 
     http_response_code(404);
     echo "Not found";
