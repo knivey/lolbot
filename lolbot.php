@@ -218,10 +218,11 @@ function main(): void {
                 if ($coreKey === '' || !hash_equals($coreKey, (string)$request->getHeader('key'))) {
                     return new \Amp\Http\Server\Response(403, ['content-type' => 'text/plain'], "Invalid key");
                 }
+                $body = json_encode(['bots' => $mgr->allBotStatuses()], JSON_UNESCAPED_SLASHES);
                 return new \Amp\Http\Server\Response(
                     200,
                     ['content-type' => 'application/json'],
-                    json_encode(['bots' => $mgr->allBotStatuses()], JSON_UNESCAPED_SLASHES),
+                    $body === false ? '{"bots":[]}' : $body,
                 );
             }
         ));

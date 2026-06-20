@@ -101,9 +101,9 @@ function web_bots_add_channel(int $botId): never
     try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
     $bot = $app['svc']->getBot($botId);
     $chan = trim(is_string($_POST['channel'] ?? null) ? $_POST['channel'] : '');
-    if ($bot !== null && $chan !== '') {
-        try { $app['svc']->addChannel($bot, $chan); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
-    }
+    if ($bot === null) { web_error_fragment('No such bot', 404); }
+    if ($chan === '') { web_error_fragment('Channel required'); }
+    try { $app['svc']->addChannel($bot, $chan); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
     web_bots_channels_fragment($botId);
 }
 
