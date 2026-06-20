@@ -2,13 +2,7 @@
 #per bot config items
 bots:
   2: #bot id from database
-    # Uncomment to start the notification listen server
-    # Notifications can be sent to the bot using one of the keys in scripts/notifier/notifier_keys.yaml
-    # echo "test" | curl -H "key: example" -X POST --data-binary @- http://127.0.0.1:1337/privmsg/channel
-    #listen: [
-    #  "0.0.0.0:1337",
-    #  "[::]:1337"
-    #]
+    # Per-bot `listen` moved to the global top-level `listen` (Sub-project 2).
     # Set to true to enable codesand (configure server in scripts/codesand/config.yaml)
     codesand: false
     codesand_maxlines: 30
@@ -19,11 +13,18 @@ bots:
     # If the bot should use p2u to send a thumbnail to channel
     #youtube_thumb: true
     #youtube_thumbwidth: 60
-    # NOTE: the items above (listen, codesand, pump_*, youtube_*) are transitional and
+    # NOTE: the items above (codesand, pump_*, youtube_*) are transitional and
     # still read from config.yaml; they will move to the DB in follow-up work.
     # Per-bot linktitles enable and url_log_chan now live in the DB:
     #   php admin-cli.php linktitles:set --network <id> enabled true
     #   php admin-cli.php linktitles:set --network <id> url_log_chan '#urls'
+
+
+# Live-sync control surface (Sub-project 2). Keep this on localhost.
+# The channel bot runs a single global REST server on `listen`; admin-cli pushes
+# config changes to it (POST /_control/apply) using `control_key`.
+listen: "127.0.0.1:1339"
+control_key: "change-me"
 
 
 #configure the database (follows doctrine config)

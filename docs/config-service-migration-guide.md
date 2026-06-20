@@ -239,3 +239,21 @@ php admin-cli.php linktitles:set --network <id>
   a host/key? If not, `config:import` or `service:set paste host/key`.
 - **Wrong AI model after migration** → `linktitles:set --network <id>` shows the model?
   Set it: `linktitles:set --network <id> ai_vision_model <model>`.
+
+---
+
+## Sub-project 2: live config sync (after Sub-project 1)
+
+Enables live-apply so config changes take effect without a bot restart.
+
+- [ ] Add top-level `listen` (e.g. `"127.0.0.1:1339"`) and `control_key` to `config.yaml`.
+- [ ] Remove the per-bot `bots.<id>.listen` lines (no longer used).
+- [ ] Restart the channel bot once to start the global REST server.
+- [ ] Verify live-apply: `php admin-cli.php bot:addchannel <botid> #test` → the bot
+      joins `#test` live (no restart). If the bot is down, the command still
+      succeeds (push is skipped); the change applies on next start.
+- [ ] Manual control endpoints (core key, via `key:` header):
+      `POST /_control/reconnect/{botid}`, `/_control/jump/{botid}`, `/_control/respawn/{botid}`.
+- [ ] Notifier now lives at `POST /notifier/{botid}/privmsg/{chan}` and
+      `/owncast/{chan}` (still `notifier_keys.yaml`); update any outside apps
+      that posted to the old per-bot `/privmsg/{chan}` URL to include the bot id.
