@@ -1,0 +1,27 @@
+{% extends 'base.twig' %}
+{% import '_macros.twig' as m %}
+{% block content %}
+<h1>Services</h1>
+{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
+<div class="card">
+  <h3>AI vision</h3>
+  <form method="post" action="/services/ai">{{ m.csrf_field() }}
+    {{ m.field('apiKey','api key', ai.apiKey, 'password') }}
+    {{ m.field('baseUrl','base url', ai.baseUrl) }}
+    {{ m.field('maxDim','max dim', ai.maxDim, 'number') }}
+    {{ m.field('jpgQuality','jpg quality', ai.jpgQuality, 'number') }}
+    {{ m.field('timeout','timeout (s)', ai.timeout, 'number') }}
+    {{ m.field('reasoningEffort','reasoning effort', ai.reasoningEffort) }}
+    {{ m.submit('Save AI') }}
+  </form>
+</div>
+<div class="card">
+  <h3>Paste</h3>
+  <form method="post" action="/services/paste">{{ m.csrf_field() }}
+    {{ m.field('host','host', paste.host) }}
+    {{ m.field('key','key', paste.key, 'password') }}
+    {{ m.submit('Save paste') }}
+  </form>
+</div>
+<p class="muted">Consumers read these per-use — no restart needed.</p>
+{% endblock %}
