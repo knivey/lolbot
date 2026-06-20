@@ -1588,11 +1588,10 @@ Remove the now-unused `web_home()` (or leave it; the spec calls for overview as 
     <span class="muted">· nick {{ b.nick }} · {{ b.channels|length }} chans · {{ b.server }} · {{ b.network }}</span>
     <div style="margin-top:6px">
       {% for act in ['reconnect','jump','respawn'] %}
-        <form class="inline" method="post" action="/bots/{{ b.id }}/{{ act }}" hx-post="/bots/{{ b.id }}/{{ act }}" hx-target="#actions-{{ b.id }}" hx-swap="innerHTML">
+        <form class="inline" method="post" action="/bots/{{ b.id }}/{{ act }}" hx-post="/bots/{{ b.id }}/{{ act }}" hx-swap="none">
           <input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn ghost" type="submit">{{ act }}</button>
         </form>
       {% endfor %}
-      <span id="actions-{{ b.id }}"></span>
     </div>
   </div>
   {% endfor %}
