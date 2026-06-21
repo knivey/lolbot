@@ -43,7 +43,6 @@ class linktitles extends script_base
 
     //adding buffer limit is an extra precaution to the body size limit
     const bufferLimit = 1024*1024*40;
-    const defaultVisionPrompt = 'very short summary on one line. dont describe the format e.g. "the image", "the chart", "a meme", just the subject/content/data. dont add unnecessary moral judgments like "outdated", "controversial", "offensive", "antisemitic". keep it short!';
 
 //feature requested by terps
 //sends all urls into a log channel for easier viewing url history
@@ -216,26 +215,11 @@ class linktitles extends script_base
     private function isAiVisionDisabled(string $chan): bool
     {
         global $entityManager;
-        $repo = $entityManager->getRepository(entities\linktitles_setting::class);
-
-        $channelEntity = $this->channelEntityForChan($chan);
-
-        if ($channelEntity !== null) {
-            $setting = $repo->findOneBy(['channel' => $channelEntity]);
-            if ($setting !== null && $setting->ai_vision_disabled) {
-                return true;
-            }
-        }
-
-        $setting = $repo->findOneBy([
-            'network' => $this->network,
-            'channel' => null,
-        ]);
-        if ($setting !== null && $setting->ai_vision_disabled) {
-            return true;
-        }
-
-        return false;
+        $resolved = (new SettingsResolver($entityManager))->resolveLinktitles(
+            $this->network,
+            $this->channelEntityForChan($chan),
+        );
+        return $resolved->aiVisionDisabled;
     }
 
     private function getAiDescription(string $body, string $url, string $chan, string &$profile = '', float $dlMs = 0.0): ?string
@@ -247,7 +231,10 @@ class linktitles extends script_base
             return null;
         }
 
-        $setting = (new SettingsResolver($entityManager))->getLinktitlesSetting($this->network, $this->channelEntityForChan($chan));
+        $resolved = (new SettingsResolver($entityManager))->resolveLinktitles(
+            $this->network,
+            $this->channelEntityForChan($chan),
+        );
 
         try {
             $maxDim = $ai->maxDim;
@@ -283,16 +270,10 @@ class linktitles extends script_base
                 httpClient: $openAiHttp,
             );
 
-            $prompt = self::defaultVisionPrompt;
-            $model = 'gpt-4o';
-            $reasoningConfig = $ai->reasoning;
-            $reasoningEffort = $ai->reasoningEffort;
-            if ($setting !== null) {
-                $prompt = $setting->ai_vision_prompt ?? self::defaultVisionPrompt;
-                $model = $setting->ai_vision_model ?? 'gpt-4o';
-                $reasoningConfig = $setting->ai_vision_reasoning ?? $ai->reasoning;
-                $reasoningEffort = $setting->ai_vision_reasoning_effort ?? $ai->reasoningEffort;
-            }
+            $prompt = $resolved->aiVisionPrompt;
+            $model = $resolved->aiVisionModel;
+            $reasoningConfig = $resolved->aiVisionReasoning;
+            $reasoningEffort = $resolved->aiVisionReasoningEffort;
 
             $reasoning = null;
             if ($reasoningConfig !== null) {

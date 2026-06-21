@@ -12,7 +12,7 @@ function web_services_save(string $type): never
     $app = web_app();
     try { web_verify_csrf(); } catch (\Throwable $e) { web_services($e->getMessage()); }
     $keys = $type === 'ai'
-        ? ['apiKey', 'baseUrl', 'maxDim', 'jpgQuality', 'timeout', 'reasoningEffort']
+        ? ['apiKey', 'baseUrl', 'maxDim', 'jpgQuality', 'timeout']
         : ['host', 'key'];
     $intKeys = ['maxDim', 'jpgQuality', 'timeout'];
     foreach ($keys as $k) {

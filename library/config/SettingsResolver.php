@@ -110,7 +110,7 @@ class SettingsResolver
 
     public function urlLogChan(Network $network, ?Channel $channel): ?string
     {
-        return $this->getLinktitlesSetting($network, $channel)?->url_log_chan;
+        return $this->resolveLinktitles($network, $channel)->urlLogChan;
     }
 
     /**

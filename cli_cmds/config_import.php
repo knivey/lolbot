@@ -40,15 +40,13 @@ class config_import extends Command
 
         $imported = 0;
 
-        // --- AI service ---
+        // --- AI service (connection-only: key/baseUrl/maxDim/jpgQuality/timeout) ---
         $aiMap = [
             'apiKey'  => ['ai_vision_key',           null],
             'baseUrl' => ['ai_vision_base_url',      null],
             'maxDim'  => ['ai_vision_max_dim',       1024],
             'jpgQuality' => ['ai_vision_jpg_quality', 85],
             'timeout' => ['ai_vision_timeout',       10],
-            'reasoningEffort' => ['ai_vision_reasoning_effort', null],
-            'reasoning' => ['ai_vision_reasoning',   null],
         ];
         foreach ($aiMap as $prop => [$yamlKey, $default]) {
             if (!array_key_exists($yamlKey, $config)) {
@@ -113,18 +111,29 @@ class config_import extends Command
             }
         }
 
-        // --- Global AI model/prompt are now linktitles (network-scoped) settings ---
-        foreach ($entityManager->getRepository(\lolbot\entities\Network::class)->findAll() as $network) {
-            if (isset($config['ai_vision_model']) && is_string($config['ai_vision_model'])) {
-                $svc->setLinktitlesSetting($network, null, 'ai_vision_model', $config['ai_vision_model']);
-                $output->writeln("imported ai_vision_model for network {$network->name}");
-                $imported++;
+        // --- Global AI vision model/prompt/reasoning (global linktitles tier) ---
+        // These are global knobs now; import once to the null/null row so the
+        // cascade applies to every network/channel.
+        $globalVisionMap = [
+            'ai_vision_model'             => ['ai_vision_model', 'string'],
+            'ai_vision_prompt'            => ['ai_vision_prompt', 'string'],
+            'ai_vision_reasoning_effort'  => ['ai_vision_reasoning_effort', 'string'],
+            'ai_vision_reasoning'         => ['ai_vision_reasoning', 'array'],
+        ];
+        foreach ($globalVisionMap as $yamlKey => [$settingKey, $kind]) {
+            if (!array_key_exists($yamlKey, $config)) {
+                continue;
             }
-            if (isset($config['ai_vision_prompt']) && is_string($config['ai_vision_prompt'])) {
-                $svc->setLinktitlesSetting($network, null, 'ai_vision_prompt', $config['ai_vision_prompt']);
-                $output->writeln("imported ai_vision_prompt for network {$network->name}");
-                $imported++;
+            $val = $config[$yamlKey];
+            if ($kind === 'string' && !is_string($val)) {
+                continue;
             }
+            if ($kind === 'array' && !is_array($val)) {
+                continue;
+            }
+            $svc->setLinktitlesSetting(null, null, $settingKey, $val);
+            $output->writeln("imported $yamlKey to global linktitles tier");
+            $imported++;
         }
 
         $output->writeln("<info>Imported $imported value(s).</info>");
@@ -153,8 +162,6 @@ class config_import extends Command
             'maxDim' => $cfg->maxDim,
             'jpgQuality' => $cfg->jpgQuality,
             'timeout' => $cfg->timeout,
-            'reasoningEffort' => $cfg->reasoningEffort,
-            'reasoning' => $cfg->reasoning,
             default => null,
         };
     }

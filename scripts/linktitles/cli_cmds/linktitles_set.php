@@ -32,7 +32,8 @@ class linktitles_set extends Command
 
     protected function configure(): void
     {
-        $this->addOption("network", "N", InputOption::VALUE_REQUIRED, "Network ID (required unless --channel is given)");
+        $this->addOption("global", "G", InputOption::VALUE_NONE, "Target the global linktitles tier (network=null, channel=null)");
+        $this->addOption("network", "N", InputOption::VALUE_REQUIRED, "Network ID (required unless --channel or --global is given)");
         $this->addOption("channel", "C", InputOption::VALUE_REQUIRED, "Channel ID (optional, for per-channel setting)");
         $this->addOption("reset", "R", InputOption::VALUE_NONE, "Reset channel setting to inherited (deletes the settings row)");
         $this->addArgument("setting", InputArgument::OPTIONAL, "Setting name");
@@ -42,6 +43,7 @@ class linktitles_set extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int {
         global $entityManager;
 
+        $isGlobal = (bool)$input->getOption("global");
         $channelId = $input->getOption("channel");
         $channel = null;
         if ($channelId !== null) {
@@ -59,8 +61,10 @@ class linktitles_set extends Command
             if (!$network) {
                 throw new \InvalidArgumentException("Network by that ID not found");
             }
+        } elseif ($isGlobal) {
+            $network = null;
         } else {
-            throw new \InvalidArgumentException("--network or --channel is required");
+            throw new \InvalidArgumentException("--network, --channel, or --global is required");
         }
 
         $repo = $entityManager->getRepository(linktitles_setting::class);
@@ -149,16 +153,17 @@ class linktitles_set extends Command
         return '';
     }
 
-    private function showSettings(InputInterface $input, OutputInterface $output, ?linktitles_setting $setting, Network $network, ?Channel $channel): void
+    private function showSettings(InputInterface $input, OutputInterface $output, ?linktitles_setting $setting, ?Network $network, ?Channel $channel): void
     {
         $io = new SymfonyStyle($input, $output);
         global $entityManager;
 
         if ($channel) {
-            $io->title("Linktitles settings (network:{$network->name} channel:{$channel->name})");
+            $netName = $network !== null ? $network->name : '?';
+            $io->title("Linktitles settings (network:{$netName} channel:{$channel->name})");
             $rows = [];
             foreach ($this->settings as $s) {
-                $val = $setting?->$s ?? (in_array($s, ['ai_vision_disabled', 'enabled'], true) ? false : '');
+                $val = $setting !== null ? $setting->$s : (in_array($s, ['ai_vision_disabled', 'enabled'], true) ? false : '');
                 $label = $setting !== null ? 'set' : 'inherited';
                 $rows[] = [$s, self::fmtVal($val), $label];
             }
@@ -166,15 +171,26 @@ class linktitles_set extends Command
             return;
         }
 
+        if ($network === null) {
+            $io->title("Linktitles settings (global)");
+            $rows = [];
+            foreach ($this->settings as $s) {
+                $val = $setting !== null ? $setting->$s : (in_array($s, ['ai_vision_disabled', 'enabled'], true) ? false : '');
+                $rows[] = [$s, self::fmtVal($val)];
+            }
+            $io->table(["Setting", "Value"], $rows);
+            return;
+        }
+
         $io->title("Linktitles settings (network:{$network->name})");
         $rows = [];
         foreach ($this->settings as $s) {
-            $val = $setting?->$s ?? (in_array($s, ['ai_vision_disabled', 'enabled'], true) ? false : '');
+            $val = $setting !== null ? $setting->$s : (in_array($s, ['ai_vision_disabled', 'enabled'], true) ? false : '');
             $rows[] = [$s, self::fmtVal($val)];
         }
         $io->table(["Setting", "Value"], $rows);
 
-        $networkVal = $setting?->ai_vision_disabled ?? false;
+        $networkVal = $setting !== null ? $setting->ai_vision_disabled : false;
 
         $qb = $entityManager->getRepository(linktitles_setting::class)->createQueryBuilder('s');
         $channelSettings = $qb->where('s.channel IS NOT NULL')
