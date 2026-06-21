@@ -48,7 +48,8 @@ class LinktitlesSettingExpansionTest extends ConfigTestCase
         $this->em->clear();
 
         $loaded = $this->em->getRepository(linktitles_setting::class)->findAll()[0];
-        $this->assertFalse($loaded->enabled);
+        $this->assertNull($loaded->enabled);
+        $this->assertNull($loaded->ai_vision_disabled);
         $this->assertNull($loaded->url_log_chan);
         $this->assertNull($loaded->ai_vision_model);
         $this->assertNull($loaded->ai_vision_prompt);

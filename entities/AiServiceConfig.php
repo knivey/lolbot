@@ -28,13 +28,6 @@ class AiServiceConfig
     #[ORM\Column]
     public int $timeout = 10;
 
-    #[ORM\Column(name: 'reasoning_effort', length: 32, nullable: true)]
-    public ?string $reasoningEffort = null;
-
-    /** @var array<string, mixed>|null */
-    #[ORM\Column(type: "json", nullable: true)]
-    public ?array $reasoning = null;
-
     public function __toString(): string
     {
         return "ai service config: apiKey=" . ($this->apiKey !== null ? '(set)' : '(unset)')

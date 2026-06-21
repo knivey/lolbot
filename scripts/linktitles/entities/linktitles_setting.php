@@ -23,11 +23,11 @@ class linktitles_setting
     #[ORM\JoinColumn(name: 'channel_id', referencedColumnName: 'id', nullable: true)]
     public ?Channel $channel = null;
 
-    #[ORM\Column]
-    public bool $ai_vision_disabled = false;
+    #[ORM\Column(nullable: true)]
+    public ?bool $ai_vision_disabled = null;
 
-    #[ORM\Column]
-    public bool $enabled = false;
+    #[ORM\Column(nullable: true)]
+    public ?bool $enabled = null;
 
     #[ORM\Column(nullable: true)]
     public ?string $url_log_chan = null;
@@ -47,7 +47,12 @@ class linktitles_setting
 
     public function __toString(): string
     {
-        $scope = $this->channel ? "channel:{$this->channel->name}" : "network:{$this->network?->name}";
-        return "id: {$this->id} scope: $scope ai_vision_disabled: " . ($this->ai_vision_disabled ? 'true' : 'false');
+        $scope = $this->channel !== null
+            ? "channel:{$this->channel->name}"
+            : ($this->network !== null ? "network:{$this->network->name}" : 'global');
+        $disabled = $this->ai_vision_disabled === null
+            ? 'null'
+            : ($this->ai_vision_disabled ? 'true' : 'false');
+        return "id: {$this->id} scope: $scope ai_vision_disabled: $disabled";
     }
 }

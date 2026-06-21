@@ -226,7 +226,7 @@ class ConfigService
 
     /** Known writable keys per service type (entity property names). */
     private const SERVICE_KEYS = [
-        'ai' => ['apiKey', 'baseUrl', 'maxDim', 'jpgQuality', 'timeout', 'reasoningEffort', 'reasoning'],
+        'ai' => ['apiKey', 'baseUrl', 'maxDim', 'jpgQuality', 'timeout'],
         'paste' => ['host', 'key'],
     ];
 
@@ -276,8 +276,6 @@ class ConfigService
                 'maxDim' => $entity->maxDim = is_int($value) ? $value : throw new InvalidSettingException("maxDim must be an int"),
                 'jpgQuality' => $entity->jpgQuality = is_int($value) ? $value : throw new InvalidSettingException("jpgQuality must be an int"),
                 'timeout' => $entity->timeout = is_int($value) ? $value : throw new InvalidSettingException("timeout must be an int"),
-                'reasoningEffort' => $entity->reasoningEffort = is_string($value) || $value === null ? $value : throw new InvalidSettingException("reasoningEffort must be a string or null"),
-                'reasoning' => $entity->reasoning = $this->normalizeStringKeyedArray($value, 'reasoning'),
                 default => throw new \LogicException('unreachable: whitelist mismatch'),
             };
             return;
@@ -322,23 +320,23 @@ class ConfigService
         'ai_vision_reasoning_effort', 'ai_vision_reasoning',
     ];
 
-    private function findOrCreateLinktitlesSetting(Network $network, ?Channel $channel): linktitles_setting
+    private function findOrCreateLinktitlesSetting(?Network $network, ?Channel $channel): linktitles_setting
     {
         $repo = $this->em->getRepository(linktitles_setting::class);
         $setting = $repo->findOneBy([
-            'network' => $channel !== null ? null : $network,
+            'network' => $network,
             'channel' => $channel,
         ]);
         if ($setting === null) {
             $setting = new linktitles_setting();
-            $setting->network = $channel !== null ? null : $network;
+            $setting->network = $network;
             $setting->channel = $channel;
             $this->em->persist($setting);
         }
         return $setting;
     }
 
-    public function setLinktitlesSetting(Network $network, ?Channel $channel, string $key, mixed $value): linktitles_setting
+    public function setLinktitlesSetting(?Network $network, ?Channel $channel, string $key, mixed $value): linktitles_setting
     {
         if (!in_array($key, self::LINKTITLES_KEYS, true)) {
             throw new InvalidSettingException("Unknown linktitles setting: $key");
@@ -365,22 +363,23 @@ class ConfigService
         };
     }
 
-    public function resetLinktitlesSetting(Network $network, ?Channel $channel, string $key): void
+    public function resetLinktitlesSetting(?Network $network, ?Channel $channel, string $key): void
     {
         if (!in_array($key, self::LINKTITLES_KEYS, true)) {
             throw new InvalidSettingException("Unknown linktitles setting: $key");
         }
         $repo = $this->em->getRepository(linktitles_setting::class);
         $setting = $repo->findOneBy([
-            'network' => $channel !== null ? null : $network,
+            'network' => $network,
             'channel' => $channel,
         ]);
         if ($setting !== null) {
-            // Booleans reset to false; every other field resets to null.
-            // $key is narrowed to LINKTITLES_KEYS by the in_array guard above.
+            // A reset means "inherit": clear the field to null so resolution
+            // falls through to the next tier. $key is narrowed to LINKTITLES_KEYS
+            // by the in_array guard above.
             match ($key) {
-                'enabled' => $setting->enabled = false,
-                'ai_vision_disabled' => $setting->ai_vision_disabled = false,
+                'enabled' => $setting->enabled = null,
+                'ai_vision_disabled' => $setting->ai_vision_disabled = null,
                 'url_log_chan' => $setting->url_log_chan = null,
                 'ai_vision_model' => $setting->ai_vision_model = null,
                 'ai_vision_prompt' => $setting->ai_vision_prompt = null,
@@ -408,11 +407,11 @@ class ConfigService
      * Remove the whole linktitles_setting row for a scope (the reset/inherit
      * semantics of `linktitles:set`). No-op if no row exists. Fires notify.
      */
-    public function deleteLinktitlesSettingScope(Network $network, ?Channel $channel): void
+    public function deleteLinktitlesSettingScope(?Network $network, ?Channel $channel): void
     {
         $repo = $this->em->getRepository(linktitles_setting::class);
         $setting = $repo->findOneBy([
-            'network' => $channel !== null ? null : $network,
+            'network' => $network,
             'channel' => $channel,
         ]);
         if ($setting === null) {

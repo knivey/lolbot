@@ -23,20 +23,6 @@ class ServiceConfigEntityTest extends ConfigTestCase
         $this->assertSame(1024, $loaded->maxDim);
         $this->assertSame(85, $loaded->jpgQuality);
         $this->assertSame(10, $loaded->timeout);
-        $this->assertNull($loaded->reasoningEffort);
-        $this->assertNull($loaded->reasoning);
-    }
-
-    public function test_ai_service_config_stores_reasoning_array(): void
-    {
-        $ai = new AiServiceConfig();
-        $ai->reasoning = ['effort' => 'low', 'max_tokens' => 4096];
-        $this->em->persist($ai);
-        $this->em->flush();
-        $this->em->clear();
-
-        $loaded = $this->em->getRepository(AiServiceConfig::class)->findAll()[0];
-        $this->assertSame(['effort' => 'low', 'max_tokens' => 4096], $loaded->reasoning);
     }
 
     public function test_paste_service_config_persists(): void
