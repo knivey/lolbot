@@ -58,6 +58,8 @@ function web_dispatch(string $method, string $path): void
     if ($method === 'POST' && preg_match('#^/networks/(\d+)$#', $path, $m)) { web_networks_update((int)$m[1]); }
     if ($method === 'POST' && preg_match('#^/networks/(\d+)/delete$#', $path, $m)) { web_networks_delete((int)$m[1]); }
     if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers$#', $path, $m)) { web_networks_add_server((int)$m[1]); }
+    if ($method === 'GET' && preg_match('#^/networks/(\d+)/servers/(\d+)/edit$#', $path, $m)) { web_networks_edit_server((int)$m[1], (int)$m[2]); }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)$#', $path, $m)) { web_networks_update_server((int)$m[1], (int)$m[2]); }
     if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)/delete$#', $path, $m)) { web_networks_del_server((int)$m[1], (int)$m[2]); }
 
     if ($method === 'GET' && $path === '/ignores') { web_ignores_list(); }

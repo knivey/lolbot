@@ -1,0 +1,19 @@
+{% extends 'base.twig' %}
+{% import '_macros.twig' as m %}
+{% block content %}
+<h1>Edit server</h1>
+<p class="muted">on <a href="/networks/{{ net.id }}">{{ net.name }}</a> — a change applies live (the bot jumps to the updated server).</p>
+{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
+<form method="post" action="/networks/{{ net.id }}/servers/{{ srv.id }}">
+  {{ m.csrf_field() }}
+  {{ m.field('address', 'address', srv.address, 'text', 'irc.example.net') }}
+  {{ m.field('port', 'port', srv.port, 'number') }}
+  <div class="field"><label>options</label>
+    <label><input type="checkbox" name="ssl" {{ srv.ssl ? 'checked' }}> ssl</label>
+    <label><input type="checkbox" name="throttle" {{ srv.throttle ? 'checked' }}> throttle</label>
+  </div>
+  {{ m.field('password', 'password (opt)', srv.password, 'text') }}
+  {{ m.submit('Save') }}
+</form>
+<p><a class="btn ghost" href="/networks/{{ net.id }}">← back to {{ net.name }}</a></p>
+{% endblock %}

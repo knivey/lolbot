@@ -6,7 +6,7 @@
 <table><tr><th>id</th><th>hostmask</th><th>reason</th><th>networks</th><th></th></tr>
 {% for ig in ignores %}
   <tr><td>{{ ig.id }}</td><td>{{ ig.hostmask }}</td><td>{{ ig.reason }}</td>
-  <td>{% for n in ig.networks %}<span class="chip">{{ n.name }}</span>{% endfor %}</td>
+  <td>{% if ig.networks is empty %}<span class="chip">global (all networks)</span>{% else %}{% for n in ig.networks %}<span class="chip">{{ n.name }}</span>{% endfor %}{% endif %}</td>
   <td><form class="inline" method="post" action="/ignores/{{ ig.id }}/delete"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn ghost" type="submit">−</button></form></td></tr>
 {% endfor %}
 </table>
@@ -15,7 +15,9 @@
   {{ m.csrf_field() }}
   {{ m.field('hostmask', 'hostmask', '', 'text', '*nick!user@host') }}
   {{ m.field('reason', 'reason (opt)', '') }}
-  <div class="field"><label>networks</label>
+  <div class="field"><label>scope</label>
+    <label><input type="checkbox" name="global"> Global (all networks)</label>
+    <span class="muted">— or pick networks →</span>
     <select name="networks[]" multiple size="4">{% for n in networks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
   {{ m.submit('Add') }}
 </form>

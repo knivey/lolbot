@@ -17,7 +17,8 @@ class IgnoreRepository extends EntityRepository
         $ignores = $this->findAll();
         if($network !== null) {
             $ignores = array_filter($ignores, function (Ignore $i) use ($network, $host) {
-                return ($i->assignedToNetwork($network) && $i->matches($host));
+                // An ignore assigned to no networks is global — it matches every network.
+                return (($i->assignedToNetwork($network) || $i->getNetworks()->isEmpty()) && $i->matches($host));
             });
         }
         return array_filter($ignores, function (Ignore $i) use ($host) {
