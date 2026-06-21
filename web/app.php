@@ -131,7 +131,7 @@ function web_render_fragment(string $template, array $vars = []): never
 function web_error_fragment(string $message, int $status = 400): never
 {
     http_response_code($status);
-    echo '<div class="badge-bad">' . htmlspecialchars($message, ENT_QUOTES) . '</div>';
+    echo '<div class="alert alert-danger py-2 mb-0">' . htmlspecialchars($message, ENT_QUOTES) . '</div>';
     exit;
 }
 
