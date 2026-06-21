@@ -16,16 +16,14 @@ class WebAuthTest extends ConfigTestCase
         require_once __DIR__ . '/../../web/auth.php';
     }
 
-    public function test_is_auth_open_when_no_key(): void
+    public function test_attempt_login_fails_when_no_key_configured(): void
     {
+        // No control_key configured → login must be impossible (no open mode; an empty
+        // submitted key must NOT satisfy hash_equals('', '')).
         $this->bootAuth([]);
-        $this->assertTrue(web_is_auth_open());
-    }
-
-    public function test_is_not_open_when_key_set(): void
-    {
-        $this->bootAuth(['control_key' => 'sekret']);
-        $this->assertFalse(web_is_auth_open());
+        $this->assertFalse(web_attempt_login(''));
+        $this->assertFalse(web_attempt_login('anything'));
+        $this->assertFalse($_SESSION['authed'] ?? false);
     }
 
     public function test_attempt_login_succeeds_with_correct_key(): void

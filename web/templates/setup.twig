@@ -1,0 +1,14 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>lolbot control — setup required</title>
+<link rel="stylesheet" href="/assets/panel.css"></head>
+<body><div class="content" style="max-width:560px;margin:60px auto">
+<h1>lolbot control — setup required</h1>
+<p class="badge-bad">No <code>control_key</code> is configured.</p>
+<p>The panel and the bot's live-control endpoints both require a <code>control_key</code>.</p>
+<ol>
+  <li>Add a key to <code>config.yaml</code>:<br>
+      <code>control_key: "your-secret-key"</code></li>
+  <li>Restart the bot (<code>php lolbot.php</code>) so it picks up the key for <code>/_control/*</code>.</li>
+  <li>Reload this page — you'll get a login prompt. Enter the key.</li>
+</ol>
+<p class="muted">The key is the panel login password and the auth token the panel sends to the running bot.</p>
+</div></body></html>

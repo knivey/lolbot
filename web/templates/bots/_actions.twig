@@ -1,5 +1,6 @@
 <div id="actions">
   {% if queued %}<p class="badge-ok">{{ queued }} queued</p>{% endif %}
+  {% if error|default(false) %}<p class="badge-bad">{{ error }}</p>{% endif %}
   {% for act in ['reconnect','jump','respawn'] %}
     <form class="inline" method="post" action="/bots/{{ botId }}/{{ act }}"
           hx-post="/bots/{{ botId }}/{{ act }}" hx-target="#actions" hx-swap="outerHTML">

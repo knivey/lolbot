@@ -1,13 +1,14 @@
 <?php
-// Session-based auth + CSRF. Auth is OPEN when control_key is unset (loopback intended).
-// (web_is_auth_open() lives in app.php.)
+// Session-based auth + CSRF. A control_key (in config.yaml) is REQUIRED — it is
+// both the login password and the key the bot's /_control/* endpoints require.
+// With no control_key configured the panel shows a setup error (see web_setup_error).
 
 function web_is_authed(): bool
 {
-    return web_is_auth_open() || ($_SESSION['authed'] ?? false) === true;
+    return ($_SESSION['authed'] ?? false) === true;
 }
 
-/** Returns true on success. Uses hash_equals (timing-safe). */
+/** Returns true on success. Uses hash_equals (timing-safe). Rejects when no key is configured. */
 function web_attempt_login(string $key): bool
 {
     $real = web_control_key(web_app()['config']);
@@ -39,9 +40,6 @@ function web_csrf_token(): string
 function web_verify_csrf(): void
 {
     $tok = is_string($_POST['_csrf'] ?? null) ? $_POST['_csrf'] : '';
-    if (web_is_auth_open()) {
-        return; // open mode: no session token exists yet
-    }
     $expected = is_string($_SESSION['csrf'] ?? null) ? $_SESSION['csrf'] : '';
     if ($expected === '' || !hash_equals($expected, $tok)) {
         throw new \RuntimeException('Invalid CSRF token');
@@ -51,5 +49,5 @@ function web_verify_csrf(): void
 /** Twig-exposed csrf() used by the _csrf macro. */
 function web_twig_csrf(): string
 {
-    return web_is_auth_open() ? '' : web_csrf_token();
+    return web_csrf_token();
 }

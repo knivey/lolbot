@@ -33,13 +33,6 @@ function web_bot_base(array $config): string
     return isset($config['listen']) && is_string($config['listen']) ? 'http://' . $config['listen'] : '';
 }
 
-/** Open mode: no control_key configured (loopback/tunnel intended). Defined here (not auth.php)
- *  so app helpers can use it before auth.php is loaded. */
-function web_is_auth_open(): bool
-{
-    return web_control_key(web_app()['config']) === '';
-}
-
 /** cURL to the running bot's /_control/*. Returns decoded JSON (array) or null if unreachable.
  * @param array<string,mixed> $app
  * @param non-empty-string $method
@@ -74,6 +67,31 @@ function web_bot_http(array $app, string $method, string $path, ?array $body = n
     if (!is_string($raw) || $code === 0 || $code >= 400) return null;
     $json = json_decode($raw, true);
     return is_array($json) ? $json : null;
+}
+
+/** cURL to the bot; returns the HTTP status code (0 if unreachable / no key configured).
+ *  For the non-JSON control endpoints (reconnect/jump/respawn) whose body is plain text.
+ * @param array<string,mixed> $app
+ * @param non-empty-string $method
+ */
+function web_bot_http_status(array $app, string $method, string $path): int
+{
+    $botBase = is_string($app['bot_base'] ?? null) ? $app['bot_base'] : '';
+    $botKey = is_string($app['bot_key'] ?? null) ? $app['bot_key'] : '';
+    if ($botBase === '' || $botKey === '' || !function_exists('curl_init')) {
+        return 0;
+    }
+    try {
+        $ch = curl_init($botBase . $path);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['key: ' . $botKey]);
+        curl_exec($ch);
+        return (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    } catch (\Throwable $e) {
+        return 0;
+    }
 }
 
 /** Fetch live bot status from the running bot, or [] if unreachable.

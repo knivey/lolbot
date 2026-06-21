@@ -1,5 +1,9 @@
 <?php
 // Front controller — runs identically under php-fpm (nginx) and `php -S`.
+// chdir to the repo root so config.yaml's relative DB path resolves the same way
+// the bot resolves it, regardless of how this entry is invoked (php -S from any
+// directory, or nginx + php-fpm whose CWD is otherwise undefined).
+chdir(dirname(__DIR__));
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/app.php';
 require_once __DIR__ . '/auth.php';

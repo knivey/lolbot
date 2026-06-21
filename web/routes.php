@@ -21,6 +21,12 @@ function web_dispatch(string $method, string $path): void
         }
     }
 
+    // control_key (config.yaml) is required — it is both the login password and the
+    // key the bot's /_control/* endpoints require. Without it the panel can't operate.
+    if (web_control_key(web_app()['config']) === '') {
+        web_setup_error();
+    }
+
     // Auth routes are always reachable.
     if ($method === 'GET' && $path === '/login') { web_login_form(); }
     if ($method === 'POST' && $path === '/login') { web_login_submit(); }
@@ -29,7 +35,7 @@ function web_dispatch(string $method, string $path): void
         web_redirect('/login');
     }
 
-    // Everything else requires auth (no-op when open).
+    // Everything else requires auth.
     web_require_auth();
 
     if ($method === 'GET' && ($path === '/' || $path === '')) { web_overview(); }
@@ -82,4 +88,11 @@ function web_login_submit(): never
         web_redirect('/');
     }
     web_login_form('Invalid key');
+}
+
+function web_setup_error(): never
+{
+    http_response_code(503);
+    echo web_app()['twig']->render('setup.twig', []);
+    exit;
 }

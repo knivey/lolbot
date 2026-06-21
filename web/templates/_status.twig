@@ -1,5 +1,5 @@
 {% if bots is empty %}
-  <p class="badge-bad">No live status — bot not running or unreachable.</p>
+  <p class="badge-bad">No live status — bot not running, unreachable, or <code>control_key</code> not set.</p>
 {% else %}
   {% for b in bots %}
   <div class="card">

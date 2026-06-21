@@ -129,8 +129,14 @@ function web_bots_action(int $botId, string $action): never
 {
     $app = web_app();
     try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
+    $ok = false;
     if (in_array($action, ['reconnect', 'jump', 'respawn'], true)) {
-        web_bot_http($app, 'POST', '/_control/' . $action . '/' . $botId);
+        $code = web_bot_http_status($app, 'POST', '/_control/' . $action . '/' . $botId);
+        $ok = $code >= 200 && $code < 300;
     }
-    web_render_fragment('bots/_actions.twig', ['botId' => $botId, 'csrf' => web_twig_csrf(), 'queued' => $action]);
+    web_render_fragment('bots/_actions.twig', [
+        'botId' => $botId, 'csrf' => web_twig_csrf(),
+        'queued' => $ok ? $action : '',
+        'error' => $ok ? null : 'bot unreachable (is it running + control_key set?)',
+    ]);
 }
