@@ -154,4 +154,24 @@ class LinktitlesCascadeTest extends ConfigTestCase
         // model still falls to default
         $this->assertSame('default', $r->sources['ai_vision_model']);
     }
+
+    public function test_explicit_false_at_channel_overrides_global_true(): void
+    {
+        $net = $this->svc->createNetwork('N');
+        $bot = $this->svc->createBot($net, 'b');
+        $chan = $this->svc->addChannel($bot, '#c');
+
+        // Global default: linktitles enabled. Channel explicitly disables it.
+        $this->svc->setLinktitlesSetting(null, null, 'enabled', true);
+        $this->svc->setLinktitlesSetting(null, $chan, 'enabled', false);
+
+        $rChannel = $this->resolver->resolveLinktitles($net, $chan);
+        $this->assertFalse($rChannel->enabled);
+        $this->assertSame('channel', $rChannel->sources['enabled']);
+
+        // The network (no override) still inherits the global true.
+        $rNet = $this->resolver->resolveLinktitles($net, null);
+        $this->assertTrue($rNet->enabled);
+        $this->assertSame('global', $rNet->sources['enabled']);
+    }
 }

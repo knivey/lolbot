@@ -32,8 +32,8 @@ final class Version20260621120000 extends AbstractMigration
         $newSchema = clone $schema;
 
         $lt = $newSchema->getTable("linktitles_settings");
-        $lt->getColumn("enabled")->setNotnull(false);
-        $lt->getColumn("ai_vision_disabled")->setNotnull(false);
+        $lt->getColumn("enabled")->setNotnull(false)->setDefault(null);
+        $lt->getColumn("ai_vision_disabled")->setNotnull(false)->setDefault(null);
 
         $ai = $newSchema->getTable("ai_service_config");
         $ai->dropColumn("reasoning_effort");
@@ -47,6 +47,11 @@ final class Version20260621120000 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
+        // Backfill any NULL (inherited) rows before re-adding NOT NULL, or the
+        // ALTER ... SET NOT NULL would fail on Postgres/SQLite if nulls exist.
+        $this->addSql("UPDATE linktitles_settings SET enabled = FALSE WHERE enabled IS NULL");
+        $this->addSql("UPDATE linktitles_settings SET ai_vision_disabled = FALSE WHERE ai_vision_disabled IS NULL");
+
         $sm = $this->connection->createSchemaManager();
         $comp = $sm->createComparator();
         $newSchema = clone $schema;
