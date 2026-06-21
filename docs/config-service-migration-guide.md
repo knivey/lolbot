@@ -310,11 +310,13 @@ server {
 
 ### Auth
 
-- Set `control_key` (top-level `config.yaml`) to require browser login. The same
-  key also authenticates the Sub-project-2 `/_control/*` routes and the status
-  endpoint below.
-- Leave `control_key` **unset** ONLY for loopback/SSH-tunnel access — with no key
-  the panel is open to anyone who can reach `listen`.
+- `control_key` (top-level `config.yaml`) is **required**. It is the browser-login
+  password **and** the auth token for the Sub-project-2 `/_control/*` routes (and the
+  status endpoint below) — the bot fail-closes those routes without it.
+- If `control_key` is not set, the panel refuses to operate and shows a setup-error
+  page (503) instructing you to add one (there is no "open" mode).
+- Set it, then restart the bot so it picks up the key for `/_control/*`, and reload
+  the panel — you'll get a login prompt.
 - The panel is reverse-proxy aware: it honors `X-Forwarded-Proto` when setting
   the secure session cookie, so it works correctly behind an HTTPS-terminating
   proxy.
