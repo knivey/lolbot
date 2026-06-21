@@ -20,3 +20,30 @@
 {% macro csrf_field() %}
   <input type="hidden" name="_csrf" value="{{ csrf() }}">
 {% endmacro %}
+
+{# One linktitles field with override-vs-inherit semantics. When `source`
+   equals `thisTier` the field is an override (prefilled, no hint); otherwise
+   it is inherited (blank input / Inherit radio + hint). `scope` prefixes the
+   radio ids so multiple forms on one page don't collide. #}
+{% macro inherit_field(name, label, value, source, thisTier, hint, type='text', scope='') %}
+  {% set overridden = (source == thisTier) %}
+  <div class="mb-3">
+    <label class="form-label">{{ label }}</label>
+    {% if type == 'bool' %}
+      {% set cur = overridden ? value : 'inherit' %}
+      <div class="btn-group btn-group-sm" role="group" aria-label="{{ label }}">
+        <input type="radio" class="btn-check" name="{{ name }}" id="{{ scope }}_{{ name }}_inherit" value="inherit" autocomplete="off"{{ cur == 'inherit' ? ' checked' : '' }}>
+        <label class="btn btn-outline-secondary" for="{{ scope }}_{{ name }}_inherit">Inherit</label>
+        <input type="radio" class="btn-check" name="{{ name }}" id="{{ scope }}_{{ name }}_on" value="on" autocomplete="off"{{ cur == 'on' ? ' checked' : '' }}>
+        <label class="btn btn-outline-success" for="{{ scope }}_{{ name }}_on">On</label>
+        <input type="radio" class="btn-check" name="{{ name }}" id="{{ scope }}_{{ name }}_off" value="off" autocomplete="off"{{ cur == 'off' ? ' checked' : '' }}>
+        <label class="btn btn-outline-danger" for="{{ scope }}_{{ name }}_off">Off</label>
+      </div>
+    {% elseif type == 'textarea' %}
+      <textarea class="form-control" name="{{ name }}" rows="3">{{ overridden ? value : '' }}</textarea>
+    {% else %}
+      <input class="form-control" type="text" name="{{ name }}" value="{{ overridden ? value : '' }}">
+    {% endif %}
+    {% if not overridden %}<div class="form-text text-body-secondary">{{ hint }}</div>{% endif %}
+  </div>
+{% endmacro %}

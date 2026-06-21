@@ -1,0 +1,21 @@
+{% extends 'base.twig' %}
+{% import '_macros.twig' as m %}
+{% block content %}
+<h1 class="h3 mb-3">Linktitles &mdash; channel {{ chan.name }}</h1>
+<p class="text-body-secondary mb-3"><a href="/linktitles">&larr; back to linktitles</a> &middot; network: {{ net.name }}</p>
+{% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+<p class="text-body-secondary mb-3">Blank fields inherit from the parent tier; saving a blank field (or choosing <em>Inherit</em>) resets it to inherit.</p>
+<div class="card mb-3"><div class="card-body">
+  <form method="post" action="/linktitles/channel/{{ chan.id }}">{{ m.csrf_field() }}
+    {% set scope = 'chan' ~ chan.id %}
+    {% for f in fields %}
+      {{ m.inherit_field(f.name, f.label, f.value, f.source, thisTier, f.hint, f.type, scope) }}
+    {% endfor %}
+    <div class="mb-3">
+      <label class="form-label">reasoning (JSON)</label>
+      <div class="form-text text-body-secondary">editable via CLI &mdash; {% if reasoningJson %}<code>{{ reasoningJson }}</code>{% else %}(not set){% endif %}</div>
+    </div>
+    {{ m.submit('Save channel') }}
+  </form>
+</div></div>
+{% endblock %}

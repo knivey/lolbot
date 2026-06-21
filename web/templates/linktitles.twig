@@ -3,19 +3,46 @@
 {% block content %}
 <h1 class="h3 mb-3">Linktitles</h1>
 {% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+<p class="text-body-secondary mb-3">Blank fields inherit from the parent tier (channel &rarr; network &rarr; global &rarr; defaults). Saving a blank field (or choosing <em>Inherit</em>) resets it to inherit.</p>
+
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">Global defaults</h5>
+  <form method="post" action="/linktitles/global">{{ m.csrf_field() }}
+    {% for f in globalFields %}
+      {{ m.inherit_field(f.name, f.label, f.value, f.source, 'global', f.hint, f.type, 'global') }}
+    {% endfor %}
+    <div class="mb-3">
+      <label class="form-label">reasoning (JSON)</label>
+      <div class="form-text text-body-secondary">editable via CLI &mdash; {% if globalReasoningJson %}<code>{{ globalReasoningJson }}</code>{% else %}(not set){% endif %}</div>
+    </div>
+    {{ m.submit('Save global') }}
+  </form>
+</div></div>
+
 {% for n in networks %}
-  {% set r = byNet[n.id] ?? null %}
-  <div class="card mb-3"><div class="card-body">
-    <h5 class="card-title">{{ n.name }}</h5>
-    <form method="post" action="/linktitles/{{ n.id }}">{{ m.csrf_field() }}
-      <div class="mb-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="enabled" value="1" {{ r and r.enabled ? 'checked' : '' }}> <label class="form-check-label">enabled</label></div></div>
-      {{ m.field('url_log_chan','url log chan', r ? r.url_log_chan : '') }}
-      {{ m.field('ai_vision_model','ai model', r ? r.ai_vision_model : '') }}
-      {{ m.textarea('ai_vision_prompt','ai prompt', r ? r.ai_vision_prompt : '') }}
-      {{ m.field('ai_vision_reasoning_effort','reasoning effort', r ? r.ai_vision_reasoning_effort : '') }}
-      {{ m.submit('Save') }}
-    </form>
-  </div></div>
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">{{ n.net.name }} <small class="text-body-secondary">(network)</small></h5>
+  <form method="post" action="/linktitles/network/{{ n.net.id }}">{{ m.csrf_field() }}
+    {% set scope = 'net' ~ n.net.id %}
+    {% for f in n.fields %}
+      {{ m.inherit_field(f.name, f.label, f.value, f.source, 'network', f.hint, f.type, scope) }}
+    {% endfor %}
+    <div class="mb-3">
+      <label class="form-label">reasoning (JSON)</label>
+      <div class="form-text text-body-secondary">editable via CLI &mdash; {% if n.reasoningJson %}<code>{{ n.reasoningJson }}</code>{% else %}(not set){% endif %}</div>
+    </div>
+    {{ m.submit('Save ' ~ n.net.name) }}
+  </form>
+  {% if n.channels|length %}
+  <div class="mt-3">
+    <span class="text-body-secondary small me-1">Channels:</span>
+    {% for c in n.channels %}
+      <a class="btn btn-sm btn-outline-secondary" href="/linktitles/channel/{{ c.id }}">{{ c.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div></div>
 {% endfor %}
-<p class="text-body-secondary"><code>enabled</code> applies live; other fields are read per-use. Empty field = inherit/reset.</p>
+
+<p class="text-body-secondary"><code>enabled</code> applies live; other fields are read per-use.</p>
 {% endblock %}

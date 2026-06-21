@@ -71,7 +71,10 @@ function web_dispatch(string $method, string $path): void
     if ($method === 'POST' && $path === '/services/paste') { web_services_save('paste'); }
 
     if ($method === 'GET' && $path === '/linktitles') { web_linktitles(); }
-    if ($method === 'POST' && preg_match('#^/linktitles/(\d+)$#', $path, $m)) { web_linktitles_save((int)$m[1]); }
+    if ($method === 'POST' && $path === '/linktitles/global') { web_linktitles_save_global(); }
+    if ($method === 'POST' && preg_match('#^/linktitles/network/(\d+)$#', $path, $m)) { web_linktitles_save_network((int)$m[1]); }
+    if ($method === 'GET' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) { web_linktitles_channel((int)$m[1]); }
+    if ($method === 'POST' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) { web_linktitles_save_channel((int)$m[1]); }
 
     http_response_code(404);
     echo "Not found";
