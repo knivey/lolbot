@@ -1,15 +1,15 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1>Bots</h1>
-<p><a class="btn" href="/bots/new">+ add bot</a></p>
-<table>
+<h1 class="h3 mb-3">Bots</h1>
+<p><a class="btn btn-primary" href="/bots/new">+ add bot</a></p>
+<table class="table table-sm align-middle">
   <tr><th>id</th><th>name</th><th>network</th><th>trigger</th><th>channels</th><th></th></tr>
   {% for b in bots %}
   <tr>
     <td>{{ b.id }}</td><td>{{ b.name }}</td><td>{{ b.network.name }}</td>
     <td>{{ b.trigger ?: (b.trigger_re ?: '') }}</td><td>{{ b.channels|length }}</td>
-    <td class="row-actions"><a href="/bots/{{ b.id }}">edit</a></td>
+    <td><a class="btn btn-outline-secondary btn-sm" href="/bots/{{ b.id }}">edit</a></td>
   </tr>
   {% endfor %}
 </table>

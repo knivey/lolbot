@@ -1,11 +1,11 @@
 <div id="actions">
-  {% if queued %}<p class="badge-ok">{{ queued }} queued</p>{% endif %}
-  {% if error|default(false) %}<p class="badge-bad">{{ error }}</p>{% endif %}
+  {% if queued %}<p class="text-success">{{ queued }} queued</p>{% endif %}
+  {% if error|default(false) %}<p class="text-danger">{{ error }}</p>{% endif %}
   {% for act in ['reconnect','jump','respawn'] %}
-    <form class="inline" method="post" action="/bots/{{ botId }}/{{ act }}"
+    <form class="d-inline" method="post" action="/bots/{{ botId }}/{{ act }}"
           hx-post="/bots/{{ botId }}/{{ act }}" hx-target="#actions" hx-swap="outerHTML">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <button class="btn ghost" type="submit">{{ act }}</button>
+      <button class="btn btn-outline-secondary btn-sm" type="submit">{{ act }}</button>
     </form>
   {% endfor %}
 </div>

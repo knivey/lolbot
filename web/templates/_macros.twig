@@ -1,20 +1,20 @@
-{# Reusable form primitives, auto-escaped by Twig. #}
+{# Reusable form primitives, Bootstrap 5.3. Auto-escaped by Twig. #}
 {% macro field(name, label, value, type='text', placeholder='') %}
-  <div class="field">
-    <label>{{ label }}</label>
-    <input type="{{ type }}" name="{{ name }}" value="{{ value|default('') }}" placeholder="{{ placeholder }}">
+  <div class="mb-3">
+    <label class="form-label">{{ label }}</label>
+    <input class="form-control" type="{{ type }}" name="{{ name }}" value="{{ value|default('') }}" placeholder="{{ placeholder }}">
   </div>
 {% endmacro %}
 
 {% macro textarea(name, label, value, placeholder='') %}
-  <div class="field">
-    <label>{{ label }}</label>
-    <textarea name="{{ name }}" placeholder="{{ placeholder }}" rows="3">{{ value|default('') }}</textarea>
+  <div class="mb-3">
+    <label class="form-label">{{ label }}</label>
+    <textarea class="form-control" name="{{ name }}" placeholder="{{ placeholder }}" rows="3">{{ value|default('') }}</textarea>
   </div>
 {% endmacro %}
 
 {% macro submit(label) %}
-  <button class="btn" type="submit">{{ label }}</button>
+  <button class="btn btn-primary" type="submit">{{ label }}</button>
 {% endmacro %}
 
 {% macro csrf_field() %}

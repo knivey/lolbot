@@ -1,21 +1,16 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1>Edit server</h1>
-<p class="muted">on <a href="/networks/{{ net.id }}">{{ net.name }}</a> — a change applies live (the bot jumps to the updated server).</p>
-{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
+<h1 class="h3 mb-3">Edit server</h1>
+<p class="text-body-secondary">on <a href="/networks/{{ net.id }}">{{ net.name }}</a> — a change applies live (the bot jumps to the updated server).</p>
+{% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
 <form method="post" action="/networks/{{ net.id }}/servers/{{ srv.id }}">
   {{ m.csrf_field() }}
   {{ m.field('address', 'address', srv.address, 'text', 'irc.example.net') }}
   {{ m.field('port', 'port', srv.port, 'number') }}
-  <div class="field"><label>options</label>
-    <div class="checkboxes">
-      <label><input type="checkbox" name="ssl" {{ srv.ssl ? 'checked' }}> ssl</label>
-      <label><input type="checkbox" name="throttle" {{ srv.throttle ? 'checked' }}> throttle</label>
-    </div>
-  </div>
+  <div class="mb-3"><label class="form-label">options</label><div><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="ssl" {{ srv.ssl ? 'checked' }}> <label class="form-check-label">ssl</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="throttle" {{ srv.throttle ? 'checked' }}> <label class="form-check-label">throttle</label></div></div></div>
   {{ m.field('password', 'password (opt)', srv.password, 'text') }}
   {{ m.submit('Save') }}
 </form>
-<p><a class="btn ghost" href="/networks/{{ net.id }}">← back to {{ net.name }}</a></p>
+<p><a class="btn btn-outline-secondary" href="/networks/{{ net.id }}">← back to {{ net.name }}</a></p>
 {% endblock %}

@@ -1,28 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>lolbot control — {{ section }}</title>
-  <link rel="stylesheet" href="/assets/panel.css">
+  <link rel="stylesheet" href="/assets/bootstrap.min.css">
   <script src="/assets/htmx.min.js"></script>
 </head>
 <body>
-<div class="shell">
-  <nav class="topbar">
-    <span class="brand">🤖 lolbot control</span>
-    <span class="who">{% if authed %}operator · <a href="/logout">logout</a>{% else %}<em>open</em>{% endif %}</span>
+<div class="d-flex flex-column min-vh-100">
+  <nav class="navbar bg-body-tertiary border-bottom px-3 py-2">
+    <span class="navbar-brand mb-0">🤖 lolbot control</span>
+    <span class="navbar-text">{% if authed %}operator · <a href="/logout">logout</a>{% endif %}</span>
   </nav>
-  <div class="body">
-    <aside class="sidebar">
-      <a href="/" class="{{ active == 'overview' ? 'sel' }}">Overview</a>
-      <a href="/bots" class="{{ active == 'bots' ? 'sel' }}">Bots</a>
-      <a href="/networks" class="{{ active == 'networks' ? 'sel' }}">Networks</a>
-      <a href="/ignores" class="{{ active == 'ignores' ? 'sel' }}">Ignores</a>
-      <a href="/services" class="{{ active == 'services' ? 'sel' }}">Services</a>
-      <a href="/linktitles" class="{{ active == 'linktitles' ? 'sel' }}">Linktitles</a>
+  <div class="d-flex flex-grow-1">
+    <aside class="border-end p-2 bg-body-tertiary" style="width:168px;flex:0 0 168px;">
+      <ul class="nav nav-pills flex-column gap-1">
+        <li class="nav-item"><a class="nav-link {{ active == 'overview' ? 'active' : '' }}" href="/">Overview</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'bots' ? 'active' : '' }}" href="/bots">Bots</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'networks' ? 'active' : '' }}" href="/networks">Networks</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'ignores' ? 'active' : '' }}" href="/ignores">Ignores</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'services' ? 'active' : '' }}" href="/services">Services</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'linktitles' ? 'active' : '' }}" href="/linktitles">Linktitles</a></li>
+      </ul>
     </aside>
-    <main class="content">
+    <main class="p-4 flex-grow-1">
       {% block content %}{% endblock %}
     </main>
   </div>

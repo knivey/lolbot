@@ -1,11 +1,23 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>lolbot control — login</title>
-<link rel="stylesheet" href="/assets/panel.css"></head>
-<body><div class="content" style="max-width:360px;margin:60px auto">
-<h1>lolbot control</h1>
-{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
-<form method="post" action="/login">
-  <input type="hidden" name="_csrf" value="{{ csrf() }}">
-  <div class="field" style="grid-template-columns:1fr"><label>control key</label>
-    <input type="password" name="key" autofocus></div>
-  <button class="btn" type="submit">Log in</button>
-</form></div></body></html>
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>lolbot control — login</title>
+  <link rel="stylesheet" href="/assets/bootstrap.min.css">
+</head>
+<body>
+<div class="container" style="max-width:420px;margin-top:60px">
+  <h1 class="h3 mb-3">lolbot control</h1>
+  {% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="_csrf" value="{{ csrf() }}">
+    <div class="mb-3">
+      <label class="form-label">control key</label>
+      <input class="form-control" type="password" name="key" autofocus>
+    </div>
+    <button class="btn btn-primary" type="submit">Log in</button>
+  </form>
+</div>
+</body>
+</html>

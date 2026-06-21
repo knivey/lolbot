@@ -1,8 +1,8 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1>{{ net ? 'Edit ' ~ net.name : 'New network' }}</h1>
-{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
+<h1 class="h3 mb-3">{{ net ? 'Edit ' ~ net.name : 'New network' }}</h1>
+{% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
 <form {% if net %}action="/networks/{{ net.id }}"{% else %}action="/networks"{% endif %} method="post">
   {{ m.csrf_field() }}
   {{ m.field('name', 'name', net ? net.name : '') }}
@@ -10,9 +10,9 @@
 </form>
 {% if net %}
   {% include 'networks/_servers.twig' with {net: net, csrf: csrf()} %}
-  <form method="post" action="/networks/{{ net.id }}/delete"
+  <form class="d-inline" method="post" action="/networks/{{ net.id }}/delete"
         onsubmit="return confirm('Delete this network and its servers?')">
-    {{ m.csrf_field() }} <button class="btn ghost" type="submit">Delete network</button>
+    {{ m.csrf_field() }} <button class="btn btn-outline-danger" type="submit">Delete network</button>
   </form>
 {% endif %}
 {% endblock %}

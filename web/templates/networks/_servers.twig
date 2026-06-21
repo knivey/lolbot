@@ -1,17 +1,17 @@
 {% import '_macros.twig' as m %}
 <div id="servers">
-  <h3>Servers <span class="muted">(change = live jump)</span></h3>
+  <h3>Servers <span class="text-body-secondary">(change = live jump)</span></h3>
   {% if net.servers is empty %}
-    <p class="muted">No servers yet.</p>
+    <p class="text-body-secondary">No servers yet.</p>
   {% else %}
-  <table><tr><th>address</th><th>port</th><th>ssl</th><th>throttle</th><th></th></tr>
+  <table class="table table-sm align-middle"><tr><th>address</th><th>port</th><th>ssl</th><th>throttle</th><th></th></tr>
   {% for s in net.servers %}
     <tr><td>{{ s.address }}</td><td>{{ s.port }}</td><td>{{ s.ssl ? '✓' }}</td><td>{{ s.throttle ? '✓' }}</td>
-    <td class="row-actions">
-      <a class="btn ghost" href="/networks/{{ net.id }}/servers/{{ s.id }}/edit">edit</a>
-      <form class="inline" method="post" action="/networks/{{ net.id }}/servers/{{ s.id }}/delete"
+    <td>
+      <a class="btn btn-outline-secondary btn-sm me-1" href="/networks/{{ net.id }}/servers/{{ s.id }}/edit">edit</a>
+      <form class="d-inline" method="post" action="/networks/{{ net.id }}/servers/{{ s.id }}/delete"
             hx-post="/networks/{{ net.id }}/servers/{{ s.id }}/delete" hx-target="#servers" hx-swap="outerHTML">
-        <input type="hidden" name="_csrf" value="{{ csrf }}"><button class="btn ghost" type="submit">−</button>
+        <input type="hidden" name="_csrf" value="{{ csrf }}"><button class="btn btn-outline-secondary btn-sm" type="submit">−</button>
       </form>
     </td></tr>
   {% endfor %}
@@ -24,12 +24,7 @@
     <input type="hidden" name="_csrf" value="{{ csrf }}">
     {{ m.field('address', 'address', '', 'text', 'irc.example.net') }}
     {{ m.field('port', 'port', '6667', 'number') }}
-    <div class="field"><label>options</label>
-      <div class="checkboxes">
-        <label><input type="checkbox" name="ssl"> ssl</label>
-        <label><input type="checkbox" name="throttle" checked> throttle</label>
-      </div>
-    </div>
+    <div class="mb-3"><label class="form-label">options</label><div><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="ssl"> <label class="form-check-label">ssl</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="throttle" checked> <label class="form-check-label">throttle</label></div></div></div>
     {{ m.field('password', 'password (opt)', '', 'text') }}
     {{ m.submit('+ add server') }}
   </form>

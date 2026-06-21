@@ -1,15 +1,15 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1>{{ bot ? 'Edit ' ~ bot.name : 'New bot' }}</h1>
-{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
-{% if saved|default(false) %}<p class="badge-ok">saved (live-applied; sasl/bindIp/onConnect need respawn)</p>{% endif %}
+<h1 class="h3 mb-3">{{ bot ? 'Edit ' ~ bot.name : 'New bot' }}</h1>
+{% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+{% if saved|default(false) %}<p class="text-success">saved (live-applied; sasl/bindIp/onConnect need respawn)</p>{% endif %}
 <form {% if bot %}action="/bots/{{ bot.id }}"{% else %}action="/bots"{% endif %} method="post">
   {{ m.csrf_field() }}
   {{ m.field('name', 'nick', bot ? bot.name : '') }}
   {% if not bot %}
-    <div class="field"><label>network</label>
-      <select name="network_id">{% for n in networks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
+    <div class="mb-3"><label class="form-label">network</label>
+      <select class="form-select" name="network_id">{% for n in networks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
   {% endif %}
   {{ m.field('trigger', 'trigger', bot ? bot.trigger : '', 'text', 'e.g. !') }}
   {{ m.field('trigger_re', 'trigger regex', bot ? bot.trigger_re : '') }}
@@ -23,9 +23,9 @@
 {% if bot %}
   {% include 'bots/_actions.twig' with {botId: bot.id, csrf: csrf(), queued: ''} %}
   {% include 'bots/_channels.twig' with {bot: bot, csrf: csrf()} %}
-  <form class="inline" method="post" action="/bots/{{ bot.id }}/delete"
+  <form class="d-inline" method="post" action="/bots/{{ bot.id }}/delete"
         onsubmit="return confirm('Delete this bot?')">
-    {{ m.csrf_field() }} <button class="btn ghost" type="submit">Delete bot</button>
+    {{ m.csrf_field() }} <button class="btn btn-outline-danger" type="submit">Delete bot</button>
   </form>
 {% endif %}
 {% endblock %}

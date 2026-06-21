@@ -1,10 +1,10 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1>Services</h1>
-{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
-<div class="card">
-  <h3>AI vision</h3>
+<h1 class="h3 mb-3">Services</h1>
+{% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">AI vision</h5>
   <form method="post" action="/services/ai">{{ m.csrf_field() }}
     {{ m.field('apiKey','api key', ai.apiKey, 'text') }}
     {{ m.field('baseUrl','base url', ai.baseUrl) }}
@@ -14,14 +14,14 @@
     {{ m.field('reasoningEffort','reasoning effort', ai.reasoningEffort) }}
     {{ m.submit('Save AI') }}
   </form>
-</div>
-<div class="card">
-  <h3>Paste</h3>
+</div></div>
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">Paste</h5>
   <form method="post" action="/services/paste">{{ m.csrf_field() }}
     {{ m.field('host','host', paste.host) }}
     {{ m.field('key','key', paste.key, 'text') }}
     {{ m.submit('Save paste') }}
   </form>
-</div>
-<p class="muted">Consumers read these per-use — no restart needed.</p>
+</div></div>
+<p class="text-body-secondary">Consumers read these per-use — no restart needed.</p>
 {% endblock %}

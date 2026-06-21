@@ -1,13 +1,13 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1>Ignores</h1>
-{% if error %}<p class="badge-bad">{{ error }}</p>{% endif %}
-<table><tr><th>id</th><th>hostmask</th><th>reason</th><th>networks</th><th></th></tr>
+<h1 class="h3 mb-3">Ignores</h1>
+{% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+<table class="table table-sm align-middle"><tr><th>id</th><th>hostmask</th><th>reason</th><th>networks</th><th></th></tr>
 {% for ig in ignores %}
   <tr><td>{{ ig.id }}</td><td>{{ ig.hostmask }}</td><td>{{ ig.reason }}</td>
-  <td>{% if ig.networks is empty %}<span class="chip">global (all networks)</span>{% else %}{% for n in ig.networks %}<span class="chip">{{ n.name }}</span>{% endfor %}{% endif %}</td>
-  <td><form class="inline" method="post" action="/ignores/{{ ig.id }}/delete"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn ghost" type="submit">−</button></form></td></tr>
+  <td>{% if ig.networks is empty %}<span class="badge rounded-pill text-bg-secondary">global (all networks)</span>{% else %}{% for n in ig.networks %}<span class="badge rounded-pill text-bg-secondary">{{ n.name }}</span>{% endfor %}{% endif %}</td>
+  <td><form class="d-inline" method="post" action="/ignores/{{ ig.id }}/delete"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn btn-outline-secondary btn-sm" type="submit">−</button></form></td></tr>
 {% endfor %}
 </table>
 <h3>Add ignore</h3>
@@ -15,15 +15,12 @@
   {{ m.csrf_field() }}
   {{ m.field('hostmask', 'hostmask', '', 'text', '*nick!user@host') }}
   {{ m.field('reason', 'reason (opt)', '') }}
-  <div class="field"><label>scope</label>
-    <div class="checkboxes">
-      <label><input type="checkbox" name="global"> Global (all networks)</label>
-    </div>
+  <div class="mb-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="global"> <label class="form-check-label">Global (all networks)</label></div></div>
+  <div class="mb-3"><label class="form-label">networks</label>
+    <select class="form-select" name="networks[]" multiple size="4">{% for n in networks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select>
+    <p class="form-text text-body-secondary">Check Global to ignore on every network, or pick specific networks.</p>
   </div>
-  <div class="field"><label>networks</label>
-    <select name="networks[]" multiple size="4">{% for n in networks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
-  <p class="muted" style="margin:-4px 0 8px 128px">Check Global to ignore on every network, or pick specific networks.</p>
   {{ m.submit('Add') }}
 </form>
-<p class="muted">Ignores auto-apply within ~5s (cache TTL) — no restart needed.</p>
+<p class="text-body-secondary">Ignores auto-apply within ~5s (cache TTL) — no restart needed.</p>
 {% endblock %}

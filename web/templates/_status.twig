@@ -1,17 +1,19 @@
 {% if bots is empty %}
-  <p class="badge-bad">No live status — bot not running, unreachable, or <code>control_key</code> not set.</p>
+  <div class="alert alert-warning py-2 mb-2">No live status — bot not running, unreachable, or <code>control_key</code> not set.</div>
 {% else %}
   {% for b in bots %}
-  <div class="card">
-    <strong>{{ b.name }}</strong>
-    <span class="{{ b.connected ? 'badge-ok' : 'badge-bad' }}">{{ b.connected ? '🟢 connected' : '🔴 disconnected' }}</span>
-    <span class="muted">· nick {{ b.nick }} · {{ b.channels|length }} chans · {{ b.server }} · {{ b.network }}</span>
-    <div style="margin-top:6px">
-      {% for act in ['reconnect','jump','respawn'] %}
-        <form class="inline" method="post" action="/bots/{{ b.id }}/{{ act }}" hx-post="/bots/{{ b.id }}/{{ act }}" hx-swap="none">
-          <input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn ghost" type="submit">{{ act }}</button>
-        </form>
-      {% endfor %}
+  <div class="card mb-2">
+    <div class="card-body">
+      <strong>{{ b.name }}</strong>
+      <span class="text-{{ b.connected ? 'success' : 'danger' }}">{{ b.connected ? '🟢 connected' : '🔴 disconnected' }}</span>
+      <span class="text-body-secondary">· nick {{ b.nick }} · {{ b.channels|length }} chans · {{ b.server }} · {{ b.network }}</span>
+      <div class="mt-2">
+        {% for act in ['reconnect','jump','respawn'] %}
+          <form class="d-inline" method="post" action="/bots/{{ b.id }}/{{ act }}" hx-post="/bots/{{ b.id }}/{{ act }}" hx-swap="none">
+            <input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn btn-outline-secondary btn-sm" type="submit">{{ act }}</button>
+          </form>
+        {% endfor %}
+      </div>
     </div>
   </div>
   {% endfor %}

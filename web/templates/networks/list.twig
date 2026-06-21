@@ -1,11 +1,11 @@
 {% extends 'base.twig' %}
 {% block content %}
-<h1>Networks</h1>
-<p><a class="btn" href="/networks/new">+ add network</a></p>
-<table><tr><th>id</th><th>name</th><th>servers</th><th>bots</th><th></th></tr>
+<h1 class="h3 mb-3">Networks</h1>
+<p><a class="btn btn-primary" href="/networks/new">+ add network</a></p>
+<table class="table table-sm align-middle"><tr><th>id</th><th>name</th><th>servers</th><th>bots</th><th></th></tr>
 {% for n in networks %}
   <tr><td>{{ n.id }}</td><td>{{ n.name }}</td><td>{{ n.servers|length }}</td><td>{{ n.bots|length }}</td>
-  <td class="row-actions"><a href="/networks/{{ n.id }}">edit</a></td></tr>
+  <td><a class="btn btn-outline-secondary btn-sm" href="/networks/{{ n.id }}">edit</a></td></tr>
 {% endfor %}
 </table>
 {% endblock %}

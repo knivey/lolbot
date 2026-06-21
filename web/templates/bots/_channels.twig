@@ -1,19 +1,18 @@
 <div id="channels">
-  <h3>Channels <span class="muted">(add/remove = live join/part)</span></h3>
-  <div>
+  <h3>Channels <span class="text-body-secondary">(add/remove = live join/part)</span></h3>
+  <div class="mb-2">
     {% for c in bot.channels %}
-      <span class="chip">{{ c.name }}
-        <form class="inline" method="post" action="/bots/{{ bot.id }}/channels/{{ c.id }}/delete"
-              hx-post="/bots/{{ bot.id }}/channels/{{ c.id }}/delete" hx-target="#channels" hx-swap="outerHTML">
-          <input type="hidden" name="_csrf" value="{{ csrf }}"> <button class="btn ghost" type="submit">−</button>
-        </form>
-      </span>
+      <span class="badge rounded-pill text-bg-secondary">{{ c.name }}</span>
+      <form class="d-inline" method="post" action="/bots/{{ bot.id }}/channels/{{ c.id }}/delete"
+            hx-post="/bots/{{ bot.id }}/channels/{{ c.id }}/delete" hx-target="#channels" hx-swap="outerHTML">
+        <input type="hidden" name="_csrf" value="{{ csrf }}"> <button class="btn btn-outline-secondary btn-sm" type="submit">−</button>
+      </form>
     {% endfor %}
   </div>
   <form method="post" action="/bots/{{ bot.id }}/channels" hx-post="/bots/{{ bot.id }}/channels"
         hx-target="#channels" hx-swap="outerHTML">
     <input type="hidden" name="_csrf" value="{{ csrf }}">
-    <input name="channel" placeholder="#channel">
-    <button class="btn" type="submit">+ add channel</button>
+    <input class="form-control d-inline-block" style="max-width:220px" name="channel" placeholder="#channel">
+    <button class="btn btn-primary" type="submit">+ add channel</button>
   </form>
 </div>
