@@ -13,6 +13,7 @@ a { color:#6cb6ff; }
 h1 { font-size:1.3rem; margin-top:0; }
 .field { display:grid; grid-template-columns:120px 1fr; gap:8px; align-items:center; margin-bottom:8px; max-width:560px; }
 .field label { color:#9ab; }
+.checkboxes { display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
 input, textarea, select { width:100%; background:#161b22; border:1px solid #243042; color:#ddd; padding:6px; border-radius:3px; font:inherit; }
 .btn { background:#1f3a5f; color:#fff; border:1px solid #2c4a72; padding:6px 12px; border-radius:3px; cursor:pointer; }
 .btn.ghost { background:#222; border-color:#333; }

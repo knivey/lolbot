@@ -9,8 +9,10 @@
   {{ m.field('address', 'address', srv.address, 'text', 'irc.example.net') }}
   {{ m.field('port', 'port', srv.port, 'number') }}
   <div class="field"><label>options</label>
-    <label><input type="checkbox" name="ssl" {{ srv.ssl ? 'checked' }}> ssl</label>
-    <label><input type="checkbox" name="throttle" {{ srv.throttle ? 'checked' }}> throttle</label>
+    <div class="checkboxes">
+      <label><input type="checkbox" name="ssl" {{ srv.ssl ? 'checked' }}> ssl</label>
+      <label><input type="checkbox" name="throttle" {{ srv.throttle ? 'checked' }}> throttle</label>
+    </div>
   </div>
   {{ m.field('password', 'password (opt)', srv.password, 'text') }}
   {{ m.submit('Save') }}

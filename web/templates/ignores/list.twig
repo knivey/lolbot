@@ -16,9 +16,13 @@
   {{ m.field('hostmask', 'hostmask', '', 'text', '*nick!user@host') }}
   {{ m.field('reason', 'reason (opt)', '') }}
   <div class="field"><label>scope</label>
-    <label><input type="checkbox" name="global"> Global (all networks)</label>
-    <span class="muted">— or pick networks →</span>
+    <div class="checkboxes">
+      <label><input type="checkbox" name="global"> Global (all networks)</label>
+    </div>
+  </div>
+  <div class="field"><label>networks</label>
     <select name="networks[]" multiple size="4">{% for n in networks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
+  <p class="muted" style="margin:-4px 0 8px 128px">Check Global to ignore on every network, or pick specific networks.</p>
   {{ m.submit('Add') }}
 </form>
 <p class="muted">Ignores auto-apply within ~5s (cache TTL) — no restart needed.</p>
