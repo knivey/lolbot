@@ -10,7 +10,6 @@ use knivey\cmdr\attributes\Syntax;
 use scripts\remindme\entities\reminder;
 use scripts\script_base;
 
-use function knivey\tools\makeArgs;
 use function Symfony\Component\String\u;
 use scripts\remindme\entities\UserTimezone;
 
@@ -29,9 +28,9 @@ class remindme extends script_base
             ->findOneBy(["nick" => $nickLower, "network" => $this->network]);
     }
 
-    #[Cmd("in", "remindme")]
+    #[Cmd("in", "remindme", "at", "on")]
     #[Syntax("<timemsg>...")]
-    #[Desc("sets a reminder. time can be a duration (1h30m, 1 hour 15 min, 2 days) or a relative date (next tuesday, tomorrow 3pm, next month, aug 15th, second week of jan)")]
+    #[Desc("sets a reminder. time can be a duration (1h30m, 1 hour 15 min, 2 days) or a date/time (tomorrow 3pm, 10am tomorrow, next tuesday, next month, aug 15th, second week of jan). honors your .settz timezone, or an inline abbreviation like 11pm EDT. aliases: in, remindme, at, on")]
     public function in(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
@@ -85,7 +84,7 @@ class remindme extends script_base
         $entityManager->flush();
 
         if ($parsed->targetTime !== null) {
-            $dt = Carbon::createFromTimestamp($parsed->targetTime, $tzName);
+            $dt = Carbon::createFromTimestamp($parsed->targetTime, $parsed->timezone ?? $tzName);
             $fromNow = $dt->shortRelativeToNowDiffForHumans(Carbon::now(), 10);
             $bot->pm($args->chan, "Ok, I'll remind you on " . $dt->toCookieString() . " ($fromNow)");
         } else {
@@ -132,52 +131,6 @@ class remindme extends script_base
         $entityManager->flush();
 
         $bot->pm($args->chan, "Timezone set to $tzInput");
-    }
-
-    /*
-     * Because cmdr doesnt yet support it, using \knivey\tools\makeArgs which makes args using "arg one" arg2 "arg\"3" etc
-     */
-    // TODO let users save a timezone so they dont have always include it here
-    #[Cmd("at", "on")]
-    #[Syntax("<timemsg>...")]
-    #[Desc("Remind you at a certain date time, the date time must be in quotes")]
-    public function at(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
-    {
-        global $entityManager;
-        $r = makeArgs($cmdArgs['timemsg']);
-        if (!is_array($r) || count($r) < 2) {
-            $bot->pm($args->chan, "Syntax: <datetime> <msg>  If datetime is more than one word put it inside quotes, you should include your timezone");
-            $bot->pm($args->chan, "Example: .on \"next Friday EDT\" watch new JRH  <- Will trigger at 00:00");
-            $bot->pm($args->chan, "Example: .at \"11pm EDT\" eat ice cream");
-            return;
-        }
-        $time = array_shift($r);
-        $msg = implode(' ', $r);
-
-        try {
-            $dt = new Carbon($time);
-        } catch (\Exception $e) {
-            $bot->pm($args->chan, "That date time ($time) isn't understood");
-            return;
-        }
-        if ($dt->getTimestamp() <= time() + 15) {
-            $bot->pm($args->chan, "Give me a time at least 15 seconds in the future");
-            return;
-        }
-        $in = $dt->getTimestamp() - time();
-        $r = new reminder();
-        $r->nick = $args->nick;
-        $r->chan = $args->chan;
-        $r->at = $dt->getTimestamp();
-        $r->sent = false;
-        $r->msg = $msg;
-        $r->network = $this->network;
-        $entityManager->persist($r);
-        $entityManager->flush();
-
-        $fromNow = $dt->shortRelativeToNowDiffForHumans(Carbon::now(), 10);
-        $bot->pm($args->chan, "Ok, I'll remind you on " . $dt->toCookieString() . " ($fromNow)");
-        $this->sendDelayed($bot, $r, $in);
     }
 
     #[Cmd("reminders")]
