@@ -996,4 +996,14 @@ class ParseDurationTest extends TestCase
         $this->assertSame('launch', $result->remainder);
         $this->assertSame('UTC', $result->timezone);
     }
+
+    public function test_inline_zone_with_minutes_form(): void
+    {
+        // The (?<=\d) lookbehind sits on the minutes digit for H:MM form; verify it still peels the zone.
+        $result = \parseDuration('10:30am EDT standup meeting');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertSame('EDT', $result->timezone);
+        $this->assertSame('standup meeting', $result->remainder);
+    }
 }
