@@ -168,7 +168,13 @@ class ParseResult
         public readonly int $seconds,
         public readonly string $remainder,
         public readonly ?int $targetTime = null,
+        public readonly ?string $timezone = null,
     ) {}
+
+    public function withTimezone(?string $timezone): self
+    {
+        return new self($this->seconds, $this->remainder, $this->targetTime, $timezone);
+    }
 }
 
 function parseDuration(string $input, ?string $tzName = null): ?ParseResult
@@ -277,6 +283,23 @@ function parseDurationRegex(string $input, string &$remainder = ''): ?int
 
 function parseDurationDate(string $input, ?string $tzName = null): ?ParseResult
 {
+    // Inline timezone abbreviation adjacent to the am/pm time, e.g. "11pm EDT".
+    // A recognized zone overrides the caller-supplied (saved) timezone for this parse.
+    if (preg_match('/(?<=\d)(am|pm)\s+([A-Za-z]{2,5})\b/i', $input, $tzm, PREG_OFFSET_CAPTURE)) {
+        $abbr = $tzm[2][0];
+        if (ctype_upper($abbr)) {
+            try {
+                new \DateTimeZone($abbr);
+                $start = $tzm[2][1];
+                $input = substr($input, 0, $start) . substr($input, $start + strlen($abbr));
+                $input = preg_replace('/\s{2,}/', ' ', $input) ?? $input;
+                $tzName = $abbr;
+            } catch (\Throwable) {
+                // not a real zone — leave input and tzName untouched
+            }
+        }
+    }
+
     $dayNames = [
         'monday'    => 1, 'mon'  => 1,
         'tuesday'   => 2, 'tues' => 2, 'tue' => 2,
@@ -333,7 +356,7 @@ function parseDurationDate(string $input, ?string $tzName = null): ?ParseResult
         if (preg_match($pattern, $input, $m)) {
             $result = parseDurationDateMatch($m, $dayNames, $monthNames, $ordinals, $tzName);
             if ($result !== null) {
-                return $result;
+                return $result->withTimezone($tzName);
             }
         }
     }

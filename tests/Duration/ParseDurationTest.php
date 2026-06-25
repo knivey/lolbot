@@ -936,4 +936,64 @@ class ParseDurationTest extends TestCase
         $result = \parseDuration('2024 test');
         $this->assertNull($result);
     }
+
+    // --- Inline timezone abbreviation (Gap 2) ---
+
+    public function test_inline_timezone_abbreviation_is_consumed(): void
+    {
+        $result = \parseDuration('11pm EDT eat ice cream');
+        $this->assertNotNull($result);
+        $this->assertNotNull($result->targetTime);
+        $this->assertSame('eat ice cream', $result->remainder);
+        $this->assertStringNotContainsString('EDT', $result->remainder);
+    }
+
+    public function test_inline_timezone_overrides_saved_timezone(): void
+    {
+        // EDT always differs from America/Los_Angeles by hours, year-round.
+        $inline = \parseDuration('11pm EDT eat ice cream', 'America/Los_Angeles');
+        $saved  = \parseDuration('11pm eat ice cream', 'America/Los_Angeles');
+        $this->assertNotNull($inline);
+        $this->assertNotNull($saved);
+        $this->assertNotNull($inline->targetTime);
+        $this->assertNotNull($saved->targetTime);
+        $this->assertNotSame($inline->targetTime, $saved->targetTime);
+    }
+
+    public function test_inline_timezone_exposed_on_result(): void
+    {
+        $result = \parseDuration('11pm EDT eat ice cream');
+        $this->assertSame('EDT', $result->timezone);
+    }
+
+    public function test_saved_timezone_exposed_on_result(): void
+    {
+        $result = \parseDuration('tomorrow 10am feed cat', 'America/Los_Angeles');
+        $this->assertNotNull($result);
+        $this->assertSame('America/Los_Angeles', $result->timezone);
+    }
+
+    public function test_non_adjacent_caps_word_not_treated_as_timezone(): void
+    {
+        // "NASA" is not adjacent to am/pm (tomorrow sits between) and isn't a zone.
+        $result = \parseDuration('10am tomorrow NASA launch');
+        $this->assertNotNull($result);
+        $this->assertSame('NASA launch', $result->remainder);
+    }
+
+    public function test_valid_zone_word_in_message_not_peeled(): void
+    {
+        // "UTC" is a real zone but not adjacent to the am/pm time here.
+        $result = \parseDuration('tomorrow 10am meet about UTC stuff');
+        $this->assertNotNull($result);
+        $this->assertSame('meet about UTC stuff', $result->remainder);
+    }
+
+    public function test_inline_zone_with_date_word(): void
+    {
+        $result = \parseDuration('tomorrow 10am UTC launch');
+        $this->assertNotNull($result);
+        $this->assertSame('launch', $result->remainder);
+        $this->assertSame('UTC', $result->timezone);
+    }
 }
