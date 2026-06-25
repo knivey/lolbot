@@ -572,7 +572,17 @@ function parseDurationDateMatch(
     } elseif (!empty($m[1]) && preg_match('/^\d{1,2}$/', $m[1])) {
         // Bare time (no day name) — assume today, but if the time has
         // already passed today, roll to tomorrow so the user gets the
-        // next occurrence (e.g. at 10pm, "3am" → tomorrow 3am).
+        // next occurrence (e.g. at 10pm, "3am" → tomorrow 3am). If the
+        // remainder begins with today/tomorrow it means a past "time
+        // today/tomorrow" already tried and failed above — bail to null
+        // instead of rolling to tomorrow with "today ..." polluting the
+        // message.
+        if (isset($m[5]) && preg_match('/^(\S+)/', $m[5], $w)) {
+            $firstWord = strtolower($w[1]);
+            if ($firstWord === 'today' || $firstWord === 'tomorrow') {
+                return null;
+            }
+        }
         $hours = (int) $m[1];
         $minutes = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 0;
         $seconds = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : 0;
