@@ -59,7 +59,7 @@ class remindme extends script_base
             return;
         }
 
-        if ($parsed->targetTime !== null && $tzName === null) {
+        if ($parsed->targetTime !== null && $tzName === null && $parsed->timezone === null) {
             $bot->pm($args->chan, "You need to set your timezone first: .settz America/New_York (e.g. .settz America/New_York, Europe/London, Asia/Tokyo, UTC)");
             return;
         }
