@@ -368,7 +368,7 @@ class ParseDurationTest extends TestCase
         $this->assertSame('recycling', $bare->remainder);
     }
 
-    public function test_bare_time_followed_by_today_returns_null(): void
+    public function test_time_before_today_matches_today_time(): void
     {
         $hour = (int) date('G');
         if ($hour + 2 >= 24) {
@@ -378,26 +378,28 @@ class ParseDurationTest extends TestCase
         $ampm = $testHour >= 12 ? 'pm' : 'am';
         $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
 
-        // "today" in the wrong spot should NOT silently target today with
-        // "today ..." as the message — bail so the user gets the error.
-        $result = \parseDuration("{$displayHour}{$ampm} today recycling");
-        $this->assertNull($result);
+        // "10am today" must parse the same as "today 10am" (time-before-day form).
+        $canonical = \parseDuration("today {$displayHour}{$ampm} recycling");
+        $reordered = \parseDuration("{$displayHour}{$ampm} today recycling");
+        $this->assertNotNull($canonical);
+        $this->assertNotNull($reordered);
+        $this->assertNotNull($canonical->targetTime);
+        $this->assertNotNull($reordered->targetTime);
+        $this->assertSame($canonical->targetTime, $reordered->targetTime);
+        $this->assertSame('recycling', $reordered->remainder);
     }
 
-    public function test_bare_time_followed_by_tomorrow_returns_null(): void
+    public function test_time_before_tomorrow_matches_tomorrow_time(): void
     {
-        $hour = (int) date('G');
-        if ($hour + 2 >= 24) {
-            $this->markTestSkipped('test requires a future time today');
-        }
-        $testHour = $hour + 2;
-        $ampm = $testHour >= 12 ? 'pm' : 'am';
-        $displayHour = $testHour > 12 ? $testHour - 12 : ($testHour === 0 ? 12 : $testHour);
-
-        // "tomorrow" in the wrong spot should NOT silently target today with
-        // "tomorrow ..." as the message — bail so the user rephrases.
-        $result = \parseDuration("{$displayHour}{$ampm} tomorrow recycling");
-        $this->assertNull($result);
+        // "3pm tomorrow" must parse the same as "tomorrow 3pm" (time-before-day form).
+        $canonical = \parseDuration('tomorrow 3pm feed the dog');
+        $reordered = \parseDuration('3pm tomorrow feed the dog');
+        $this->assertNotNull($canonical);
+        $this->assertNotNull($reordered);
+        $this->assertNotNull($canonical->targetTime);
+        $this->assertNotNull($reordered->targetTime);
+        $this->assertSame($canonical->targetTime, $reordered->targetTime);
+        $this->assertSame('feed the dog', $reordered->remainder);
     }
 
     // --- Date expressions: tomorrow ---

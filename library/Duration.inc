@@ -323,6 +323,7 @@ function parseDurationDate(string $input, ?string $tzName = null): ?ParseResult
         '/^(' . $monthPattern . ')\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\s*' . $timeGroup . '\s*(.*)$/i',
         '/^(' . $dayPattern . ')\b\s*' . $timeGroup . '\s*(.*)$/i',
         '/^' . $timePattern . '\s+(?:next\s+|this\s+)?(' . $dayPattern . ')\b\s*(.*)$/i',
+        '/^' . $timePattern . '\s+(today|tomorrow)\b\s*(.*)$/i',
         '/^(\d{4})\s*' . $timeGroup . '\s*(.*)$/i',
         // Bare time (no day given) — caller wants "today" assumed
         '/^(?:at\s+)?' . $timePattern . '\s*(.*)$/i',
@@ -533,19 +534,45 @@ function parseDurationDateMatch(
             remainder: $remainder,
             targetTime: $targetTime,
         );
+    } elseif (!empty($m[1]) && preg_match('/^\d{1,2}/', $m[1]) && isset($m[5]) && in_array(strtolower($m[5]), ['today', 'tomorrow'], true)) {
+        // Time before today/tomorrow, e.g. "10am tomorrow feed the dog".
+        $hours = (int) $m[1];
+        $minutes = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 0;
+        $seconds = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : 0;
+        $ampm = strtolower($m[4]);
+        if ($ampm === 'pm' && $hours < 12) {
+            $hours += 12;
+        }
+        if ($ampm === 'am' && $hours === 12) {
+            $hours = 0;
+        }
+        if ($tzName !== null) {
+            $targetDt = clone $baseDt;
+            if (strtolower($m[5]) === 'tomorrow') {
+                $targetDt->modify('+1 day');
+            }
+            $targetDt->setTime($hours, $minutes, $seconds);
+            $targetTime = $targetDt->getTimestamp();
+        } else {
+            $targetTs = $baseTimestamp;
+            if (strtolower($m[5]) === 'tomorrow') {
+                $targetTs += 86400;
+            }
+            $targetTime = $targetTs + $hours * 3600 + $minutes * 60 + $seconds;
+        }
+        $remainder = isset($m[6]) ? trim($m[6]) : '';
+        if ($targetTime <= $now + 15) {
+            return null;
+        }
+        return new ParseResult(
+            seconds: $targetTime - $now,
+            remainder: $remainder,
+            targetTime: $targetTime,
+        );
     } elseif (!empty($m[1]) && preg_match('/^\d{1,2}$/', $m[1])) {
         // Bare time (no day name) — assume today, but if the time has
         // already passed today, roll to tomorrow so the user gets the
-        // next occurrence (e.g. at 10pm, "3am" → tomorrow 3am). Also
-        // bail if the user put a day keyword in the wrong spot (e.g.
-        // "8pm tomorrow ...") so they get the error instead of a
-        // wrong-day reminder; they can rephrase to "tomorrow 8pm".
-        if (isset($m[5]) && preg_match('/^(\S+)/', $m[5], $w)) {
-            $firstWord = strtolower($w[1]);
-            if ($firstWord === 'today' || $firstWord === 'tomorrow') {
-                return null;
-            }
-        }
+        // next occurrence (e.g. at 10pm, "3am" → tomorrow 3am).
         $hours = (int) $m[1];
         $minutes = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 0;
         $seconds = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : 0;
