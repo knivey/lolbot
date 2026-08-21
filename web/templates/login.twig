@@ -5,19 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>lolbot control — login</title>
   <link rel="stylesheet" href="/assets/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/custom.css">
 </head>
 <body>
 <div class="container" style="max-width:420px;margin-top:60px">
-  <h1 class="h3 mb-3">lolbot control</h1>
-  {% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
-  <form method="post" action="/login">
-    <input type="hidden" name="_csrf" value="{{ csrf() }}">
-    <div class="mb-3">
-      <label class="form-label">control key</label>
-      <input class="form-control" type="password" name="key" autofocus>
+  <div class="card">
+    <div class="card-body">
+      <h1 class="h3 mb-3">lolbot control</h1>
+      <p class="text-body-secondary mb-3">Enter your control key to continue</p>
+      {% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+      <form method="post" action="/login">
+        <input type="hidden" name="_csrf" value="{{ csrf() }}">
+        <div class="mb-3">
+          <label class="form-label">control key</label>
+          <input class="form-control" type="password" name="key" autofocus>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Log in</button>
+      </form>
     </div>
-    <button class="btn btn-primary" type="submit">Log in</button>
-  </form>
+  </div>
 </div>
 </body>
 </html>
