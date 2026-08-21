@@ -1,22 +1,24 @@
 {% import '_macros.twig' as m %}
 <div id="servers">
-  <h3>Servers <span class="text-body-secondary">(change = live jump)</span></h3>
-  {% if net.servers is empty %}
-    <p class="text-body-secondary">No servers yet.</p>
-  {% else %}
-  <table class="table table-sm align-middle"><tr><th>address</th><th>port</th><th>ssl</th><th>throttle</th><th></th></tr>
-  {% for s in net.servers %}
-    <tr><td>{{ s.address }}</td><td>{{ s.port }}</td><td>{{ s.ssl ? '✓' }}</td><td>{{ s.throttle ? '✓' }}</td>
-    <td>
-      <a class="btn btn-outline-secondary btn-sm me-1" href="/networks/{{ net.id }}/servers/{{ s.id }}/edit">edit</a>
-      <form class="d-inline" method="post" action="/networks/{{ net.id }}/servers/{{ s.id }}/delete"
-            hx-post="/networks/{{ net.id }}/servers/{{ s.id }}/delete" hx-target="#servers" hx-swap="outerHTML">
-        <input type="hidden" name="_csrf" value="{{ csrf }}"><button class="btn btn-outline-secondary btn-sm" type="submit">−</button>
-      </form>
-    </td></tr>
-  {% endfor %}
-  </table>
-  {% endif %}
+  <div class="table-card mb-3">
+    <div class="table-card-header">Servers <span class="text-body-secondary">(change = live jump)</span></div>
+    {% if net.servers is empty %}
+      <p class="text-body-secondary mb-0">No servers yet.</p>
+    {% else %}
+    <table class="table table-sm align-middle mb-0"><thead><tr><th>address</th><th>port</th><th>ssl</th><th>throttle</th><th></th></tr></thead><tbody>
+    {% for s in net.servers %}
+      <tr><td>{{ s.address }}</td><td>{{ s.port }}</td><td>{{ s.ssl ? '✓' }}</td><td>{{ s.throttle ? '✓' }}</td>
+      <td>
+        <a class="btn btn-outline-secondary btn-sm me-1" href="/networks/{{ net.id }}/servers/{{ s.id }}/edit">edit</a>
+        <form class="d-inline" method="post" action="/networks/{{ net.id }}/servers/{{ s.id }}/delete"
+              hx-post="/networks/{{ net.id }}/servers/{{ s.id }}/delete" hx-target="#servers" hx-swap="outerHTML">
+          <input type="hidden" name="_csrf" value="{{ csrf }}"><button class="btn btn-outline-secondary btn-sm" type="submit">−</button>
+        </form>
+      </td></tr>
+    {% endfor %}
+    </tbody></table>
+    {% endif %}
+  </div>
 
   <h3>Add a server</h3>
   <form method="post" action="/networks/{{ net.id }}/servers" hx-post="/networks/{{ net.id }}/servers"
