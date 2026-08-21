@@ -5,23 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>lolbot control — {{ section }}</title>
   <link rel="stylesheet" href="/assets/bootstrap.min.css">
+  <link rel="stylesheet" href="/assets/custom.css">
   <script src="/assets/htmx.min.js"></script>
 </head>
 <body>
 <div class="d-flex flex-column min-vh-100">
-  <nav class="navbar bg-body-tertiary border-bottom px-3 py-2">
-    <span class="navbar-brand mb-0">🤖 lolbot control</span>
-    <span class="navbar-text">{% if authed %}operator · <a href="/logout">logout</a>{% endif %}</span>
-  </nav>
+  <div class="top-bar text-end px-3 py-1">
+    {% if authed %}operator · <a href="/logout">logout</a>{% endif %}
+  </div>
   <div class="d-flex flex-grow-1">
-    <aside class="border-end p-2 bg-body-tertiary" style="width:168px;flex:0 0 168px;">
-      <ul class="nav nav-pills flex-column gap-1">
-        <li class="nav-item"><a class="nav-link {{ active == 'overview' ? 'active' : '' }}" href="/">Overview</a></li>
-        <li class="nav-item"><a class="nav-link {{ active == 'bots' ? 'active' : '' }}" href="/bots">Bots</a></li>
-        <li class="nav-item"><a class="nav-link {{ active == 'networks' ? 'active' : '' }}" href="/networks">Networks</a></li>
-        <li class="nav-item"><a class="nav-link {{ active == 'ignores' ? 'active' : '' }}" href="/ignores">Ignores</a></li>
-        <li class="nav-item"><a class="nav-link {{ active == 'services' ? 'active' : '' }}" href="/services">Services</a></li>
-        <li class="nav-item"><a class="nav-link {{ active == 'linktitles' ? 'active' : '' }}" href="/linktitles">Linktitles</a></li>
+    <aside class="sidebar border-end p-2 bg-body-tertiary">
+      <div class="sidebar-brand mb-3">🤖 lolbot control</div>
+      <ul class="sidebar-nav nav nav-pills flex-column gap-1">
+        <li class="nav-item"><a class="nav-link {{ active == 'overview' ? 'active' : '' }}" href="/">⬡ Overview</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'bots' ? 'active' : '' }}" href="/bots">⚙ Bots</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'networks' ? 'active' : '' }}" href="/networks">🌐 Networks</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'ignores' ? 'active' : '' }}" href="/ignores">🚫 Ignores</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'services' ? 'active' : '' }}" href="/services">🔧 Services</a></li>
+        <li class="nav-item"><a class="nav-link {{ active == 'linktitles' ? 'active' : '' }}" href="/linktitles">🔗 Linktitles</a></li>
       </ul>
     </aside>
     <main class="p-4 flex-grow-1">
