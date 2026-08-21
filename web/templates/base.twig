@@ -11,7 +11,7 @@
 <body>
 <div class="d-flex flex-column min-vh-100">
   <div class="top-bar px-3 py-1">
-    {% if authed %}operator · <a href="/logout">logout</a>{% endif %}
+    {% if authed %}<span class="text-body-secondary">operator</span>{% endif %}
   </div>
   <div class="d-flex flex-grow-1">
     <aside class="sidebar p-2">
@@ -24,6 +24,7 @@
         <li class="nav-item"><a class="nav-link {{ active == 'services' ? 'active' : '' }}" href="/services">🔧 Services</a></li>
         <li class="nav-item"><a class="nav-link {{ active == 'linktitles' ? 'active' : '' }}" href="/linktitles">🔗 Linktitles</a></li>
       </ul>
+      {% if authed %}<div class="sidebar-footer"><a href="/logout">logout</a></div>{% endif %}
     </aside>
     <main class="p-4 flex-grow-1">
       {% block content %}{% endblock %}

@@ -51,10 +51,6 @@ a:hover {
     color: var(--red) !important;
 }
 
-.navbar {
-    display: none;
-}
-
 .sidebar {
     width: 220px;
     background: var(--bg-secondary);
@@ -92,6 +88,7 @@ a:hover {
 .top-bar {
     height: 40px;
     background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: flex-end;
