@@ -1,9 +1,10 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1 class="h3 mb-3">{{ bot ? 'Edit ' ~ bot.name : 'New bot' }}</h1>
+<h1 class="page-heading">{{ bot ? 'Edit ' ~ bot.name : 'New bot' }}</h1>
 {% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
-{% if saved|default(false) %}<p class="text-success">saved (live-applied; sasl/bindIp/onConnect need respawn)</p>{% endif %}
+{% if saved|default(false) %}<div class="alert alert-success">saved (live-applied; sasl/bindIp/onConnect need respawn)</div>{% endif %}
+<div class="card mb-3"><div class="card-body">
 <form {% if bot %}action="/bots/{{ bot.id }}"{% else %}action="/bots"{% endif %} method="post">
   {{ m.csrf_field() }}
   {{ m.field('name', 'nick', bot ? bot.name : '') }}
@@ -19,13 +20,21 @@
   {{ m.field('bindIp', 'bind ip', bot ? bot.bindIp : '0') }}
   {{ m.submit('Save') }}
 </form>
+</div></div>
 
 {% if bot %}
-  {% include 'bots/_actions.twig' with {botId: bot.id, csrf: csrf(), queued: ''} %}
+  <div class="card mb-3"><div class="card-body">
+  <h3 class="card-title">Channels</h3>
   {% include 'bots/_channels.twig' with {bot: bot, csrf: csrf()} %}
+  </div></div>
+  <div class="card mb-3"><div class="card-body">
+  {% include 'bots/_actions.twig' with {botId: bot.id, csrf: csrf(), queued: ''} %}
+  </div></div>
+  <div class="card mb-3"><div class="card-body">
   <form class="d-inline" method="post" action="/bots/{{ bot.id }}/delete"
         onsubmit="return confirm('Delete this bot?')">
     {{ m.csrf_field() }} <button class="btn btn-outline-danger" type="submit">Delete bot</button>
   </form>
+  </div></div>
 {% endif %}
 {% endblock %}

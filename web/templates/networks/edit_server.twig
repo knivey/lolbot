@@ -1,9 +1,10 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1 class="h3 mb-3">Edit server</h1>
+<h1 class="page-heading">Edit server</h1>
 <p class="text-body-secondary">on <a href="/networks/{{ net.id }}">{{ net.name }}</a> — a change applies live (the bot jumps to the updated server).</p>
 {% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
+<div class="card mb-3"><div class="card-body">
 <form method="post" action="/networks/{{ net.id }}/servers/{{ srv.id }}">
   {{ m.csrf_field() }}
   {{ m.field('address', 'address', srv.address, 'text', 'irc.example.net') }}
@@ -12,5 +13,6 @@
   {{ m.field('password', 'password (opt)', srv.password, 'text') }}
   {{ m.submit('Save') }}
 </form>
+</div></div>
 <p><a class="btn btn-outline-secondary" href="/networks/{{ net.id }}">← back to {{ net.name }}</a></p>
 {% endblock %}
