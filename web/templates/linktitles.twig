@@ -1,7 +1,7 @@
 {% extends 'base.twig' %}
 {% import '_macros.twig' as m %}
 {% block content %}
-<h1 class="h3 mb-3">Linktitles</h1>
+<h1 class="page-heading">Linktitles</h1>
 {% if error %}<div class="alert alert-danger py-2 mb-3">{{ error }}</div>{% endif %}
 <p class="text-body-secondary mb-3">Blank fields inherit from the parent tier (channel &rarr; network &rarr; global &rarr; defaults). Saving a blank field (or choosing <em>Inherit</em>) resets it to inherit.</p>
 
