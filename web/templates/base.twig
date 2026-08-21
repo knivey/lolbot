@@ -10,11 +10,11 @@
 </head>
 <body>
 <div class="d-flex flex-column min-vh-100">
-  <div class="top-bar text-end px-3 py-1">
+  <div class="top-bar px-3 py-1">
     {% if authed %}operator · <a href="/logout">logout</a>{% endif %}
   </div>
   <div class="d-flex flex-grow-1">
-    <aside class="sidebar border-end p-2 bg-body-tertiary">
+    <aside class="sidebar p-2">
       <div class="sidebar-brand mb-3">🤖 lolbot control</div>
       <ul class="sidebar-nav nav nav-pills flex-column gap-1">
         <li class="nav-item"><a class="nav-link {{ active == 'overview' ? 'active' : '' }}" href="/">⬡ Overview</a></li>
