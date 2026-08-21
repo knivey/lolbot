@@ -286,3 +286,12 @@ a:hover {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
 }
+
+.auth-container {
+    max-width: 420px;
+    margin-top: 60px;
+}
+
+.channel-input {
+    max-width: 220px;
+}

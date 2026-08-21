@@ -12,7 +12,7 @@
   <form method="post" action="/bots/{{ bot.id }}/channels" hx-post="/bots/{{ bot.id }}/channels"
         hx-target="#channels" hx-swap="outerHTML">
     <input type="hidden" name="_csrf" value="{{ csrf }}">
-    <input class="form-control d-inline-block" style="max-width:220px" name="channel" placeholder="#channel">
+    <input class="form-control d-inline-block channel-input" name="channel" placeholder="#channel">
     <button class="btn btn-primary" type="submit">+ add channel</button>
   </form>
 </div>
