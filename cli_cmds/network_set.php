@@ -18,7 +18,8 @@ class network_set extends Command
 {
     /** @var array<string> */
     public array $settings = [
-        "name"
+        "name",
+        "disabled"
         ];
     protected function configure(): void
     {
@@ -56,7 +57,13 @@ class network_set extends Command
         }
 
         $setting = $input->getArgument("setting");
-        $network->$setting = $input->getArgument("value");
+        if ($setting === "disabled") {
+            $value = $input->getArgument("value");
+            $network->disabled = filter_var(is_string($value) ? $value : "", FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+                ?? throw new \InvalidArgumentException("disabled must be true or false");
+        } else {
+            $network->$setting = $input->getArgument("value");
+        }
         $svc->update($network, "network");
         showdb::showdb();
 

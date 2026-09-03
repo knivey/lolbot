@@ -24,7 +24,8 @@ class bot_set extends Command
         "onConnect",
         "sasl_user",
         "sasl_pass",
-        "bindIp"
+        "bindIp",
+        "disabled"
     ];
     protected function configure(): void
     {
@@ -63,7 +64,12 @@ class bot_set extends Command
         }
 
         $value = $input->getArgument("value");
-        $bot->$setting = is_string($value) ? $value : '';
+        if ($setting === "disabled") {
+            $bot->disabled = filter_var(is_string($value) ? $value : "", FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+                ?? throw new \InvalidArgumentException("disabled must be true or false");
+        } else {
+            $bot->$setting = is_string($value) ? $value : '';
+        }
         $svc->update($bot, "bot");
 
         $this->showsets($input, $output, $bot);
@@ -74,7 +80,8 @@ class bot_set extends Command
         $io = new SymfonyStyle($input, $output);
         $rows = [];
         foreach ($this->settings as $setting) {
-            $rows[] = [$setting, $bot->$setting];
+            $val = $bot->$setting ?? null;
+            $rows[] = [$setting, is_bool($val) ? var_export($val, true) : $val];
         }
         $io->table(
             ["Setting", "Value"],
