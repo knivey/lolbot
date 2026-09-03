@@ -230,7 +230,9 @@ function web_linktitles_channel(int $chanId, ?string $error = null): never
 
 /**
  * Apply posted linktitles settings for a scope. Empty text / "inherit" radio
- * resets the field to inherit; otherwise the value is stored.
+ * resets the field to inherit; otherwise the value is stored. reasoning
+ * (JSON) is parsed and validated up front so a bad value aborts the whole
+ * save instead of leaving the other fields half-applied.
  */
 function web_lt_apply(?Network $net, ?Channel $chan): void
 {
@@ -244,6 +246,20 @@ function web_lt_apply(?Network $net, ?Channel $chan): void
     }
 
     $svc = web_app()['svc'];
+
+    $reasoningRaw = trim(is_string($_POST['ai_vision_reasoning'] ?? null) ? $_POST['ai_vision_reasoning'] : '');
+    $reasoning = null;
+    if ($reasoningRaw !== '') {
+        try {
+            $reasoning = web_lt_parse_reasoning_json($reasoningRaw);
+        } catch (\InvalidArgumentException $e) {
+            if ($chan !== null) {
+                web_linktitles_channel($chan->id, $e->getMessage());
+            }
+            web_linktitles($e->getMessage());
+        }
+    }
+
     foreach (['url_log_chan', 'ai_vision_model', 'ai_vision_prompt', 'ai_vision_reasoning_effort'] as $k) {
         $raw = trim(is_string($_POST[$k] ?? null) ? $_POST[$k] : '');
         if ($raw === '') {
@@ -259,6 +275,12 @@ function web_lt_apply(?Network $net, ?Channel $chan): void
             continue;
         }
         $svc->setLinktitlesSetting($net, $chan, $k, $v === 'on');
+    }
+
+    if ($reasoningRaw === '') {
+        $svc->resetLinktitlesSetting($net, $chan, 'ai_vision_reasoning');
+    } else {
+        $svc->setLinktitlesSetting($net, $chan, 'ai_vision_reasoning', $reasoning);
     }
 }
 
