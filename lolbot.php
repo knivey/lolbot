@@ -139,10 +139,14 @@ function main(): void {
     global $entityManager, $config, $logHandler;
     $mgr = new \library\BotManager($entityManager);
 
-    // Start every existing bot.
+    // Start every existing bot (unless disabled — per-bot or per-network).
     $nets = $entityManager->getRepository(Network::class)->findAll();
     foreach ($nets as $network) {
+        if ($network->disabled)
+            continue;
         foreach ($network->getBots() as $bot) {
+            if ($bot->isDisabled())
+                continue;
             $mgr->spawn($network, $bot);
         }
     }
