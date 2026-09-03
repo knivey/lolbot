@@ -66,12 +66,12 @@ class WebLinktitlesReasoningTest extends ConfigTestCase
     public function test_global_fields_reasoning_when_set(): void
     {
         $s = new \scripts\linktitles\entities\linktitles_setting();
-        $s->ai_vision_reasoning = ['effort' => 'low'];
+        $s->ai_vision_reasoning = ['effort' => 'low', 'url' => 'https://x/y'];
         $f = $this->findField(web_lt_global_fields($s), 'ai_vision_reasoning');
         $this->assertNotNull($f);
         $this->assertSame('json', $f['type']);
         $this->assertSame('global', $f['source']);
-        $this->assertSame('{"effort":"low"}', $f['value']);
+        $this->assertSame('{"effort":"low","url":"https://x/y"}', $f['value']);
         $this->assertSame('default: (none)', $f['hint']);
     }
 
