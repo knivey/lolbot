@@ -84,7 +84,8 @@ class WebLinktitlesReasoningTest extends ConfigTestCase
     }
 
     /**
-     * @param array<string, string> $sourcesOverride
+     * @param string $reasoningSource
+     * @param array<string, mixed>|null $reasoning
      */
     private function resolvedWith(string $reasoningSource, ?array $reasoning): \lolbot\config\LinktitlesResolved
     {
