@@ -13,7 +13,7 @@
     <tbody>
       {% for b in bots %}
       <tr>
-        <td>{{ b.id }}</td><td>{{ b.name }}</td><td>{{ b.network.name }}</td>
+        <td>{{ b.id }}</td><td>{{ b.name }}{% if b.isDisabled %} <span class="badge text-bg-danger">{{ b.disabled ? 'disabled' : 'disabled (network)' }}</span>{% endif %}</td><td>{{ b.network.name }}</td>
         <td>{{ b.trigger ?: (b.trigger_re ?: '') }}</td><td>{{ b.channels|length }}</td>
         <td><a class="btn btn-outline-secondary btn-sm" href="/bots/{{ b.id }}">edit</a></td>
       </tr>

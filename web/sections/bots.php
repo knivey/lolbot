@@ -77,6 +77,7 @@ function web_bots_update(int $id): never
     $bot->sasl_pass   = $saslPassRaw !== '' ? trim($saslPassRaw) : null;
     $bindIpRaw        = is_string($_POST['bindIp'] ?? null) ? trim($_POST['bindIp']) : '0';
     $bot->bindIp      = $bindIpRaw !== '' ? $bindIpRaw : '0';
+    $bot->disabled    = isset($_POST['disabled']);
     try {
         $app['svc']->update($bot, 'bot'); // pushes apply → nick/trigger live; sasl/bindIp/onConnect need respawn
     } catch (\Throwable $e) {

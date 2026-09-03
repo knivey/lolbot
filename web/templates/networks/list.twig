@@ -11,7 +11,7 @@
     </thead>
     <tbody>
       {% for n in networks %}
-      <tr><td>{{ n.id }}</td><td>{{ n.name }}</td><td>{{ n.servers|length }}</td><td>{{ n.bots|length }}</td>
+      <tr><td>{{ n.id }}</td><td>{{ n.name }}{% if n.disabled %} <span class="badge text-bg-danger">disabled</span>{% endif %}</td><td>{{ n.servers|length }}</td><td>{{ n.bots|length }}</td>
         <td><a class="btn btn-outline-secondary btn-sm" href="/networks/{{ n.id }}">edit</a></td></tr>
       {% endfor %}
     </tbody>

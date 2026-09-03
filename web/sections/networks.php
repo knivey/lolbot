@@ -35,6 +35,7 @@ function web_networks_update(int $id): never
     if ($net === null) { http_response_code(404); echo "No such network"; exit; }
     $net->name = trim(is_string($_POST['name'] ?? null) ? $_POST['name'] : $net->name);
     if ($net->name === '') { web_networks_edit($id, 'Name required'); }
+    $net->disabled = isset($_POST['disabled']);
     try { $app['svc']->update($net, 'network'); } catch (\Throwable $e) { web_networks_edit($id, $e->getMessage()); }
     web_redirect('/networks/' . $id);
 }

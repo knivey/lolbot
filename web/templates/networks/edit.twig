@@ -7,6 +7,10 @@
 <form {% if net %}action="/networks/{{ net.id }}"{% else %}action="/networks"{% endif %} method="post">
   {{ m.csrf_field() }}
   {{ m.field('name', 'name', net ? net.name : '') }}
+  <div class="mb-3 form-check">
+    <input class="form-check-input" type="checkbox" name="disabled" id="net_disabled"{{ net and net.disabled ? ' checked' : '' }}>
+    <label class="form-check-label" for="net_disabled">disabled (all bots on this network stop)</label>
+  </div>
   {{ m.submit('Save') }}
 </form>
 </div></div>

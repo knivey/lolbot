@@ -18,6 +18,10 @@
   {{ m.field('sasl_user', 'sasl user', bot ? bot.sasl_user : '') }}
   {{ m.field('sasl_pass', 'sasl pass', bot ? bot.sasl_pass : '', 'password') }}
   {{ m.field('bindIp', 'bind ip', bot ? bot.bindIp : '0') }}
+  <div class="mb-3 form-check">
+    <input class="form-check-input" type="checkbox" name="disabled" id="bot_disabled"{{ bot and bot.disabled ? ' checked' : '' }}>
+    <label class="form-check-label" for="bot_disabled">disabled (bot will not connect; live bot disconnects)</label>
+  </div>
   {{ m.submit('Save') }}
 </form>
 </div></div>
