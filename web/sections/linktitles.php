@@ -26,6 +26,28 @@ function web_lt_desc(string $name, string $label, string $type, string $value, s
 }
 
 /**
+ * Parse a reasoning (JSON) form value. Must decode to an object (a
+ * string-keyed array, possibly empty); non-empty lists, scalars and invalid
+ * syntax are rejected so ConfigService::setLinktitlesSetting can never throw
+ * mid-apply.
+ *
+ * @return array<string, mixed>
+ */
+function web_lt_parse_reasoning_json(string $raw): array
+{
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        throw new \InvalidArgumentException('reasoning must be a JSON object');
+    }
+    foreach ($decoded as $k => $_) {
+        if (!is_string($k)) {
+            throw new \InvalidArgumentException('reasoning must be a JSON object with string keys');
+        }
+    }
+    return $decoded;
+}
+
+/**
  * Global-tier fields. Source is 'global' when the global row sets the field
  * (non-null), else 'default'. Hints always describe the code default.
  *
