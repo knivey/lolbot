@@ -37,6 +37,9 @@ class Bot
     #[ORM\Column]
     public string $bindIp = "0";
 
+    #[ORM\Column]
+    public bool $disabled = false;
+
     #[ORM\Column(updatable: false)]
     public \DateTimeImmutable $created;
 
@@ -68,8 +71,22 @@ class Bot
         return $this->channels;
     }
 
+    /**
+     * Effective disabled state: a bot is stopped when it or its network is disabled.
+     */
+    public function isDisabled(): bool
+    {
+        return $this->disabled || (isset($this->network) && $this->network->disabled);
+    }
+
     public function __toString(): string
     {
-        return "id: $this->id name: $this->name created: ".$this->created->format('r');
+        $s = "id: $this->id name: $this->name created: ".$this->created->format('r');
+        if ($this->disabled) {
+            $s .= " [disabled]";
+        } elseif (isset($this->network) && $this->network->disabled) {
+            $s .= " [disabled (network)]";
+        }
+        return $s;
     }
 }

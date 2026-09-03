@@ -19,6 +19,9 @@ class Network
     #[ORM\Column]
     public string $name;
 
+    #[ORM\Column]
+    public bool $disabled = false;
+
     #[ORM\Column(updatable: false)]
     public \DateTimeImmutable $created;
 
@@ -95,6 +98,9 @@ class Network
     }
 
     public function __toString():string {
-        return "id: {$this->id} name: {$this->name} created: ".$this->created->format('r');
+        $s = "id: {$this->id} name: {$this->name} created: ".$this->created->format('r');
+        if ($this->disabled)
+            $s .= " [disabled]";
+        return $s;
     }
 }
