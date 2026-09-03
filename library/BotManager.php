@@ -366,6 +366,35 @@ class BotManager
         echo "bot {$bot->id} reloaded (sasl/bindIp/onConnect need /_control/respawn/{$bot->id})\n";
     }
 
+    /**
+     * Live-sync one bot after a config change: drop it if disabled (its own
+     * flag or its network's), spawn it if it should run but has no client
+     * (covers re-enable), else reload in place. Refreshes held entities from
+     * the DB because mutations arrive from a separate process.
+     */
+    public function syncBot(int $botId): void
+    {
+        $held = $this->bots[$botId] ?? null;
+        if ($held !== null) {
+            $this->em->refresh($held->network);
+            $this->em->refresh($held);
+            if ($held->isDisabled()) {
+                $this->drop($botId);
+                return;
+            }
+            if (!isset($this->clients[$botId])) {
+                $this->spawn($held->network, $held);
+                return;
+            }
+            $this->reloadBot($botId);
+            return;
+        }
+        $fresh = $this->em->find(\lolbot\entities\Bot::class, $botId);
+        if ($fresh === null) return;
+        $this->em->refresh($fresh);
+        if (!$fresh->isDisabled()) $this->spawn($fresh->network, $fresh);
+    }
+
     public function reloadLinktitlesEnabled(int $botId): void
     {
         if (!isset($this->state[$botId]) || !isset($this->bots[$botId])) return;
@@ -394,16 +423,33 @@ class BotManager
                 case 'bot':
                     if ($c->action === 'create') {
                         $bot = $this->em->find(\lolbot\entities\Bot::class, $c->id);
-                        if ($bot !== null) $this->spawn($bot->network, $bot);
+                        if ($bot !== null && !$bot->isDisabled()) $this->spawn($bot->network, $bot);
                         return;
                     }
                     if ($c->action === 'delete') { $this->drop((int)$c->id); return; }
-                    if ($c->action === 'update') { $this->reloadBot((int)$c->id); return; }
+                    if ($c->action === 'update') { $this->syncBot((int)$c->id); return; }
                     return;
                 case 'network':
                     if ($c->action === 'update') {
+                        $net = $this->em->find(\lolbot\entities\Network::class, $c->id);
+                        if ($net === null) return;
+                        $this->em->refresh($net);
+                        // Held bots: drop if disabled, spawn if missing a client, refresh otherwise.
                         foreach ($this->bots as $bid => $bot) {
-                            if ($bot->network->id === $c->id) { $this->em->refresh($bot); }
+                            if ($bot->network->id !== $c->id) continue;
+                            $this->em->refresh($bot);
+                            if ($bot->isDisabled()) {
+                                $this->drop((int)$bid);
+                            } elseif (!isset($this->clients[$bid])) {
+                                $this->spawn($net, $bot);
+                            }
+                        }
+                        // Bots created (or previously dropped) while the network was disabled are
+                        // not held by the manager; bring the enabled ones up on re-enable.
+                        foreach ($net->getBots() as $bot) {
+                            if (!isset($this->bots[$bot->id]) && !$bot->isDisabled()) {
+                                $this->spawn($net, $bot);
+                            }
                         }
                     }
                     return;
