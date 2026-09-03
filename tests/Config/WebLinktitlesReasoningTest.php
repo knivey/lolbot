@@ -48,4 +48,88 @@ class WebLinktitlesReasoningTest extends ConfigTestCase
         $this->expectExceptionMessage('JSON object');
         web_lt_parse_reasoning_json('{effort:low}');
     }
+
+    /**
+     * @param list<array{name:string,label:string,type:string,value:string,source:string,hint:string}> $fields
+     * @return array{name:string,label:string,type:string,value:string,source:string,hint:string}|null
+     */
+    private function findField(array $fields, string $name): ?array
+    {
+        foreach ($fields as $f) {
+            if ($f['name'] === $name) {
+                return $f;
+            }
+        }
+        return null;
+    }
+
+    public function test_global_fields_reasoning_when_set(): void
+    {
+        $s = new \scripts\linktitles\entities\linktitles_setting();
+        $s->ai_vision_reasoning = ['effort' => 'low'];
+        $f = $this->findField(web_lt_global_fields($s), 'ai_vision_reasoning');
+        $this->assertNotNull($f);
+        $this->assertSame('json', $f['type']);
+        $this->assertSame('global', $f['source']);
+        $this->assertSame('{"effort":"low"}', $f['value']);
+        $this->assertSame('default: (none)', $f['hint']);
+    }
+
+    public function test_global_fields_reasoning_default_when_null(): void
+    {
+        $f = $this->findField(web_lt_global_fields(null), 'ai_vision_reasoning');
+        $this->assertNotNull($f);
+        $this->assertSame('default', $f['source']);
+        $this->assertSame('', $f['value']);
+    }
+
+    /**
+     * @param array<string, string> $sourcesOverride
+     */
+    private function resolvedWith(string $reasoningSource, ?array $reasoning): \lolbot\config\LinktitlesResolved
+    {
+        return new \lolbot\config\LinktitlesResolved(
+            enabled: true,
+            urlLogChan: null,
+            aiVisionModel: 'model',
+            aiVisionPrompt: 'prompt',
+            aiVisionReasoningEffort: null,
+            aiVisionReasoning: $reasoning,
+            aiVisionDisabled: false,
+            sources: [
+                'enabled' => 'global',
+                'ai_vision_disabled' => 'global',
+                'url_log_chan' => 'default',
+                'ai_vision_model' => 'global',
+                'ai_vision_prompt' => 'global',
+                'ai_vision_reasoning_effort' => 'default',
+                'ai_vision_reasoning' => $reasoningSource,
+            ],
+        );
+    }
+
+    public function test_resolved_fields_reasoning_inherited_hint(): void
+    {
+        $f = $this->findField(
+            web_lt_resolved_fields($this->resolvedWith('network', ['effort' => 'low'])),
+            'ai_vision_reasoning',
+        );
+        $this->assertNotNull($f);
+        $this->assertSame('json', $f['type']);
+        $this->assertSame('network', $f['source']);
+        $this->assertSame('{"effort":"low"}', $f['value']);
+        $this->assertSame('inherits: {"effort":"low"} (from network)', $f['hint']);
+    }
+
+    public function test_resolved_fields_reasoning_none(): void
+    {
+        $f = $this->findField(
+            web_lt_resolved_fields($this->resolvedWith('default', null)),
+            'ai_vision_reasoning',
+        );
+        $this->assertNotNull($f);
+        $this->assertSame('default', $f['source']);
+        $this->assertSame('', $f['value']);
+        $this->assertSame('inherits: (none) (from default)', $f['hint']);
+    }
 }

@@ -111,6 +111,16 @@ function web_lt_global_fields(?linktitles_setting $g): array
     }
     $fields[] = web_lt_desc('ai_vision_reasoning_effort', 'reasoning effort', 'text', $val, $src, 'default: (none)');
 
+    if ($g !== null && $g->ai_vision_reasoning !== null) {
+        $encoded = json_encode($g->ai_vision_reasoning, JSON_UNESCAPED_SLASHES);
+        $val = $encoded === false ? '' : $encoded;
+        $src = 'global';
+    } else {
+        $val = '';
+        $src = 'default';
+    }
+    $fields[] = web_lt_desc('ai_vision_reasoning', 'reasoning (JSON)', 'json', $val, $src, 'default: (none)');
+
     return $fields;
 }
 
@@ -123,16 +133,20 @@ function web_lt_global_fields(?linktitles_setting $g): array
 function web_lt_resolved_fields(LinktitlesResolved $r): array
 {
     $sources = $r->sources;
-    $shown = static function (bool|string|null $v): string {
+    $shown = static function (bool|string|array|null $v): string {
         if (is_bool($v)) {
             return $v ? 'on' : 'off';
         }
         if ($v === null) {
             return '(none)';
         }
+        if (is_array($v)) {
+            $enc = json_encode($v, JSON_UNESCAPED_SLASHES);
+            return $enc === false ? '(none)' : $enc;
+        }
         return (string)$v;
     };
-    $hint = static fn(bool|string|null $v, string $src): string => 'inherits: ' . $shown($v) . ' (from ' . $src . ')';
+    $hint = static fn(bool|string|array|null $v, string $src): string => 'inherits: ' . $shown($v) . ' (from ' . $src . ')';
 
     return [
         web_lt_desc('enabled', 'enabled', 'bool', $r->enabled ? 'on' : 'off', $sources['enabled'], $hint($r->enabled, $sources['enabled'])),
@@ -141,6 +155,10 @@ function web_lt_resolved_fields(LinktitlesResolved $r): array
         web_lt_desc('ai_vision_model', 'ai vision model', 'text', $r->aiVisionModel, $sources['ai_vision_model'], $hint($r->aiVisionModel, $sources['ai_vision_model'])),
         web_lt_desc('ai_vision_prompt', 'ai vision prompt', 'textarea', $r->aiVisionPrompt, $sources['ai_vision_prompt'], $hint($r->aiVisionPrompt, $sources['ai_vision_prompt'])),
         web_lt_desc('ai_vision_reasoning_effort', 'reasoning effort', 'text', $r->aiVisionReasoningEffort ?? '', $sources['ai_vision_reasoning_effort'], $hint($r->aiVisionReasoningEffort, $sources['ai_vision_reasoning_effort'])),
+        web_lt_desc('ai_vision_reasoning', 'reasoning (JSON)', 'json',
+            $r->aiVisionReasoning !== null ? ((string)(json_encode($r->aiVisionReasoning, JSON_UNESCAPED_SLASHES) ?: '')) : '',
+            $sources['ai_vision_reasoning'],
+            $hint($r->aiVisionReasoning, $sources['ai_vision_reasoning'])),
     ];
 }
 
