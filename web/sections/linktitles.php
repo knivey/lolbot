@@ -189,7 +189,6 @@ function web_linktitles(?string $error = null): never
         $networks[] = [
             'net' => $net,
             'fields' => web_lt_resolved_fields($resolved),
-            'reasoningJson' => $resolved->aiVisionReasoning !== null ? json_encode($resolved->aiVisionReasoning, JSON_PRETTY_PRINT) : '',
             'channels' => web_lt_channels($net),
         ];
     }
@@ -198,7 +197,6 @@ function web_linktitles(?string $error = null): never
         'active' => 'linktitles',
         'section' => 'Linktitles',
         'globalFields' => web_lt_global_fields($globalRow),
-        'globalReasoningJson' => ($globalRow !== null && $globalRow->ai_vision_reasoning !== null) ? json_encode($globalRow->ai_vision_reasoning, JSON_PRETTY_PRINT) : '',
         'networks' => $networks,
         'error' => $error,
     ]);
@@ -222,7 +220,6 @@ function web_linktitles_channel(int $chanId, ?string $error = null): never
         'chan' => $chan,
         'net' => $net,
         'fields' => web_lt_resolved_fields($resolved),
-        'reasoningJson' => $resolved->aiVisionReasoning !== null ? json_encode($resolved->aiVisionReasoning, JSON_PRETTY_PRINT) : '',
         'thisTier' => 'channel',
         'error' => $error,
     ]);

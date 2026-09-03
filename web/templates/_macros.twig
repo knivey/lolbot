@@ -41,6 +41,8 @@
       </div>
     {% elseif type == 'textarea' %}
       <textarea class="form-control" name="{{ name }}" rows="3">{{ overridden ? value : '' }}</textarea>
+    {% elseif type == 'json' %}
+      <textarea class="form-control font-monospace" name="{{ name }}" rows="4">{{ overridden ? value : '' }}</textarea>
     {% else %}
       <input class="form-control" type="text" name="{{ name }}" value="{{ overridden ? value : '' }}">
     {% endif %}

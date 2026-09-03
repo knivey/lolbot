@@ -11,10 +11,6 @@
     {% for f in globalFields %}
       {{ m.inherit_field(f.name, f.label, f.value, f.source, 'global', f.hint, f.type, 'global') }}
     {% endfor %}
-    <div class="mb-3">
-      <label class="form-label">reasoning (JSON)</label>
-      <div class="form-text text-body-secondary">editable via CLI &mdash; {% if globalReasoningJson %}<code>{{ globalReasoningJson }}</code>{% else %}(not set){% endif %}</div>
-    </div>
     {{ m.submit('Save global') }}
   </form>
 </div></div>
@@ -27,10 +23,6 @@
     {% for f in n.fields %}
       {{ m.inherit_field(f.name, f.label, f.value, f.source, 'network', f.hint, f.type, scope) }}
     {% endfor %}
-    <div class="mb-3">
-      <label class="form-label">reasoning (JSON)</label>
-      <div class="form-text text-body-secondary">editable via CLI &mdash; {% if n.reasoningJson %}<code>{{ n.reasoningJson }}</code>{% else %}(not set){% endif %}</div>
-    </div>
     {{ m.submit('Save ' ~ n.net.name) }}
   </form>
   {% if n.channels|length %}
