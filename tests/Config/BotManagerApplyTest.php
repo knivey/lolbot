@@ -180,6 +180,40 @@ class BotManagerApplyTest extends ConfigTestCase
         $mgr->apply(new ConfigChange('network', $net->id, 'update'));
         $this->assertSame([$b1->id], $mgr->spawned);
     }
+
+    public function test_network_update_uses_fresh_bot_membership_not_startup_snapshot(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $created = $svc->createBot($net, 'created');
+        $gone = $svc->createBot($net, 'gone');
+        $netId = $net->id;
+        $createdId = $created->id;
+
+        // Simulate lolbot.php startup: load the network fresh and initialize its
+        // bots collection (freezes membership at [created, gone]).
+        $this->em->clear();
+        $net = $this->em->getRepository(\lolbot\entities\Network::class)->find($netId);
+        $this->assertNotNull($net);
+        $net->getBots()->toArray();
+
+        // Simulate another process (CLI/web): delete one bot, add another.
+        $conn = $this->em->getConnection();
+        $conn->executeStatement('DELETE FROM Bots WHERE id = ?', [$gone->id]);
+        $conn->executeStatement(
+            "INSERT INTO Bots (name, network_id, created, onConnect, bindIp, disabled) VALUES ('added', ?, '2000-01-01 00:00:00', '', '0', 0)",
+            [$netId]
+        );
+
+        $mgr = new RecordingBotManager($this->em, $this);
+        $mgr->apply(new ConfigChange('network', $netId, 'update'));
+
+        $addedId = (int)$conn->fetchOne('SELECT id FROM Bots WHERE name = ?', ['added']);
+        // Guards the fresh-membership guarantee: em->refresh($net) must make the
+        // network's bots collection re-query, so 'gone' is not ghost-spawned and
+        // 'added' (created by another process) is spawned.
+        $this->assertSame([$createdId, $addedId], $mgr->spawned);
+    }
 }
 
 /**
