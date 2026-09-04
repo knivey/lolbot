@@ -91,6 +91,7 @@ class BotManagerApplyTest extends ConfigTestCase
         $net = $svc->createNetwork('N');
         $bot = $svc->createBot($net, 'b');
         [$mgr, $client] = $this->mgrWithBot($net, $bot);
+        $client->expects($this->once())->method('sendNow')->with('quit :disabled');
         $client->expects($this->once())->method('exit');
         $bot->disabled = true;
         $this->em->flush();

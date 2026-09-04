@@ -99,8 +99,9 @@ class Network
 
     public function __toString():string {
         $s = "id: {$this->id} name: {$this->name} created: ".$this->created->format('r');
-        if ($this->disabled)
+        if ($this->disabled) {
             $s .= " [disabled]";
+        }
         return $s;
     }
 }

@@ -303,11 +303,11 @@ class BotManager
         return $client;
     }
 
-    public function drop(int $botId): void
+    public function drop(int $botId, string $reason = "removed"): void
     {
         $client = $this->clients[$botId] ?? null;
         if ($client === null) return;
-        try { $client->sendNow("quit :removed"); } catch (\Throwable $e) {}
+        try { $client->sendNow("quit :$reason"); } catch (\Throwable $e) {}
         $client->exit();
         unset($this->clients[$botId], $this->bots[$botId], $this->networks[$botId], $this->state[$botId]);
     }
@@ -379,7 +379,7 @@ class BotManager
             $this->em->refresh($held->network);
             $this->em->refresh($held);
             if ($held->isDisabled()) {
-                $this->drop($botId);
+                $this->drop($botId, "disabled");
                 return;
             }
             if (!isset($this->clients[$botId])) {
@@ -391,6 +391,7 @@ class BotManager
         }
         $fresh = $this->em->find(\lolbot\entities\Bot::class, $botId);
         if ($fresh === null) return;
+        $this->em->refresh($fresh->network);
         $this->em->refresh($fresh);
         if (!$fresh->isDisabled()) $this->spawn($fresh->network, $fresh);
     }
@@ -439,7 +440,7 @@ class BotManager
                             if ($bot->network->id !== $c->id) continue;
                             $this->em->refresh($bot);
                             if ($bot->isDisabled()) {
-                                $this->drop((int)$bid);
+                                $this->drop((int)$bid, "disabled");
                             } elseif (!isset($this->clients[$bid])) {
                                 $this->spawn($net, $bot);
                             }

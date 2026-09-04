@@ -29,10 +29,10 @@ class Bot
     public string $onConnect = "";
 
     #[ORM\Column(nullable: true)]
-    public ?string $sasl_user;
+    public ?string $sasl_user = null;
 
     #[ORM\Column(nullable: true)]
-    public ?string $sasl_pass;
+    public ?string $sasl_pass = null;
 
     #[ORM\Column]
     public string $bindIp = "0";

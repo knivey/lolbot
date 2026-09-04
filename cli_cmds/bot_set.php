@@ -80,7 +80,7 @@ class bot_set extends Command
         $io = new SymfonyStyle($input, $output);
         $rows = [];
         foreach ($this->settings as $setting) {
-            $val = $bot->$setting ?? null;
+            $val = $bot->$setting;
             $rows[] = [$setting, is_bool($val) ? var_export($val, true) : $val];
         }
         $io->table(
