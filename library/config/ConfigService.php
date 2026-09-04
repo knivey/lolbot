@@ -25,13 +25,14 @@ class ConfigService
 
     // ---------------- Networks ----------------
 
-    public function createNetwork(string $name): Network
+    public function createNetwork(string $name, bool $disabled = false): Network
     {
         if ($this->em->getRepository(Network::class)->findOneBy(['name' => $name]) !== null) {
             throw new DuplicateNameException("Network already exists with that name");
         }
         $n = new Network();
         $n->name = $name;
+        $n->disabled = $disabled;
         $this->em->persist($n);
         $this->em->flush();
         $this->notifier->notify(new ConfigChange('network', $n->id, 'create'));
@@ -59,7 +60,7 @@ class ConfigService
 
     // ---------------- Bots ----------------
 
-    public function createBot(Network $network, string $name): Bot
+    public function createBot(Network $network, string $name, bool $disabled = false): Bot
     {
         if (!isset($network->id)) {
             throw new NotFoundException("Network does not exist (no id)");
@@ -70,6 +71,7 @@ class ConfigService
         }
         $bot = new Bot();
         $bot->name = $name;
+        $bot->disabled = $disabled;
         $bot->network = $managed;
         $this->em->persist($bot);
         $this->em->flush();

@@ -85,4 +85,24 @@ class ConfigServiceCoreTest extends ConfigTestCase
         $this->expectException(InvalidSettingException::class);
         $this->svc->addServer($net, 'irc.example.net', 65536);
     }
+
+    public function test_createBot_with_disabled(): void
+    {
+        $net = $this->svc->createNetwork('N');
+        $bot = $this->svc->createBot($net, 'b', true);
+        $this->assertTrue($bot->disabled);
+        $this->assertTrue($bot->isDisabled());
+
+        $bot2 = $this->svc->createBot($net, 'b2');
+        $this->assertFalse($bot2->disabled);
+    }
+
+    public function test_createNetwork_with_disabled(): void
+    {
+        $net = $this->svc->createNetwork('N', true);
+        $this->assertTrue($net->disabled);
+
+        $net2 = $this->svc->createNetwork('N2');
+        $this->assertFalse($net2->disabled);
+    }
 }

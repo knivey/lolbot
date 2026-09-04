@@ -31,7 +31,7 @@ function web_bots_create(): never
         web_bots_new_error('Network and name are required');
     }
     try {
-        $app['svc']->createBot($net, $name);
+        $app['svc']->createBot($net, $name, isset($_POST['disabled']));
     } catch (\Throwable $e) {
         web_bots_new_error($e->getMessage());
     }

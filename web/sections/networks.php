@@ -16,7 +16,7 @@ function web_networks_create(): never
     try { web_verify_csrf(); } catch (\Throwable $e) { web_networks_new($e->getMessage()); }
     $name = trim(is_string($_POST['name'] ?? null) ? $_POST['name'] : '');
     if ($name === '') { web_networks_new('Name required'); }
-    try { $app['svc']->createNetwork($name); } catch (\Throwable $e) { web_networks_new($e->getMessage()); }
+    try { $app['svc']->createNetwork($name, isset($_POST['disabled'])); } catch (\Throwable $e) { web_networks_new($e->getMessage()); }
     web_redirect('/networks');
 }
 
