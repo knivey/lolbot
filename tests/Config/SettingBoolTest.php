@@ -12,8 +12,8 @@ class SettingBoolTest extends \PHPUnit\Framework\TestCase
     public static function acceptedValues(): array
     {
         return [
-            ['true', true], ['1', true], ['on', true], ['yes', true], ['y', true], ['TRUE', true],
-            ['false', false], ['0', false], ['off', false], ['no', false], ['n', false], ['', false],
+            ['true', true], ['1', true], ['on', true], ['yes', true], ['y', true], ['TRUE', true], ['Y', true],
+            ['false', false], ['0', false], ['off', false], ['no', false], ['n', false], ['', false], ['N', false],
         ];
     }
 
