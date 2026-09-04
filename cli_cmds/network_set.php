@@ -19,8 +19,8 @@ class network_set extends Command
     /** @var array<string> */
     public array $settings = [
         "name",
-        "disabled"
-        ];
+        "disabled",
+    ];
     protected function configure(): void
     {
         $this->addArgument("network", InputArgument::REQUIRED, "Network ID");

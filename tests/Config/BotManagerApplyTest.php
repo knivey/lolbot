@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Config;
 
 use lolbot\config\ConfigChange;
@@ -208,7 +209,9 @@ class BotManagerApplyTest extends ConfigTestCase
         $mgr = new RecordingBotManager($this->em, $this);
         $mgr->apply(new ConfigChange('network', $netId, 'update'));
 
-        $addedId = (int)$conn->fetchOne('SELECT id FROM Bots WHERE name = ?', ['added']);
+        $fetched = $conn->fetchOne('SELECT id FROM Bots WHERE name = ?', ['added']);
+        $addedId = is_numeric($fetched) ? (int) $fetched : 0;
+        $this->assertNotSame(0, $addedId);
         // Guards the fresh-membership guarantee: em->refresh($net) must make the
         // network's bots collection re-query, so 'gone' is not ghost-spawned and
         // 'added' (created by another process) is spawned.

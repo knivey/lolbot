@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Config;
 
 use lolbot\config\ConfigService;
@@ -11,9 +12,9 @@ class NetworkSetCommandTest extends ConfigTestCase
     private function runCommand(string $setting, string $value, int $netId): int
     {
         $GLOBALS['entityManager'] = $this->em;
-        $GLOBALS['config'] = $GLOBALS['config'] ?? [];
+        $GLOBALS['config'] ??= [];
         $tester = new CommandTester(new \lolbot\cli_cmds\network_set());
-        return $tester->execute(['network' => (string)$netId, 'setting' => $setting, 'value' => $value]);
+        return $tester->execute(['network' => (string) $netId, 'setting' => $setting, 'value' => $value]);
     }
 
     private function makeNet(): \lolbot\entities\Network

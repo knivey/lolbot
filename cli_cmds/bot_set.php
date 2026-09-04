@@ -25,7 +25,7 @@ class bot_set extends Command
         "sasl_user",
         "sasl_pass",
         "bindIp",
-        "disabled"
+        "disabled",
     ];
     protected function configure(): void
     {

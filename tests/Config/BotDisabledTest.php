@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Config;
 
 use lolbot\config\ConfigService;
@@ -55,15 +56,15 @@ class BotDisabledTest extends ConfigTestCase
         $svc = new ConfigService($this->em);
         $net = $svc->createNetwork('N');
         $bot = $svc->createBot($net, 'b');
-        $this->assertStringNotContainsString('disabled', (string)$bot);
-        $this->assertStringNotContainsString('disabled', (string)$net);
+        $this->assertStringNotContainsString('disabled', (string) $bot);
+        $this->assertStringNotContainsString('disabled', (string) $net);
 
         $bot->disabled = true;
-        $this->assertStringContainsString('[disabled]', (string)$bot);
+        $this->assertStringContainsString('[disabled]', (string) $bot);
 
         $bot->disabled = false;
         $net->disabled = true;
-        $this->assertStringContainsString('[disabled (network)]', (string)$bot);
-        $this->assertStringContainsString('[disabled]', (string)$net);
+        $this->assertStringContainsString('[disabled (network)]', (string) $bot);
+        $this->assertStringContainsString('[disabled]', (string) $net);
     }
 }
