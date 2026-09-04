@@ -75,7 +75,11 @@ class BotManagerApplyTest extends ConfigTestCase
         $svc = new ConfigService($this->em);
         $net = $svc->createNetwork('N');
         $bot = $svc->createBot($net, 'b');
-        [$mgr, $client] = $this->mgrWithBot($net, $bot);
+        $mgr = new BotManager($this->em);
+        $mgr->clients[$bot->id] = $this->createStub(\Irc\Client::class);
+        $mgr->bots[$bot->id] = $bot;
+        $mgr->networks[$bot->id] = $net;
+        $mgr->state[$bot->id] = new \stdClass();
         $mgr->state[$bot->id]->linktitlesEnabled = false;
         $svc->setLinktitlesSetting($net, null, 'enabled', true);
         // Find the linktitles_setting id so apply can resolve the network.
@@ -119,7 +123,7 @@ class BotManagerApplyTest extends ConfigTestCase
         $bot = $svc->createBot($net, 'b');
         $bot->disabled = true;
         $this->em->flush();
-        $mgr = new RecordingBotManager($this->em, $this);
+        $mgr = new RecordingBotManager($this->em, fn(): \Irc\Client => $this->createStub(\Irc\Client::class));
 
         $mgr->apply(new ConfigChange('bot', $bot->id, 'update'));
         $this->assertSame([], $mgr->spawned);
@@ -138,7 +142,7 @@ class BotManagerApplyTest extends ConfigTestCase
         $bot = $svc->createBot($net, 'b');
         $bot->disabled = true;
         $this->em->flush();
-        $mgr = new RecordingBotManager($this->em, $this);
+        $mgr = new RecordingBotManager($this->em, fn(): \Irc\Client => $this->createStub(\Irc\Client::class));
         $mgr->apply(new ConfigChange('bot', $bot->id, 'create'));
         $this->assertSame([], $mgr->spawned);
     }
@@ -151,7 +155,7 @@ class BotManagerApplyTest extends ConfigTestCase
         $bot2 = $svc->createBot($net, 'b2');
         $mgr = new BotManager($this->em);
         foreach ([$bot1, $bot2] as $b) {
-            $mgr->clients[$b->id] = $this->createMock(\Irc\Client::class);
+            $mgr->clients[$b->id] = $this->createStub(\Irc\Client::class);
             $mgr->bots[$b->id] = $b;
             $mgr->networks[$b->id] = $net;
             $mgr->state[$b->id] = new \stdClass();
@@ -173,7 +177,7 @@ class BotManagerApplyTest extends ConfigTestCase
         $net->disabled = true;
         $this->em->flush();
 
-        $mgr = new RecordingBotManager($this->em, $this);
+        $mgr = new RecordingBotManager($this->em, fn(): \Irc\Client => $this->createStub(\Irc\Client::class));
         $mgr->apply(new ConfigChange('network', $net->id, 'update'));
         $this->assertSame([], $mgr->spawned);
 
@@ -207,7 +211,7 @@ class BotManagerApplyTest extends ConfigTestCase
             [$netId]
         );
 
-        $mgr = new RecordingBotManager($this->em, $this);
+        $mgr = new RecordingBotManager($this->em, fn(): \Irc\Client => $this->createStub(\Irc\Client::class));
         $mgr->apply(new ConfigChange('network', $netId, 'update'));
 
         $fetched = $conn->fetchOne('SELECT id FROM Bots WHERE name = ?', ['added']);
@@ -221,27 +225,26 @@ class BotManagerApplyTest extends ConfigTestCase
 }
 
 /**
- * BotManager whose spawn() is stubbed: records bot ids and registers mock
- * clients instead of constructing real IRC connections.
+ * BotManager whose spawn() is stubbed: records bot ids and registers client
+ * doubles from a factory closure instead of constructing real IRC connections.
  */
 class RecordingBotManager extends BotManager
 {
     /** @var list<int> */
     public array $spawned = [];
-    private \PHPUnit\Framework\TestCase $tc;
+    /** @var \Closure(): \Irc\Client */
+    private \Closure $clientFactory;
 
-    public function __construct(\Doctrine\ORM\EntityManager $em, \PHPUnit\Framework\TestCase $tc)
+    public function __construct(\Doctrine\ORM\EntityManager $em, \Closure $clientFactory)
     {
         parent::__construct($em);
-        $this->tc = $tc;
+        $this->clientFactory = $clientFactory;
     }
 
     public function spawn(\lolbot\entities\Network $network, \lolbot\entities\Bot $dbBot): \Irc\Client
     {
         $this->spawned[] = $dbBot->id;
-        $client = (new \PHPUnit\Framework\MockObject\MockBuilder($this->tc, \Irc\Client::class))
-            ->disableOriginalConstructor()
-            ->getMock();
+        $client = ($this->clientFactory)();
         $this->clients[$dbBot->id] = $client;
         $this->bots[$dbBot->id] = $dbBot;
         $this->networks[$dbBot->id] = $network;

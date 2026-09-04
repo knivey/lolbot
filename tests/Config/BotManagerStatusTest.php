@@ -17,7 +17,7 @@ class BotManagerStatusTest extends ConfigTestCase
         $bot = $svc->createBot($net, 'b');
 
         $mgr = new BotManager($this->em);
-        $client = $this->createMock(\Irc\Client::class);
+        $client = $this->createStub(\Irc\Client::class);
         $client->method('isEstablished')->willReturn(true);
         $client->method('getNick')->willReturn('b');
         $client->method('getJoinedChannels')->willReturn(['#dev', '#bots']);
@@ -44,7 +44,7 @@ class BotManagerStatusTest extends ConfigTestCase
         $bot = $svc->createBot($net, 'b');
 
         $mgr = new BotManager($this->em);
-        $client = $this->createMock(\Irc\Client::class);
+        $client = $this->createStub(\Irc\Client::class);
         $client->method('isEstablished')->willReturn(false);
         $client->method('getNick')->willReturn('b');
         $client->method('getJoinedChannels')->willReturn([]);

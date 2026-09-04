@@ -76,7 +76,7 @@ class DeliverTest extends TestCase
      */
     public function test_deliver_only_sends_once_when_called_twice(): void
     {
-        $em = $this->createMock(\Doctrine\ORM\EntityManagerInterface::class);
+        $em = $this->createStub(\Doctrine\ORM\EntityManagerInterface::class);
         $GLOBALS['entityManager'] = $em;
 
         $r = $this->makeReminder(sent: false);

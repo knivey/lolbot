@@ -16,20 +16,20 @@ class FormatImageResponseTest extends TestCase
     protected function setUp(): void
     {
         global $entityManager;
-        $repo = $this->createMock(\Doctrine\Persistence\ObjectRepository::class);
+        $repo = $this->createStub(\Doctrine\Persistence\ObjectRepository::class);
         $repo->method('findOneBy')->willReturn(null);
-        $entityManager = $this->createMock(\Doctrine\ORM\EntityManager::class);
+        $entityManager = $this->createStub(\Doctrine\ORM\EntityManager::class);
         $entityManager->method('getRepository')->willReturn($repo);
 
-        $network = $this->createMock(\lolbot\entities\Network::class);
-        $bot = $this->createMock(\lolbot\entities\Bot::class);
+        $network = $this->createStub(\lolbot\entities\Network::class);
+        $bot = $this->createStub(\lolbot\entities\Bot::class);
         $bot->method('getChannels')->willReturn(new \Doctrine\Common\Collections\ArrayCollection());
-        $server = $this->createMock(\lolbot\entities\Server::class);
-        $client = $this->createMock(\Irc\Client::class);
-        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
-        $nicks = $this->createMock(\Nicks::class);
-        $chans = $this->createMock(\Channels::class);
-        $router = $this->createMock(\knivey\cmdr\Cmdr::class);
+        $server = $this->createStub(\lolbot\entities\Server::class);
+        $client = $this->createStub(\Irc\Client::class);
+        $logger = $this->createStub(\Psr\Log\LoggerInterface::class);
+        $nicks = $this->createStub(\Nicks::class);
+        $chans = $this->createStub(\Channels::class);
+        $router = $this->createStub(\knivey\cmdr\Cmdr::class);
         $this->lt = new linktitles($network, $bot, $server, [], $client, $logger, $nicks, $chans, $router);
     }
 
