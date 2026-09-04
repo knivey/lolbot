@@ -43,7 +43,7 @@ class NetworkSetCommandTest extends ConfigTestCase
     {
         $net = $this->makeNet();
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('disabled must be true or false');
+        $this->expectExceptionMessage('disabled must be a boolean value (true/false/1/0/on/off/yes/no)');
         $this->runCommand('disabled', 'garbage', $net->id);
     }
 }

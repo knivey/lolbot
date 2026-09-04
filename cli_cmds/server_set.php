@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use lolbot\config\SettingBool;
 use lolbot\entities\Server;
 
 #[AsCommand("server:set")]
@@ -64,8 +65,7 @@ class server_set extends Command
         $value = match ($setting) {
             'port' => is_string($raw) ? (int)$raw : 0,
             'ssl', 'throttle' => is_string($raw)
-                ? (filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
-                    ?? throw new \InvalidArgumentException("Value must be true or false"))
+                ? SettingBool::parse($raw)
                 : false,
             default => is_string($raw) ? $raw : '',
         };

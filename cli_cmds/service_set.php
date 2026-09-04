@@ -7,6 +7,7 @@ global $entityManager;
 
 use lolbot\config\ConfigService;
 use lolbot\config\ServiceLocator;
+use lolbot\config\SettingBool;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -63,21 +64,12 @@ class service_set extends Command
         if ($type instanceof \ReflectionNamedType) {
             return match ($type->getName()) {
                 'int' => (int)$raw,
-                'bool' => self::parseBool($raw),
+                'bool' => SettingBool::parse($raw),
                 'array' => self::parseArray($raw),
                 default => $raw,
             };
         }
         return $raw;
-    }
-
-    private static function parseBool(string $raw): bool
-    {
-        $result = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        if ($result === null) {
-            throw new \InvalidArgumentException("Value must be true or false");
-        }
-        return $result;
     }
 
     /**

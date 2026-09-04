@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use lolbot\config\SettingBool;
 use lolbot\entities\Network;
 
 #[AsCommand("network:set")]
@@ -59,8 +60,7 @@ class network_set extends Command
         $setting = $input->getArgument("setting");
         if ($setting === "disabled") {
             $value = $input->getArgument("value");
-            $network->disabled = filter_var(is_string($value) ? $value : "", FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
-                ?? throw new \InvalidArgumentException("disabled must be true or false");
+            $network->disabled = SettingBool::parse(is_string($value) ? $value : "", "disabled");
         } else {
             $network->$setting = $input->getArgument("value");
         }

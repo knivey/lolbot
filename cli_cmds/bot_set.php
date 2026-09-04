@@ -10,6 +10,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use lolbot\config\SettingBool;
 use lolbot\entities\Bot;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -65,8 +66,7 @@ class bot_set extends Command
 
         $value = $input->getArgument("value");
         if ($setting === "disabled") {
-            $bot->disabled = filter_var(is_string($value) ? $value : "", FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
-                ?? throw new \InvalidArgumentException("disabled must be true or false");
+            $bot->disabled = SettingBool::parse(is_string($value) ? $value : "", "disabled");
         } else {
             $bot->$setting = is_string($value) ? $value : '';
         }

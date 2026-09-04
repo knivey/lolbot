@@ -5,6 +5,7 @@ namespace scripts\linktitles\cli_cmds;
  */
 global $entityManager;
 
+use lolbot\config\SettingBool;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
 use scripts\linktitles\entities\linktitles_setting;
@@ -107,8 +108,8 @@ class linktitles_set extends Command
 
         $val = $input->getArgument("value");
         match ($input->getArgument("setting")) {
-            "ai_vision_disabled" => $setting->ai_vision_disabled = filter_var($val, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? throw new \InvalidArgumentException("Value must be true or false"),
-            "enabled" => $setting->enabled = filter_var($val, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? throw new \InvalidArgumentException("Value must be true or false"),
+            "ai_vision_disabled" => $setting->ai_vision_disabled = is_string($val) ? SettingBool::parse($val) : false,
+            "enabled" => $setting->enabled = is_string($val) ? SettingBool::parse($val) : false,
             "url_log_chan" => $setting->url_log_chan = is_string($val) ? $val : throw new \InvalidArgumentException("Value must be a string"),
             "ai_vision_model" => $setting->ai_vision_model = is_string($val) ? $val : throw new \InvalidArgumentException("Value must be a string"),
             "ai_vision_prompt" => $setting->ai_vision_prompt = is_string($val) ? $val : throw new \InvalidArgumentException("Value must be a string"),
