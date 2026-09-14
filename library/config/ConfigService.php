@@ -9,6 +9,9 @@ use lolbot\entities\Ignore;
 use lolbot\entities\Network;
 use lolbot\entities\PasteServiceConfig;
 use lolbot\entities\Server;
+use scripts\linktitles\entities\hostignore;
+use scripts\linktitles\entities\ignore as lt_ignore;
+use scripts\linktitles\entities\ignore_type;
 use scripts\linktitles\entities\linktitles_setting;
 
 /**
@@ -237,6 +240,138 @@ class ConfigService
         $this->em->remove($ignore);
         $this->em->flush();
         $this->notifier->notify(new ConfigChange('ignore', $id, 'delete'));
+    }
+
+    // ---------------- Linktitles ignores ----------------
+
+    public function addLinktitlesIgnore(string $pattern, ignore_type $type, ?Network $network = null, ?Bot $bot = null): lt_ignore
+    {
+        $regex = self::wrapLinktitlesRegex($pattern);
+        $this->assertLinktitlesIgnoreScope($type, $network, $bot);
+        $ignore = new lt_ignore($type);
+        $ignore->regex = $regex;
+        if ($type === ignore_type::network) {
+            $ignore->network = $network;
+        }
+        if ($type === ignore_type::bot) {
+            $ignore->bot = $bot;
+        }
+        $this->em->persist($ignore);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('linktitles_ignore', $ignore->id, 'create'));
+        return $ignore;
+    }
+
+    public function getLinktitlesIgnore(int $id): ?lt_ignore
+    {
+        return $this->em->getRepository(lt_ignore::class)->find($id);
+    }
+
+    /** @return list<lt_ignore> */
+    public function listLinktitlesIgnores(): array
+    {
+        return $this->em->getRepository(lt_ignore::class)->findAll();
+    }
+
+    public function deleteLinktitlesIgnore(lt_ignore $ignore): void
+    {
+        $id = $ignore->id;
+        $this->em->remove($ignore);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('linktitles_ignore', $id, 'delete'));
+    }
+
+    public function addLinktitlesHostignore(string $hostmask, ignore_type $type, ?Network $network = null, ?Bot $bot = null): hostignore
+    {
+        $hostmask = trim($hostmask);
+        if ($hostmask === '') {
+            throw new InvalidSettingException("Hostmask required");
+        }
+        $this->assertLinktitlesIgnoreScope($type, $network, $bot);
+        $hostignore = new hostignore($type);
+        $hostignore->hostmask = $hostmask;
+        if ($type === ignore_type::network) {
+            $hostignore->network = $network;
+        }
+        if ($type === ignore_type::bot) {
+            $hostignore->bot = $bot;
+        }
+        $this->em->persist($hostignore);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('linktitles_hostignore', $hostignore->id, 'create'));
+        return $hostignore;
+    }
+
+    public function getLinktitlesHostignore(int $id): ?hostignore
+    {
+        return $this->em->getRepository(hostignore::class)->find($id);
+    }
+
+    /** @return list<hostignore> */
+    public function listLinktitlesHostignores(): array
+    {
+        return $this->em->getRepository(hostignore::class)->findAll();
+    }
+
+    public function deleteLinktitlesHostignore(hostignore $hostignore): void
+    {
+        $id = $hostignore->id;
+        $this->em->remove($hostignore);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('linktitles_hostignore', $id, 'delete'));
+    }
+
+    /**
+     * Wrap a raw pattern in delimiters (@ # ~ % — the first one the pattern
+     * does not contain) with the i flag, mirroring how CLI-created rows are
+     * stored. Rejects empty patterns, patterns containing every candidate
+     * delimiter, and patterns that do not compile.
+     */
+    private static function wrapLinktitlesRegex(string $pattern): string
+    {
+        $pattern = trim($pattern);
+        if ($pattern === '') {
+            throw new InvalidSettingException("Pattern required");
+        }
+        $delim = null;
+        foreach (['@', '#', '~', '%'] as $d) {
+            if (!str_contains($pattern, $d)) {
+                $delim = $d;
+                break;
+            }
+        }
+        if ($delim === null) {
+            throw new InvalidSettingException("Pattern contains all of @ # ~ % — remove one so a delimiter can be chosen");
+        }
+        $re = $delim . $pattern . $delim . 'i';
+        if (@preg_match($re, '') === false) {
+            throw new InvalidSettingException("Invalid regex: $pattern");
+        }
+        return $re;
+    }
+
+    /** Validates that the scope targets match the requested type. */
+    private function assertLinktitlesIgnoreScope(ignore_type $type, ?Network $network, ?Bot $bot): void
+    {
+        switch ($type) {
+            case ignore_type::global:
+                if ($network !== null || $bot !== null) {
+                    throw new InvalidSettingException("Global ignore must not have a network or bot");
+                }
+                return;
+            case ignore_type::network:
+                if ($network === null || !isset($network->id) || !$this->em->contains($network)) {
+                    throw new NotFoundException("Network not found for network-scoped ignore");
+                }
+                return;
+            case ignore_type::bot:
+                if ($bot === null || !isset($bot->id) || !$this->em->contains($bot)) {
+                    throw new NotFoundException("Bot not found for bot-scoped ignore");
+                }
+                return;
+            case ignore_type::channel:
+                throw new InvalidSettingException("Channel-scoped linktitles ignores are not supported yet");
+        }
     }
 
     // ---------------- Service config (global singletons) ----------------
