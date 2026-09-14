@@ -186,8 +186,13 @@ Following `tests/Config/` conventions:
 - IgnoreMatcher: scope filtering (global row matches any context,
   network row only its network, bot row only its bot); hostmask glob
   matching; invalid stored regex counts as no match.
-- Web routes: add + delete + test fragment for both kinds, CSRF
-  enforcement, error re-render (per the existing web test harness).
+- Web helpers: function-surface tests for the new pure helpers
+  (scope resolution from POST, tester scope incl. bot-implies-network,
+  match-row flattening incl. invalid-pattern flag), per the existing
+  `WebAuthTest` / `WebLinktitlesReasoningTest` conventions. The handlers
+  themselves are `never`-returning and `exit`, so they are not
+  unit-testable in-process; the add/delete/test/CSRF/error-alert flows
+  are covered by manual verification.
 
 Manual verification: add/delete each kind at each scope through the
 panel with the bot running; confirm a matching URL stops getting titles
