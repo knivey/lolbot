@@ -68,6 +68,10 @@ class Network
         if(count($this->servers) == 0)
             return null;
 
+        // The round-robin index can point past the end after the servers
+        // collection was refreshed following an out-of-band shrink.
+        if(!isset($this->servers[$this->serverIdx]))
+            $this->serverIdx = 0;
         $server = $this->servers[$this->serverIdx];
         $this->serverIdx++;
         if(!isset($this->servers[$this->serverIdx]))

@@ -29,6 +29,13 @@ class ServiceLocator
             return null;
         }
         $rows = $this->em->getRepository($class)->findAll();
+        // findAll() hydrates from the identity map when the entity is already
+        // managed, so a long-lived bot EntityManager would keep serving the
+        // values from its first read. Mutations arrive from other processes
+        // (admin-cli, web panel), so refresh the row from the DB on every read.
+        if (isset($rows[0])) {
+            $this->em->refresh($rows[0]);
+        }
         return $rows[0] ?? null;
     }
 

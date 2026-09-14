@@ -77,8 +77,12 @@ class BotManager
         $linktitlesEnabled = (new \lolbot\config\SettingsResolver($entityManager))->linktitlesEnabled($network, null);
         $st = new \stdClass();
         $st->linktitlesEnabled = $linktitlesEnabled;
+        $this->refreshNetworkServers($network);
         //TODO add support and check for per bot servers first
         $server = $network->selectServer();
+        if ($server === null) {
+            throw new Exception("No servers configured for network {$network->name}");
+        }
         $log = new Logger($dbBot->name);
         $log->pushHandler($logHandler);
         $client = new \Irc\Client($dbBot->name, $server->address, $log, (string)$server->port, $dbBot->bindIp, $server->ssl);
@@ -329,6 +333,23 @@ class BotManager
         ($this->clients[$botId] ?? null)?->reconnect();
     }
 
+    /**
+     * Refresh a held network and its server members from the DB before
+     * selecting a server. em->find()/hydrated reads serve the managed instance
+     * without re-querying, so server changes made by other processes
+     * (admin-cli, web panel) would stay invisible. Refreshing the network
+     * re-queries the servers collection, but re-hydration does not overwrite
+     * already-managed members, so each server is refreshed too (picks up
+     * address/port/ssl/password/throttle edits).
+     */
+    private function refreshNetworkServers(Network $network): void
+    {
+        $this->em->refresh($network);
+        foreach ($network->getServers() as $srv) {
+            $this->em->refresh($srv);
+        }
+    }
+
     public function jump(int $botId): void
     {
         $network = $this->networks[$botId] ?? null;
@@ -336,6 +357,7 @@ class BotManager
         if ($network === null || $client === null) return;
         $fresh = $this->em->find(\lolbot\entities\Network::class, $network->id);
         if ($fresh === null) return;
+        $this->refreshNetworkServers($fresh);
         $server = $fresh->selectServer();
         if ($server === null) return;
         $client->setServer($server->address, (string)$server->port, $server->ssl, $server->password, $server->throttle);
@@ -431,6 +453,17 @@ class BotManager
                     if ($c->action === 'update') { $this->syncBot((int)$c->id); return; }
                     return;
                 case 'network':
+                    if ($c->action === 'delete') {
+                        // Bot rows vanish via ON DELETE CASCADE, so the ids
+                        // arrive in the data bag; without it the push can't
+                        // be routed.
+                        $botIds = isset($c->data['botIds']) && is_array($c->data['botIds']) ? $c->data['botIds'] : [];
+                        foreach ($botIds as $bid) {
+                            $bid = is_int($bid) ? $bid : 0;
+                            if ($bid !== 0) { $this->drop($bid, "network deleted"); }
+                        }
+                        return;
+                    }
                     if ($c->action === 'update') {
                         $net = $this->em->find(\lolbot\entities\Network::class, $c->id);
                         if ($net === null) return;
@@ -456,7 +489,18 @@ class BotManager
                     return;
                 case 'server':
                     if (in_array($c->action, ['create', 'update', 'delete'], true)) {
-                        $server = ($c->action === 'delete') ? null : $this->em->find(\lolbot\entities\Server::class, $c->id);
+                        if ($c->action === 'delete') {
+                            // The row is gone, so the network id arrives in the
+                            // data bag (deleteChannel carries botId/chan the
+                            // same way); without it the push can't be routed.
+                            $networkId = isset($c->data['networkId']) && is_int($c->data['networkId']) ? $c->data['networkId'] : 0;
+                            if ($networkId === 0) return;
+                            foreach ($this->bots as $bid => $bot) {
+                                if ($bot->network->id === $networkId) { $this->jump($bid); }
+                            }
+                            return;
+                        }
+                        $server = $this->em->find(\lolbot\entities\Server::class, $c->id);
                         $network = $server?->network;
                         if ($network === null) return;
                         foreach ($this->bots as $bid => $bot) {

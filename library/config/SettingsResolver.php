@@ -21,20 +21,36 @@ class SettingsResolver
 
     public function getLinktitlesSetting(Network $network, ?Channel $channel): ?linktitles_setting
     {
-        $repo = $this->em->getRepository(linktitles_setting::class);
         if ($channel !== null) {
-            $s = $repo->findOneBy(['channel' => $channel]);
+            $s = $this->freshSetting(['channel' => $channel]);
             if ($s !== null) {
                 return $s;
             }
         }
-        return $repo->findOneBy(['network' => $network, 'channel' => null]);
+        return $this->freshSetting(['network' => $network, 'channel' => null]);
     }
 
     private function globalLinktitlesSetting(): ?linktitles_setting
     {
-        return $this->em->getRepository(linktitles_setting::class)
-            ->findOneBy(['network' => null, 'channel' => null]);
+        return $this->freshSetting(['network' => null, 'channel' => null]);
+    }
+
+    /**
+     * findOneBy() hydrates from the identity map when the entity is already
+     * managed, so a long-lived bot EntityManager would keep serving the values
+     * from its first read even though the SQL runs every time. Mutations arrive
+     * from other processes (admin-cli, web panel), so every tier read must
+     * refresh managed rows from the DB.
+     *
+     * @param array<string, mixed> $criteria
+     */
+    private function freshSetting(array $criteria): ?linktitles_setting
+    {
+        $row = $this->em->getRepository(linktitles_setting::class)->findOneBy($criteria);
+        if ($row !== null) {
+            $this->em->refresh($row);
+        }
+        return $row;
     }
 
     /**
@@ -46,9 +62,8 @@ class SettingsResolver
      */
     private function linktitlesTiers(Network $network, ?Channel $channel): array
     {
-        $repo = $this->em->getRepository(linktitles_setting::class);
-        $channelRow = $channel !== null ? $repo->findOneBy(['channel' => $channel]) : null;
-        $networkRow = $repo->findOneBy(['network' => $network, 'channel' => null]);
+        $channelRow = $channel !== null ? $this->freshSetting(['channel' => $channel]) : null;
+        $networkRow = $this->freshSetting(['network' => $network, 'channel' => null]);
         $globalRow = $this->globalLinktitlesSetting();
         return [$channelRow, $networkRow, $globalRow];
     }

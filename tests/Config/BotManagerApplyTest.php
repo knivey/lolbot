@@ -9,9 +9,19 @@ use lolbot\entities\Network;
 use library\BotManager;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../library/Nicks.php';
+require_once __DIR__ . '/../../library/Channels.php';
 
 class BotManagerApplyTest extends ConfigTestCase
 {
+    protected function tearDown(): void
+    {
+        // The spawn test sets bot-runtime globals; don't leak a closed EM or
+        // stubs into later tests in this process.
+        unset($GLOBALS['logHandler'], $GLOBALS['config'], $GLOBALS['entityManager']);
+        parent::tearDown();
+    }
+
     /**
      * @return array{0: BotManager, 1: \PHPUnit\Framework\MockObject\MockObject&\Irc\Client}
      */
@@ -68,6 +78,124 @@ class BotManagerApplyTest extends ConfigTestCase
         [$mgr, $client] = $this->mgrWithBot($net, $bot);
         $client->expects($this->once())->method('reconnect');
         $mgr->apply(new ConfigChange('server', $srv->id, 'update'));
+    }
+
+    public function test_server_delete_triggers_jump_for_network_bots(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b');
+        $keep = $svc->addServer($net, 'irc-keep.example.net', 6667, false, true, null);
+        $gone = $svc->addServer($net, 'irc-gone.example.net', 6667, false, true, null);
+        [$mgr, $client] = $this->mgrWithBot($net, $bot);
+        $client->expects($this->once())->method('setServer')
+            ->with('irc-keep.example.net', '6667', false, null, true);
+        $client->expects($this->once())->method('reconnect');
+
+        $goneId = $gone->id;
+        $svc->deleteServer($gone);
+
+        // The push the notifier delivers for the delete: the row is gone, so
+        // the network id travels in the data bag.
+        $mgr->apply(new ConfigChange('server', $goneId, 'delete', ['networkId' => $net->id]));
+    }
+
+    /**
+     * @return array{0: string, 1: string|null} The address and port jump() targeted.
+     */
+    private function jumpAndCaptureServer(Network $net, Bot $bot): array
+    {
+        $mgr = new BotManager($this->em);
+        $client = $this->createStub(\Irc\Client::class);
+        $captured = [];
+        $client->method('setServer')->willReturnCallback(
+            /** @param list<mixed> $args */
+            function (mixed ...$args) use (&$captured, $client): \Irc\Client {
+                $captured = $args;
+                return $client;
+            }
+        );
+        $mgr->clients[$bot->id] = $client;
+        $mgr->bots[$bot->id] = $bot;
+        $mgr->networks[$bot->id] = $net;
+        $mgr->state[$bot->id] = new \stdClass();
+        $mgr->jump($bot->id);
+        /** @var list<mixed> $captured */
+        $address = $captured[0] ?? null;
+        return [is_string($address) ? $address : '', isset($captured[1]) && is_string($captured[1]) ? $captured[1] : null];
+    }
+
+    public function test_jump_uses_fresh_server_list_after_out_of_band_replacement(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b');
+        $old = $svc->addServer($net, 'old.example.net', 6667, false, true, null);
+
+        // Warm the servers collection (spawn() initializes it via selectServer()).
+        $net->getServers()->toArray();
+
+        // Out-of-band: replace the only server (another process).
+        $conn = $this->em->getConnection();
+        $conn->executeStatement('DELETE FROM Servers WHERE id = ?', [$old->id]);
+        $conn->executeStatement(
+            'INSERT INTO Servers (address, port, ssl, throttle, network_id) VALUES (?, 6697, 1, 1, ?)',
+            ['new.example.net', $net->id]
+        );
+
+        [$address] = $this->jumpAndCaptureServer($net, $bot);
+        $this->assertSame('new.example.net', $address);
+    }
+
+    public function test_jump_uses_fresh_server_fields_after_out_of_band_edit(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b');
+        $srv = $svc->addServer($net, 'old.example.net', 6667, false, true, null);
+
+        // Warm the servers collection (spawn() initializes it via selectServer()).
+        $net->getServers()->toArray();
+
+        // Out-of-band address/port edit (another process).
+        $this->em->getConnection()->executeStatement(
+            'UPDATE Servers SET address = ?, port = ? WHERE id = ?',
+            ['new.example.net', 6697, $srv->id]
+        );
+
+        [$address, $port] = $this->jumpAndCaptureServer($net, $bot);
+        $this->assertSame('new.example.net', $address);
+        $this->assertSame('6697', $port);
+    }
+
+    public function test_spawn_uses_fresh_server_list_after_out_of_band_replacement(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot1 = $svc->createBot($net, 'b1');
+        $bot2 = $svc->createBot($net, 'b2');
+        $old = $svc->addServer($net, 'old.example.net', 6667, false, true, null);
+
+        // First spawn warms the network's servers collection (selectServer()
+        // initializes it) and leaves the entities managed, as in a running bot.
+        $GLOBALS['logHandler'] = $this->createStub(\Monolog\Handler\HandlerInterface::class);
+        $GLOBALS['config'] = [];
+        $GLOBALS['entityManager'] = $this->em;
+        $mgr = new BotManager($this->em);
+        $client1 = $mgr->spawn($net, $bot1);
+        $this->assertSame('old.example.net:6667', $client1->getServerDesc());
+
+        // Out-of-band: replace the only server (another process).
+        $conn = $this->em->getConnection();
+        $conn->executeStatement('DELETE FROM Servers WHERE id = ?', [$old->id]);
+        $conn->executeStatement(
+            'INSERT INTO Servers (address, port, ssl, throttle, network_id) VALUES (?, 6697, 1, 1, ?)',
+            ['new.example.net', $net->id]
+        );
+
+        // A bot spawned after the change must target the new server.
+        $client2 = $mgr->spawn($net, $bot2);
+        $this->assertSame('new.example.net:6697 ssl', $client2->getServerDesc());
     }
 
     public function test_linktitles_setting_update_refreshes_enabled_holder(): void
@@ -165,6 +293,43 @@ class BotManagerApplyTest extends ConfigTestCase
         $mgr->apply(new ConfigChange('network', $net->id, 'update'));
         $this->assertArrayNotHasKey($bot1->id, $mgr->clients);
         $this->assertArrayNotHasKey($bot2->id, $mgr->clients);
+    }
+
+    public function test_network_delete_drops_held_bots(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot1 = $svc->createBot($net, 'b1');
+        $bot2 = $svc->createBot($net, 'b2');
+        $mgr = new BotManager($this->em);
+        $clients = [];
+        foreach ([$bot1, $bot2] as $b) {
+            $client = $this->createMock(\Irc\Client::class);
+            $client->expects($this->once())->method('sendNow')->with('quit :network deleted');
+            $client->expects($this->once())->method('exit');
+            $clients[$b->id] = $client;
+            $mgr->clients[$b->id] = $client;
+            $mgr->bots[$b->id] = $b;
+            $mgr->networks[$b->id] = $net;
+            $mgr->state[$b->id] = new \stdClass();
+        }
+
+        $netId = $net->id;
+        $botIds = [$bot1->id, $bot2->id];
+        $svc->deleteNetwork($net);
+
+        // The push the notifier delivers: rows are gone via ON DELETE CASCADE,
+        // so the bot ids travel in the data bag.
+        $mgr->apply(new ConfigChange('network', $netId, 'delete', ['botIds' => $botIds]));
+
+        $this->assertArrayNotHasKey($bot1->id, $mgr->clients);
+        $this->assertArrayNotHasKey($bot2->id, $mgr->clients);
+        $this->assertArrayNotHasKey($bot1->id, $mgr->bots);
+        $this->assertArrayNotHasKey($bot2->id, $mgr->bots);
+        $this->assertArrayNotHasKey($bot1->id, $mgr->networks);
+        $this->assertArrayNotHasKey($bot2->id, $mgr->networks);
+        $this->assertArrayNotHasKey($bot1->id, $mgr->state);
+        $this->assertArrayNotHasKey($bot2->id, $mgr->state);
     }
 
     public function test_network_update_reenable_spawns_only_enabled_bots(): void

@@ -47,9 +47,19 @@ class ConfigService
     public function deleteNetwork(Network $network): void
     {
         $id = $network->id;
+        // Bot rows vanish via ON DELETE CASCADE before the push arrives, so
+        // the ids must travel in the data bag for the bot to drop its clients.
+        // Queried directly because the inverse-side bots collection is not
+        // reliably populated (createBot only sets the owning side).
+        $botIds = [];
+        foreach ($this->em->getRepository(Bot::class)->findBy(['network' => $network]) as $bot) {
+            $botIds[] = $bot->id;
+        }
         $this->em->remove($network);
         $this->em->flush();
-        $this->notifier->notify(new ConfigChange('network', $id, 'delete'));
+        $this->notifier->notify(new ConfigChange('network', $id, 'delete', [
+            'botIds' => $botIds,
+        ]));
     }
 
     /** @return list<Network> */
@@ -160,9 +170,14 @@ class ConfigService
     public function deleteServer(Server $server): void
     {
         $id = $server->id;
+        // The row is gone by push time, so the network id travels in the
+        // data bag for the bot to route the jump.
+        $networkId = isset($server->network) ? ($server->network->id ?? null) : null;
         $this->em->remove($server);
         $this->em->flush();
-        $this->notifier->notify(new ConfigChange('server', $id, 'delete'));
+        $this->notifier->notify(new ConfigChange('server', $id, 'delete', [
+            'networkId' => $networkId,
+        ]));
     }
 
     // ---------------- Ignores ----------------
