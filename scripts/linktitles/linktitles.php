@@ -10,15 +10,11 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Socket\Socks5SocketConnector;
-use Doctrine\Common\Collections\Criteria;
 use lolbot\config\ServiceLocator;
 use lolbot\config\SettingsResolver;
 use lolbot\entities\AiServiceConfig;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
-use scripts\linktitles\entities\hostignore;
-use scripts\linktitles\entities\ignore_type;
-use scripts\linktitles\entities\ignore;
 use scripts\script_base;
 
 use function Amp\Future\awaitAll;
@@ -446,28 +442,7 @@ class linktitles extends script_base
     function urlIsIgnored(string $chan, string $fullhost, string $url): bool
     {
         global $entityManager;
-        $criteria = Criteria::create();
-        $criteria->where(Criteria::expr()->eq("type", ignore_type::global));
-        $criteria->orWhere(Criteria::expr()->eq("network", $this->network));
-        //todo bot would go here, and channel
-        //$criteria->orWhere(Criteria::expr()->eq());
-
-        /** @var ignore[] $ignores */
-        $ignores = $entityManager->getRepository(ignore::class)->matching($criteria);
-        foreach ($ignores as $ignore) {
-            if (preg_match($ignore->regex, $url)) {
-                return true;
-            }
-        }
-
-        $hostignores = $entityManager->getRepository(hostignore::class)->matching($criteria);
-        foreach ($hostignores as $hostignore) {
-            $hostmask_re = \knivey\tools\globToRegex($hostignore->hostmask) . 'i';
-            if (preg_match($hostmask_re, $fullhost)) {
-                return true;
-            }
-        }
-        return false;
+        return IgnoreMatcher::isIgnored($entityManager, $this->network, $this->bot, $fullhost, $url);
     }
 
     private static function formatDuration(float $ms): string

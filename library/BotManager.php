@@ -510,6 +510,9 @@ class BotManager
                     return;
                 case 'ignore':
                     return; // ignore cache is 5s TTL; auto-applies.
+                case 'linktitles_ignore':
+                case 'linktitles_hostignore':
+                    return; // checked per-URL against the DB; adds/deletes apply live.
                 case 'service:ai':
                 case 'service:paste':
                     return; // consumers read per-use; live already.
