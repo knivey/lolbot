@@ -1,4 +1,5 @@
 <?php
+
 namespace scripts\linktitles;
 
 use Amp\Cache\LocalCache;
@@ -16,9 +17,6 @@ use lolbot\entities\AiServiceConfig;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
 use scripts\script_base;
-
-use function Amp\Future\awaitAll;
-
 use Amp\TimeoutCancellation;
 use Knivey\OpenAi\HttpClient as OpenAiHttpClient;
 use Knivey\OpenAi\OpenAiClient;
@@ -27,6 +25,8 @@ use Knivey\OpenAi\Request\Message;
 use Knivey\OpenAi\Request\Reasoning;
 use Knivey\OpenAi\Request\Content\TextPart;
 use Knivey\OpenAi\Request\Content\ImagePart;
+
+use function Amp\Future\awaitAll;
 
 class linktitles extends script_base
 {
@@ -38,15 +38,15 @@ class linktitles extends script_base
     }
 
     //adding buffer limit is an extra precaution to the body size limit
-    const bufferLimit = 1024*1024*40;
+    public const bufferLimit = 1024 * 1024 * 40;
 
-//feature requested by terps
-//sends all urls into a log channel for easier viewing url history
-//TODO take url as param to highlight it here
+    //feature requested by terps
+    //sends all urls into a log channel for easier viewing url history
+    //TODO take url as param to highlight it here
     /**
      * @param string[] $title
      */
-    function logUrl(\Irc\Client $bot, string $nick, string $chan, string $line, string|array $title): void
+    public function logUrl(\Irc\Client $bot, string $nick, string $chan, string $line, string|array $title): void
     {
         global $entityManager;
         $resolver = new SettingsResolver($entityManager);
@@ -58,10 +58,12 @@ class linktitles extends script_base
         $max = max(strlen($chan), $max);
         $chan = str_pad($chan, $max);
         $bot->pm($logChan, "$chan | <$nick> $line");
-        if (is_string($title))
+        if (is_string($title)) {
             $title = [$title];
-        foreach ($title as $msg)
+        }
+        foreach ($title as $msg) {
             $bot->pm($logChan, "  $msg");
+        }
     }
 
     /**
@@ -77,18 +79,19 @@ class linktitles extends script_base
      * @var array<string, list<int>>
      */
     private array $link_ratelimit = [];
-    function linktitles(\Irc\Client $bot, string $nick, string $chan, string $identhost, string $text): void
+    public function linktitles(\Irc\Client $bot, string $nick, string $chan, string $identhost, string $text): void
     {
         global $config;
         foreach (explode(' ', $text) as $word) {
             if (filter_var($word, FILTER_VALIDATE_URL) === false) {
                 continue;
             }
-            if(!preg_match("/^https?:\/\/.+/i", $word)) {
+            if (!preg_match("/^https?:\/\/.+/i", $word)) {
                 continue;
             }
-            if ($this->urlIsIgnored($chan, "$nick!$identhost", $word))
+            if ($this->urlIsIgnored($chan, "$nick!$identhost", $word)) {
                 continue;
+            }
 
             if (($this->link_history[$chan] ?? "") == $word) {
                 continue;
@@ -100,7 +103,7 @@ class linktitles extends script_base
             $now = time();
             $this->link_ratelimit[$chan] = array_values(array_filter(
                 $this->link_ratelimit[$chan] ?? [],
-                fn($ts) => $now - $ts < $window
+                fn ($ts) => $now - $ts < $window
             ));
             if (count($this->link_ratelimit[$chan]) >= $maxUrls) {
                 $this->logUrl($bot, $nick, $chan, $text, "Err: Rate limit exceeded");
@@ -116,7 +119,7 @@ class linktitles extends script_base
             $this->eventDispatcher->dispatch($urlEvent);
 
             $urlEvent->awaitAll();
-            
+
             if ($urlEvent->handled) {
                 $urlEvent->sendReplies($bot, $chan);
                 $urlEvent->doLog($this, $bot);
@@ -323,10 +326,11 @@ class linktitles extends script_base
     {
         preg_match("@^image/(.*)$@i", $contentType, $m);
         $size = $contentLength;
-        if ($size !== null && is_numeric($size))
+        if ($size !== null && is_numeric($size)) {
             $size = \knivey\tools\convert((int)$size);
-        else
+        } else {
             $size = "?b";
+        }
         $d = getimagesizefromstring($body);
         if (!$d) {
             $out = "$m[1] image $size";
@@ -346,10 +350,11 @@ class linktitles extends script_base
     public function formatVideoResponse(string $body, string $ext, ?string $contentLength): string
     {
         $size = $contentLength;
-        if ($size !== null && is_numeric($size))
+        if ($size !== null && is_numeric($size)) {
             $size = \knivey\tools\convert((int)$size);
-        else
+        } else {
             $size = "?b";
+        }
 
         if (!shell_exec('which mediainfo')) {
             return "$ext video $size";
@@ -366,16 +371,19 @@ class linktitles extends script_base
         $vt = null;
         $at = null;
         foreach ($mi->media->track as $track) {
-            if ($track['type'] == 'Video')
+            if ($track['type'] == 'Video') {
                 $vt = $track;
-            if ($track['type'] == 'Audio')
+            }
+            if ($track['type'] == 'Audio') {
                 $at = $track;
+            }
         }
         $videoFormat = $vt->Format;
-        if (isset($vt->FrameRate))
+        if (isset($vt->FrameRate)) {
             $frameRate = round((float)$vt->FrameRate) . 'fps';
-        else
+        } else {
             $frameRate = $vt->FrameRate_Mode ?? '?';
+        }
 
         $resX = $vt->Width ?? '?';
         $resY = $vt->Height ?? '?';
@@ -419,8 +427,8 @@ class linktitles extends script_base
     private function buildHttpClient(string $url): \Amp\Http\Client\HttpClient
     {
         global $config;
-        $cookieJar = new LocalCookieJar;
-        $builder = (new HttpClientBuilder)
+        $cookieJar = new LocalCookieJar();
+        $builder = (new HttpClientBuilder())
             ->interceptNetwork(new CookieInterceptor($cookieJar));
 
         $proxy = $config['linktitles_proxy'] ?? null;
@@ -438,8 +446,8 @@ class linktitles extends script_base
         return $builder->build();
     }
 
-//TODO can add cache for this
-    function urlIsIgnored(string $chan, string $fullhost, string $url): bool
+    //TODO can add cache for this
+    public function urlIsIgnored(string $chan, string $fullhost, string $url): bool
     {
         global $entityManager;
         return IgnoreMatcher::isIgnored($entityManager, $this->network, $this->bot, $fullhost, $url);

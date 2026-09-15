@@ -1,4 +1,5 @@
 <?php
+
 namespace lolbot\config;
 
 use Doctrine\ORM\EntityManager;
@@ -24,7 +25,8 @@ class ConfigService
     public function __construct(
         private EntityManager $em,
         private ChangeNotifier $notifier = new NoopChangeNotifier(),
-    ) {}
+    ) {
+    }
 
     // ---------------- Networks ----------------
 

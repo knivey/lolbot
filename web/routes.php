@@ -1,4 +1,5 @@
 <?php
+
 // (method, path) -> handler. Section tasks append their routes before the 404 fallback.
 require_once __DIR__ . '/sections/overview.php';
 require_once __DIR__ . '/sections/bots.php';
@@ -15,7 +16,9 @@ function web_dispatch(string $method, string $path): void
         $root = realpath(__DIR__ . '/assets');
         if ($real !== false && $root !== false && str_starts_with($real, $root . DIRECTORY_SEPARATOR) && is_file($real)) {
             $ext = pathinfo($real, PATHINFO_EXTENSION);
-            header('content-type: ' . match ($ext) { 'js' => 'text/javascript', 'css' => 'text/css', default => 'application/octet-stream' });
+            header('content-type: ' . match ($ext) {
+                'js' => 'text/javascript', 'css' => 'text/css', default => 'application/octet-stream'
+            });
             readfile($real);
             exit;
         }
@@ -28,59 +31,140 @@ function web_dispatch(string $method, string $path): void
     }
 
     // Auth routes are always reachable.
-    if ($method === 'GET' && $path === '/login') { web_login_form(); }
-    if ($method === 'POST' && $path === '/login') { web_login_submit(); }
+    if ($method === 'GET' && $path === '/login') {
+        web_login_form();
+    }
+    if ($method === 'POST' && $path === '/login') {
+        web_login_submit();
+    }
     if ($method === 'GET' && $path === '/logout') {
-        $_SESSION = []; session_destroy();
+        $_SESSION = [];
+        session_destroy();
         web_redirect('/login');
     }
 
     // Everything else requires auth.
     web_require_auth();
 
-    if ($method === 'GET' && ($path === '/' || $path === '')) { web_overview(); }
-    if ($method === 'GET' && $path === '/_status') { web_overview_status(); }
+    if ($method === 'GET' && ($path === '/' || $path === '')) {
+        web_overview();
+    }
+    if ($method === 'GET' && $path === '/_status') {
+        web_overview_status();
+    }
 
-    if ($method === 'GET' && $path === '/bots') { web_bots_list(); }
-    if ($method === 'GET' && $path === '/bots/new') { web_bots_new(); }
-    if ($method === 'POST' && $path === '/bots') { web_bots_create(); }
-    if ($method === 'GET' && preg_match('#^/bots/(\d+)$#', $path, $m)) { web_bots_edit((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/bots/(\d+)$#', $path, $m)) { web_bots_update((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/bots/(\d+)/delete$#', $path, $m)) { web_bots_delete((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels$#', $path, $m)) { web_bots_add_channel((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels/(\d+)/delete$#', $path, $m)) { web_bots_del_channel((int)$m[1], (int)$m[2]); }
-    if ($method === 'POST' && preg_match('#^/bots/(\d+)/(reconnect|jump|respawn)$#', $path, $m)) { web_bots_action((int)$m[1], $m[2]); }
+    if ($method === 'GET' && $path === '/bots') {
+        web_bots_list();
+    }
+    if ($method === 'GET' && $path === '/bots/new') {
+        web_bots_new();
+    }
+    if ($method === 'POST' && $path === '/bots') {
+        web_bots_create();
+    }
+    if ($method === 'GET' && preg_match('#^/bots/(\d+)$#', $path, $m)) {
+        web_bots_edit((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)$#', $path, $m)) {
+        web_bots_update((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/delete$#', $path, $m)) {
+        web_bots_delete((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels$#', $path, $m)) {
+        web_bots_add_channel((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/channels/(\d+)/delete$#', $path, $m)) {
+        web_bots_del_channel((int)$m[1], (int)$m[2]);
+    }
+    if ($method === 'POST' && preg_match('#^/bots/(\d+)/(reconnect|jump|respawn)$#', $path, $m)) {
+        web_bots_action((int)$m[1], $m[2]);
+    }
 
-    if ($method === 'GET' && $path === '/networks') { web_networks_list(); }
-    if ($method === 'GET' && $path === '/networks/new') { web_networks_new(); }
-    if ($method === 'POST' && $path === '/networks') { web_networks_create(); }
-    if ($method === 'GET' && preg_match('#^/networks/(\d+)$#', $path, $m)) { web_networks_edit((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/networks/(\d+)$#', $path, $m)) { web_networks_update((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/networks/(\d+)/delete$#', $path, $m)) { web_networks_delete((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers$#', $path, $m)) { web_networks_add_server((int)$m[1]); }
-    if ($method === 'GET' && preg_match('#^/networks/(\d+)/servers/(\d+)/edit$#', $path, $m)) { web_networks_edit_server((int)$m[1], (int)$m[2]); }
-    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)$#', $path, $m)) { web_networks_update_server((int)$m[1], (int)$m[2]); }
-    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)/delete$#', $path, $m)) { web_networks_del_server((int)$m[1], (int)$m[2]); }
+    if ($method === 'GET' && $path === '/networks') {
+        web_networks_list();
+    }
+    if ($method === 'GET' && $path === '/networks/new') {
+        web_networks_new();
+    }
+    if ($method === 'POST' && $path === '/networks') {
+        web_networks_create();
+    }
+    if ($method === 'GET' && preg_match('#^/networks/(\d+)$#', $path, $m)) {
+        web_networks_edit((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)$#', $path, $m)) {
+        web_networks_update((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/delete$#', $path, $m)) {
+        web_networks_delete((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers$#', $path, $m)) {
+        web_networks_add_server((int)$m[1]);
+    }
+    if ($method === 'GET' && preg_match('#^/networks/(\d+)/servers/(\d+)/edit$#', $path, $m)) {
+        web_networks_edit_server((int)$m[1], (int)$m[2]);
+    }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)$#', $path, $m)) {
+        web_networks_update_server((int)$m[1], (int)$m[2]);
+    }
+    if ($method === 'POST' && preg_match('#^/networks/(\d+)/servers/(\d+)/delete$#', $path, $m)) {
+        web_networks_del_server((int)$m[1], (int)$m[2]);
+    }
 
-    if ($method === 'GET' && $path === '/ignores') { web_ignores_list(); }
-    if ($method === 'POST' && $path === '/ignores') { web_ignores_create(); }
-    if ($method === 'POST' && preg_match('#^/ignores/(\d+)/delete$#', $path, $m)) { web_ignores_delete((int)$m[1]); }
+    if ($method === 'GET' && $path === '/ignores') {
+        web_ignores_list();
+    }
+    if ($method === 'POST' && $path === '/ignores') {
+        web_ignores_create();
+    }
+    if ($method === 'POST' && preg_match('#^/ignores/(\d+)/delete$#', $path, $m)) {
+        web_ignores_delete((int)$m[1]);
+    }
 
-    if ($method === 'GET' && $path === '/services') { web_services(); }
-    if ($method === 'POST' && $path === '/services/ai') { web_services_save('ai'); }
-    if ($method === 'POST' && $path === '/services/paste') { web_services_save('paste'); }
+    if ($method === 'GET' && $path === '/services') {
+        web_services();
+    }
+    if ($method === 'POST' && $path === '/services/ai') {
+        web_services_save('ai');
+    }
+    if ($method === 'POST' && $path === '/services/paste') {
+        web_services_save('paste');
+    }
 
-    if ($method === 'GET' && $path === '/linktitles') { web_linktitles(); }
-    if ($method === 'POST' && $path === '/linktitles/global') { web_linktitles_save_global(); }
-    if ($method === 'POST' && preg_match('#^/linktitles/network/(\d+)$#', $path, $m)) { web_linktitles_save_network((int)$m[1]); }
-    if ($method === 'GET' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) { web_linktitles_channel((int)$m[1]); }
-    if ($method === 'POST' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) { web_linktitles_save_channel((int)$m[1]); }
-    if ($method === 'POST' && $path === '/linktitles/ignores') { web_linktitles_ignores_create(); }
-    if ($method === 'POST' && preg_match('#^/linktitles/ignores/(\d+)/delete$#', $path, $m)) { web_linktitles_ignores_delete((int)$m[1]); }
-    if ($method === 'POST' && $path === '/linktitles/ignores/test') { web_linktitles_ignores_test(); }
-    if ($method === 'POST' && $path === '/linktitles/hostignores') { web_linktitles_hostignores_create(); }
-    if ($method === 'POST' && preg_match('#^/linktitles/hostignores/(\d+)/delete$#', $path, $m)) { web_linktitles_hostignores_delete((int)$m[1]); }
-    if ($method === 'POST' && $path === '/linktitles/hostignores/test') { web_linktitles_hostignores_test(); }
+    if ($method === 'GET' && $path === '/linktitles') {
+        web_linktitles();
+    }
+    if ($method === 'POST' && $path === '/linktitles/global') {
+        web_linktitles_save_global();
+    }
+    if ($method === 'POST' && preg_match('#^/linktitles/network/(\d+)$#', $path, $m)) {
+        web_linktitles_save_network((int)$m[1]);
+    }
+    if ($method === 'GET' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) {
+        web_linktitles_channel((int)$m[1]);
+    }
+    if ($method === 'POST' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) {
+        web_linktitles_save_channel((int)$m[1]);
+    }
+    if ($method === 'POST' && $path === '/linktitles/ignores') {
+        web_linktitles_ignores_create();
+    }
+    if ($method === 'POST' && preg_match('#^/linktitles/ignores/(\d+)/delete$#', $path, $m)) {
+        web_linktitles_ignores_delete((int)$m[1]);
+    }
+    if ($method === 'POST' && $path === '/linktitles/ignores/test') {
+        web_linktitles_ignores_test();
+    }
+    if ($method === 'POST' && $path === '/linktitles/hostignores') {
+        web_linktitles_hostignores_create();
+    }
+    if ($method === 'POST' && preg_match('#^/linktitles/hostignores/(\d+)/delete$#', $path, $m)) {
+        web_linktitles_hostignores_delete((int)$m[1]);
+    }
+    if ($method === 'POST' && $path === '/linktitles/hostignores/test') {
+        web_linktitles_hostignores_test();
+    }
 
     http_response_code(404);
     echo "Not found";

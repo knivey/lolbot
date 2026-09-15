@@ -1,4 +1,5 @@
 <?php
+
 namespace library;
 
 use Channels;
@@ -15,8 +16,6 @@ use Irc\Event\WelcomeEvent;
 use Monolog\Logger;
 use Nicks;
 use Revolt\EventLoop;
-use function Amp\async;
-use function extractOptsAndArgs;
 use knivey\cmdr\Cmdr;
 use lolbot\config\ConfigChange;
 use lolbot\config\SettingsResolver;
@@ -47,6 +46,9 @@ use scripts\urbandict\urbandict;
 use scripts\weather\weather;
 use scripts\youtube\youtube;
 
+use function Amp\async;
+use function extractOptsAndArgs;
+
 /**
  * Owns the live channel-bot fleet and hot-applies ConfigChange mutations.
  *
@@ -65,7 +67,9 @@ class BotManager
     /** @var array<int, \stdClass> per-bot mutable state (linktitlesEnabled) */
     public array $state = [];
 
-    public function __construct(private \Doctrine\ORM\EntityManager $em) {}
+    public function __construct(private \Doctrine\ORM\EntityManager $em)
+    {
+    }
 
     public function spawn(Network $network, Bot $dbBot): \Irc\Client
     {
@@ -161,30 +165,33 @@ class BotManager
 
         $client->on('welcome', function (WelcomeEvent $e, \Irc\Client $bot) use ($dbBot) {
             foreach (explode("\n", $dbBot->onConnect) as $line) {
-                if($line == "")
+                if ($line == "") {
                     continue;
+                }
                 $line = str_replace('$me', $bot->getNick(), $line);
                 $bot->send($line);
             }
             $join = [];
-            foreach ($dbBot->getChannels() as $channel)
+            foreach ($dbBot->getChannels() as $channel) {
                 $join[] = $channel->name;
+            }
             $bot->join(implode(',', $join));
         });
 
-        EventLoop::repeat(10, function() use ($client, $dbBot) {
-            if(!$client->isEstablished()) {
+        EventLoop::repeat(10, function () use ($client, $dbBot) {
+            if (!$client->isEstablished()) {
                 return;
             }
-            if($client->isCurrentNick($dbBot->name)) {
+            if ($client->isCurrentNick($dbBot->name)) {
                 return;
             }
             $client->nick($dbBot->name);
         });
 
         $client->on('kick', function (KickEvent $args, \Irc\Client $bot) {
-            if ($args->target == $bot->getNick())
+            if ($args->target == $bot->getNick()) {
                 $bot->join($args->chan);
+            }
         });
 
         //Stop abuse from an IRCOP called sylar
@@ -201,8 +208,9 @@ class BotManager
                             break;
                         case 'd':
                         case 'D':
-                            if ($adding)
+                            if ($adding) {
                                 $bot->send("MODE {$bot->getNick()} -{$mode}");
+                            }
                     }
                 }
             }
@@ -215,18 +223,20 @@ class BotManager
                 $ignored = $ignoreCache->getItem($args->fullhost);
                 if (!$ignored->isHit()) {
                     $ignoreRepository = $entityManager->getRepository(Ignore::class);
-                    if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0)
+                    if (count($ignoreRepository->findMatching($args->fullhost, $network)) > 0) {
                         $ignored->set(true);
-                    else
+                    } else {
                         $ignored->set(false);
+                    }
                     $ignoreCache->save($ignored);
                 }
-                if ($ignored->get())
+                if ($ignored->get()) {
                     return;
+                }
 
 
                 if ($st->linktitlesEnabled) {
-                    async(fn() => $linktitles->linktitles($bot, $args->nick, $args->chan, $args->identhost, $args->text));
+                    async(fn () => $linktitles->linktitles($bot, $args->nick, $args->chan, $args->identhost, $args->text));
                 }
 
                 if ($dbBot->trigger != "") {
@@ -263,8 +273,9 @@ class BotManager
                 $text = explode(' ', $text);
                 $cmd = array_shift($text);
                 $text = implode(' ', $text);
-                if (trim($cmd) == '')
+                if (trim($cmd) == '') {
                     return;
+                }
 
                 async(function () use ($cmd, $text, $args, $bot, $router, $alias): void {
                     if ($router->cmdExists($cmd)) {
@@ -290,8 +301,9 @@ class BotManager
             $text = explode(' ', $args->text);
             $cmd = array_shift($text);
             $text = implode(' ', $text);
-            if (trim($cmd) == '')
+            if (trim($cmd) == '') {
                 return;
+            }
 
             try {
                 $router->callPriv($cmd, $text, $args, $bot);
@@ -310,8 +322,13 @@ class BotManager
     public function drop(int $botId, string $reason = "removed"): void
     {
         $client = $this->clients[$botId] ?? null;
-        if ($client === null) return;
-        try { $client->sendNow("quit :$reason"); } catch (\Throwable $e) {}
+        if ($client === null) {
+            return;
+        }
+        try {
+            $client->sendNow("quit :$reason");
+        } catch (\Throwable $e) {
+        }
         $client->exit();
         unset($this->clients[$botId], $this->bots[$botId], $this->networks[$botId], $this->state[$botId]);
     }
@@ -320,7 +337,9 @@ class BotManager
     {
         $bot = $this->bots[$botId] ?? null;
         $network = $this->networks[$botId] ?? null;
-        if ($bot === null || $network === null) return;
+        if ($bot === null || $network === null) {
+            return;
+        }
         $this->drop($botId);
         $fresh = $this->em->find(\lolbot\entities\Bot::class, $bot->id);
         if ($fresh !== null) {
@@ -354,12 +373,18 @@ class BotManager
     {
         $network = $this->networks[$botId] ?? null;
         $client = $this->clients[$botId] ?? null;
-        if ($network === null || $client === null) return;
+        if ($network === null || $client === null) {
+            return;
+        }
         $fresh = $this->em->find(\lolbot\entities\Network::class, $network->id);
-        if ($fresh === null) return;
+        if ($fresh === null) {
+            return;
+        }
         $this->refreshNetworkServers($fresh);
         $server = $fresh->selectServer();
-        if ($server === null) return;
+        if ($server === null) {
+            return;
+        }
         $client->setServer($server->address, (string)$server->port, $server->ssl, $server->password, $server->throttle);
         $client->reconnect();
     }
@@ -378,7 +403,9 @@ class BotManager
     {
         $bot = $this->bots[$botId] ?? null;
         $client = $this->clients[$botId] ?? null;
-        if ($bot === null || $client === null) return;
+        if ($bot === null || $client === null) {
+            return;
+        }
         $this->em->refresh($bot);
         if (!$client->isCurrentNick($bot->name)) {
             $client->setNick($bot->name);
@@ -412,15 +439,21 @@ class BotManager
             return;
         }
         $fresh = $this->em->find(\lolbot\entities\Bot::class, $botId);
-        if ($fresh === null) return;
+        if ($fresh === null) {
+            return;
+        }
         $this->em->refresh($fresh->network);
         $this->em->refresh($fresh);
-        if (!$fresh->isDisabled()) $this->spawn($fresh->network, $fresh);
+        if (!$fresh->isDisabled()) {
+            $this->spawn($fresh->network, $fresh);
+        }
     }
 
     public function reloadLinktitlesEnabled(int $botId): void
     {
-        if (!isset($this->state[$botId]) || !isset($this->bots[$botId])) return;
+        if (!isset($this->state[$botId]) || !isset($this->bots[$botId])) {
+            return;
+        }
         $resolver = new \lolbot\config\SettingsResolver($this->em);
         $this->state[$botId]->linktitlesEnabled = $resolver->linktitlesEnabled($this->bots[$botId]->network, null);
     }
@@ -432,25 +465,37 @@ class BotManager
                 case 'channel':
                     if ($c->action === 'create') {
                         $chan = $this->em->find(\lolbot\entities\Channel::class, $c->id);
-                        if ($chan === null) return;
+                        if ($chan === null) {
+                            return;
+                        }
                         $this->joinChannel($chan->bot->id, $chan->name);
                         return;
                     }
                     if ($c->action === 'delete') {
                         $botId = isset($c->data['botId']) && is_int($c->data['botId']) ? $c->data['botId'] : 0;
                         $chanName = is_string($c->data['chan'] ?? null) ? $c->data['chan'] : null;
-                        if ($botId && $chanName !== null) $this->partChannel($botId, $chanName);
+                        if ($botId && $chanName !== null) {
+                            $this->partChannel($botId, $chanName);
+                        }
                         return;
                     }
                     return;
                 case 'bot':
                     if ($c->action === 'create') {
                         $bot = $this->em->find(\lolbot\entities\Bot::class, $c->id);
-                        if ($bot !== null && !$bot->isDisabled()) $this->spawn($bot->network, $bot);
+                        if ($bot !== null && !$bot->isDisabled()) {
+                            $this->spawn($bot->network, $bot);
+                        }
                         return;
                     }
-                    if ($c->action === 'delete') { $this->drop((int)$c->id); return; }
-                    if ($c->action === 'update') { $this->syncBot((int)$c->id); return; }
+                    if ($c->action === 'delete') {
+                        $this->drop((int)$c->id);
+                        return;
+                    }
+                    if ($c->action === 'update') {
+                        $this->syncBot((int)$c->id);
+                        return;
+                    }
                     return;
                 case 'network':
                     if ($c->action === 'delete') {
@@ -460,17 +505,23 @@ class BotManager
                         $botIds = isset($c->data['botIds']) && is_array($c->data['botIds']) ? $c->data['botIds'] : [];
                         foreach ($botIds as $bid) {
                             $bid = is_int($bid) ? $bid : 0;
-                            if ($bid !== 0) { $this->drop($bid, "network deleted"); }
+                            if ($bid !== 0) {
+                                $this->drop($bid, "network deleted");
+                            }
                         }
                         return;
                     }
                     if ($c->action === 'update') {
                         $net = $this->em->find(\lolbot\entities\Network::class, $c->id);
-                        if ($net === null) return;
+                        if ($net === null) {
+                            return;
+                        }
                         $this->em->refresh($net);
                         // Held bots: drop if disabled, spawn if missing a client, refresh otherwise.
                         foreach ($this->bots as $bid => $bot) {
-                            if ($bot->network->id !== $c->id) continue;
+                            if ($bot->network->id !== $c->id) {
+                                continue;
+                            }
                             $this->em->refresh($bot);
                             if ($bot->isDisabled()) {
                                 $this->drop((int)$bid, "disabled");
@@ -494,17 +545,25 @@ class BotManager
                             // data bag (deleteChannel carries botId/chan the
                             // same way); without it the push can't be routed.
                             $networkId = isset($c->data['networkId']) && is_int($c->data['networkId']) ? $c->data['networkId'] : 0;
-                            if ($networkId === 0) return;
+                            if ($networkId === 0) {
+                                return;
+                            }
                             foreach ($this->bots as $bid => $bot) {
-                                if ($bot->network->id === $networkId) { $this->jump($bid); }
+                                if ($bot->network->id === $networkId) {
+                                    $this->jump($bid);
+                                }
                             }
                             return;
                         }
                         $server = $this->em->find(\lolbot\entities\Server::class, $c->id);
                         $network = $server?->network;
-                        if ($network === null) return;
+                        if ($network === null) {
+                            return;
+                        }
                         foreach ($this->bots as $bid => $bot) {
-                            if ($bot->network->id === $network->id) { $this->jump($bid); }
+                            if ($bot->network->id === $network->id) {
+                                $this->jump($bid);
+                            }
                         }
                     }
                     return;
@@ -521,10 +580,14 @@ class BotManager
                         $setting = $this->em->find(\scripts\linktitles\entities\linktitles_setting::class, $c->id);
                         $net = $setting?->network;
                         foreach ($this->bots as $bid => $bot) {
-                            if ($net === null || $bot->network->id === $net->id) { $this->reloadLinktitlesEnabled($bid); }
+                            if ($net === null || $bot->network->id === $net->id) {
+                                $this->reloadLinktitlesEnabled($bid);
+                            }
                         }
                     } else {
-                        foreach ($this->bots as $bid => $_) { $this->reloadLinktitlesEnabled($bid); }
+                        foreach ($this->bots as $bid => $_) {
+                            $this->reloadLinktitlesEnabled($bid);
+                        }
                     }
                     return;
             }

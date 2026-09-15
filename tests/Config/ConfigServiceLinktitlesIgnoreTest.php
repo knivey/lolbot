@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Config;
 
 use lolbot\config\ChangeNotifier;

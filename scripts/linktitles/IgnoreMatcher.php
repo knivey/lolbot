@@ -1,4 +1,5 @@
 <?php
+
 namespace scripts\linktitles;
 
 use Doctrine\Common\Collections\Criteria;

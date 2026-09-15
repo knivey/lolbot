@@ -1,4 +1,5 @@
 <?php
+
 use lolbot\config\LinktitlesDefaults;
 use lolbot\config\LinktitlesResolved;
 use lolbot\config\SettingsResolver;
@@ -150,7 +151,7 @@ function web_lt_resolved_fields(LinktitlesResolved $r): array
         }
         return (string)$v;
     };
-    $hint = static fn(bool|string|array|null $v, string $src): string => 'inherits: ' . $shown($v) . ' (from ' . $src . ')';
+    $hint = static fn (bool|string|array|null $v, string $src): string => 'inherits: ' . $shown($v) . ' (from ' . $src . ')';
 
     return [
         web_lt_desc('enabled', 'enabled', 'bool', $r->enabled ? 'on' : 'off', $sources['enabled'], $hint($r->enabled, $sources['enabled'])),
@@ -159,10 +160,14 @@ function web_lt_resolved_fields(LinktitlesResolved $r): array
         web_lt_desc('ai_vision_model', 'ai vision model', 'text', $r->aiVisionModel, $sources['ai_vision_model'], $hint($r->aiVisionModel, $sources['ai_vision_model'])),
         web_lt_desc('ai_vision_prompt', 'ai vision prompt', 'textarea', $r->aiVisionPrompt, $sources['ai_vision_prompt'], $hint($r->aiVisionPrompt, $sources['ai_vision_prompt'])),
         web_lt_desc('ai_vision_reasoning_effort', 'reasoning effort', 'text', $r->aiVisionReasoningEffort ?? '', $sources['ai_vision_reasoning_effort'], $hint($r->aiVisionReasoningEffort, $sources['ai_vision_reasoning_effort'])),
-        web_lt_desc('ai_vision_reasoning', 'reasoning (JSON)', 'json',
+        web_lt_desc(
+            'ai_vision_reasoning',
+            'reasoning (JSON)',
+            'json',
             $r->aiVisionReasoning !== null ? ((string)(json_encode($r->aiVisionReasoning, JSON_UNESCAPED_SLASHES) ?: '')) : '',
             $sources['ai_vision_reasoning'],
-            $hint($r->aiVisionReasoning, $sources['ai_vision_reasoning'])),
+            $hint($r->aiVisionReasoning, $sources['ai_vision_reasoning'])
+        ),
     ];
 }
 
@@ -414,42 +419,66 @@ function web_lt_test_scope_from_post(array $app): array
 function web_linktitles_ignores_create(): never
 {
     $app = web_app();
-    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    try {
+        web_verify_csrf();
+    } catch (\Throwable $e) {
+        web_linktitles($e->getMessage());
+    }
     try {
         [$type, $net, $bot] = web_lt_ignore_scope_from_post($app);
         $pattern = is_string($_POST['pattern'] ?? null) ? $_POST['pattern'] : '';
         $app['svc']->addLinktitlesIgnore($pattern, $type, $net, $bot);
-    } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    } catch (\Throwable $e) {
+        web_linktitles($e->getMessage());
+    }
     web_redirect('/linktitles');
 }
 
 function web_linktitles_ignores_delete(int $id): never
 {
     $app = web_app();
-    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    try {
+        web_verify_csrf();
+    } catch (\Throwable $e) {
+        web_linktitles($e->getMessage());
+    }
     $ig = $app['svc']->getLinktitlesIgnore($id);
-    if ($ig !== null) { $app['svc']->deleteLinktitlesIgnore($ig); }
+    if ($ig !== null) {
+        $app['svc']->deleteLinktitlesIgnore($ig);
+    }
     web_redirect('/linktitles');
 }
 
 function web_linktitles_hostignores_create(): never
 {
     $app = web_app();
-    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    try {
+        web_verify_csrf();
+    } catch (\Throwable $e) {
+        web_linktitles($e->getMessage());
+    }
     try {
         [$type, $net, $bot] = web_lt_ignore_scope_from_post($app);
         $hostmask = is_string($_POST['hostmask'] ?? null) ? $_POST['hostmask'] : '';
         $app['svc']->addLinktitlesHostignore($hostmask, $type, $net, $bot);
-    } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    } catch (\Throwable $e) {
+        web_linktitles($e->getMessage());
+    }
     web_redirect('/linktitles');
 }
 
 function web_linktitles_hostignores_delete(int $id): never
 {
     $app = web_app();
-    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    try {
+        web_verify_csrf();
+    } catch (\Throwable $e) {
+        web_linktitles($e->getMessage());
+    }
     $ig = $app['svc']->getLinktitlesHostignore($id);
-    if ($ig !== null) { $app['svc']->deleteLinktitlesHostignore($ig); }
+    if ($ig !== null) {
+        $app['svc']->deleteLinktitlesHostignore($ig);
+    }
     web_redirect('/linktitles');
 }
 
@@ -458,25 +487,41 @@ function web_linktitles_hostignores_delete(int $id): never
 function web_linktitles_ignores_test(): never
 {
     $app = web_app();
-    try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
+    try {
+        web_verify_csrf();
+    } catch (\Throwable $e) {
+        web_error_fragment($e->getMessage());
+    }
     $url = trim(is_string($_POST['url'] ?? null) ? $_POST['url'] : '');
-    if ($url === '') { web_error_fragment('URL required'); }
+    if ($url === '') {
+        web_error_fragment('URL required');
+    }
     try {
         [$net, $bot] = web_lt_test_scope_from_post($app);
         $matches = IgnoreMatcher::findUrlMatches($app['em'], $net, $bot, $url);
         web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
-    } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
+    } catch (\Throwable $e) {
+        web_error_fragment($e->getMessage());
+    }
 }
 
 function web_linktitles_hostignores_test(): never
 {
     $app = web_app();
-    try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
+    try {
+        web_verify_csrf();
+    } catch (\Throwable $e) {
+        web_error_fragment($e->getMessage());
+    }
     $fullhost = trim(is_string($_POST['hostmask'] ?? null) ? $_POST['hostmask'] : '');
-    if ($fullhost === '') { web_error_fragment('Hostmask required'); }
+    if ($fullhost === '') {
+        web_error_fragment('Hostmask required');
+    }
     try {
         [$net, $bot] = web_lt_test_scope_from_post($app);
         $matches = IgnoreMatcher::findHostMatches($app['em'], $net, $bot, $fullhost);
         web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
-    } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
+    } catch (\Throwable $e) {
+        web_error_fragment($e->getMessage());
+    }
 }
