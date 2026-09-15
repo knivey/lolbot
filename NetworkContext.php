@@ -163,7 +163,8 @@ class NetworkContext
             if (count($this->clients) == 1) {
                 $bot = $this->clients[0];
                 while (!empty($this->playing[$chan])) {
-                    $bot->pm($chan, irctools\fixColors(array_shift($this->playing[$chan])));
+                    $line = irctools\fixColors(array_shift($this->playing[$chan]));
+                    $bot->pm($chan, str_starts_with($line, "\2\2") ? $line : "\2\2$line");
                     \Amp\delay(self::pumpLagSeconds($this->config['pumplag'] ?? null, $speed));
                 }
                 unset($this->playing[$chan]);
@@ -221,8 +222,8 @@ class NetworkContext
 
                 foreach (range(0, $sendAmount - 1) as $x) {
                     if (isset($this->playing[$chan]) && !empty($this->playing[$chan])) {
-                        $line = array_shift($this->playing[$chan]);
-                        $bot->pm($chan, irctools\fixColors($line));
+                        $line = irctools\fixColors(array_shift($this->playing[$chan]));
+                        $bot->pm($chan, str_starts_with($line, "\2\2") ? $line : "\2\2$line");
                         $delay = 550 / $botson;
                         if ($delay < 85)
                             $delay = 85;

@@ -55,7 +55,7 @@ function translate_cmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmd
 
         $translation = implode("", $translatedSentences);
 
-        $bot->pm($args->chan, $translation);
+        $bot->pm($args->chan, "\2\2$translation");
     } catch (Exception $e) {
         echo $e;
         $bot->pm($args->chan, $e->getMessage());

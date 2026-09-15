@@ -272,7 +272,7 @@ class alias extends script_base
         if ($alias->act) {
             $bot->msg($args->chan, "\x01ACTION $value\x01");
         } else {
-            $bot->msg($args->chan, "$value");
+            $bot->msg($args->chan, "\2\2$value");
         }
         return true;
     }
