@@ -461,9 +461,11 @@ function web_linktitles_ignores_test(): never
     try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
     $url = trim(is_string($_POST['url'] ?? null) ? $_POST['url'] : '');
     if ($url === '') { web_error_fragment('URL required'); }
-    [$net, $bot] = web_lt_test_scope_from_post($app);
-    $matches = IgnoreMatcher::findUrlMatches($app['em'], $net, $bot, $url);
-    web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
+    try {
+        [$net, $bot] = web_lt_test_scope_from_post($app);
+        $matches = IgnoreMatcher::findUrlMatches($app['em'], $net, $bot, $url);
+        web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
+    } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
 }
 
 function web_linktitles_hostignores_test(): never
@@ -472,7 +474,9 @@ function web_linktitles_hostignores_test(): never
     try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
     $fullhost = trim(is_string($_POST['hostmask'] ?? null) ? $_POST['hostmask'] : '');
     if ($fullhost === '') { web_error_fragment('Hostmask required'); }
-    [$net, $bot] = web_lt_test_scope_from_post($app);
-    $matches = IgnoreMatcher::findHostMatches($app['em'], $net, $bot, $fullhost);
-    web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
+    try {
+        [$net, $bot] = web_lt_test_scope_from_post($app);
+        $matches = IgnoreMatcher::findHostMatches($app['em'], $net, $bot, $fullhost);
+        web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
+    } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
 }
