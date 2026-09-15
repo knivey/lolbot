@@ -4,7 +4,11 @@ use lolbot\config\LinktitlesResolved;
 use lolbot\config\SettingsResolver;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
+use scripts\linktitles\entities\hostignore;
+use scripts\linktitles\entities\ignore;
+use scripts\linktitles\entities\ignore_type;
 use scripts\linktitles\entities\linktitles_setting;
+use scripts\linktitles\IgnoreMatcher;
 
 /**
  * Render a bool as the form's on/off radio value. Kept as a helper so
@@ -309,4 +313,92 @@ function web_linktitles_save_channel(int $chanId): never
     }
     web_lt_apply(null, $chan);
     web_redirect('/linktitles/channel/' . $chanId);
+}
+
+/** Scope label for a linktitles ignore row: "global", "network: N", "bot: B". */
+function web_lt_scope_label(ignore|hostignore $ig): string
+{
+    if ($ig->type === ignore_type::network) {
+        return 'network: ' . ($ig->network->name ?? '?');
+    }
+    if ($ig->type === ignore_type::bot) {
+        return 'bot: ' . ($ig->bot->name ?? '?');
+    }
+    return 'global';
+}
+
+/**
+ * Flatten matcher results for the tester fragment: the pattern shown per
+ * kind, a scope label, and an invalid-pattern flag (URL kind only, legacy
+ * rows that no longer compile).
+ *
+ * @param list<ignore|hostignore> $matches
+ * @return list<array{id:int,pattern:string,scope:string,invalid:bool}>
+ */
+function web_lt_match_rows(array $matches): array
+{
+    $rows = [];
+    foreach ($matches as $ig) {
+        $rows[] = [
+            'id' => $ig->id,
+            'pattern' => $ig instanceof ignore ? $ig->regex : $ig->hostmask,
+            'scope' => web_lt_scope_label($ig),
+            'invalid' => $ig instanceof ignore && !IgnoreMatcher::patternIsValid($ig->regex),
+        ];
+    }
+    return $rows;
+}
+
+/**
+ * Resolve the add-form scope from POST: 'type' plus the matching
+ * network/bot select. Throws when the type is unknown or its target is
+ * missing (surfaced as the page error alert by the callers).
+ *
+ * @param array{svc: \lolbot\config\ConfigService} $app
+ * @return array{0: ignore_type, 1: ?\lolbot\entities\Network, 2: ?\lolbot\entities\Bot}
+ */
+function web_lt_ignore_scope_from_post(array $app): array
+{
+    $raw = is_string($_POST['type'] ?? null) ? $_POST['type'] : '';
+    $type = ignore_type::fromString($raw);
+    $net = null;
+    $bot = null;
+    if ($type === ignore_type::network) {
+        $nid = is_numeric($_POST['network'] ?? null) ? (int)$_POST['network'] : 0;
+        $net = $app['svc']->getNetwork($nid);
+        if ($net === null) {
+            throw new \InvalidArgumentException('Select a network for network-scoped ignores');
+        }
+    }
+    if ($type === ignore_type::bot) {
+        $bid = is_numeric($_POST['bot'] ?? null) ? (int)$_POST['bot'] : 0;
+        $bot = $app['svc']->getBot($bid);
+        if ($bot === null) {
+            throw new \InvalidArgumentException('Select a bot for bot-scoped ignores');
+        }
+    }
+    return [$type, $net, $bot];
+}
+
+/**
+ * Optional tester scope: empty/0 selects mean null. A selected bot implies
+ * its network, so the tester sees exactly what a bot on that network would.
+ *
+ * @param array{svc: \lolbot\config\ConfigService} $app
+ * @return array{0: ?\lolbot\entities\Network, 1: ?\lolbot\entities\Bot}
+ */
+function web_lt_test_scope_from_post(array $app): array
+{
+    $net = null;
+    $bot = null;
+    if (is_numeric($_POST['network'] ?? null) && (int)$_POST['network'] > 0) {
+        $net = $app['svc']->getNetwork((int)$_POST['network']);
+    }
+    if (is_numeric($_POST['bot'] ?? null) && (int)$_POST['bot'] > 0) {
+        $bot = $app['svc']->getBot((int)$_POST['bot']);
+    }
+    if ($net === null && $bot !== null) {
+        $net = $bot->network;
+    }
+    return [$net, $bot];
 }
