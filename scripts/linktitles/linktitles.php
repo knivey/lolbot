@@ -40,6 +40,10 @@ class linktitles extends script_base
     //adding buffer limit is an extra precaution to the body size limit
     public const bufferLimit = 1024 * 1024 * 40;
 
+    //decompression bomb guard for ai vision: resize/decode cost scales with megapixels (~60k x 60k = 180s),
+    //aspect ratio makes no difference, so cap total pixels instead of per-side dimensions
+    public const maxAiPixels = 25000000;
+
     //feature requested by terps
     //sends all urls into a log channel for easier viewing url history
     //TODO take url as param to highlight it here
@@ -242,9 +246,31 @@ class linktitles extends script_base
             $resizeStart = hrtime(true);
             $img = new \Imagick();
             try {
+                //pingImageBlob reads headers only, catches decompression bombs in formats
+                //getimagesizefromstring can't parse before the full decode happens
+                $ping = new \Imagick();
+                try {
+                    $ping->pingImageBlob($body);
+                    $pingW = $ping->getImageWidth();
+                    $pingH = $ping->getImageHeight();
+                    //multi-frame images decode every frame, so frame count multiplies the cost
+                    $pingFrames = max(1, $ping->getNumberImages());
+                } finally {
+                    $ping->clear();
+                }
+                if ($pingW * $pingH * $pingFrames > self::maxAiPixels) {
+                    $profile .= " ai_skipped=image_too_large {$pingW}x{$pingH}x{$pingFrames}f";
+                    $this->logger->info("AI vision skipped oversize image {$pingW}x{$pingH} {$pingFrames} frames for {$url}");
+                    return null;
+                }
                 $img->readImageBlob($body);
                 $origW = $img->getImageWidth();
                 $origH = $img->getImageHeight();
+                if ($origW * $origH * max(1, $img->getNumberImages()) > self::maxAiPixels) {
+                    $profile .= " ai_skipped=image_too_large {$origW}x{$origH}";
+                    $this->logger->info("AI vision skipped oversize image {$origW}x{$origH} for {$url}");
+                    return null;
+                }
                 if ($origW > $maxDim || $origH > $maxDim) {
                     $img->thumbnailImage($maxDim, $maxDim, true);
                 }
@@ -339,7 +365,11 @@ class linktitles extends script_base
         }
         $cacheKey = $url ?: $chan;
         $profile = $dlProfile;
-        $aiDesc = $this->isAiVisionDisabled($chan) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $chan, $profile, $dlMs));
+        $oversize = $d !== false && ((int)$d[0] * (int)$d[1]) > self::maxAiPixels;
+        if ($oversize) {
+            $profile .= " ai_skipped=image_too_large {$d[0]}x{$d[1]}";
+        }
+        $aiDesc = ($oversize || $this->isAiVisionDisabled($chan)) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $chan, $profile, $dlMs));
         $this->logger->info("linktitles profile [$url] [image] $profile");
         if ($aiDesc !== null) {
             $out = "$m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc";
