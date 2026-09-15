@@ -394,6 +394,8 @@ function web_lt_ignore_scope_from_post(array $app): array
 /**
  * Optional tester scope: empty/0 selects mean null. A selected bot implies
  * its network, so the tester sees exactly what a bot on that network would.
+ * Unknown ids and mismatched network+bot pairs throw (surfaced as
+ * fragment errors by the callers).
  *
  * @param array{svc: \lolbot\config\ConfigService} $app
  * @return array{0: ?\lolbot\entities\Network, 1: ?\lolbot\entities\Bot}
@@ -404,12 +406,21 @@ function web_lt_test_scope_from_post(array $app): array
     $bot = null;
     if (is_numeric($_POST['network'] ?? null) && (int)$_POST['network'] > 0) {
         $net = $app['svc']->getNetwork((int)$_POST['network']);
+        if ($net === null) {
+            throw new \InvalidArgumentException('Unknown network');
+        }
     }
     if (is_numeric($_POST['bot'] ?? null) && (int)$_POST['bot'] > 0) {
         $bot = $app['svc']->getBot((int)$_POST['bot']);
+        if ($bot === null) {
+            throw new \InvalidArgumentException('Unknown bot');
+        }
     }
     if ($net === null && $bot !== null) {
         $net = $bot->network;
+    }
+    if ($net !== null && $bot !== null && $bot->network->id !== $net->id) {
+        throw new \InvalidArgumentException('Bot is not on the selected network');
     }
     return [$net, $bot];
 }

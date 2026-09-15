@@ -49,3 +49,8 @@
     {% if not overridden %}<div class="form-text text-body-secondary">{{ hint }}</div>{% endif %}
   </div>
 {% endmacro %}
+
+{# Scope badge for a linktitles ignore row; mirrors web_lt_scope_label(). #}
+{% macro lt_scope(ig) %}
+  {% if ig.type.toString() == 'network' %}<span class="badge text-bg-secondary">net: {{ ig.network.name ?? '?' }}</span>{% elseif ig.type.toString() == 'bot' %}<span class="badge text-bg-secondary">bot: {{ ig.bot.name ?? '?' }}</span>{% else %}<span class="badge text-bg-secondary">global</span>{% endif %}
+{% endmacro %}

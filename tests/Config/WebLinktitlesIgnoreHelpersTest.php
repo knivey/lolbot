@@ -121,4 +121,45 @@ class WebLinktitlesIgnoreHelpersTest extends ConfigTestCase
         $this->assertSame($bot, $b);
         $this->assertSame($net, $n);
     }
+
+    public function test_test_scope_unknown_network_throws(): void
+    {
+        $_POST['network'] = '999';
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown network');
+        web_lt_test_scope_from_post(['svc' => new ConfigService($this->em)]);
+    }
+
+    public function test_test_scope_unknown_bot_throws(): void
+    {
+        $_POST['bot'] = '999';
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown bot');
+        web_lt_test_scope_from_post(['svc' => new ConfigService($this->em)]);
+    }
+
+    public function test_test_scope_mismatched_pair_throws(): void
+    {
+        $svc = new ConfigService($this->em);
+        $netA = $svc->createNetwork('A');
+        $netB = $svc->createNetwork('B');
+        $botOnB = $svc->createBot($netB, 'b1');
+        $_POST['network'] = (string)$netA->id;
+        $_POST['bot'] = (string)$botOnB->id;
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Bot is not on the selected network');
+        web_lt_test_scope_from_post(['svc' => $svc]);
+    }
+
+    public function test_test_scope_matching_pair_passes(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b1');
+        $_POST['network'] = (string)$net->id;
+        $_POST['bot'] = (string)$bot->id;
+        [$n, $b] = web_lt_test_scope_from_post(['svc' => $svc]);
+        $this->assertSame($net, $n);
+        $this->assertSame($bot, $b);
+    }
 }
