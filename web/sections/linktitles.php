@@ -202,6 +202,10 @@ function web_linktitles(?string $error = null): never
         'section' => 'Linktitles',
         'globalFields' => web_lt_global_fields($globalRow),
         'networks' => $networks,
+        'urlIgnores' => $svc->listLinktitlesIgnores(),
+        'hostIgnores' => $svc->listLinktitlesHostignores(),
+        'allNetworks' => $svc->listNetworks(),
+        'allBots' => $svc->listBots(),
         'error' => $error,
     ]);
 }
@@ -352,7 +356,9 @@ function web_lt_match_rows(array $matches): array
 /**
  * Resolve the add-form scope from POST: 'type' plus the matching
  * network/bot select. Throws when the type is unknown or its target is
- * missing (surfaced as the page error alert by the callers).
+ * missing (surfaced as the page error alert by the callers). A 'channel'
+ * type passes through unresolved (null net/bot) and is rejected
+ * downstream by ConfigService.
  *
  * @param array{svc: \lolbot\config\ConfigService} $app
  * @return array{0: ignore_type, 1: ?\lolbot\entities\Network, 2: ?\lolbot\entities\Bot}
@@ -401,4 +407,72 @@ function web_lt_test_scope_from_post(array $app): array
         $net = $bot->network;
     }
     return [$net, $bot];
+}
+
+// Linktitles ignores (URL regex + hostmask) — same flow as the global
+// ignores section: CSRF → validate → ConfigService → redirect.
+function web_linktitles_ignores_create(): never
+{
+    $app = web_app();
+    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    try {
+        [$type, $net, $bot] = web_lt_ignore_scope_from_post($app);
+        $pattern = is_string($_POST['pattern'] ?? null) ? $_POST['pattern'] : '';
+        $app['svc']->addLinktitlesIgnore($pattern, $type, $net, $bot);
+    } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    web_redirect('/linktitles');
+}
+
+function web_linktitles_ignores_delete(int $id): never
+{
+    $app = web_app();
+    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    $ig = $app['svc']->getLinktitlesIgnore($id);
+    if ($ig !== null) { $app['svc']->deleteLinktitlesIgnore($ig); }
+    web_redirect('/linktitles');
+}
+
+function web_linktitles_hostignores_create(): never
+{
+    $app = web_app();
+    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    try {
+        [$type, $net, $bot] = web_lt_ignore_scope_from_post($app);
+        $hostmask = is_string($_POST['hostmask'] ?? null) ? $_POST['hostmask'] : '';
+        $app['svc']->addLinktitlesHostignore($hostmask, $type, $net, $bot);
+    } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    web_redirect('/linktitles');
+}
+
+function web_linktitles_hostignores_delete(int $id): never
+{
+    $app = web_app();
+    try { web_verify_csrf(); } catch (\Throwable $e) { web_linktitles($e->getMessage()); }
+    $ig = $app['svc']->getLinktitlesHostignore($id);
+    if ($ig !== null) { $app['svc']->deleteLinktitlesHostignore($ig); }
+    web_redirect('/linktitles');
+}
+
+// Tester (HTMX fragments). Same matcher the bot enforces with, so results
+// can never drift from actual enforcement.
+function web_linktitles_ignores_test(): never
+{
+    $app = web_app();
+    try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
+    $url = trim(is_string($_POST['url'] ?? null) ? $_POST['url'] : '');
+    if ($url === '') { web_error_fragment('URL required'); }
+    [$net, $bot] = web_lt_test_scope_from_post($app);
+    $matches = IgnoreMatcher::findUrlMatches($app['em'], $net, $bot, $url);
+    web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
+}
+
+function web_linktitles_hostignores_test(): never
+{
+    $app = web_app();
+    try { web_verify_csrf(); } catch (\Throwable $e) { web_error_fragment($e->getMessage()); }
+    $fullhost = trim(is_string($_POST['hostmask'] ?? null) ? $_POST['hostmask'] : '');
+    if ($fullhost === '') { web_error_fragment('Hostmask required'); }
+    [$net, $bot] = web_lt_test_scope_from_post($app);
+    $matches = IgnoreMatcher::findHostMatches($app['em'], $net, $bot, $fullhost);
+    web_render_fragment('linktitles/_test_result.twig', ['rows' => web_lt_match_rows($matches)]);
 }

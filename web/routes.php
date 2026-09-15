@@ -75,6 +75,12 @@ function web_dispatch(string $method, string $path): void
     if ($method === 'POST' && preg_match('#^/linktitles/network/(\d+)$#', $path, $m)) { web_linktitles_save_network((int)$m[1]); }
     if ($method === 'GET' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) { web_linktitles_channel((int)$m[1]); }
     if ($method === 'POST' && preg_match('#^/linktitles/channel/(\d+)$#', $path, $m)) { web_linktitles_save_channel((int)$m[1]); }
+    if ($method === 'POST' && $path === '/linktitles/ignores') { web_linktitles_ignores_create(); }
+    if ($method === 'POST' && preg_match('#^/linktitles/ignores/(\d+)/delete$#', $path, $m)) { web_linktitles_ignores_delete((int)$m[1]); }
+    if ($method === 'POST' && $path === '/linktitles/ignores/test') { web_linktitles_ignores_test(); }
+    if ($method === 'POST' && $path === '/linktitles/hostignores') { web_linktitles_hostignores_create(); }
+    if ($method === 'POST' && preg_match('#^/linktitles/hostignores/(\d+)/delete$#', $path, $m)) { web_linktitles_hostignores_delete((int)$m[1]); }
+    if ($method === 'POST' && $path === '/linktitles/hostignores/test') { web_linktitles_hostignores_test(); }
 
     http_response_code(404);
     echo "Not found";

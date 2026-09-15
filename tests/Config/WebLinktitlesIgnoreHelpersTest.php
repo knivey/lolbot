@@ -29,12 +29,15 @@ class WebLinktitlesIgnoreHelpersTest extends ConfigTestCase
     {
         $svc = new ConfigService($this->em);
         $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b1');
         $ig = $svc->addLinktitlesIgnore('example\.com', ignore_type::global);
+        $bi = $svc->addLinktitlesIgnore('foo', ignore_type::bot, null, $bot);
         $hi = $svc->addLinktitlesHostignore('*!*@*.bad', ignore_type::network, $net);
 
-        $rows = web_lt_match_rows([$ig, $hi]);
+        $rows = web_lt_match_rows([$ig, $bi, $hi]);
         $this->assertSame([
             ['id' => $ig->id, 'pattern' => $ig->regex, 'scope' => 'global', 'invalid' => false],
+            ['id' => $bi->id, 'pattern' => $bi->regex, 'scope' => 'bot: ' . $bot->name, 'invalid' => false],
             ['id' => $hi->id, 'pattern' => '*!*@*.bad', 'scope' => 'network: N', 'invalid' => false],
         ], $rows);
     }
@@ -59,6 +62,12 @@ class WebLinktitlesIgnoreHelpersTest extends ConfigTestCase
         [$type, $resolvedNet, $bot] = web_lt_ignore_scope_from_post(['svc' => $svc]);
         $this->assertSame(ignore_type::network, $type);
         $this->assertSame($net, $resolvedNet);
+        $this->assertNull($bot);
+
+        $_POST['type'] = 'global';
+        [$type, $resolvedNet, $bot] = web_lt_ignore_scope_from_post(['svc' => $svc]);
+        $this->assertSame(ignore_type::global, $type);
+        $this->assertNull($resolvedNet);
         $this->assertNull($bot);
     }
 
@@ -99,6 +108,12 @@ class WebLinktitlesIgnoreHelpersTest extends ConfigTestCase
         [$n, $b] = web_lt_test_scope_from_post(['svc' => $svc]);
         $this->assertNull($n);
         $this->assertNull($b);
+
+        $_POST['network'] = (string)$net->id;
+        [$n, $b] = web_lt_test_scope_from_post(['svc' => $svc]);
+        $this->assertSame($net, $n);
+        $this->assertNull($b);
+        unset($_POST['network']);
 
         $_POST['bot'] = (string)$bot->id;
         [$n, $b] = web_lt_test_scope_from_post(['svc' => $svc]);
