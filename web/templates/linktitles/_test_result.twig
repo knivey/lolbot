@@ -1,0 +1,17 @@
+{# HTMX fragment for the linktitles ignore tester (rows from web_lt_match_rows). #}
+{% if rows is empty %}
+  <div class="alert alert-secondary py-2 mb-0">no match</div>
+{% else %}
+  <ul class="list-group">
+    {% for r in rows %}
+    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+      <code class="text-break">{{ r.pattern }}</code>
+      <span class="text-nowrap ms-2">
+        <span class="badge text-bg-secondary">{{ r.scope }}</span>
+        <span class="badge text-bg-secondary">#{{ r.id }}</span>
+        {% if r.invalid %}<span class="badge text-bg-warning text-dark">invalid pattern</span>{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+{% endif %}

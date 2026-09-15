@@ -36,5 +36,113 @@
 </div></div>
 {% endfor %}
 
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">URL ignores</h5>
+  <div class="table-card mb-3">
+    <table class="table table-sm align-middle">
+      <thead><tr><th>id</th><th>regex</th><th>scope</th><th>created</th><th></th></tr></thead>
+      <tbody>
+        {% for ig in urlIgnores %}
+        <tr><td>{{ ig.id }}</td><td><code>{{ ig.regex }}</code></td>
+          <td>{% if ig.type.toString() == 'network' %}<span class="badge text-bg-secondary">net: {{ ig.network.name }}</span>{% elseif ig.type.toString() == 'bot' %}<span class="badge text-bg-secondary">bot: {{ ig.bot.name }}</span>{% else %}<span class="badge text-bg-secondary">global</span>{% endif %}</td>
+          <td>{{ ig.created.format('Y-m-d H:i') }}</td>
+          <td><form class="d-inline" method="post" action="/linktitles/ignores/{{ ig.id }}/delete"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn btn-outline-secondary btn-sm" type="submit">−</button></form></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" action="/linktitles/ignores">{{ m.csrf_field() }}
+    {{ m.field('pattern', 'regex pattern', '', 'text', 'example\.com/path') }}
+    <div class="mb-3"><label class="form-label">type</label>
+      <select class="form-select" name="type" data-lt-scope-select>
+        <option value="global">global</option>
+        <option value="network">network</option>
+        <option value="bot">bot</option>
+      </select>
+      <p class="form-text text-body-secondary">The @ delimiter and i flag are added automatically.</p></div>
+    <div class="mb-3" data-lt-network-select hidden><label class="form-label">network</label>
+      <select class="form-select" name="network">{% for n in allNetworks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
+    <div class="mb-3" data-lt-bot-select hidden><label class="form-label">bot</label>
+      <select class="form-select" name="bot">{% for b in allBots %}<option value="{{ b.id }}">{{ b.name }} ({{ b.network.name }})</option>{% endfor %}</select></div>
+    {{ m.submit('Add URL ignore') }}
+  </form>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">Hostmask ignores</h5>
+  <div class="table-card mb-3">
+    <table class="table table-sm align-middle">
+      <thead><tr><th>id</th><th>hostmask</th><th>scope</th><th>created</th><th></th></tr></thead>
+      <tbody>
+        {% for ig in hostIgnores %}
+        <tr><td>{{ ig.id }}</td><td><code>{{ ig.hostmask }}</code></td>
+          <td>{% if ig.type.toString() == 'network' %}<span class="badge text-bg-secondary">net: {{ ig.network.name }}</span>{% elseif ig.type.toString() == 'bot' %}<span class="badge text-bg-secondary">bot: {{ ig.bot.name }}</span>{% else %}<span class="badge text-bg-secondary">global</span>{% endif %}</td>
+          <td>{{ ig.created.format('Y-m-d H:i') }}</td>
+          <td><form class="d-inline" method="post" action="/linktitles/hostignores/{{ ig.id }}/delete"><input type="hidden" name="_csrf" value="{{ csrf() }}"><button class="btn btn-outline-secondary btn-sm" type="submit">−</button></form></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" action="/linktitles/hostignores">{{ m.csrf_field() }}
+    {{ m.field('hostmask', 'hostmask', '', 'text', '*nick!user@host') }}
+    <div class="mb-3"><label class="form-label">type</label>
+      <select class="form-select" name="type" data-lt-scope-select>
+        <option value="global">global</option>
+        <option value="network">network</option>
+        <option value="bot">bot</option>
+      </select></div>
+    <div class="mb-3" data-lt-network-select hidden><label class="form-label">network</label>
+      <select class="form-select" name="network">{% for n in allNetworks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
+    <div class="mb-3" data-lt-bot-select hidden><label class="form-label">bot</label>
+      <select class="form-select" name="bot">{% for b in allBots %}<option value="{{ b.id }}">{{ b.name }} ({{ b.network.name }})</option>{% endfor %}</select></div>
+    {{ m.submit('Add hostmask ignore') }}
+  </form>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <h5 class="card-title">Test</h5>
+  <p class="text-body-secondary">Uses the same matcher the bot enforces with. Leave the selects empty to test global rows only; a selected bot implies its network.</p>
+  <div class="row">
+    <div class="col-md-6">
+      <form method="post" action="/linktitles/ignores/test" hx-post="/linktitles/ignores/test" hx-target="#lt-url-test-result" hx-swap="innerHTML">{{ m.csrf_field() }}
+        {{ m.field('url', 'test url', '', 'text', 'https://example.com/x') }}
+        <div class="mb-3"><label class="form-label">network (opt)</label>
+          <select class="form-select" name="network"><option value="0">(global only)</option>{% for n in allNetworks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
+        <div class="mb-3"><label class="form-label">bot (opt)</label>
+          <select class="form-select" name="bot"><option value="0">(none)</option>{% for b in allBots %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select></div>
+        {{ m.submit('Test URL') }}
+      </form>
+      <div id="lt-url-test-result" class="mt-3"></div>
+    </div>
+    <div class="col-md-6">
+      <form method="post" action="/linktitles/hostignores/test" hx-post="/linktitles/hostignores/test" hx-target="#lt-host-test-result" hx-swap="innerHTML">{{ m.csrf_field() }}
+        {{ m.field('hostmask', 'test full host', '', 'text', 'nick!user@host') }}
+        <div class="mb-3"><label class="form-label">network (opt)</label>
+          <select class="form-select" name="network"><option value="0">(global only)</option>{% for n in allNetworks %}<option value="{{ n.id }}">{{ n.name }}</option>{% endfor %}</select></div>
+        <div class="mb-3"><label class="form-label">bot (opt)</label>
+          <select class="form-select" name="bot"><option value="0">(none)</option>{% for b in allBots %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select></div>
+        {{ m.submit('Test host') }}
+      </form>
+      <div id="lt-host-test-result" class="mt-3"></div>
+    </div>
+  </div>
+</div></div>
+
+<p class="text-body-secondary">Ignores apply live (checked per URL against the DB) — no restart needed.</p>
+
+<script>
+  document.querySelectorAll('[data-lt-scope-select]').forEach(function (sel) {
+    var form = sel.closest('form');
+    var net = form.querySelector('[data-lt-network-select]');
+    var bot = form.querySelector('[data-lt-bot-select]');
+    function sync() {
+      net.hidden = sel.value !== 'network';
+      bot.hidden = sel.value !== 'bot';
+    }
+    sel.addEventListener('change', sync);
+    sync();
+  });
+</script>
+
 <p class="text-body-secondary"><code>enabled</code> applies live; other fields are read per-use.</p>
 {% endblock %}
