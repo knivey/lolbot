@@ -376,11 +376,14 @@ class SVGParser
 
     private static int $parseDepth = 0;
     private static int $elementCount = 0;
+    /** @var list<string> */
+    private static array $refStack = [];
 
     public static function parseString(string $svg, ?LoggerInterface $logger = null): SVGDocument
     {
         self::$parseDepth = 0;
         self::$elementCount = 0;
+        self::$refStack = [];
         $xml = @simplexml_load_string($svg, null, LIBXML_NONET);
         if ($xml === false) {
             throw new \InvalidArgumentException('Failed to parse SVG XML');
@@ -860,6 +863,9 @@ class SVGParser
         if ($clipPathAttr !== '' && preg_match('/^url\(#(.+)\)$/', $clipPathAttr, $m)) {
             $clipId = $m[1];
             if (isset($defs[$clipId]) && $defs[$clipId]->getName() === 'clipPath') {
+                if (in_array($clipId, self::$refStack, true)) {
+                    throw new \InvalidArgumentException("circular clipPath reference #{$clipId}");
+                }
                 $clipEl = $defs[$clipId];
                 $clipContent = new Group();
                 $childTransform = $parentTransform;
@@ -867,8 +873,13 @@ class SVGParser
                 if ($clipTransform !== null) {
                     $childTransform = $parentTransform->multiply($clipTransform);
                 }
-                foreach (self::svgChildren($clipEl) as $clipChild) {
-                    $clipContent->addChild(self::parseElement($clipChild, $defs, $styles, $logger, $childTransform));
+                self::$refStack[] = $clipId;
+                try {
+                    foreach (self::svgChildren($clipEl) as $clipChild) {
+                        $clipContent->addChild(self::parseElement($clipChild, $defs, $styles, $logger, $childTransform));
+                    }
+                } finally {
+                    array_pop(self::$refStack);
                 }
                 $clipPathUnits = match (strtolower((string)($clipEl['clipPathUnits'] ?? 'userSpaceOnUse'))) {
                     'objectboundingbox' => GradientUnits::ObjectBoundingBox,
@@ -882,11 +893,19 @@ class SVGParser
         if ($maskAttr !== '' && preg_match('/^url\(#(.+)\)$/', $maskAttr, $m)) {
             $maskId = $m[1];
             if (isset($defs[$maskId]) && $defs[$maskId]->getName() === 'mask') {
+                if (in_array($maskId, self::$refStack, true)) {
+                    throw new \InvalidArgumentException("circular mask reference #{$maskId}");
+                }
                 $maskEl = $defs[$maskId];
                 $maskContent = new Group();
                 $maskTransform = self::parseOptionalTransform($maskEl, $styles);
-                foreach (self::svgChildren($maskEl) as $maskChild) {
-                    $maskContent->addChild(self::parseElement($maskChild, $defs, $styles, $logger, $parentTransform));
+                self::$refStack[] = $maskId;
+                try {
+                    foreach (self::svgChildren($maskEl) as $maskChild) {
+                        $maskContent->addChild(self::parseElement($maskChild, $defs, $styles, $logger, $parentTransform));
+                    }
+                } finally {
+                    array_pop(self::$refStack);
                 }
                 $maskContentUnits = match (strtolower((string)($maskEl['maskContentUnits'] ?? 'userSpaceOnUse'))) {
                     'objectboundingbox' => GradientUnits::ObjectBoundingBox,
@@ -946,7 +965,7 @@ class SVGParser
             $name = $child->getName();
             $primitive = match ($name) {
                 'feGaussianBlur' => new GaussianBlurPrimitive(
-                    (float)($child['stdDeviation'] ?? 0),
+                    min((float)($child['stdDeviation'] ?? 0), (float) RenderLimits::maxBlurStdDev),
                     input: self::parseOptionalString($child['in']),
                     result: self::parseOptionalString($child['result']),
                 ),
@@ -961,7 +980,7 @@ class SVGParser
                 'feDropShadow' => new DropShadowPrimitive(
                     (float)($child['dx'] ?? 2),
                     (float)($child['dy'] ?? 2),
-                    (float)($child['stdDeviation'] ?? 2),
+                    min((float)($child['stdDeviation'] ?? 2), (float) RenderLimits::maxBlurStdDev),
                     self::parseFloodColor($child),
                     (float)($child['flood-opacity'] ?? 1),
                     input: self::parseOptionalString($child['in']),
@@ -1206,12 +1225,14 @@ class SVGParser
         if ($width < 0) {
             $width = 1.0;
         }
+        $width = min($width, (float) RenderLimits::maxStrokeWidth);
 
         $dashArray = null;
         $dashStr = self::getEffectiveAttr($el, 'stroke-dasharray', $styles);
         if ($dashStr !== '' && $dashStr !== 'none') {
             $dashArray = array_map('floatval', preg_split('/[\s,]+/', trim($dashStr)));
             $dashArray = array_filter($dashArray, fn($v) => $v > 0);
+            $dashArray = array_slice($dashArray, 0, RenderLimits::maxDashPatternEntries);
             if (empty($dashArray)) {
                 $dashArray = null;
             }
@@ -1461,7 +1482,7 @@ class SVGParser
         $textNode->dominantBaseline = self::getEffectiveAttr($el, 'dominant-baseline', $styles) ?: 'auto';
 
         $fontSizeStr = self::getEffectiveAttr($el, 'font-size', $styles);
-        $textNode->fontSize = $fontSizeStr !== '' ? (float) $fontSizeStr : 16;
+        $textNode->fontSize = $fontSizeStr !== '' ? min((float) $fontSizeStr, (float) RenderLimits::maxFontSize) : 16;
 
         $textNode->fill = self::parsePaintAttr($el, 'fill', $defs, $styles, $logger);
         $textNode->stroke = self::parseStrokeAttr($el, $defs, $styles, $logger);
@@ -1481,7 +1502,7 @@ class SVGParser
                 $tspan->dy = $dyStr !== '' ? (float) $dyStr : null;
                 $tspan->fontFamily = self::getEffectiveAttr($child, 'font-family', $styles) ?: null;
                 $fontSizeStr = self::getEffectiveAttr($child, 'font-size', $styles);
-                $tspan->fontSize = $fontSizeStr !== '' ? (float) $fontSizeStr : null;
+                $tspan->fontSize = $fontSizeStr !== '' ? min((float) $fontSizeStr, (float) RenderLimits::maxFontSize) : null;
                 $tspan->fontWeight = self::getEffectiveAttr($child, 'font-weight', $styles) ?: null;
                 $tspan->fontStyle = self::getEffectiveAttr($child, 'font-style', $styles) ?: null;
 
@@ -1493,6 +1514,7 @@ class SVGParser
                 $tspanStrokeVal = self::getEffectiveAttr($child, 'stroke', $styles);
                 if ($tspanStrokeVal !== '') {
                     $strokeWidth = (float) self::getEffectiveAttr($child, 'stroke-width', $styles) ?: 1.0;
+                    $strokeWidth = min($strokeWidth, (float) RenderLimits::maxStrokeWidth);
                     $tspanStrokePaint = self::parsePaintValue($tspanStrokeVal, $defs, $logger);
                     if ($tspanStrokePaint !== null) {
                         $tspan->stroke = new StrokeStyle(

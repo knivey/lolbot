@@ -23,7 +23,8 @@ class GaussianBlurPrimitive implements FilterPrimitive
 
     public function apply(Canvas $input, FilterPipeline $pipeline): Canvas
     {
-        if ($this->stdDeviation < 0.001) {
+        $stdDeviation = min($this->stdDeviation, (float) RenderLimits::maxBlurStdDev);
+        if ($stdDeviation < 0.001) {
             $output = Canvas::createBlank($input->w, $input->h, $input->halfblocks);
             Compositor::blend($output, $input);
             if ($this->result !== null) {
@@ -32,7 +33,7 @@ class GaussianBlurPrimitive implements FilterPrimitive
             return $output;
         }
 
-        $boxRadius = (int) floor($this->stdDeviation * sqrt(12.0 / 3.0) / 2.0 + 0.5);
+        $boxRadius = (int) floor($stdDeviation * sqrt(12.0 / 3.0) / 2.0 + 0.5);
         if ($boxRadius < 1) {
             $boxRadius = 1;
         }
