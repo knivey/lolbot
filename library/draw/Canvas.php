@@ -492,13 +492,16 @@ class Canvas
         $needTransform = !$this->isIdentity($effective);
 
         $snappedSubpaths = [];
+        $mag = (float) RenderLimits::maxCoordMagnitude;
         foreach ($subpaths as $sp) {
             $snapped = [];
             foreach ($sp['vertices'] as $v) {
                 if ($needTransform) {
                     $v = $effective->apply($v[0], $v[1]);
                 }
-                $snapped[] = [(int) round($v[0]), (int) round($v[1])];
+                $vx = $v[0] > $mag ? $mag : ($v[0] < -$mag ? -$mag : $v[0]);
+                $vy = $v[1] > $mag ? $mag : ($v[1] < -$mag ? -$mag : $v[1]);
+                $snapped[] = [(int) round($vx), (int) round($vy)];
             }
             $snappedSubpaths[] = ['vertices' => $snapped, 'closed' => $sp['closed']];
         }
@@ -717,7 +720,9 @@ class Canvas
             }
         }
 
-        for ($Y = (int) ceil($minY); $Y <= (int) floor($maxY); $Y++) {
+        $YStart = max(0, (int) ceil($minY));
+        $YEnd = min($this->h - 1, (int) floor($maxY));
+        for ($Y = $YStart; $Y <= $YEnd; $Y++) {
             $intersections = [];
 
             // Collect (xIntersection, windingDirection) for every edge
@@ -749,8 +754,8 @@ class Canvas
             usort($intersections, fn ($a, $b) => $a[0] <=> $b[0]);
 
             $fillSpan = function (float $x0, float $x1) use ($Y, $paint, $text): void {
-                $xL = (int) ceil($x0);
-                $xR = (int) floor($x1);
+                $xL = max((int) ceil($x0), 0);
+                $xR = min((int) floor($x1), $this->w - 1);
                 for ($xx = $xL; $xx <= $xR; $xx++) {
                     if (isset($this->data[$Y][$xx])) {
                         if ($paint->isSolid() && $paint instanceof Color) {
@@ -982,6 +987,7 @@ class Canvas
         while ($diff < -M_PI) $diff += 2 * M_PI;
 
         $steps = max(3, (int) ceil(abs($diff) * $radius / 2.0));
+        $steps = min($steps, RenderLimits::maxArcSteps);
         $pts = [];
         for ($i = 0; $i <= $steps; $i++) {
             $angle = $a1 + $diff * $i / $steps;
@@ -1028,6 +1034,7 @@ class Canvas
             }
         }
         $steps = max(3, (int) ceil(abs($diff) * $halfW / 2.0));
+        $steps = min($steps, RenderLimits::maxArcSteps);
         $pts = [];
         for ($i = 0; $i <= $steps; $i++) {
             $angle = $a1 + $diff * $i / $steps;
@@ -1077,7 +1084,11 @@ class Canvas
         $patternPos = 0.0;
         $drawing = true;
 
+        $maxDashSegments = RenderLimits::maxDashCount;
         while ($pos < $totalLen) {
+            if (count($result) >= $maxDashSegments) {
+                break;
+            }
             if ($pos < 0) {
                 $currentDash = $stroke->dashArray[$patternIdx % count($stroke->dashArray)];
                 $advance = min(-$pos, $currentDash - $patternPos);
