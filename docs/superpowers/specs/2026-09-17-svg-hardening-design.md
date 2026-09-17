@@ -98,6 +98,7 @@ Final class, public constants, used by parser, rasterizer, and entry scripts:
 | `maxCoordMagnitude` | 10,000,000 | Coordinate clamp at `drawPath` |
 
 > Escalated during implementation: 4M → 1M → 500k after measuring ~230 bytes/pixel real allocation cost (legal-cap canvases fatals under stock 128M CLI limits).
+> The flatten vertex budget (`maxPathVertices`) was likewise set to 300k for the same measured-memory reason (~280 bytes/vertex ≈ 84MB transient worst case, under the stock 128M CLI limit).
 
 ### 2. Allocation guards (vector 1)
 

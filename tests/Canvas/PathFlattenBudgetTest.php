@@ -31,7 +31,7 @@ class PathFlattenBudgetTest extends TestCase
     public function test_many_curve_path_hits_vertex_budget(): void
     {
         //each of these clamped-magnitude cubics flattens to ~8k vertices;
-        //100 of them exceed the 500k vertex budget
+        //100 of them exceed the 300k vertex budget
         $path = new Path();
         $path->moveTo(-1e7, -1e7);
         for ($i = 0; $i < 100; $i++) {
