@@ -17,6 +17,16 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Option;
 use knivey\cmdr\attributes\Syntax;
 
+/**
+ * Clamp a rain copy to a sane multiple of the render canvas so
+ * attacker-controlled SVG aspect ratios cannot drive huge allocations.
+ * @return array{int, int}
+ */
+function rainClampCopy(int $w, int $h, int $renderW, int $renderH): array
+{
+    return [min($w, $renderW * 2), min($h, $renderH * 2)];
+}
+
 #[Cmd("rain")]
 #[Syntax('[urls]...')]
 #[Option("--no-supersample", "Disable 3x supersampling")]
@@ -184,6 +194,7 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $copyH = $copyH - ($copyH % 2);
             $copyW = max(10, $copyW);
             $copyH = max(2, $copyH);
+            [$copyW, $copyH] = rainClampCopy($copyW, $copyH, $renderW, $renderH);
             $rotation = deg2rad(rand(-20, 20));
             $copies[] = ['w' => $copyW, 'h' => $copyH, 'doc' => $doc, 'rot' => $rotation];
         }
@@ -308,7 +319,7 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
     } catch (\Amp\Http\Client\ParseException $e) {
         $bot->notice($args->nick, "SVG file too large (max 2MB)");
     } catch (\InvalidArgumentException $e) {
-        $bot->notice($args->nick, "Failed to parse SVG");
+        $bot->notice($args->nick, $e->getMessage());
     } catch (\Throwable $e) {
         $bot->notice($args->nick, "Failed to fetch SVG: " . $e->getMessage());
     }
