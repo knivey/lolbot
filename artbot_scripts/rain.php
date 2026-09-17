@@ -20,8 +20,9 @@ use knivey\cmdr\attributes\Syntax;
 /**
  * Clamp a rain copy to a sane multiple of the render canvas so
  * attacker-controlled SVG aspect ratios cannot drive huge allocations.
- * Also bounds (w+h)^2 <= 1_900_000 so the rotated copy's temp canvas
- * stays under the createBlank pixel cap.
+ * Also bounds (w+h)^2 <= 1_900_000 to reduce the chance that the rotated
+ * copy's temp canvas trips the createBlank pixel cap (not a guarantee at
+ * small rotations — the cap plus the per-copy catch below are the hard stop).
  * @return array{int, int}
  */
 function rainClampCopy(int $w, int $h, int $renderW, int $renderH): array

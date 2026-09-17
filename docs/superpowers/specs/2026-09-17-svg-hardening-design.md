@@ -85,17 +85,19 @@ Final class, public constants, used by parser, rasterizer, and entry scripts:
 
 | Constant | Value | Rationale |
 |---|---|---|
-| `maxCanvasPixels` | 500,000 | Legit art ≤200px wide; Pixel ≈100B each → ~400MB worst case |
+| `maxCanvasPixels` | 500,000 | Legit art ≤200px wide; measured ~230B/pixel → ~115MB worst case |
 | `maxCanvasSide` | 100,000 | Sanity bound per dimension |
 | `maxParseDepth` | 200 | XML nesting deeper than this is hostile |
 | `maxElements` | 100,000 | Total parsed nodes per document |
 | `maxPathSegments` | 50,000 | Per `d` attribute |
+| `maxPathVertices` | 300,000 | Total flatten vertices per path (~280B each → ~84MB transient) |
+| `maxTextLength` | 4,096 | Per text/tspan content, silent truncation |
 | `maxStrokeWidth` | 500 | Clamp (not throw) — degrade gracefully |
 | `maxBlurStdDev` | 100 | Clamp; boxRadius stays ~141px |
 | `maxFontSize` | 1000 | Clamp |
 | `maxDashCount` | 10,000 | Total dashes per stroke, clamp |
 | `maxArcSteps` | 5,000 | Per-join arc point cap, clamp |
-| `maxCoordMagnitude` | 10,000,000 | Coordinate clamp at `drawPath` |
+| `maxCoordMagnitude` | 10,000,000 | Coordinate clamp at parse time and `drawPath` |
 
 > Escalated during implementation: 4M → 1M → 500k after measuring ~230 bytes/pixel real allocation cost (legal-cap canvases fatals under stock 128M CLI limits).
 > The flatten vertex budget (`maxPathVertices`) was likewise set to 300k for the same measured-memory reason (~280 bytes/vertex ≈ 84MB transient worst case, under the stock 128M CLI limit).

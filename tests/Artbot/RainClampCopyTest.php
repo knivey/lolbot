@@ -26,8 +26,8 @@ class RainClampCopyTest extends TestCase
     public function test_rotated_bbox_bound_guaranteed_for_extreme_inputs(): void
     {
         //a 45deg-rotated copy needs a temp canvas of ~(w+h) per side, so the
-        //clamp must keep (w+h)^2 <= 1_900_000 or one poisoned copy aborts the
-        //whole @rain render with "canvas too large"
+        //clamp keeps (w+h)^2 <= 1_900_000 to reduce over-cap temp canvases;
+        //the hard stop is the createBlank cap + per-copy catch in rain.php
         $cases = [
             [100000, 100000, 240, 1080],
             [480, 100000, 240, 1080],
