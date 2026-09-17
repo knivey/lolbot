@@ -42,4 +42,24 @@ class SVGParserStructuralLimitsTest extends TestCase
         $this->expectExceptionMessage('svg path too long');
         SVGParser::parseString($svg);
     }
+
+    public function test_counters_reset_after_thrown_parse(): void
+    {
+        $bomb = '<svg xmlns="http://www.w3.org/2000/svg">' . str_repeat('<g>', 210) . str_repeat('</g>', 210) . '</svg>';
+        try {
+            SVGParser::parseString($bomb);
+        } catch (\InvalidArgumentException) {
+            //expected: nesting too deep
+        }
+        $doc = SVGParser::parseString('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0 L10 10"/></svg>');
+        $this->assertNotNull($doc);
+    }
+
+    public function test_depth_just_under_cap_parses(): void
+    {
+        $depth = 190; // comfortably under maxParseDepth=200, under libxml's 255 cap
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg">' . str_repeat('<g>', $depth) . str_repeat('</g>', $depth) . '</svg>';
+        $doc = SVGParser::parseString($svg);
+        $this->assertNotNull($doc);
+    }
 }
