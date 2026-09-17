@@ -1510,7 +1510,7 @@ class SVGParser
         foreach (self::svgChildren($el) as $child) {
             if ($child->getName() === 'tspan') {
                 $tspan = new TspanNode();
-                $tspan->text = self::extractTextContent($child);
+                $tspan->text = mb_strcut(self::extractTextContent($child), 0, RenderLimits::maxTextLength, 'UTF-8');
                 $dxStr = self::getEffectiveAttr($child, 'dx', $styles);
                 $tspan->dx = $dxStr !== '' ? (float) $dxStr : null;
                 $dyStr = self::getEffectiveAttr($child, 'dy', $styles);
@@ -1543,7 +1543,7 @@ class SVGParser
             }
         }
 
-        $textNode->text = self::extractTextContent($el);
+        $textNode->text = mb_strcut(self::extractTextContent($el), 0, RenderLimits::maxTextLength, 'UTF-8');
         $textNode->tspans = $tspans;
 
         return self::wrapWithClipMask($textNode, $el, $defs, $styles, $parentTransform, $logger);

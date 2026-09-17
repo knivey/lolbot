@@ -6,6 +6,8 @@ class FontManager
 {
     private const MAX_PATH_CACHE = 128;
 
+    private const MAX_FAMILY_LENGTH = 256;
+
     private static ?FontFile $defaultFont = null;
 
     /** @var array<string, FontFile> */
@@ -47,6 +49,10 @@ class FontManager
 
     private static function resolveFontPath(string $fontFamily, ?string $weight, ?string $style): ?string
     {
+        if (strlen($fontFamily) > self::MAX_FAMILY_LENGTH) {
+            return null;
+        }
+
         $cacheKey = $fontFamily . '|' . ($weight ?? '') . '|' . ($style ?? '');
 
         if (array_key_exists($cacheKey, self::$pathCache)) {

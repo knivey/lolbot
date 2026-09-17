@@ -33,6 +33,9 @@ final class RenderLimits
     public const maxDashCount = 10000;
     public const maxArcSteps = 5000;
 
+    //per-node <text>/<tspan> content cap in bytes (mb_strcut keeps UTF-8 intact)
+    public const maxTextLength = 4096;
+
     //coordinate magnitude clamp before rasterization
     public const maxCoordMagnitude = 10000000;
 }

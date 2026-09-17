@@ -20,11 +20,20 @@ use knivey\cmdr\attributes\Syntax;
 /**
  * Clamp a rain copy to a sane multiple of the render canvas so
  * attacker-controlled SVG aspect ratios cannot drive huge allocations.
+ * Also bounds (w+h)^2 <= 1_900_000 so the rotated copy's temp canvas
+ * stays under the createBlank pixel cap.
  * @return array{int, int}
  */
 function rainClampCopy(int $w, int $h, int $renderW, int $renderH): array
 {
-    return [min($w, $renderW * 2), min($h, $renderH * 2)];
+    $w = min($w, $renderW * 2);
+    $h = min($h, $renderH * 2);
+    $maxSum = (int) floor(sqrt(1_900_000));
+    $w = min($w, $maxSum - 1);
+    if ($w + $h > $maxSum) {
+        $h = max(1, $maxSum - $w);
+    }
+    return [$w, $h];
 }
 
 #[Cmd("rain")]
@@ -253,34 +262,39 @@ function rain(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
             $offX = (int)round(($rotW - $cw) / 2);
             $offY = (int)round(($rotH - $ch) / 2);
 
-            $tempCanvas = Canvas::createBlank($rotW, $rotH, true);
-            $vbt = $doc->getViewBoxTransform((float)$cw, (float)$ch);
-            $tempCanvas->save();
-            $tempCanvas->concatTransform(Transform::translate((float)$offX, (float)$offY));
-            $cx = $cw / 2.0;
-            $cy = $ch / 2.0;
-            $tempCanvas->concatTransform(
-                Transform::translate($cx, $cy)
-                    ->multiply(Transform::rotate($rot))
-                    ->multiply(Transform::translate(-$cx, -$cy))
-            );
-            if ($vbt !== null) {
-                $tempCanvas->concatTransform($vbt);
-            }
-            $doc->getRoot()->render($tempCanvas, RenderContext::defaults());
-            $tempCanvas->restore();
+            try {
+                $tempCanvas = Canvas::createBlank($rotW, $rotH, true);
+                $vbt = $doc->getViewBoxTransform((float)$cw, (float)$ch);
+                $tempCanvas->save();
+                $tempCanvas->concatTransform(Transform::translate((float)$offX, (float)$offY));
+                $cx = $cw / 2.0;
+                $cy = $ch / 2.0;
+                $tempCanvas->concatTransform(
+                    Transform::translate($cx, $cy)
+                        ->multiply(Transform::rotate($rot))
+                        ->multiply(Transform::translate(-$cx, -$cy))
+                );
+                if ($vbt !== null) {
+                    $tempCanvas->concatTransform($vbt);
+                }
+                $doc->getRoot()->render($tempCanvas, RenderContext::defaults());
+                $tempCanvas->restore();
 
-            for ($py = 0; $py < $rotH; $py++) {
-                for ($px = 0; $px < $rotW; $px++) {
-                    $dstX = $bestX - $offX + $px;
-                    $dstY = $bestY - $offY + $py;
-                    if ($dstX >= 0 && $dstX < $renderW && $dstY >= 0 && $dstY < $renderH) {
-                        $sp = $tempCanvas->data[$py][$px];
-                        if ($sp->fg !== null) {
-                            $canvas->data[$dstY][$dstX] = clone $sp;
+                for ($py = 0; $py < $rotH; $py++) {
+                    for ($px = 0; $px < $rotW; $px++) {
+                        $dstX = $bestX - $offX + $px;
+                        $dstY = $bestY - $offY + $py;
+                        if ($dstX >= 0 && $dstX < $renderW && $dstY >= 0 && $dstY < $renderH) {
+                            $sp = $tempCanvas->data[$py][$px];
+                            if ($sp->fg !== null) {
+                                $canvas->data[$dstY][$dstX] = clone $sp;
+                            }
                         }
                     }
                 }
+            } catch (\InvalidArgumentException) {
+                //skip copies that would still exceed the canvas cap; the rest of the rain renders
+                continue;
             }
         }
         unset($copy);

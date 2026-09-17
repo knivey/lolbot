@@ -1079,8 +1079,11 @@ class Canvas
 
         $result = [];
         $currentDashVerts = [];
+        //odd-entry dash arrays repeat with visual period 2*dashLen (the
+        //pattern re-enters the "on" phase only after a doubled cycle)
+        $offsetPeriod = (count($stroke->dashArray) % 2 === 1) ? 2.0 * $dashLen : $dashLen;
         $offset = (is_finite($stroke->dashOffset) && $stroke->dashOffset > 0)
-            ? fmod($stroke->dashOffset, $dashLen)
+            ? fmod($stroke->dashOffset, $offsetPeriod)
             : 0.0;
         $pos = -$offset;
         $patternIdx = 0;

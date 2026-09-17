@@ -30,4 +30,16 @@ class FontManagerCacheCapTest extends TestCase
         $this->assertNull($result);
         $this->assertSame($dummy, $prop->getValue());
     }
+
+    public function test_oversized_family_returns_null_and_stays_uncached(): void
+    {
+        $prop = new \ReflectionProperty(FontManager::class, 'pathCache');
+        $prop->setValue(null, []);
+
+        $method = new \ReflectionMethod(FontManager::class, 'resolveFontPath');
+        $result = $method->invoke(null, str_repeat('a', 300), null, null);
+
+        $this->assertNull($result);
+        $this->assertSame([], $prop->getValue());
+    }
 }

@@ -4,6 +4,7 @@ namespace Tests\Canvas;
 
 use draw\Canvas;
 use draw\Shape;
+use draw\StrokeStyle;
 use draw\SVGParser;
 use PHPUnit\Framework\TestCase;
 
@@ -86,7 +87,30 @@ class SVGParserClampsTest extends TestCase
         $doc = SVGParser::parseString($svg);
         $shape = $doc->getRoot()->getChildren()[0];
         $this->assertInstanceOf(Shape::class, $shape);
-        $this->assertNotNull($shape->stroke);
-        $this->assertCount(16, $shape->stroke->dashArray);
+        $stroke = $shape->stroke;
+        $this->assertInstanceOf(StrokeStyle::class, $stroke);
+        $dashArray = $stroke->dashArray;
+        $this->assertNotNull($dashArray);
+        $this->assertCount(16, $dashArray);
+    }
+
+    public function test_odd_dash_array_offset_period_doubled(): void
+    {
+        //odd-entry dash arrays repeat with visual period 2*dashLen, so
+        //offset 9 (3 + 2*3) must land on the same phase as offset 3
+        $offset0 = $this->render('<path d="M5 20 L75 20" stroke="red" fill="none" stroke-dasharray="3" stroke-dashoffset="0"/>');
+        $offset3 = $this->render('<path d="M5 20 L75 20" stroke="red" fill="none" stroke-dasharray="3" stroke-dashoffset="3"/>');
+        $offset9 = $this->render('<path d="M5 20 L75 20" stroke="red" fill="none" stroke-dasharray="3" stroke-dashoffset="9"/>');
+        $this->assertSame((string)$offset3, (string)$offset9);
+        //offset 3 is half the visual period, so it must not fold to phase 0
+        $this->assertNotSame((string)$offset0, (string)$offset3);
+    }
+
+    public function test_even_dash_array_offset_folds_by_period(): void
+    {
+        //even-entry dash arrays have period dashLen, so offset 6 folds to 0
+        $offset0 = $this->render('<path d="M5 20 L75 20" stroke="red" fill="none" stroke-dasharray="3 3" stroke-dashoffset="0"/>');
+        $offset6 = $this->render('<path d="M5 20 L75 20" stroke="red" fill="none" stroke-dasharray="3 3" stroke-dashoffset="6"/>');
+        $this->assertSame((string)$offset0, (string)$offset6);
     }
 }
