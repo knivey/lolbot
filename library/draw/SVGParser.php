@@ -22,6 +22,7 @@ class SVGParser
         $pos = 0;
         $count = count($tokens);
         $lastCmd = '';
+        $segments = 0;
 
         while ($pos < $count) {
             $token = $tokens[$pos];
@@ -44,6 +45,9 @@ class SVGParser
                 case 'M':
                     $first = true;
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $coords = self::consumeCoordPair($tokens, $pos, $count);
                         if ($coords === null) {
                             break;
@@ -66,6 +70,9 @@ class SVGParser
 
                 case 'L':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $coords = self::consumeCoordPair($tokens, $pos, $count);
                         if ($coords === null) {
                             break;
@@ -82,6 +89,9 @@ class SVGParser
 
                 case 'H':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $x = (float)$tokens[$pos++];
                         if ($relative) {
                             $x += $path->getCurrentPoint()[0];
@@ -92,6 +102,9 @@ class SVGParser
 
                 case 'V':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $y = (float)$tokens[$pos++];
                         if ($relative) {
                             $y += $path->getCurrentPoint()[1];
@@ -102,6 +115,9 @@ class SVGParser
 
                 case 'C':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $nums = self::consumeNumbers($tokens, $pos, $count, 6);
                         if ($nums === null) {
                             break;
@@ -123,6 +139,9 @@ class SVGParser
 
                 case 'S':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $nums = self::consumeNumbers($tokens, $pos, $count, 4);
                         if ($nums === null) {
                             break;
@@ -140,6 +159,9 @@ class SVGParser
 
                 case 'Q':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $nums = self::consumeNumbers($tokens, $pos, $count, 4);
                         if ($nums === null) {
                             break;
@@ -157,6 +179,9 @@ class SVGParser
 
                 case 'T':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $coords = self::consumeCoordPair($tokens, $pos, $count);
                         if ($coords === null) {
                             break;
@@ -173,6 +198,9 @@ class SVGParser
 
                 case 'A':
                     while ($pos < $count && !ctype_alpha($tokens[$pos])) {
+                        if ($segments++ > RenderLimits::maxPathSegments) {
+                            throw new \InvalidArgumentException('svg path too long');
+                        }
                         $nums = self::consumeNumbers($tokens, $pos, $count, 3);
                         if ($nums === null) {
                             break;
@@ -198,6 +226,9 @@ class SVGParser
                     break;
 
                 case 'Z':
+                    if ($segments++ > RenderLimits::maxPathSegments) {
+                        throw new \InvalidArgumentException('svg path too long');
+                    }
                     $path->closePath();
                     break;
             }
@@ -343,9 +374,14 @@ class SVGParser
         'opacity', 'fill-opacity', 'fill-rule', 'stop-color', 'display',
     ];
 
+    private static int $parseDepth = 0;
+    private static int $elementCount = 0;
+
     public static function parseString(string $svg, ?LoggerInterface $logger = null): SVGDocument
     {
-        $xml = @simplexml_load_string($svg);
+        self::$parseDepth = 0;
+        self::$elementCount = 0;
+        $xml = @simplexml_load_string($svg, null, LIBXML_NONET);
         if ($xml === false) {
             throw new \InvalidArgumentException('Failed to parse SVG XML');
         }
@@ -414,30 +450,40 @@ class SVGParser
 
     private static function parseElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): SceneNode
     {
-        $name = $el->getName();
-        return match ($name) {
-            'svg' => self::parseSvgElement($el, $defs, $styles, $logger, $parentTransform),
-            'g' => self::parseGroupElement($el, $defs, $styles, $logger, $parentTransform),
-            'path' => self::parsePathElement($el, $defs, $styles, $logger, $parentTransform),
-            'rect' => self::parseRectElement($el, $defs, $styles, $logger, $parentTransform),
-            'circle' => self::parseCircleElement($el, $defs, $styles, $logger, $parentTransform),
-            'ellipse' => self::parseEllipseElement($el, $defs, $styles, $logger, $parentTransform),
-            'line' => self::parseLineElement($el, $defs, $styles, $logger, $parentTransform),
-            'polyline' => self::parsePolylineElement($el, $defs, $styles, $logger, $parentTransform),
-            'polygon' => self::parsePolygonElement($el, $defs, $styles, $logger, $parentTransform),
-            'text' => self::parseTextElement($el, $defs, $styles, $logger, $parentTransform),
-            'defs' => self::parseDefsElement($el, $defs, $styles, $logger),
-            'linearGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
-            'radialGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
-            'clipPath' => new Group(),
-            'mask' => new Group(),
-            'filter' => new Group(),
-            'style' => new Group(),
-            default => (function () use ($name, $logger) {
-                $logger?->warning("Unsupported SVG element: <{$name}>");
-                return new Group();
-            })(),
-        };
+        if (++self::$elementCount > RenderLimits::maxElements) {
+            throw new \InvalidArgumentException('svg too many elements');
+        }
+        if (++self::$parseDepth > RenderLimits::maxParseDepth) {
+            throw new \InvalidArgumentException('svg nesting too deep');
+        }
+        try {
+            $name = $el->getName();
+            return match ($name) {
+                'svg' => self::parseSvgElement($el, $defs, $styles, $logger, $parentTransform),
+                'g' => self::parseGroupElement($el, $defs, $styles, $logger, $parentTransform),
+                'path' => self::parsePathElement($el, $defs, $styles, $logger, $parentTransform),
+                'rect' => self::parseRectElement($el, $defs, $styles, $logger, $parentTransform),
+                'circle' => self::parseCircleElement($el, $defs, $styles, $logger, $parentTransform),
+                'ellipse' => self::parseEllipseElement($el, $defs, $styles, $logger, $parentTransform),
+                'line' => self::parseLineElement($el, $defs, $styles, $logger, $parentTransform),
+                'polyline' => self::parsePolylineElement($el, $defs, $styles, $logger, $parentTransform),
+                'polygon' => self::parsePolygonElement($el, $defs, $styles, $logger, $parentTransform),
+                'text' => self::parseTextElement($el, $defs, $styles, $logger, $parentTransform),
+                'defs' => self::parseDefsElement($el, $defs, $styles, $logger),
+                'linearGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
+                'radialGradient' => self::handleGradientElement($el, $defs, $styles, $logger),
+                'clipPath' => new Group(),
+                'mask' => new Group(),
+                'filter' => new Group(),
+                'style' => new Group(),
+                default => (function () use ($name, $logger) {
+                    $logger?->warning("Unsupported SVG element: <{$name}>");
+                    return new Group();
+                })(),
+            };
+        } finally {
+            self::$parseDepth--;
+        }
     }
 
     private static function parseSvgElement(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, Transform $parentTransform): Group
@@ -557,8 +603,11 @@ class SVGParser
         return self::buildShape($path, $el, $defs, $styles, $logger, $parentTransform);
     }
 
-    private static function collectAllDefs(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger): void
+    private static function collectAllDefs(\SimpleXMLElement $el, array &$defs, array $styles, ?LoggerInterface $logger, int $depth = 0): void
     {
+        if ($depth > RenderLimits::maxParseDepth) {
+            throw new \InvalidArgumentException('svg nesting too deep');
+        }
         foreach (self::svgChildren($el) as $child) {
             $name = $child->getName();
             if ($name === 'defs') {
@@ -568,7 +617,7 @@ class SVGParser
             } elseif ($name === 'clipPath' || $name === 'mask' || $name === 'filter') {
                 self::parseClipMaskElement($child, $defs, $styles, $logger);
             } else {
-                self::collectAllDefs($child, $defs, $styles, $logger);
+                self::collectAllDefs($child, $defs, $styles, $logger, $depth + 1);
             }
         }
     }
@@ -1262,8 +1311,11 @@ class SVGParser
         };
     }
 
-    private static function collectStyles(\SimpleXMLElement $el): array
+    private static function collectStyles(\SimpleXMLElement $el, int $depth = 0): array
     {
+        if ($depth > RenderLimits::maxParseDepth) {
+            throw new \InvalidArgumentException('svg nesting too deep');
+        }
         $styles = [];
         $name = $el->getName();
         if ($name === 'style') {
@@ -1274,7 +1326,7 @@ class SVGParser
             return $styles;
         }
         foreach (self::svgChildren($el) as $child) {
-            $styles = array_merge($styles, self::collectStyles($child));
+            $styles = array_merge($styles, self::collectStyles($child, $depth + 1));
         }
         return $styles;
     }
