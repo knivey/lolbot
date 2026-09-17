@@ -9,7 +9,7 @@ class ClosePath implements PathSegment
     ) {
     }
 
-    public function flatten(float $startX, float $startY, float $tolerance): array
+    public function flatten(float $startX, float $startY, float $tolerance, int &$budget): array
     {
         return [];
     }

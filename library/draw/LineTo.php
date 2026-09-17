@@ -9,8 +9,11 @@ class LineTo implements PathSegment
     ) {
     }
 
-    public function flatten(float $startX, float $startY, float $tolerance): array
+    public function flatten(float $startX, float $startY, float $tolerance, int &$budget): array
     {
+        if (--$budget < 0) {
+            throw new \InvalidArgumentException('svg path too complex');
+        }
         return [[$this->x, $this->y]];
     }
 

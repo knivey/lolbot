@@ -9,10 +9,12 @@ interface PathSegment
      * @param float $startX Current point X when this segment begins.
      * @param float $startY Current point Y when this segment begins.
      * @param float $tolerance Maximum deviation from true curve, in canvas units.
+     * @param int $budget Remaining shared vertex budget for the whole path;
+     *        decremented once per emitted vertex, throws when it would go below 0.
      * @return array<int, array{float, float}> Vertices produced by this segment
      *         (excluding the start point, which the caller already has).
      */
-    public function flatten(float $startX, float $startY, float $tolerance): array;
+    public function flatten(float $startX, float $startY, float $tolerance, int &$budget): array;
 
     /**
      * Returns the endpoint of this segment (where the cursor lands).

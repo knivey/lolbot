@@ -59,11 +59,11 @@ class SVGParser
                             $y += $cp[1];
                         }
                         if ($first) {
-                            $path->moveTo($x, $y);
+                            $path->moveTo(self::clampCoord($x), self::clampCoord($y));
                             $first = false;
                             $lastCmd = $relative ? 'l' : 'L';
                         } else {
-                            $path->lineTo($x, $y);
+                            $path->lineTo(self::clampCoord($x), self::clampCoord($y));
                         }
                     }
                     break;
@@ -83,7 +83,7 @@ class SVGParser
                             $x += $cp[0];
                             $y += $cp[1];
                         }
-                        $path->lineTo($x, $y);
+                        $path->lineTo(self::clampCoord($x), self::clampCoord($y));
                     }
                     break;
 
@@ -96,7 +96,7 @@ class SVGParser
                         if ($relative) {
                             $x += $path->getCurrentPoint()[0];
                         }
-                        $path->horizontalLineTo($x);
+                        $path->horizontalLineTo(self::clampCoord($x));
                     }
                     break;
 
@@ -109,7 +109,7 @@ class SVGParser
                         if ($relative) {
                             $y += $path->getCurrentPoint()[1];
                         }
-                        $path->verticalLineTo($y);
+                        $path->verticalLineTo(self::clampCoord($y));
                     }
                     break;
 
@@ -128,6 +128,9 @@ class SVGParser
                                 $nums[$i] += $cp[0];
                                 $nums[$i + 1] += $cp[1];
                             }
+                        }
+                        for ($i = 0; $i < 6; $i++) {
+                            $nums[$i] = self::clampCoord($nums[$i]);
                         }
                         $path->cubicTo(
                             $nums[0], $nums[1],
@@ -153,6 +156,9 @@ class SVGParser
                             $nums[2] += $cp[0];
                             $nums[3] += $cp[1];
                         }
+                        for ($i = 0; $i < 4; $i++) {
+                            $nums[$i] = self::clampCoord($nums[$i]);
+                        }
                         $path->smoothCubicTo($nums[0], $nums[1], $nums[2], $nums[3]);
                     }
                     break;
@@ -173,6 +179,9 @@ class SVGParser
                             $nums[2] += $cp[0];
                             $nums[3] += $cp[1];
                         }
+                        for ($i = 0; $i < 4; $i++) {
+                            $nums[$i] = self::clampCoord($nums[$i]);
+                        }
                         $path->quadTo($nums[0], $nums[1], $nums[2], $nums[3]);
                     }
                     break;
@@ -192,7 +201,7 @@ class SVGParser
                             $x += $cp[0];
                             $y += $cp[1];
                         }
-                        $path->smoothQuadTo($x, $y);
+                        $path->smoothQuadTo(self::clampCoord($x), self::clampCoord($y));
                     }
                     break;
 
@@ -218,9 +227,9 @@ class SVGParser
                             $y += $cp[1];
                         }
                         $path->arcTo(
-                            $nums[0], $nums[1], $nums[2],
+                            self::clampCoord($nums[0]), self::clampCoord($nums[1]), $nums[2],
                             $largeArc, $sweep,
-                            $x, $y
+                            self::clampCoord($x), self::clampCoord($y)
                         );
                     }
                     break;
@@ -235,6 +244,12 @@ class SVGParser
         }
 
         return $path;
+    }
+
+    private static function clampCoord(float $v): float
+    {
+        $mag = (float) RenderLimits::maxCoordMagnitude;
+        return $v > $mag ? $mag : ($v < -$mag ? -$mag : $v);
     }
 
     /**

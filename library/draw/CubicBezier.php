@@ -13,7 +13,7 @@ class CubicBezier implements PathSegment
     ) {
     }
 
-    public function flatten(float $startX, float $startY, float $tolerance): array
+    public function flatten(float $startX, float $startY, float $tolerance, int &$budget): array
     {
         $result = [];
         $this->flattenRecursive(
@@ -21,7 +21,7 @@ class CubicBezier implements PathSegment
             $this->c1x, $this->c1y,
             $this->c2x, $this->c2y,
             $this->x, $this->y,
-            $tolerance, 0, $result
+            $tolerance, 0, $budget, $result
         );
         return $result;
     }
@@ -42,9 +42,13 @@ class CubicBezier implements PathSegment
         float $p3x, float $p3y,
         float $tolerance,
         int $depth,
+        int &$budget,
         array &$result
     ): void {
         if ($depth > 20) {
+            if (--$budget < 0) {
+                throw new \InvalidArgumentException('svg path too complex');
+            }
             $result[] = [$p3x, $p3y];
             return;
         }
@@ -63,6 +67,9 @@ class CubicBezier implements PathSegment
         }
 
         if ($d1 <= $tolerance && $d2 <= $tolerance) {
+            if (--$budget < 0) {
+                throw new \InvalidArgumentException('svg path too complex');
+            }
             $result[] = [$p3x, $p3y];
             return;
         }
@@ -81,7 +88,7 @@ class CubicBezier implements PathSegment
         $sx = ($r0x + $r1x) / 2;
         $sy = ($r0y + $r1y) / 2;
 
-        $this->flattenRecursive($p0x, $p0y, $q0x, $q0y, $r0x, $r0y, $sx, $sy, $tolerance, $depth + 1, $result);
-        $this->flattenRecursive($sx, $sy, $r1x, $r1y, $q2x, $q2y, $p3x, $p3y, $tolerance, $depth + 1, $result);
+        $this->flattenRecursive($p0x, $p0y, $q0x, $q0y, $r0x, $r0y, $sx, $sy, $tolerance, $depth + 1, $budget, $result);
+        $this->flattenRecursive($sx, $sy, $r1x, $r1y, $q2x, $q2y, $p3x, $p3y, $tolerance, $depth + 1, $budget, $result);
     }
 }

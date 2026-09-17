@@ -22,6 +22,9 @@ final class RenderLimits
     //path `d` attribute segment cap
     public const maxPathSegments = 50000;
 
+    //total vertices a single path may emit while flattening (curve-subdivision bomb bound)
+    public const maxPathVertices = 500000;
+
     //attribute clamps (silent, degrade gracefully)
     public const maxStrokeWidth = 500;
     public const maxBlurStdDev = 100;

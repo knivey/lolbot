@@ -167,6 +167,7 @@ class Path
      *
      * @param float $tolerance Maximum deviation from true curve, in canvas units.
      * @return array<int, array{vertices: array<int, array{float, float}>, closed: bool}>
+     * @throws \InvalidArgumentException When the total vertex count would exceed RenderLimits::maxPathVertices.
      */
     public function flatten(float $tolerance = 0.5): array
     {
@@ -176,6 +177,7 @@ class Path
         $currentX = 0.0;
         $currentY = 0.0;
         $inSubpath = false;
+        $budget = RenderLimits::maxPathVertices;
 
         foreach ($this->segments as $seg) {
             if ($seg instanceof MoveTo) {
@@ -187,6 +189,7 @@ class Path
                 $ep = $seg->endPoint();
                 $currentX = $ep[0];
                 $currentY = $ep[1];
+                self::spendVertexBudget($budget);
                 $currentVertices = [[$currentX, $currentY]];
                 $inSubpath = true;
             } elseif ($seg instanceof ClosePath) {
@@ -202,10 +205,11 @@ class Path
                 // Drawing segment: flatten and append vertices
                 if (!$inSubpath) {
                     // Re-open an implicit subpath starting at the current point
+                    self::spendVertexBudget($budget);
                     $currentVertices = [[$currentX, $currentY]];
                     $inSubpath = true;
                 }
-                $vertices = $seg->flatten($currentX, $currentY, $tolerance);
+                $vertices = $seg->flatten($currentX, $currentY, $tolerance, $budget);
                 foreach ($vertices as $v) {
                     $currentVertices[] = $v;
                 }
@@ -221,6 +225,13 @@ class Path
         }
 
         return $subpaths;
+    }
+
+    private static function spendVertexBudget(int &$budget): void
+    {
+        if (--$budget < 0) {
+            throw new \InvalidArgumentException('svg path too complex');
+        }
     }
 
     public static function line(float $x1, float $y1, float $x2, float $y2): self

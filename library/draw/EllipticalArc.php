@@ -14,7 +14,7 @@ class EllipticalArc implements PathSegment
     ) {
     }
 
-    public function flatten(float $startX, float $startY, float $tolerance): array
+    public function flatten(float $startX, float $startY, float $tolerance, int &$budget): array
     {
         // Degenerate: start == end (no-op per SVG spec)
         if ($startX == $this->x && $startY == $this->y) {
@@ -106,7 +106,7 @@ class EllipticalArc implements PathSegment
 
             // Flatten this cubic piece
             $bezier = new CubicBezier($c1x, $c1y, $c2x, $c2y, $c3x, $c3y);
-            $pieceVertices = $bezier->flatten($c0x, $c0y, $tolerance);
+            $pieceVertices = $bezier->flatten($c0x, $c0y, $tolerance, $budget);
             foreach ($pieceVertices as $v) {
                 $result[] = $v;
             }
