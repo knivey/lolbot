@@ -9,6 +9,8 @@ use knivey\cmdr\attributes\Options;
 use knivey\cmdr\attributes\Syntax;
 use draw\IrcPalette;
 
+require_once __DIR__ . '/../library/ImageGuard.php';
+
 #[Cmd("url", "img")]
 #[Syntax('<input>')]
 #[Options("--rainbow", "--rnb", "--bsize", "--width", '--edit')]
@@ -31,6 +33,7 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
     try {
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url);
+        $request->setBodySizeLimit(16 * 1024 * 1024);
 
         /** @var Response $response */
         $response = $client->request($request);
@@ -54,6 +57,7 @@ function url(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cm
             $ext = $type[1] ?? 'jpg'; // /shrug
             $filename = "url_thumb.$ext";
             echo "saving to $filename\n";
+            ImageGuard::guardBody($body, 'image');
             file_put_contents($filename, $body);
             $width = ($config['url_default_width'] ?? 55);
             if($cmdArgs->optEnabled("--width")) {
@@ -164,6 +168,7 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
     try {
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url);
+        $request->setBodySizeLimit(16 * 1024 * 1024);
 
         /** @var Response $response */
         $response = $client->request($request);
@@ -197,6 +202,7 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             $edgeThreshold = (float)$cmdArgs->getOpt("--edges-threshold");
         }
 
+        ImageGuard::guardBody($body, 'image');
         $img = new Imagick();
         $img->readImageBlob($body);
         if($cmdArgs->optEnabled("--gamma")) {
@@ -236,6 +242,9 @@ function ascii(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $
             $targetH = (int)make_even(round($origSize['height'] * $factor));
         else
             $targetH = (int)round($origSize['height'] * $factor / 2);
+        $targetH = min($targetH, 500);
+        if($cmdArgs->optEnabled("--halfblock"))
+            $targetH = (int)make_even($targetH);
 
         $sampleW = $targetW * 8;
         $sampleH = $targetH * 8;

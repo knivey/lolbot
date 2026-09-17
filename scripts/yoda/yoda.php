@@ -9,6 +9,8 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use knivey\cmdr\attributes\Option;
 
+require_once __DIR__ . '/../../library/ImageGuard.php';
+
 #[Cmd("yoda")]
 #[Syntax('<url>...')]
 #[Option("--og", "OG Yoda")]
@@ -22,12 +24,20 @@ function yoda_cmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
     try {
         $client = HttpClientBuilder::buildDefault();
         $request = new Request($url);
+        $request->setBodySizeLimit(16 * 1024 * 1024);
 
         /** @var Response $response */
         $response = $client->request($request);
         $body = $response->getBody()->buffer();
         if ($response->getStatus() != 200) {
             $bot->pm($args->chan, "Server returned {$response->getStatus()}");
+            return;
+        }
+
+        try {
+            ImageGuard::guardBody($body, 'image');
+        } catch (\InvalidArgumentException $e) {
+            $bot->pm($args->chan, $e->getMessage());
             return;
         }
 
@@ -82,6 +92,12 @@ function doubleyoda_cmd(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cm
 
     try {
         $body = async_get_contents($url);
+        try {
+            ImageGuard::guardBody($body, 'image');
+        } catch (\InvalidArgumentException $e) {
+            $bot->pm($args->chan, $e->getMessage());
+            return;
+        }
         $img = new Imagick();
         $img->readImageBlob($body);
         if(!$img->getImageFormat()) {

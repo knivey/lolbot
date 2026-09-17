@@ -25,9 +25,10 @@ class async_get_exception extends Exception {
  * @throws async_get_exception
  * @return string
  */
-function async_get_contents(string $url, array $headers = []): string {
+function async_get_contents(string $url, array $headers = [], int $maxBytes = 16777216): string {
     $client = HttpClientBuilder::buildDefault();
     $request = new Request($url);
+    $request->setBodySizeLimit($maxBytes);
     foreach ($headers as $header => $value)
         $request->setHeader($header, $value);
     try {
