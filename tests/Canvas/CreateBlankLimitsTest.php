@@ -28,7 +28,7 @@ class CreateBlankLimitsTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('canvas too large');
-        Canvas::createBlank(RenderLimits::maxCanvasPixels + 1, 1);
+        Canvas::createBlank((int)(RenderLimits::maxCanvasPixels / 1000) + 1, 1000);
     }
 
     public function test_side_over_cap_throws(): void
