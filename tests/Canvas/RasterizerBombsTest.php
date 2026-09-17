@@ -24,6 +24,17 @@ class RasterizerBombsTest extends TestCase
         $this->assertSame(80, $canvas->w);
     }
 
+    public function test_huge_dash_offset_terminates(): void
+    {
+        $canvas = Canvas::createBlank(80, 40);
+        $path = Path::line(5, 20, 75, 20);
+        $start = hrtime(true);
+        $canvas->drawPath($path, null, new \draw\StrokeStyle(new Color(1, null), dashArray: [0.001, 0.001], dashOffset: INF));
+        $canvas->drawPath($path, null, new \draw\StrokeStyle(new Color(1, null), dashArray: [0.001, 0.001], dashOffset: 1000000));
+        $ms = (hrtime(true) - $start) / 1e6;
+        $this->assertLessThan(5000.0, $ms, 'dash pre-roll must be bounded');
+    }
+
     public function test_normal_fill_unchanged(): void
     {
         $canvas = Canvas::createBlank(20, 20);

@@ -1079,7 +1079,10 @@ class Canvas
 
         $result = [];
         $currentDashVerts = [];
-        $pos = -$stroke->dashOffset;
+        $offset = (is_finite($stroke->dashOffset) && $stroke->dashOffset > 0)
+            ? fmod($stroke->dashOffset, $dashLen)
+            : 0.0;
+        $pos = -$offset;
         $patternIdx = 0;
         $patternPos = 0.0;
         $drawing = true;
