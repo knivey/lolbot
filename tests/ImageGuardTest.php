@@ -31,7 +31,9 @@ class ImageGuardTest extends TestCase
         $body = file_get_contents(__DIR__ . '/fixtures/200x100_blue.png');
         assert(is_string($body));
         \ImageGuard::guardBody($body);
-        $this->assertTrue(true);
+        $ping = \ImageGuard::ping($body);
+        $this->assertFalse(\ImageGuard::oversize($ping));
+        $ping->clear();
     }
 
     public function test_ping_reports_frame_aware_pixels(): void
