@@ -3,6 +3,7 @@
 namespace Tests\Canvas;
 
 use draw\Canvas;
+use draw\Shape;
 use draw\SVGParser;
 use PHPUnit\Framework\TestCase;
 
@@ -42,6 +43,8 @@ class SVGParserClampsTest extends TestCase
     {
         $canvas = $this->render('<path d="M10 20 L70 20" stroke="red" stroke-width="1000000000" fill="none"/>');
         $this->assertSame(80, $canvas->w);
+        $clamped = $this->render('<path d="M10 20 L70 20" stroke="red" stroke-width="500" fill="none"/>');
+        $this->assertSame((string)$clamped, (string)$canvas);
     }
 
     public function test_huge_blur_stddev_renders(): void
@@ -49,17 +52,41 @@ class SVGParserClampsTest extends TestCase
         $canvas = $this->render('<defs><filter id="f"><feGaussianBlur stdDeviation="1e9"/></filter></defs>'
             . '<rect width="30" height="20" fill="red" filter="url(#f)"/>');
         $this->assertSame(80, $canvas->w);
+        $clamped = $this->render('<defs><filter id="f"><feGaussianBlur stdDeviation="100"/></filter></defs>'
+            . '<rect width="30" height="20" fill="red" filter="url(#f)"/>');
+        $this->assertSame((string)$clamped, (string)$canvas);
     }
 
     public function test_huge_font_size_renders(): void
     {
         $canvas = $this->render('<text x="10" y="30" font-size="1e9" fill="red">A</text>');
         $this->assertSame(80, $canvas->w);
+        $clamped = $this->render('<text x="10" y="30" font-size="1000" fill="red">A</text>');
+        $this->assertSame((string)$clamped, (string)$canvas);
+    }
+
+    public function test_huge_tspan_font_size_renders(): void
+    {
+        $canvas = $this->render('<text x="10" y="30" font-size="1e9" fill="red">A<tspan font-size="1e9">B</tspan></text>');
+        $clamped = $this->render('<text x="10" y="30" font-size="1000" fill="red">A<tspan font-size="1000">B</tspan></text>');
+        $this->assertSame((string)$clamped, (string)$canvas);
     }
 
     public function test_huge_dash_pattern_renders(): void
     {
         $canvas = $this->render('<path d="M5 20 L75 20" stroke="red" fill="none" stroke-dasharray="0.001 0.001"/>');
         $this->assertSame(80, $canvas->w);
+    }
+
+    public function test_dash_pattern_entries_sliced_to_cap(): void
+    {
+        $many = trim(str_repeat('2 2 ', 100));
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40">'
+            . '<path d="M5 20 L75 20" stroke="red" fill="none" stroke-dasharray="' . $many . '"/></svg>';
+        $doc = SVGParser::parseString($svg);
+        $shape = $doc->getRoot()->getChildren()[0];
+        $this->assertInstanceOf(Shape::class, $shape);
+        $this->assertNotNull($shape->stroke);
+        $this->assertCount(16, $shape->stroke->dashArray);
     }
 }
