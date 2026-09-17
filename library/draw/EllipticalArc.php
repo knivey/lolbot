@@ -23,6 +23,9 @@ class EllipticalArc implements PathSegment
 
         // Degenerate: zero radii → straight line
         if ($this->rx == 0.0 || $this->ry == 0.0) {
+            if (--$budget < 0) {
+                throw new \InvalidArgumentException('svg path too complex');
+            }
             return [[$this->x, $this->y]];
         }
 
