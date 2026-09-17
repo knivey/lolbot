@@ -23,11 +23,11 @@ class SvgComputeRenderSizeTest extends TestCase
         svgComputeRenderSize(0.001, 1000000000.0, 0, 0, 0, false);
     }
 
-    public function test_width_option_clamped_to_1000(): void
+    public function test_width_option_clamped_to_500(): void
     {
         [$w, $h] = svgComputeRenderSize(100.0, 100.0, 50000, 0, 0, false);
-        $this->assertSame(1000, $w);
-        $this->assertSame(1000, $h);
+        $this->assertSame(500, $w);
+        $this->assertSame(500, $h);
     }
 
     public function test_supersample_bomb_throws(): void

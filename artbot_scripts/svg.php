@@ -13,7 +13,7 @@ use knivey\cmdr\attributes\Syntax;
 
 function svgClampUserWidth(int $w): int
 {
-    return max(0, min($w, 1000));
+    return max(0, min($w, 500));
 }
 
 function svgClampUserHeight(int $h): int

@@ -9,8 +9,8 @@ namespace draw;
  */
 final class RenderLimits
 {
-    //total canvas pixels (Pixel objects cost ~150 bytes each; 1M ≈ 150-200MB worst case)
-    public const maxCanvasPixels = 1000000;
+    //total canvas pixels (measured ~230 bytes/pixel incl. per-row arrays; 500k ≈ 115MB worst case)
+    public const maxCanvasPixels = 500000;
 
     //per-dimension sanity bound
     public const maxCanvasSide = 100000;

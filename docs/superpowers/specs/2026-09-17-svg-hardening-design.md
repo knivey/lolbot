@@ -85,7 +85,7 @@ Final class, public constants, used by parser, rasterizer, and entry scripts:
 
 | Constant | Value | Rationale |
 |---|---|---|
-| `maxCanvasPixels` | 4,000,000 | Legit art ≤200px wide; Pixel ≈100B each → ~400MB worst case |
+| `maxCanvasPixels` | 500,000 | Legit art ≤200px wide; Pixel ≈100B each → ~400MB worst case |
 | `maxCanvasSide` | 100,000 | Sanity bound per dimension |
 | `maxParseDepth` | 200 | XML nesting deeper than this is hostile |
 | `maxElements` | 100,000 | Total parsed nodes per document |
@@ -96,6 +96,8 @@ Final class, public constants, used by parser, rasterizer, and entry scripts:
 | `maxDashCount` | 10,000 | Total dashes per stroke, clamp |
 | `maxArcSteps` | 5,000 | Per-join arc point cap, clamp |
 | `maxCoordMagnitude` | 10,000,000 | Coordinate clamp at `drawPath` |
+
+> Escalated during implementation: 4M → 1M → 500k after measuring ~230 bytes/pixel real allocation cost (legal-cap canvases fatals under stock 128M CLI limits).
 
 ### 2. Allocation guards (vector 1)
 
