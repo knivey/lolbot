@@ -49,6 +49,12 @@ class Canvas
      */
     public static function createBlank(int $w, int $h, bool $halfblocks = false): Canvas
     {
+        if ($w <= 0 || $h <= 0
+            || $w * $h > RenderLimits::maxCanvasPixels
+            || $w > RenderLimits::maxCanvasSide
+            || $h > RenderLimits::maxCanvasSide) {
+            throw new \InvalidArgumentException("canvas too large {$w}x{$h}");
+        }
         $new = new self($halfblocks);
         //lol all pixels were same instance
         //$new->canvas = array_fill(0, $h, array_fill(0, $w, new Pixel()));
