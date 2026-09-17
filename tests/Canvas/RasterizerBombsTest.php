@@ -21,7 +21,15 @@ class RasterizerBombsTest extends TestCase
         $canvas->drawPath($path, new Color(1, null), null);
         $ms = (hrtime(true) - $start) / 1e6;
         $this->assertLessThan(5000.0, $ms, 'scanline fill should be bounded by canvas size');
-        $this->assertSame(80, $canvas->w);
+        $painted = 0;
+        for ($y = 0; $y < 40; $y++) {
+            for ($x = 0; $x < 80; $x++) {
+                if ($canvas->data[$y][$x]->fg !== null) {
+                    $painted++;
+                }
+            }
+        }
+        $this->assertGreaterThan(700, $painted, 'huge triangle should still paint its canvas intersection');
     }
 
     public function test_huge_dash_offset_terminates(): void
