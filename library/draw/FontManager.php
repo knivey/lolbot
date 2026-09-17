@@ -4,6 +4,8 @@ namespace draw;
 
 class FontManager
 {
+    private const MAX_PATH_CACHE = 128;
+
     private static ?FontFile $defaultFont = null;
 
     /** @var array<string, FontFile> */
@@ -49,6 +51,10 @@ class FontManager
 
         if (array_key_exists($cacheKey, self::$pathCache)) {
             return self::$pathCache[$cacheKey];
+        }
+
+        if (count(self::$pathCache) >= self::MAX_PATH_CACHE) {
+            return null;
         }
 
         $pattern = $fontFamily;
