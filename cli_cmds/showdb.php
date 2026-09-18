@@ -11,6 +11,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use lolbot\entities\ApiKey;
 use lolbot\entities\Bot;
 use lolbot\entities\Ignore;
 use lolbot\entities\Network;
@@ -60,6 +61,12 @@ class showdb extends Command
             foreach ($ignore->getNetworks() as $network)
                 echo $network->id . ", ";
             echo "\n";
+        }
+
+        echo "\napi keys:\n";
+        $keys = $entityManager->getRepository(ApiKey::class)->findAll();
+        foreach ($keys as $apiKey) {
+            echo "  " . $apiKey . "\n";
         }
     }
 }

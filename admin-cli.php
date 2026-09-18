@@ -33,6 +33,9 @@ $application->add(new cli_cmds\ignore_del());
 $application->add(new cli_cmds\ignore_list());
 $application->add(new cli_cmds\ignore_addnetwork());
 $application->add(new cli_cmds\ignore_test());
+$application->add(new cli_cmds\apikey_add());
+$application->add(new cli_cmds\apikey_del());
+$application->add(new cli_cmds\apikey_list());
 
 $application->add(new cli_cmds\bot_add());
 $application->add(new cli_cmds\bot_del());
