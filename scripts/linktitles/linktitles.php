@@ -17,14 +17,6 @@ use lolbot\entities\AiServiceConfig;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
 use scripts\script_base;
-use Amp\TimeoutCancellation;
-use Knivey\OpenAi\HttpClient as OpenAiHttpClient;
-use Knivey\OpenAi\OpenAiClient;
-use Knivey\OpenAi\Request\ChatRequest;
-use Knivey\OpenAi\Request\Message;
-use Knivey\OpenAi\Request\Reasoning;
-use Knivey\OpenAi\Request\Content\TextPart;
-use Knivey\OpenAi\Request\Content\ImagePart;
 
 use function Amp\Future\awaitAll;
 
@@ -74,10 +66,6 @@ class linktitles extends script_base
      * @var array<string, string>
      */
     private array $link_history = [];
-    /**
-     * @var array<string, string>
-     */
-    private static array $ai_desc_cache = [];
     private static LocalCache $httpCache;
     /**
      * @var array<string, list<int>>
@@ -239,113 +227,27 @@ class linktitles extends script_base
             $this->channelEntityForChan($chan),
         );
 
-        try {
-            $maxDim = $ai->maxDim;
-            $quality = $ai->jpgQuality;
-
-            $resizeStart = hrtime(true);
-            $img = new \Imagick();
-            try {
-                //pingImageBlob reads headers only, catches decompression bombs in formats
-                //getimagesizefromstring can't parse before the full decode happens
-                $ping = new \Imagick();
-                try {
-                    $ping->pingImageBlob($body);
-                    $pingW = $ping->getImageWidth();
-                    $pingH = $ping->getImageHeight();
-                    //multi-frame images decode every frame, so frame count multiplies the cost
-                    $pingFrames = max(1, $ping->getNumberImages());
-                } finally {
-                    $ping->clear();
-                }
-                if ($pingW * $pingH * $pingFrames > self::maxAiPixels) {
-                    $profile .= " ai_skipped=image_too_large {$pingW}x{$pingH}x{$pingFrames}f";
-                    $this->logger->info("AI vision skipped oversize image {$pingW}x{$pingH} {$pingFrames} frames for {$url}");
-                    return null;
-                }
-                $img->readImageBlob($body);
-                $origW = $img->getImageWidth();
-                $origH = $img->getImageHeight();
-                if ($origW * $origH * max(1, $img->getNumberImages()) > self::maxAiPixels) {
-                    $profile .= " ai_skipped=image_too_large {$origW}x{$origH}";
-                    $this->logger->info("AI vision skipped oversize image {$origW}x{$origH} for {$url}");
-                    return null;
-                }
-                if ($origW > $maxDim || $origH > $maxDim) {
-                    $img->thumbnailImage($maxDim, $maxDim, true);
-                }
-                $img->setImageFormat('jpeg');
-                $img->setImageCompressionQuality($quality);
-                $newW = $img->getImageWidth();
-                $newH = $img->getImageHeight();
-                $base64 = base64_encode($img->getImageBlob());
-            } finally {
-                $img->clear();
+        $result = (new ImageDescriber($this->logger))->describe($body, $ai, $resolved);
+        $profile .= $result->profile;
+        if ($result->error !== null) {
+            if ($result->error === DescribeResult::TOO_LARGE) {
+                $profile .= " ai_skipped=image_too_large {$result->errorDetail}";
+                $this->logger->info("AI vision skipped oversize image {$result->errorDetail} for {$url}");
+            } elseif ($result->error === DescribeResult::EMPTY) {
+                $profile .= " total=" . self::formatDuration($dlMs + $result->workMs);
+            } else {
+                $profile .= " ai_error={$result->errorDetail}";
+                $this->logger->warning("AI vision description failed: " . $result->errorDetail);
             }
-            $resizeMs = (hrtime(true) - $resizeStart) / 1e6;
-            $profile .= " resize=" . self::formatDuration($resizeMs) . " {$origW}x{$origH}->{$newW}x{$newH} " . \knivey\tools\convert(strlen($body)) . "->" . \knivey\tools\convert((int)(strlen($base64) * 3 / 4));
-
-            $aiStart = hrtime(true);
-            $ampClient = HttpClientBuilder::buildDefault();
-            $timeout = $ai->timeout;
-            $openAiHttp = new OpenAiHttpClient($ai->apiKey, $ampClient, new TimeoutCancellation($timeout));
-            $aiClient = new OpenAiClient(
-                apiKey: $ai->apiKey,
-                baseUrl: $ai->baseUrl ?? 'https://api.openai.com/v1',
-                httpClient: $openAiHttp,
-            );
-
-            $prompt = $resolved->aiVisionPrompt;
-            $model = $resolved->aiVisionModel;
-            $reasoningConfig = $resolved->aiVisionReasoning;
-            $reasoningEffort = $resolved->aiVisionReasoningEffort;
-
-            $reasoning = null;
-            if ($reasoningConfig !== null) {
-                $effortVal = $reasoningConfig['effort'] ?? null;
-                $maxTokensVal = $reasoningConfig['max_tokens'] ?? null;
-                $reasoning = new Reasoning(
-                    effort: is_string($effortVal) ? $effortVal : null,
-                    maxTokens: is_int($maxTokensVal) ? $maxTokensVal : null,
-                    exclude: isset($reasoningConfig['exclude']) ? (bool)$reasoningConfig['exclude'] : null,
-                    enabled: isset($reasoningConfig['enabled']) ? (bool)$reasoningConfig['enabled'] : null,
-                );
-            } elseif ($reasoningEffort !== null) {
-                $reasoning = Reasoning::effort($reasoningEffort);
-            }
-
-            $response = $aiClient->chatCompletion(new ChatRequest(
-                model: $model,
-                messages: [
-                    Message::system($prompt),
-                    Message::user([
-                        new TextPart('describe this image'),
-                        ImagePart::base64($base64, 'image/jpeg'),
-                    ]),
-                ],
-                reasoning: $reasoning,
-            ));
-            $aiMs = (hrtime(true) - $aiStart) / 1e6;
-            $profile .= " ai($model)=" . self::formatDuration($aiMs);
-
-            $description = $response->choices[0]->message->content ?? null;
-            if ($description === null || trim($description) === '') {
-                $profile .= " total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
-                return null;
-            }
-            $description = trim($description);
-            $description = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F]/', '', $description);
-            if (mb_strwidth($description) > 200) {
-                $description = mb_strimwidth($description, 0, 197, '...');
-            }
-            self::$ai_desc_cache[$url] = $description;
-            $profile .= " total=" . self::formatDuration($dlMs + $resizeMs + $aiMs);
-            return $description;
-        } catch (\Exception $e) {
-            $profile .= " ai_error=" . $e->getMessage();
-            $this->logger->warning("AI vision description failed: " . $e->getMessage());
             return null;
         }
+        $description = $result->description ?? '';
+        if (mb_strwidth($description) > 200) {
+            $description = mb_strimwidth($description, 0, 197, '...');
+        }
+        ImageDescriber::$descCache[$url] = $description;
+        $profile .= " total=" . self::formatDuration($dlMs + $result->workMs);
+        return $description;
     }
 
     public function formatImageResponse(string $body, string $contentType, ?string $contentLength, string $chan, string $url = '', float $dlMs = 0.0, string $dlProfile = ''): string
@@ -369,7 +271,7 @@ class linktitles extends script_base
         if ($oversize) {
             $profile .= " ai_skipped=image_too_large {$d[0]}x{$d[1]}";
         }
-        $aiDesc = ($oversize || $this->isAiVisionDisabled($chan)) ? null : (self::$ai_desc_cache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $chan, $profile, $dlMs));
+        $aiDesc = ($oversize || $this->isAiVisionDisabled($chan)) ? null : (ImageDescriber::$descCache[$cacheKey] ?? $this->getAiDescription($body, $cacheKey, $chan, $profile, $dlMs));
         $this->logger->info("linktitles profile [$url] [image] $profile");
         if ($aiDesc !== null) {
             $out = "$m[1] image $size" . ($d ? " $d[0]x$d[1]" : "") . " — $aiDesc";
@@ -483,7 +385,7 @@ class linktitles extends script_base
         return IgnoreMatcher::isIgnored($entityManager, $this->network, $this->bot, $fullhost, $url);
     }
 
-    private static function formatDuration(float $ms): string
+    public static function formatDuration(float $ms): string
     {
         if ($ms < 1) {
             return round($ms * 1000) . 'µs';
