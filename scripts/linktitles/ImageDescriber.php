@@ -45,20 +45,27 @@ class ImageDescriber
             try {
                 //pingImageBlob reads headers only, catches decompression bombs in formats
                 //getimagesizefromstring can't parse before the full decode happens
-                $ping = new \Imagick();
                 try {
-                    $ping->pingImageBlob($body);
-                    $pingW = $ping->getImageWidth();
-                    $pingH = $ping->getImageHeight();
-                    //multi-frame images decode every frame, so frame count multiplies the cost
-                    $pingFrames = max(1, $ping->getNumberImages());
-                } finally {
-                    $ping->clear();
+                    $ping = new \Imagick();
+                    try {
+                        $ping->pingImageBlob($body);
+                        $pingW = $ping->getImageWidth();
+                        $pingH = $ping->getImageHeight();
+                        //multi-frame images decode every frame, so frame count multiplies the cost
+                        $pingFrames = max(1, $ping->getNumberImages());
+                    } finally {
+                        $ping->clear();
+                    }
+                    if ($pingW * $pingH * $pingFrames > linktitles::maxAiPixels) {
+                        return new DescribeResult(null, DescribeResult::TOO_LARGE, "{$pingW}x{$pingH}x{$pingFrames}f", $profile);
+                    }
+                    $img->readImageBlob($body);
+                } catch (\Exception $e) {
+                    //undecodable = the submitted bytes are not a decodable image;
+                    //decode/resize/encode failures below fall through to the outer
+                    //catch as UPSTREAM instead
+                    return new DescribeResult(null, DescribeResult::UNDECODABLE, $e->getMessage(), $profile);
                 }
-                if ($pingW * $pingH * $pingFrames > linktitles::maxAiPixels) {
-                    return new DescribeResult(null, DescribeResult::TOO_LARGE, "{$pingW}x{$pingH}x{$pingFrames}f", $profile);
-                }
-                $img->readImageBlob($body);
                 $origW = $img->getImageWidth();
                 $origH = $img->getImageHeight();
                 if ($origW * $origH * max(1, $img->getNumberImages()) > linktitles::maxAiPixels) {
@@ -72,8 +79,6 @@ class ImageDescriber
                 $newW = $img->getImageWidth();
                 $newH = $img->getImageHeight();
                 $base64 = base64_encode($img->getImageBlob());
-            } catch (\Exception $e) {
-                return new DescribeResult(null, DescribeResult::UNDECODABLE, $e->getMessage(), $profile);
             } finally {
                 $img->clear();
             }
@@ -140,7 +145,7 @@ class ImageDescriber
                 return new DescribeResult(null, DescribeResult::UPSTREAM, $e->getMessage(), $profile);
             }
         } catch (\Exception $e) {
-            // Beyond the classified zones above (should be unreachable).
+            // Resize/encode failures and Imagick constructor/clear failures land here.
             $this->logger->debug('ImageDescriber unclassified failure: ' . $e->getMessage());
             return new DescribeResult(null, DescribeResult::UPSTREAM, $e->getMessage(), $profile);
         }
