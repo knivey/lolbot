@@ -24,10 +24,12 @@ class apikey_del extends Command
         $svc = new \lolbot\config\ConfigService($entityManager, \lolbot\config\build_change_notifier());
 
         $id = $input->getArgument('id');
-        $idInt = is_string($id) ? (int)$id : 0;
-        $apiKey = $svc->getApiKey($idInt);
+        if (!is_string($id)) {
+            throw new \LogicException("'id' argument must be a string");
+        }
+        $apiKey = $svc->getApiKey((int)$id);
         if ($apiKey === null) {
-            throw new \InvalidArgumentException("Couldn't find that API key ID ($idInt)");
+            throw new \InvalidArgumentException("Couldn't find that API key ID ($id)");
         }
         $svc->deleteApiKey($apiKey);
 
