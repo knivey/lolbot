@@ -4,6 +4,7 @@ namespace lolbot\config;
 
 use Doctrine\ORM\EntityManager;
 use lolbot\entities\AiServiceConfig;
+use lolbot\entities\ApiKey;
 use lolbot\entities\Bot;
 use lolbot\entities\Channel;
 use lolbot\entities\Ignore;
@@ -242,6 +243,56 @@ class ConfigService
         $this->em->remove($ignore);
         $this->em->flush();
         $this->notifier->notify(new ConfigChange('ignore', $id, 'delete'));
+    }
+
+    // ---------------- API keys ----------------
+
+    /**
+     * @param list<string> $scopes
+     */
+    public function addApiKey(string $key, ?string $label, array $scopes): ApiKey
+    {
+        $key = trim($key);
+        if ($key === '') {
+            throw new InvalidSettingException("Key required");
+        }
+        foreach ($scopes as $scope) {
+            if (!in_array($scope, ApiKey::SCOPES, true)) {
+                throw new InvalidSettingException("Unknown scope '$scope' (known: " . implode(', ', ApiKey::SCOPES) . ")");
+            }
+        }
+        if ($this->em->getRepository(ApiKey::class)->findOneBy(['key' => $key]) !== null) {
+            throw new DuplicateNameException("Key already exists");
+        }
+        $apiKey = new ApiKey();
+        $apiKey->key = $key;
+        if ($label !== null) {
+            $apiKey->label = $label;
+        }
+        $apiKey->scopes = $scopes;
+        $this->em->persist($apiKey);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('api_key', $apiKey->id, 'create'));
+        return $apiKey;
+    }
+
+    public function getApiKey(int $id): ?ApiKey
+    {
+        return $this->em->getRepository(ApiKey::class)->find($id);
+    }
+
+    /** @return list<ApiKey> */
+    public function listApiKeys(): array
+    {
+        return $this->em->getRepository(ApiKey::class)->findAll();
+    }
+
+    public function deleteApiKey(ApiKey $apiKey): void
+    {
+        $id = $apiKey->id;
+        $this->em->remove($apiKey);
+        $this->em->flush();
+        $this->notifier->notify(new ConfigChange('api_key', $id, 'delete'));
     }
 
     // ---------------- Linktitles ignores ----------------
