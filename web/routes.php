@@ -7,6 +7,7 @@ require_once __DIR__ . '/sections/networks.php';
 require_once __DIR__ . '/sections/ignores.php';
 require_once __DIR__ . '/sections/services.php';
 require_once __DIR__ . '/sections/linktitles.php';
+require_once __DIR__ . '/sections/apikeys.php';
 
 function web_dispatch(string $method, string $path): void
 {
@@ -120,6 +121,16 @@ function web_dispatch(string $method, string $path): void
     }
     if ($method === 'POST' && preg_match('#^/ignores/(\d+)/delete$#', $path, $m)) {
         web_ignores_delete((int)$m[1]);
+    }
+
+    if ($method === 'GET' && $path === '/apikeys') {
+        web_apikeys_list();
+    }
+    if ($method === 'POST' && $path === '/apikeys') {
+        web_apikeys_create();
+    }
+    if ($method === 'POST' && preg_match('#^/apikeys/(\d+)/delete$#', $path, $m)) {
+        web_apikeys_delete((int)$m[1]);
     }
 
     if ($method === 'GET' && $path === '/services') {
