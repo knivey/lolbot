@@ -21,7 +21,7 @@ final class Version20260918120000 extends AbstractMigration
         $t->addColumn("id", Types::INTEGER)->setNotnull(true)->setAutoincrement(true);
         $t->setPrimaryKey(["id"]);
         $t->addColumn("key", Types::STRING)->setLength(64)->setNotnull(true);
-        $t->addUniqueIndex(["key"]);
+        $t->addUniqueIndex(["key"], "api_keys_key_uniq");
         $t->addColumn("label", Types::STRING)->setLength(64)->setNotnull(false);
         $t->addColumn("scopes", Types::JSON)->setNotnull(true);
         $t->addColumn("created", Types::DATETIME_IMMUTABLE)->setNotnull(true);
