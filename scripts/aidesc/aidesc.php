@@ -47,11 +47,6 @@ function aidesc_register(Router $router, \Psr\Log\LoggerInterface $logger): void
             return new Response(HttpStatus::BAD_REQUEST, ['content-type' => 'text/plain'], "Empty body");
         }
 
-        $ai = (new ServiceLocator($entityManager))->getServiceConfig('ai');
-        if (!$ai instanceof AiServiceConfig || $ai->apiKey === null || $ai->apiKey === '') {
-            return new Response(HttpStatus::SERVICE_UNAVAILABLE, ['content-type' => 'text/plain'], "AI service not configured");
-        }
-
         // Identical resubmits hit the shared in-process cache, keyed by content.
         $cacheKey = 'sha256:' . hash('sha256', $body);
         if (isset(ImageDescriber::$descCache[$cacheKey])) {
@@ -59,10 +54,15 @@ function aidesc_register(Router $router, \Psr\Log\LoggerInterface $logger): void
         }
 
         try {
+            $ai = (new ServiceLocator($entityManager))->getServiceConfig('ai');
+            if (!$ai instanceof AiServiceConfig || $ai->apiKey === null || $ai->apiKey === '') {
+                return new Response(HttpStatus::SERVICE_UNAVAILABLE, ['content-type' => 'text/plain'], "AI service not configured");
+            }
+
             $settings = (new SettingsResolver($entityManager))->resolveGlobalLinktitles();
             $result = (new ImageDescriber($logger))->describe($body, $ai, $settings);
         } catch (\Throwable $e) {
-            // e.g. a manually-deleted settings row makes the resolver's refresh throw;
+            // e.g. a manually-deleted ai/settings row makes an entity refresh throw;
             // surface as 500 rather than killing the handler.
             return new Response(HttpStatus::INTERNAL_SERVER_ERROR, ['content-type' => 'text/plain'], "Internal error");
         }
