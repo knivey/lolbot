@@ -42,8 +42,18 @@ class ConfigServiceApiKeyTest extends ConfigTestCase
     public function test_add_duplicate_key_throws(): void
     {
         $this->svc->addApiKey('sitekey', null, ['aidesc']);
-        $this->expectException(DuplicateNameException::class);
-        $this->svc->addApiKey('sitekey', null, ['aidesc']);
+        try {
+            $this->svc->addApiKey('sitekey', null, ['aidesc']);
+            $this->fail("Expected DuplicateNameException for exact key");
+        } catch (DuplicateNameException $e) {
+            $this->addToAssertionCount(1);
+        }
+        try {
+            $this->svc->addApiKey(' sitekey ', null, ['aidesc']);
+            $this->fail("Expected DuplicateNameException for ' sitekey ' after trim");
+        } catch (DuplicateNameException $e) {
+            $this->addToAssertionCount(1);
+        }
     }
 
     public function test_add_unknown_scope_throws(): void

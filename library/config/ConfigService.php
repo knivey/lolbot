@@ -256,10 +256,16 @@ class ConfigService
         if ($key === '') {
             throw new InvalidSettingException("Key required");
         }
+        if (strlen($key) > 64) {
+            throw new InvalidSettingException("Key too long (max 64)");
+        }
         foreach ($scopes as $scope) {
             if (!in_array($scope, ApiKey::SCOPES, true)) {
                 throw new InvalidSettingException("Unknown scope '$scope' (known: " . implode(', ', ApiKey::SCOPES) . ")");
             }
+        }
+        if (count($scopes) === 0) {
+            throw new InvalidSettingException("At least one scope required (" . implode(', ', ApiKey::SCOPES) . ")");
         }
         if ($this->em->getRepository(ApiKey::class)->findOneBy(['key' => $key]) !== null) {
             throw new DuplicateNameException("Key already exists");
