@@ -52,6 +52,7 @@ function makeRepliers(\Irc\Event\ChatEvent $args, \Irc\Client $bot, string $pref
 require_once 'library/Duration.inc';
 
 require_once 'scripts/notifier/notifier.php';
+require_once 'scripts/aidesc/aidesc.php';
 
 //require_once 'scripts/bing/bing.php';
 require_once 'scripts/brave/brave.php';
@@ -234,6 +235,11 @@ function main(): void {
         // Scripts register their routes on the shared server. (Defined in Task 6.)
         if (function_exists('\\scripts\\notifier\\notifier_register')) {
             \scripts\notifier\notifier_register($router, $mgr);
+        }
+
+        // AI image description endpoint (scripts/aidesc).
+        if (function_exists('\\scripts\\aidesc\\aidesc_register')) {
+            \scripts\aidesc\aidesc_register($router, $logger);
         }
 
         $server->start($router, new \Amp\Http\Server\DefaultErrorHandler());
