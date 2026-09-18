@@ -71,6 +71,23 @@ class SettingsResolver
     public function resolveLinktitles(Network $network, ?Channel $channel): LinktitlesResolved
     {
         [$channelRow, $networkRow, $globalRow] = $this->linktitlesTiers($network, $channel);
+        return $this->resolveFromTiers($channelRow, $networkRow, $globalRow);
+    }
+
+    /**
+     * Resolve with only the global tier (no network/channel overrides) — for
+     * bot-wide consumers like the POST /aidesc REST endpoint.
+     */
+    public function resolveGlobalLinktitles(): LinktitlesResolved
+    {
+        return $this->resolveFromTiers(null, null, $this->globalLinktitlesSetting());
+    }
+
+    private function resolveFromTiers(
+        ?linktitles_setting $channelRow,
+        ?linktitles_setting $networkRow,
+        ?linktitles_setting $globalRow,
+    ): LinktitlesResolved {
         $sources = [];
 
         [$enabled, $sources['enabled']] = $this->pick(
