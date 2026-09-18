@@ -37,6 +37,9 @@ class ConfigServiceApiKeyTest extends ConfigTestCase
         $this->assertSame('image upload site', $key->label);
         $this->assertSame(['aidesc'], $key->scopes);
         $this->assertTrue($key->hasScope('aidesc'));
+
+        $dup = $this->svc->addApiKey('dedupe', null, ['aidesc', 'aidesc']);
+        $this->assertSame(['aidesc'], $dup->scopes);
     }
 
     public function test_add_duplicate_key_throws(): void

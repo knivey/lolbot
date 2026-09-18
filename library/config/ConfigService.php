@@ -264,6 +264,7 @@ class ConfigService
                 throw new InvalidSettingException("Unknown scope '$scope' (known: " . implode(', ', ApiKey::SCOPES) . ")");
             }
         }
+        $scopes = array_values(array_unique($scopes));
         if (count($scopes) === 0) {
             throw new InvalidSettingException("At least one scope required (" . implode(', ', ApiKey::SCOPES) . ")");
         }
