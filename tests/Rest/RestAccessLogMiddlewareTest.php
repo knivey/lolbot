@@ -91,4 +91,18 @@ class RestAccessLogMiddlewareTest extends TestCase
         $this->assertCount(1, $this->logs);
         $this->assertStringNotContainsString('s3cr3tkey', $this->logs[0][1]);
     }
+
+    public function test_throwing_logger_does_not_break_the_response(): void
+    {
+        $logger = $this->createStub(\Psr\Log\LoggerInterface::class);
+        $logger->method('log')->willThrowException(new \RuntimeException('disk full'));
+        $middleware = new \library\RestAccessLogMiddleware($logger);
+
+        $handler = $this->createStub(RequestHandler::class);
+        $handler->method('handleRequest')->willReturn(new Response(200));
+
+        $response = $middleware->handleRequest($this->makeRequest(), $handler);
+
+        $this->assertSame(200, $response->getStatus());
+    }
 }

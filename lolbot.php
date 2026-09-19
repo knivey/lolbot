@@ -169,6 +169,9 @@ function main(): void {
             try {
                 // LineFormatter with default settings collapses embedded newlines,
                 // which keeps crafted request targets from forging log lines.
+                // Level names parsed here instead of Logger::toMonologLevel()
+                // so a typo'd restlog_level falls back to INFO instead of
+                // throwing and disabling the file log.
                 $restLevel = match (strtoupper(trim((string)($config['restlog_level'] ?? 'INFO')))) {
                     'DEBUG' => \Monolog\Logger::DEBUG,
                     'INFO' => \Monolog\Logger::INFO,
@@ -180,15 +183,23 @@ function main(): void {
                     'EMERGENCY' => \Monolog\Logger::EMERGENCY,
                     default => \Monolog\Logger::INFO,
                 };
+                $restLogDays = (int)($config['restlog_days'] ?? 14);
+                if ($restLogDays <= 0) {
+                    $restLogDays = 14;
+                }
                 $restFileHandler = new \Monolog\Handler\RotatingFileHandler(
                     $restLogPath,
-                    (int)($config['restlog_days'] ?? 14),
+                    $restLogDays,
                     $restLevel,
                 );
                 $restFileHandler->setFormatter(new \Monolog\Formatter\LineFormatter());
                 $logger->pushHandler($restFileHandler);
+                // Stream handlers open lazily on first write; probe now so an
+                // unwritable path is caught here instead of inside server start.
+                $logger->info("REST log started");
             } catch (\Throwable $e) {
                 // A log file is not worth killing the bot over; continue stdout-only.
+                $logger->popHandler();
                 echo "REST log disabled ({$restLogPath}): " . $e->getMessage() . "\n";
             }
         }

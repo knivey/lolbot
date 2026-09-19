@@ -32,27 +32,35 @@ final class RestAccessLogMiddleware implements Middleware
             $response = $requestHandler->handleRequest($request);
         } catch (ClientException $e) {
             // Client vanished mid-request; mirrors Amp's AccessLoggerMiddleware.
-            $this->logger->log(LogLevel::WARNING, \sprintf(
-                'Client exception for "%s %s" from %s: %s',
-                $method,
-                $uri,
-                $remote,
-                $e->getMessage(),
-            ));
+            try {
+                $this->logger->log(LogLevel::WARNING, \sprintf(
+                    'Client exception for "%s %s" from %s: %s',
+                    $method,
+                    $uri,
+                    $remote,
+                    $e->getMessage(),
+                ));
+            } catch (\Throwable) {
+                // A failing log sink must never break the request; stdout still logs.
+            }
             throw $e;
         }
 
         $ms = (hrtime(true) - $start) / 1e6;
         $status = $response->getStatus();
         $level = $status >= 500 ? LogLevel::WARNING : LogLevel::INFO;
-        $this->logger->log($level, \sprintf(
-            '"%s %s" %d %s from %s',
-            $method,
-            $uri,
-            $status,
-            self::formatDuration($ms),
-            $remote,
-        ));
+        try {
+            $this->logger->log($level, \sprintf(
+                '"%s %s" %d %s from %s',
+                $method,
+                $uri,
+                $status,
+                self::formatDuration($ms),
+                $remote,
+            ));
+        } catch (\Throwable) {
+            // A failing log sink must never break the request; stdout still logs.
+        }
         return $response;
     }
 
