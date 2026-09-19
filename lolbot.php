@@ -10,6 +10,8 @@ use Amp\Log\StreamHandler;
 use function Amp\async;
 use lolbot\entities\Network;
 use Monolog\Logger;
+use library\RestAccessLogMiddleware;
+use function Amp\Http\Server\Middleware\stackMiddleware;
 use knivey\cmdr\Cmdr;
 use Crell\Tukio\Dispatcher;
 use Crell\Tukio\OrderedListenerProvider;
@@ -157,6 +159,39 @@ function main(): void {
     if (isset($config['listen'])) {
         $logger = new Logger("control");
         $logger->pushHandler($logHandler);
+        // REST log file: daily rotation, control-server output only.
+        $restLogPath = trim((string)($config['restlog_path'] ?? 'logs/rest.log'));
+        if ($restLogPath !== '') {
+            $restLogDir = dirname($restLogPath);
+            if (!is_dir($restLogDir)) {
+                @mkdir($restLogDir, 0775, true);
+            }
+            try {
+                // LineFormatter with default settings collapses embedded newlines,
+                // which keeps crafted request targets from forging log lines.
+                $restLevel = match (strtoupper(trim((string)($config['restlog_level'] ?? 'INFO')))) {
+                    'DEBUG' => \Monolog\Logger::DEBUG,
+                    'INFO' => \Monolog\Logger::INFO,
+                    'NOTICE' => \Monolog\Logger::NOTICE,
+                    'WARNING' => \Monolog\Logger::WARNING,
+                    'ERROR' => \Monolog\Logger::ERROR,
+                    'CRITICAL' => \Monolog\Logger::CRITICAL,
+                    'ALERT' => \Monolog\Logger::ALERT,
+                    'EMERGENCY' => \Monolog\Logger::EMERGENCY,
+                    default => \Monolog\Logger::INFO,
+                };
+                $restFileHandler = new \Monolog\Handler\RotatingFileHandler(
+                    $restLogPath,
+                    (int)($config['restlog_days'] ?? 14),
+                    $restLevel,
+                );
+                $restFileHandler->setFormatter(new \Monolog\Formatter\LineFormatter());
+                $logger->pushHandler($restFileHandler);
+            } catch (\Throwable $e) {
+                // A log file is not worth killing the bot over; continue stdout-only.
+                echo "REST log disabled ({$restLogPath}): " . $e->getMessage() . "\n";
+            }
+        }
         $server = \Amp\Http\Server\SocketHttpServer::createForDirectAccess($logger);
         $server->expose($config['listen']);
         $router = new \Amp\Http\Server\Router($server, $logger, new \Amp\Http\Server\DefaultErrorHandler());
@@ -242,7 +277,12 @@ function main(): void {
             \scripts\aidesc\aidesc_register($router, $logger);
         }
 
-        $server->start($router, new \Amp\Http\Server\DefaultErrorHandler());
+        // Access log wraps the whole router so 404s are logged too
+        // (Router::addMiddleware would only cover matched routes).
+        $server->start(
+            stackMiddleware($router, new RestAccessLogMiddleware($logger)),
+            new \Amp\Http\Server\DefaultErrorHandler()
+        );
     }
 
     EventLoop::onSignal(SIGINT, function () use ($mgr, $server): void {

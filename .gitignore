@@ -13,6 +13,7 @@ composer-dev.lock
 /composer.phar
 /.phplint-cache
 *.db
+logs/
 
 AGENTS.md
 opencode.json

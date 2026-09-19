@@ -25,6 +25,11 @@ bots:
 # config changes to it (POST /_control/apply) using `control_key`.
 listen: "127.0.0.1:1339"
 control_key: "change-me"
+# REST server log file (daily rotation). restlog_path is the base name; the
+# handler writes <path without extension>-YYYY-MM-DD.log. Empty disables.
+#restlog_path: "logs/rest.log"
+#restlog_days: 14
+#restlog_level: "INFO"
 # Web control panel (Sub-project 3): served from web/ out-of-process.
 # Dev:   php -S 127.0.0.1:8088 -t web/ web/index.php
 # Prod:  nginx + php-fpm (or a reverse proxy → php-fpm). The same web/index.php
