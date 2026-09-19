@@ -2,6 +2,7 @@
 namespace scripts\aidesc;
 
 use Amp\ByteStream\BufferException;
+use Amp\Http\Server\ClientException;
 use Amp\Http\Server\Request;
 use Amp\Http\Server\RequestHandler\ClosureRequestHandler;
 use Amp\Http\Server\Response;
@@ -35,9 +36,13 @@ function aidesc_register(Router $router, \Psr\Log\LoggerInterface $logger): void
             return new Response(HttpStatus::FORBIDDEN, ['content-type' => 'text/plain'], "Invalid key");
         }
 
+        // Amp's HTTP driver caps request bodies at 128KB by default
+        // (HttpDriver::DEFAULT_BODY_SIZE_LIMIT); raise it for this endpoint
+        // before buffering or larger uploads stall the handler forever.
+        $request->getBody()->increaseSizeLimit(maxBodyBytes + 1);
         try {
             $body = $request->getBody()->buffer(limit: maxBodyBytes + 1);
-        } catch (BufferException $e) {
+        } catch (BufferException|ClientException $e) {
             return new Response(HttpStatus::PAYLOAD_TOO_LARGE, ['content-type' => 'text/plain'], "Image too large (max 16MB)");
         }
         if (strlen($body) > maxBodyBytes) {
