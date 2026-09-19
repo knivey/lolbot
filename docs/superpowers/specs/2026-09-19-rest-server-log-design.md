@@ -26,7 +26,7 @@ plus the existing control-logger output.
 |---|---|---|
 | `restlog_path` | `logs/rest.log` | Base name; handler writes `logs/rest-YYYY-MM-DD.log`. Empty string disables the file handlers. |
 | `restlog_days` | `14` | Daily files kept. |
-| `restlog_level` | `INFO` | File handler level (PSR names: DEBUG/INFO/NOTICE/WARNING/ERROR). Parsed with Monolog v2 `Logger::toMonologLevel()`, which throws on invalid names. |
+| `restlog_level` | `INFO` | File handler level (PSR names: DEBUG/INFO/NOTICE/WARNING/ERROR). Parsed by matching level names; an invalid name falls back to INFO rather than throwing (implementation deviation from Monolog's `toMonologLevel()`, chosen so a typo can't disable the file log). |
 
 ## Wiring (lolbot.php, where the control logger is built, ~line 157)
 
