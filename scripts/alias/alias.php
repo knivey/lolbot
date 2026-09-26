@@ -21,11 +21,17 @@ class alias extends script_base
      */
     private EntityRepository $repo;
 
+    /**
+     * @var EntityRepository<entities\alias_history>
+     */
+    private EntityRepository $historyRepo;
+
     public function init(): void
     {
         /** @var \Doctrine\ORM\EntityManager */
         global $entityManager;
         $this->repo = $entityManager->getRepository(entities\alias::class);
+        $this->historyRepo = $entityManager->getRepository(entities\alias_history::class);
     }
 
     #[Cmd("alias")]
@@ -68,6 +74,13 @@ class alias extends script_base
             $entityManager->persist($alias);
             $entityManager->flush();
             $rpl("{$msg}alias saved");
+            // record this save as the next version of the alias's history
+            try {
+                $this->appendHistory('save', $alias->chan, $alias->chanLowered, $alias->name,
+                    $alias->nameLowered, $args->fullhost, $alias->value, $alias->act, $alias->cmd);
+            } catch (\Exception $e) {
+                $this->logger->error($e);
+            }
         } catch (\Exception $e) {
             $rpl("Error while creating alias");
             $this->logger->error($e);
@@ -96,6 +109,13 @@ class alias extends script_base
             $entityManager->remove($alias);
             $entityManager->flush();
             $rpl("Alias removed");
+            // the history log outlives the live row so the alias can be restored
+            try {
+                $this->appendHistory('removed', $alias->chan, $alias->chanLowered, $alias->name,
+                    $alias->nameLowered, $args->fullhost);
+            } catch (\Exception $e) {
+                $this->logger->error($e);
+            }
         } catch (\Exception $e) {
             $rpl("Error while removing alias");
             $this->logger->error($e);
@@ -185,8 +205,118 @@ class alias extends script_base
             return;
         }
         $act = $alias->act ? "true" : "false";
-        $rpl("\2Name:\2 {$alias->name} \2Last set by:\2 $alias->fullhost \2Action:\2 $act \2Cmd:\2 $alias->cmd");
+        $suffix = '';
+        try {
+            $suffix = self::versionSuffix(alias::buildTimeline(
+                $this->loadHistoryRows($alias->nameLowered, $alias->chanLowered)
+            ));
+        } catch (\Exception $e) {
+            $this->logger->error($e);
+        }
+        $rpl("\2Name:\2 {$alias->name} \2Last set by:\2 $alias->fullhost \2Action:\2 $act \2Cmd:\2 $alias->cmd$suffix");
         $rpl("\2Value:\2 $alias->value");
+    }
+
+    #[Cmd("revertalias")]
+    #[Syntax("<name> [version]")]
+    #[Desc("Revert an alias to a previous version (default: previous version, -n/--new: newest, or pass a version number). Can restore a removed alias")]
+    #[Option(["--new", "-n"], "revert to the newest version instead")]
+    function revertalias(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        global $entityManager;
+        list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
+        try {
+            $rawName = $cmdArgs['name'];
+            $name = is_string($rawName) ? $rawName : '';
+            $nameLowered = u($name)->lower();
+            $chanLowered = u($args->chan)->lower();
+            $events = $this->loadHistoryRows($nameLowered, $chanLowered);
+            $timeline = alias::buildTimeline($events);
+            $rawVersion = $cmdArgs['version'] ?? null;
+            $version = is_string($rawVersion) && ctype_digit($rawVersion) ? (int)$rawVersion : null;
+            $newest = $cmdArgs->optEnabled('--new') || $cmdArgs->optEnabled('-n');
+            $target = alias::resolveRevertTarget($timeline, $version, $newest);
+            if ($target === null) {
+                $rpl("no version to revert to for that alias");
+                return;
+            }
+            $alias = $this->repo->findOneBy([
+                "nameLowered" => $nameLowered,
+                "chanLowered" => $chanLowered,
+                "network" => $this->network
+            ]);
+            if (!$alias) {
+                // currently removed: re-create the live row, taking the identity
+                // fields from the history row so the original casing is kept
+                $seed = $events[array_key_first($events) ?? 0] ?? [];
+                $alias = new entities\alias();
+                $alias->name = self::seedStr($seed, 'name', $name);
+                $alias->nameLowered = self::seedStr($seed, 'nameLowered', $nameLowered);
+                $alias->chan = self::seedStr($seed, 'chan', $args->chan);
+                $alias->chanLowered = self::seedStr($seed, 'chanLowered', $chanLowered);
+            }
+            $alias->value = $target['value'] ?? '';
+            $alias->act = $target['act'] ?? false;
+            $alias->cmd = $target['cmd'];
+            $alias->fullhost = $args->fullhost;
+            $alias->network = $this->network;
+            $entityManager->persist($alias);
+            $entityManager->flush();
+            // only a marker: a revert never renumbers the saved versions
+            $this->appendHistory('reverted', $alias->chan, $alias->chanLowered, $alias->name,
+                $alias->nameLowered, $args->fullhost, note: "restored version {$target['version']}");
+            $value = $target['value'] ?? '';
+            $preview = mb_strlen($value) > 80 ? mb_substr($value, 0, 80) . '...' : $value;
+            $rpl("alias restored to version {$target['version']}: $preview");
+        } catch (\Exception $e) {
+            $rpl("Error while reverting alias");
+            $this->logger->error($e);
+        }
+    }
+
+    #[Cmd("aliashistory")]
+    #[Syntax("<name>")]
+    #[Desc("Show the version history of an alias")]
+    function aliashistory(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+    {
+        list($rpl, $rpln) = makeRepliers($args, $bot, "alias");
+        try {
+            $rawName = $cmdArgs['name'];
+            $nameArg = is_string($rawName) ? $rawName : '';
+            $events = $this->loadHistoryRows(u($nameArg)->lower(), u($args->chan)->lower());
+            $entries = alias::buildTimeline($events)['entries'];
+        } catch (\Exception $e) {
+            $rpl("error while retrieving history");
+            $this->logger->error($e);
+            return;
+        }
+        if (count($entries) == 0) {
+            $rpl("no history for that alias");
+            return;
+        }
+        // keep the original casing from the history row for display
+        $seed = $events[array_key_first($events) ?? 0] ?? [];
+        $name = self::seedStr($seed, 'name', $nameArg);
+        if (count($entries) == 1) {
+            $rpl(self::historyLine($entries[0]));
+            return;
+        }
+        global $entityManager;
+        $paste = (new \lolbot\config\ServiceLocator($entityManager))->getServiceConfig('paste');
+        if ($paste instanceof \lolbot\entities\PasteServiceConfig && $paste->host !== null && $paste->key !== null) {
+            try {
+                $content = $this->historyMarkdown($entries, $args->chan, $name);
+                $url = \createPaste($content, "Alias history for {$name} in {$args->chan}", $paste->host, $paste->key);
+                $rpl($url, 'list');
+                return;
+            } catch (\Throwable $e) {
+                echo "Paste error for aliashistory: " . $e->getMessage() . "\n";
+            }
+        }
+        // paste unavailable or failed: fall back to the truncated channel lines
+        $list = implode(', ', array_map(fn($e) => $this->historyLine($e), $entries));
+        foreach (explode("\n", wordwrap($list, 300, "\n", true)) as $line)
+            $rpl("$line", 'list');
     }
 
     /**
@@ -275,6 +405,63 @@ class alias extends script_base
             $bot->msg($args->chan, "\2\2$value");
         }
         return true;
+    }
+
+    /**
+     * Loads the history rows for one alias (network+chan+name key, ordered
+     * oldest first) hydrated as the plain arrays buildTimeline() consumes.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function loadHistoryRows(string $nameLowered, string $chanLowered): array
+    {
+        $rows = $this->historyRepo->findBy([
+            "network" => $this->network,
+            "chanLowered" => $chanLowered,
+            "nameLowered" => $nameLowered
+        ], ["id" => "ASC"]);
+        return array_map(fn(entities\alias_history $h): array => [
+            'id' => $h->id,
+            'chan' => $h->chan,
+            'chanLowered' => $h->chanLowered,
+            'name' => $h->name,
+            'nameLowered' => $h->nameLowered,
+            'value' => $h->value,
+            'act' => $h->act,
+            'cmd' => $h->cmd,
+            'fullhost' => $h->fullhost,
+            'created' => $h->created,
+            'event' => $h->event,
+            'note' => $h->note,
+        ], $rows);
+    }
+
+    /**
+     * Appends one event to the alias_history log and flushes it. Marker
+     * events ('removed', 'reverted') leave value/act/cmd null and carry
+     * their meaning in $event/$note instead.
+     */
+    private function appendHistory(string $event, string $chan, string $chanLowered, string $name,
+                                   string $nameLowered, string $fullhost,
+                                   ?string $value = null, ?bool $act = null, ?string $cmd = null,
+                                   ?string $note = null): void
+    {
+        global $entityManager;
+        $history = new entities\alias_history();
+        $history->network = $this->network;
+        $history->chan = $chan;
+        $history->chanLowered = $chanLowered;
+        $history->name = $name;
+        $history->nameLowered = $nameLowered;
+        $history->value = $value;
+        $history->act = $act;
+        $history->cmd = $cmd;
+        $history->fullhost = $fullhost;
+        $history->created = new \DateTimeImmutable();
+        $history->event = $event;
+        $history->note = $note;
+        $entityManager->persist($history);
+        $entityManager->flush();
     }
 
     /**
@@ -407,5 +594,159 @@ class alias extends script_base
             return null;
         }
         return $saves[$currentVersion - 1] ?? null;
+    }
+
+    /**
+     * Pure helper: formats one timeline entry (from buildTimeline()) as an
+     * IRC line, e.g. "\2v2\2 saved by nick!host at 2026-01-01 12:00 UTC".
+     * 'reverted' entries read the restored version out of their note.
+     *
+     * @param array<string, mixed> $entry
+     */
+    public static function historyLine(array $entry): string
+    {
+        $version = $entry['version'] ?? null;
+        $event = $entry['event'] ?? null;
+        $fullhost = $entry['fullhost'] ?? null;
+        $created = $entry['created'] ?? null;
+        $who = is_string($fullhost) ? $fullhost : '';
+        $when = $created instanceof \DateTimeImmutable ? $created->format('Y-m-d H:i T') : 'unknown';
+        if ($event === 'save' && is_int($version)) {
+            return "\2v{$version}\2 saved by {$who} at {$when}";
+        }
+        if ($event === 'removed') {
+            return "\2removed\2 by {$who} at {$when}";
+        }
+        if ($event === 'reverted') {
+            $restored = self::restoredVersion($entry['note'] ?? null);
+            if ($restored !== null) {
+                return "\2reverted\2 to v{$restored} by {$who} at {$when}";
+            }
+            return "\2reverted\2 by {$who} at {$when}";
+        }
+        $label = is_string($event) ? $event : 'unknown';
+        return "\2{$label}\2 by {$who} at {$when}";
+    }
+
+    /**
+     * Extracts the version a 'reverted' marker restored from its note
+     * ("restored version N"); null when the note carries no number.
+     *
+     * @param mixed $note
+     */
+    private static function restoredVersion(mixed $note): ?int
+    {
+        if (!is_string($note) || !preg_match('/(\d+)/', $note, $m)) {
+            return null;
+        }
+        return (int)$m[1];
+    }
+
+    /**
+     * Reads one string field from a hydrated history row, falling back to
+     * $default when the row (or field) is missing or not a string.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function seedStr(array $row, string $key, string $default): string
+    {
+        $value = $row[$key] ?? null;
+        return is_string($value) ? $value : $default;
+    }
+
+    /**
+     * Section heading for one entry inside historyMarkdown().
+     *
+     * @param array<string, mixed> $entry
+     */
+    private static function historyHeading(array $entry): string
+    {
+        $event = $entry['event'] ?? null;
+        $version = $entry['version'] ?? null;
+        if ($event === 'save' && is_int($version)) {
+            return "v{$version} saved";
+        }
+        if ($event === 'removed') {
+            return 'removed';
+        }
+        if ($event === 'reverted') {
+            $restored = self::restoredVersion($entry['note'] ?? null);
+            if ($restored !== null) {
+                return "reverted to v{$restored}";
+            }
+            return 'reverted';
+        }
+        return is_string($event) ? $event : 'unknown';
+    }
+
+    /**
+     * Pure helper: renders the timeline entries as the markdown pasted by
+     * aliashistory() (header with chan+name, one section per entry with
+     * who/when, the value in a code fence and the note when set).
+     *
+     * @param array<int, array<string, mixed>> $entries
+     */
+    public static function historyMarkdown(array $entries, string $chan, string $name): string
+    {
+        $out = "# Alias history for {$name} in {$chan}\n\n";
+        $first = true;
+        foreach ($entries as $entry) {
+            if (!$first)
+                $out .= "\n---\n\n";
+            $first = false;
+            $fullhost = $entry['fullhost'] ?? null;
+            $created = $entry['created'] ?? null;
+            $value = $entry['value'] ?? null;
+            $note = $entry['note'] ?? null;
+            $who = is_string($fullhost) ? $fullhost : '';
+            $when = $created instanceof \DateTimeImmutable ? $created->format('Y-m-d H:i T') : 'unknown';
+            $out .= "## " . self::historyHeading($entry) . "\n\n";
+            $out .= "- **By:** `{$who}`\n";
+            $out .= "- **At:** {$when}\n";
+            if (is_string($note))
+                $out .= "- **Note:** {$note}\n";
+            if (is_string($value))
+                $out .= "\n**Value:**\n```\n{$value}\n```\n";
+        }
+        return $out;
+    }
+
+    /**
+     * Pure helper: the version info showalias() appends to its first reply
+     * line (" \2Version:\2 N of M \2Updated:\2 <latest save date>"). Empty
+     * string while the alias is removed or has no dated history, so the
+     * existing output is shown unchanged.
+     *
+     * @param array<string, mixed> $timeline
+     */
+    public static function versionSuffix(array $timeline): string
+    {
+        $entries = $timeline['entries'] ?? null;
+        if (!is_array($entries)) {
+            return '';
+        }
+        $removed = $timeline['removed'] ?? false;
+        if (!is_bool($removed) || $removed) {
+            return '';
+        }
+        $currentVersion = $timeline['currentVersion'] ?? null;
+        $totalSaves = $timeline['totalSaves'] ?? null;
+        if (!is_int($currentVersion) || $currentVersion < 1 || !is_int($totalSaves) || $totalSaves < 1) {
+            return '';
+        }
+        $updated = null;
+        foreach ($entries as $entry) {
+            if (!is_array($entry) || ($entry['event'] ?? null) !== 'save') {
+                continue;
+            }
+            $created = $entry['created'] ?? null;
+            if ($created instanceof \DateTimeImmutable) {
+                $updated = $created;
+            }
+        }
+        if ($updated === null) {
+            return '';
+        }
+        return " \2Version:\2 {$currentVersion} of {$totalSaves} \2Updated:\2 " . $updated->format('Y-m-d H:i T');
     }
 }
