@@ -141,6 +141,7 @@ class AliasHistoryFormatTest extends TestCase
 
             - **By:** `tester!user@example.com`
             - **At:** 2026-03-04 05:06 UTC
+            - **Action:** false
 
             **Value:**
             ```
@@ -164,6 +165,32 @@ class AliasHistoryFormatTest extends TestCase
             EOT;
         // the heredoc drops the trailing newline the formatter emits
         $this->assertSame($expected . "\n", $markdown);
+    }
+
+    public function test_history_markdown_shows_act_and_cmd_options(): void
+    {
+        $markdown = alias::historyMarkdown([
+            self::entry('save', 2, 'slaps $nick', ['act' => true, 'cmd' => 'ruby']),
+        ], '#test', 'poke');
+        $this->assertStringContainsString("- **Action:** true\n", $markdown);
+        $this->assertStringContainsString("- **Cmd:** `ruby`\n", $markdown);
+    }
+
+    public function test_history_line_marks_act_and_cmd_when_set(): void
+    {
+        $this->assertSame(
+            "\2v3\2 saved by tester!user@example.com at 2026-03-04 05:06 UTC [act] [cmd: ruby]",
+            alias::historyLine(self::entry('save', 3, 'slaps $nick', ['act' => true, 'cmd' => 'ruby']))
+        );
+        // plain saves keep the bare line
+        $this->assertSame(
+            "\2v2\2 saved by tester!user@example.com at 2026-03-04 05:06 UTC",
+            alias::historyLine(self::entry('save', 2, 'slaps $nick'))
+        );
+        $this->assertSame(
+            "\2v1\2 saved by tester!user@example.com at 2026-03-04 05:06 UTC [cmd: weather]",
+            alias::historyLine(self::entry('save', 1, '$nick', ['cmd' => 'weather']))
+        );
     }
 
     public function test_history_markdown_omits_value_and_note_when_unset(): void

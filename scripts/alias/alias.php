@@ -611,6 +611,8 @@ class alias extends script_base
      * Pure helper: formats one timeline entry (from buildTimeline()) as an
      * IRC line, e.g. "\2v2\2 saved by nick!host at 2026-01-01 12:00 UTC".
      * 'reverted' entries read the restored version out of their note.
+     * Save lines append [act] and [cmd: x] markers when those options were
+     * set on the saved version.
      *
      * @param array<string, mixed> $entry
      */
@@ -623,7 +625,15 @@ class alias extends script_base
         $who = is_string($fullhost) ? $fullhost : '';
         $when = $created instanceof \DateTimeImmutable ? $created->format('Y-m-d H:i T') : 'unknown';
         if ($event === 'save' && is_int($version)) {
-            return "\2v{$version}\2 saved by {$who} at {$when}";
+            $line = "\2v{$version}\2 saved by {$who} at {$when}";
+            if (($entry['act'] ?? null) === true) {
+                $line .= ' [act]';
+            }
+            $cmd = $entry['cmd'] ?? null;
+            if (is_string($cmd) && $cmd !== '') {
+                $line .= " [cmd: {$cmd}]";
+            }
+            return $line;
         }
         if ($event === 'removed') {
             return "\2removed\2 by {$who} at {$when}";
@@ -693,7 +703,9 @@ class alias extends script_base
     /**
      * Pure helper: renders the timeline entries as the markdown pasted by
      * aliashistory() (header with chan+name, one section per entry with
-     * who/when, the value in a code fence and the note when set).
+     * who/when, the value in a code fence and the note when set). Save
+     * sections also carry the alias options (Action / Cmd) like the
+     * aliases listing does.
      *
      * @param array<int, array<string, mixed>> $entries
      */
@@ -714,6 +726,12 @@ class alias extends script_base
             $out .= "## " . self::historyHeading($entry) . "\n\n";
             $out .= "- **By:** `{$who}`\n";
             $out .= "- **At:** {$when}\n";
+            if (($entry['event'] ?? null) === 'save') {
+                $out .= "- **Action:** " . (($entry['act'] ?? null) === true ? 'true' : 'false') . "\n";
+                $cmd = $entry['cmd'] ?? null;
+                if (is_string($cmd) && $cmd !== '')
+                    $out .= "- **Cmd:** `{$cmd}`\n";
+            }
             if (is_string($note))
                 $out .= "- **Note:** {$note}\n";
             if (is_string($value))
