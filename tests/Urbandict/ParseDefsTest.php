@@ -11,7 +11,11 @@ class ParseDefsTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$html = gzdecode(file_get_contents(__DIR__ . '/../fixtures/urbandict/define-duckhunt.html.gz'));
+        $raw = file_get_contents(__DIR__ . '/../fixtures/urbandict/define-duckhunt.html.gz');
+        if ($raw === false) {
+            self::fail('fixture missing: tests/fixtures/urbandict/define-duckhunt.html.gz');
+        }
+        self::$html = (string) gzdecode($raw);
     }
 
     public function test_parses_exact_term_article_definition(): void
