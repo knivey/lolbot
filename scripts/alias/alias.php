@@ -276,4 +276,136 @@ class alias extends script_base
         }
         return true;
     }
+
+    /**
+     * Pure helper: builds the decision/display timeline for an alias's
+     * history rows (ordered by id ASC, as the entity hydrates them).
+     * 'save' rows get version numbers 1..N in encounter order; 'removed'
+     * and 'reverted' marker rows get null. currentVersion is the latest
+     * save's version (null when the alias has never been saved), removed
+     * is true when a 'removed' marker occurs after the last 'save' (the
+     * alias is currently deleted; a later save clears it again).
+     *
+     * @param array<int, mixed> $events rows shaped like entities\alias_history hydration (id, chan, chanLowered, name, nameLowered, value, act, cmd, fullhost, created, event, note); malformed rows are skipped
+     * @return array{entries: list<array{version: int|null, event: string, fullhost: string, created: \DateTimeImmutable|null, value: string|null, act: bool|null, cmd: string|null, note: string|null}>, currentVersion: int|null, removed: bool, totalSaves: int}
+     */
+    public static function buildTimeline(array $events): array
+    {
+        /** @var list<array{version: int|null, event: string, fullhost: string, created: \DateTimeImmutable|null, value: string|null, act: bool|null, cmd: string|null, note: string|null}> $entries */
+        $entries = [];
+        $currentVersion = null;
+        $removed = false;
+        $version = 0;
+        foreach ($events as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $entry = self::historyEntry($row, null);
+            if ($entry === null) {
+                continue;
+            }
+            if ($entry['event'] === 'save') {
+                $version++;
+                $entry['version'] = $version;
+                $currentVersion = $version;
+                $removed = false;
+            } elseif ($entry['event'] === 'removed') {
+                $removed = true;
+            }
+            $entries[] = $entry;
+        }
+        return [
+            'entries' => $entries,
+            'currentVersion' => $currentVersion,
+            'removed' => $removed,
+            'totalSaves' => $version,
+        ];
+    }
+
+    /**
+     * Normalizes one history row into a timeline entry; returns null for
+     * rows without a usable event string so callers can skip them.
+     *
+     * @param array<mixed> $row
+     * @return array{version: int|null, event: string, fullhost: string, created: \DateTimeImmutable|null, value: string|null, act: bool|null, cmd: string|null, note: string|null}|null
+     */
+    private static function historyEntry(array $row, ?int $version): ?array
+    {
+        $event = $row['event'] ?? null;
+        if (!is_string($event)) {
+            return null;
+        }
+        $fullhost = $row['fullhost'] ?? null;
+        $created = $row['created'] ?? null;
+        $value = $row['value'] ?? null;
+        $act = $row['act'] ?? null;
+        $cmd = $row['cmd'] ?? null;
+        $note = $row['note'] ?? null;
+        return [
+            'version' => $version,
+            'event' => $event,
+            'fullhost' => is_string($fullhost) ? $fullhost : '',
+            'created' => $created instanceof \DateTimeImmutable ? $created : null,
+            'value' => is_string($value) ? $value : null,
+            'act' => is_bool($act) ? $act : null,
+            'cmd' => is_string($cmd) ? $cmd : null,
+            'note' => is_string($note) ? $note : null,
+        ];
+    }
+
+    /**
+     * Pure helper: given a buildTimeline() result, picks which save entry a
+     * revert should restore. Explicit $version targets that save (null when
+     * it does not exist); $newest targets the latest save; the default
+     * targets the save previous to currentVersion (null when there is no
+     * previous). While the alias is removed, the default and newest both
+     * mean the latest save (restoring a deleted alias); explicit versions
+     * still work. Returns null when there is nothing revertable.
+     *
+     * @param array{entries?: mixed, currentVersion?: mixed, removed?: mixed, totalSaves?: mixed} $timeline
+     * @return array{version: int, event: string, fullhost: string, created: \DateTimeImmutable|null, value: string|null, act: bool|null, cmd: string|null, note: string|null}|null
+     */
+    public static function resolveRevertTarget(array $timeline, ?int $version = null, bool $newest = false): ?array
+    {
+        $rawEntries = $timeline['entries'] ?? null;
+        if (!is_array($rawEntries)) {
+            return null;
+        }
+        /** @var array<int, array{version: int, event: string, fullhost: string, created: \DateTimeImmutable|null, value: string|null, act: bool|null, cmd: string|null, note: string|null}> $saves */
+        $saves = [];
+        foreach ($rawEntries as $rawEntry) {
+            if (!is_array($rawEntry)) {
+                continue;
+            }
+            $ver = $rawEntry['version'] ?? null;
+            if (!is_int($ver) || $ver < 1) {
+                continue;
+            }
+            $entry = self::historyEntry($rawEntry, $ver);
+            if ($entry === null) {
+                continue;
+            }
+            $entry['version'] = $ver;
+            $saves[$ver] = $entry;
+        }
+        if ($saves === []) {
+            return null;
+        }
+        $latest = max(array_keys($saves));
+        if ($version !== null) {
+            return $saves[$version] ?? null;
+        }
+        if ($newest) {
+            return $saves[$latest] ?? null;
+        }
+        $removed = $timeline['removed'] ?? false;
+        if (is_bool($removed) && $removed) {
+            return $saves[$latest] ?? null;
+        }
+        $currentVersion = $timeline['currentVersion'] ?? null;
+        if (!is_int($currentVersion) || $currentVersion < 2) {
+            return null;
+        }
+        return $saves[$currentVersion - 1] ?? null;
+    }
 }
