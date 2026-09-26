@@ -24,7 +24,7 @@
         "itwmw/color-difference": "^1.2",
         "json-mapper/json-mapper": "^2.22",
         "khill/php-duration": "~1.0",
-        "knivey/cmdr": "^4.0",
+        "knivey/cmdr": "5.x-dev",
         "knivey/irctools": "dev-master",
         "knivey/reddit": "^1.0",
         "knivey/tools": "dev-master",
@@ -83,5 +83,14 @@
         "allow-plugins": {
             "ramsey/composer-repl": true
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../Cmdr",
+            "options": {
+                "symlink": true
+            }
+        }
+    ]
 }
