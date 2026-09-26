@@ -44,6 +44,7 @@ use scripts\tiktok\tiktok;
 use scripts\tools\tools;
 use scripts\twitter\twitter;
 use scripts\urbandict\urbandict;
+use scripts\user\Acl;
 use scripts\weather\weather;
 use scripts\youtube\youtube;
 
@@ -101,6 +102,7 @@ class BotManager
 
         $router = new Cmdr();
         $router->loadFuncs();
+        Acl::register($router);
 
         $bomb_game = new bomb_game($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:bomb_game", [$logHandler]), $nicks, $chans, $router);
         $router->loadMethods($bomb_game);
