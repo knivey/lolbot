@@ -211,7 +211,66 @@ class AliasHistoryTest extends TestCase
         ]);
         $this->assertNull(alias::resolveRevertTarget($timeline, 99));
         $this->assertNull(alias::resolveRevertTarget($timeline, 0));
-        $this->assertNull(alias::resolveRevertTarget($timeline, -1));
+    }
+
+    public function test_negative_version_steps_back(): void
+    {
+        $timeline = alias::buildTimeline([
+            self::historyRow('save', 'one'),
+            self::historyRow('save', 'two'),
+            self::historyRow('save', 'three'),
+        ]);
+        $one = alias::resolveRevertTarget($timeline, -1);
+        $this->assertNotNull($one);
+        $this->assertSame(2, $one['version']);
+        $this->assertSame('two', $one['value']);
+        $two = alias::resolveRevertTarget($timeline, -2);
+        $this->assertNotNull($two);
+        $this->assertSame(1, $two['version']);
+        $this->assertSame('one', $two['value']);
+    }
+
+    public function test_negative_one_is_same_as_default(): void
+    {
+        $timeline = alias::buildTimeline([
+            self::historyRow('save', 'one'),
+            self::historyRow('save', 'two'),
+            self::historyRow('save', 'three'),
+        ]);
+        $default = alias::resolveRevertTarget($timeline);
+        $this->assertNotNull($default);
+        $neg = alias::resolveRevertTarget($timeline, -1);
+        $this->assertNotNull($neg);
+        $this->assertSame($default['value'], $neg['value']);
+    }
+
+    public function test_negative_version_beyond_oldest_returns_null(): void
+    {
+        $timeline = alias::buildTimeline([
+            self::historyRow('save', 'one'),
+            self::historyRow('save', 'two'),
+            self::historyRow('save', 'three'),
+        ]);
+        $this->assertNull(alias::resolveRevertTarget($timeline, -3));
+        $this->assertNull(alias::resolveRevertTarget($timeline, -99));
+    }
+
+    public function test_negative_version_relative_when_removed(): void
+    {
+        // when the alias is removed, default means "restore latest", but
+        // relative steps still walk back from the latest save
+        $timeline = alias::buildTimeline([
+            self::historyRow('save', 'one'),
+            self::historyRow('save', 'two'),
+            self::historyRow('save', 'three'),
+            self::historyRow('removed'),
+        ]);
+        $default = alias::resolveRevertTarget($timeline);
+        $this->assertNotNull($default);
+        $this->assertSame('three', $default['value']);
+        $back = alias::resolveRevertTarget($timeline, -1);
+        $this->assertNotNull($back);
+        $this->assertSame('two', $back['value']);
     }
 
     public function test_newest_targets_latest_save(): void

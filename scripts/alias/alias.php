@@ -221,8 +221,8 @@ class alias extends script_base
 
     #[Cmd("revertalias")]
     #[Syntax("<name> [version]")]
-    #[Desc("Revert an alias to a previous version (default: previous version, -n/--new: newest, or pass a version number). Can restore a removed alias")]
-    #[Option(["--new", "-n"], "revert to the newest version instead")]
+    #[Desc("Revert an alias to an earlier version: no version = one back, -N = N versions back, a positive number = that exact version (numbers come from aliashistory), --new = the newest version. When the alias is removed, no version restores the newest")]
+    #[Option("--new", "revert to the newest version instead of going back")]
     function revertalias(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
         global $entityManager;
@@ -235,8 +235,8 @@ class alias extends script_base
             $events = $this->loadHistoryRows($nameLowered, $chanLowered);
             $timeline = alias::buildTimeline($events);
             $rawVersion = $cmdArgs['version'] ?? null;
-            $version = is_string($rawVersion) && ctype_digit($rawVersion) ? (int)$rawVersion : null;
-            $newest = $cmdArgs->optEnabled('--new') || $cmdArgs->optEnabled('-n');
+            $version = is_string($rawVersion) && preg_match('/^-?\d+$/', $rawVersion) ? (int)$rawVersion : null;
+            $newest = $cmdArgs->optEnabled('--new');
             $target = alias::resolveRevertTarget($timeline, $version, $newest);
             if ($target === null) {
                 $rpl("no version to revert to for that alias");
@@ -287,6 +287,8 @@ class alias extends script_base
             $nameArg = is_string($rawName) ? $rawName : '';
             $events = $this->loadHistoryRows(u($nameArg)->lower(), u($args->chan)->lower());
             $entries = alias::buildTimeline($events)['entries'];
+            // display newest first; version numbers still count oldest = 1
+            $entries = array_reverse($entries);
         } catch (\Exception $e) {
             $rpl("error while retrieving history");
             $this->logger->error($e);
@@ -309,7 +311,7 @@ class alias extends script_base
             try {
                 $content = $this->historyMarkdown($entries, $args->chan, $name);
                 $url = \createPaste($content, "Alias history for {$name} in {$args->chan}", $paste->host, $paste->key);
-                $rpl($url, 'list');
+                $rpl($url, 'history');
                 return;
             } catch (\Throwable $e) {
                 echo "Paste error for aliashistory: " . $e->getMessage() . "\n";
@@ -544,12 +546,14 @@ class alias extends script_base
 
     /**
      * Pure helper: given a buildTimeline() result, picks which save entry a
-     * revert should restore. Explicit $version targets that save (null when
-     * it does not exist); $newest targets the latest save; the default
-     * targets the save previous to currentVersion (null when there is no
-     * previous). While the alias is removed, the default and newest both
-     * mean the latest save (restoring a deleted alias); explicit versions
-     * still work. Returns null when there is nothing revertable.
+     * revert should restore. Explicit positive $version targets that save
+     * (null when it does not exist); negative $version steps back that many
+     * saves from the latest (null when it would go past the oldest);
+     * $newest targets the latest save; the default targets the save previous
+     * to currentVersion (null when there is no previous). While the alias is
+     * removed, the default and newest both mean the latest save (restoring a
+     * deleted alias); explicit and relative versions still work. Returns
+     * null when there is nothing revertable.
      *
      * @param array{entries?: mixed, currentVersion?: mixed, removed?: mixed, totalSaves?: mixed} $timeline
      * @return array{version: int, event: string, fullhost: string, created: \DateTimeImmutable|null, value: string|null, act: bool|null, cmd: string|null, note: string|null}|null
@@ -582,6 +586,11 @@ class alias extends script_base
         }
         $latest = max(array_keys($saves));
         if ($version !== null) {
+            if ($version < 0) {
+                // relative: step back that many saves from the latest
+                $target = $latest + $version;
+                return $target >= 1 ? ($saves[$target] ?? null) : null;
+            }
             return $saves[$version] ?? null;
         }
         if ($newest) {
