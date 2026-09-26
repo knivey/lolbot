@@ -73,8 +73,18 @@ class urbandict extends \scripts\script_base
 
             $bot->msg($args->chan, "ud: $word #$num added $by");
             if ($this->server->throttle) {
-                $bot->msg($args->chan, " ├ Meaning: $meaning");
-                $bot->msg($args->chan, " └ $example1line");
+                // still wrap on throttle, just near the irc line limit so its less lines (gh#133)
+                $lines = explode("\n", wordwrap($meaning, 350));
+                foreach ($lines as $i => $m) {
+                    $leader = $i == 0 ? "├ Meaning: " : "│ ";
+                    $bot->msg($args->chan, " $leader $m");
+                }
+                $lines = explode("\n", wordwrap($example1line, 350));
+                $last = count($lines) - 1;
+                foreach ($lines as $i => $el) {
+                    $leader = $i == $last ? "└ " : "│ ";
+                    $bot->msg($args->chan, " $leader $el");
+                }
             } else {
                 $c = 0;
                 foreach (explode("\n", wordwrap($meaning, 80)) as $m) {

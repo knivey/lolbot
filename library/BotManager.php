@@ -34,6 +34,7 @@ use scripts\imgur\imgur;
 use scripts\invidious\invidious;
 use scripts\lastfm\lastfm;
 use scripts\linktitles\linktitles;
+use scripts\mal\mal;
 use scripts\reddit\reddit;
 use scripts\remindme\remindme;
 use scripts\seen\seen;
@@ -121,6 +122,8 @@ class BotManager
         $router->loadMethods($tools);
         $urbandict = new urbandict($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:urbandict", [$logHandler]), $nicks, $chans, $router);
         $router->loadMethods($urbandict);
+        $mal = new mal($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:mal", [$logHandler]), $nicks, $chans, $router);
+        $router->loadMethods($mal);
         $help = new help($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:help", [$logHandler]), $nicks, $chans, $router);
         $router->loadMethods($help);
         $stocks = new stocks($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:stocks", [$logHandler]), $nicks, $chans, $router);
