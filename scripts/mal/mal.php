@@ -16,10 +16,11 @@ class mal extends \scripts\script_base
      * MAL now 303-redirects exact-title searches straight to the entry page,
      * where the old div.title flow grabs related-entry manga cards instead of
      * the anime itself, and the mals results table is not there at all
-     * (gh#131). Detect that landing and return the entry it points to;
-     * regular result-list pages return null and keep using the old flow.
+     * (gh#131). Detect that landing and return the entry as a complete
+     * search-result row; regular result-list pages return null and keep
+     * using the old flow.
      *
-     * @return array{id: string, url: string, title: string}|null
+     * @return array{id: string, url: string, title: string, type: string, eps: string, score: string}|null
      */
     public static function detectEntryPage(string $body): ?array
     {
@@ -44,7 +45,35 @@ class mal extends \scripts\script_base
             $text = $h1->text();
             $title = is_string($text) ? trim($text) : '';
         }
-        return ['id' => $id, 'url' => $ogUrl, 'title' => $title];
+        $type = '';
+        $eps = '';
+        foreach ((array) $doc->find('div.spaceit_pad') as $info) {
+            if (!$info instanceof HtmlNode) {
+                continue;
+            }
+            $span = $info->find('span', 0);
+            if (!$span instanceof HtmlNode) {
+                continue;
+            }
+            $label = $span->text();
+            $text = $info->text();
+            if (!is_string($label) || !is_string($text)) {
+                continue;
+            }
+            $value = trim(substr($text, strlen($label) + 1));
+            if ($label === 'Type:') {
+                $type = $value;
+            } elseif ($label === 'Episodes:') {
+                $eps = $value;
+            }
+        }
+        $score = '';
+        $scoreNode = $doc->find('.score', 0);
+        if ($scoreNode instanceof HtmlNode) {
+            $text = $scoreNode->text();
+            $score = is_string($text) ? trim($text) : '';
+        }
+        return ['id' => $id, 'url' => $ogUrl, 'title' => $title, 'type' => $type, 'eps' => $eps, 'score' => $score];
     }
 
     #[Cmd("mals", "myanimelistsearch")]
@@ -60,36 +89,37 @@ class mal extends \scripts\script_base
             $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
             return;
         }
+        $results[] = ["ID", "Type", "Eps", "Title", "Score"];
         $entry = self::detectEntryPage($body);
         if ($entry !== null) {
-            // search redirected straight to a single entry, nothing to list
-            $this->showDetail($args, $bot, $entry['url'], $body);
-            return;
+            // exact-title searches redirect straight to the entry page, so
+            // the results table is not there; show the entry as the single
+            // result row
+            $results[] = [$entry['id'], $entry['type'], $entry['eps'], $entry['title'], $entry['score']];
+        } else {
+            $doc = new HtmlDocument($body);
+
+            $cnt = 0;
+            foreach($doc->find('table', 1)->find('tr') as $tr) {
+                $cnt++;
+                if($cnt == 1)
+                    continue;
+                $id = $tr->find('td',0)->find('a', 0)?->getAttribute('href');
+                preg_match("@^https?://myanimelist.net/anime/(\d+)/.*@",$id,$m);
+                $id= $m[1];
+                $title = trim($tr->find('td',1)->find('a', 0)?->text());
+
+                $type =  $tr->find('td',2)->text();
+                $eps = $tr->find('td',3)->text();
+                $score = $tr->find('td',4)->text();
+                $results[] = [$id, $type, $eps, $title, $score];
+            }
+
+            if(count($results) <= 1) {
+                $bot->pm($args->chan, "\2MAL:\2 no results found");
+                return;
+            }
         }
-        $doc = new HtmlDocument($body);
-
-        $results[] = ["ID", "Type", "Eps", "Title", "Score"];
-        $cnt = 0;
-        foreach($doc->find('table', 1)->find('tr') as $tr) {
-            $cnt++;
-            if($cnt == 1)
-                continue;
-            $id = $tr->find('td',0)->find('a', 0)?->getAttribute('href');
-            preg_match("@^https?://myanimelist.net/anime/(\d+)/.*@",$id,$m);
-            $id= $m[1];
-            $title = trim($tr->find('td',1)->find('a', 0)?->text());
-
-            $type =  $tr->find('td',2)->text();
-            $eps = $tr->find('td',3)->text();
-            $score = $tr->find('td',4)->text();
-            $results[] = [$id, $type, $eps, $title, $score];
-        }
-
-        if(count($results) <= 1) {
-            $bot->pm($args->chan, "\2MAL:\2 no results found");
-            return;
-        }
-
         $results = array_slice($results, 0, 10);
 
         $results = multi_array_padding($results);

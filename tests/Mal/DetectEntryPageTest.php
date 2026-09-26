@@ -28,6 +28,17 @@ class DetectEntryPageTest extends TestCase
         $this->assertSame('All You Need Is Kill', $entry['title']);
     }
 
+    public function test_entry_page_landing_carries_result_row_fields(): void
+    {
+        // mals always renders a result list, so a redirect landing must come
+        // back as a complete ID/Type/Eps/Title/Score row
+        $entry = mal::detectEntryPage(self::fixture('search-entry.html.gz'));
+        $this->assertNotNull($entry);
+        $this->assertSame('Movie', $entry['type']);
+        $this->assertSame('1', $entry['eps']);
+        $this->assertSame('6.64', $entry['score']);
+    }
+
     public function test_list_page_is_not_an_entry_page(): void
     {
         $this->assertNull(mal::detectEntryPage(self::fixture('search-list.html.gz')));
