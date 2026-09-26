@@ -16,6 +16,22 @@ class MessageTest extends TestCase
         $this->assertNull($m->tags);
     }
 
+    public function test_literal_zero_args_are_preserved(): void
+    {
+        // e.g. WHOX 354 uses 0 as the logged-out account sentinel; a bare
+        // array_filter() would drop it and shift every later arg
+        $m = Message::parse(':srv 354 me 123 ident host nick H@ 0');
+        $this->assertNotNull($m);
+        $this->assertSame(['me', '123', 'ident', 'host', 'nick', 'H@', '0'], $m->args);
+    }
+
+    public function test_doubled_spaces_still_drop_empty_args(): void
+    {
+        $m = Message::parse(':srv 354 me  123 ident host nick H@');
+        $this->assertNotNull($m);
+        $this->assertSame(['me', '123', 'ident', 'host', 'nick', 'H@'], $m->args);
+    }
+
     public function test_tags_parse_with_prefix_and_args(): void
     {
         $m = Message::parse('@account=zen;msgid=x1y2 :nick!user@host PRIVMSG #chan :hi');

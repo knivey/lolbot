@@ -154,7 +154,10 @@ class Message
                     $args = explode(' ', $matches['args']);
             }
 
-            $args = array_values(array_filter($args));
+            //drop only the empty strings from doubled spaces — a bare
+            //array_filter() would also drop the legal literal arg "0"
+            //(e.g. WHOX's logged-out account sentinel)
+            $args = array_values(array_filter($args, fn($arg) => $arg !== ''));
             if($spacedArg !== false)
                 $args[] = $spacedArg;
         } else

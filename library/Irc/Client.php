@@ -183,8 +183,8 @@ class Client extends EventEmitter
         $this->caps = [];
         //WHO replies can never arrive on a dead connection; resolve pending
         //whox futures with whatever entries they collected (possibly none)
-        foreach (array_keys($this->whoxPending) as $label) {
-            $this->resolveWhox($label);
+        foreach (array_keys($this->whoxPending) as $token) {
+            $this->resolveWhox((string)$token);
         }
         $this->emit('disconnected', new Event\DisconnectedEvent(
             time: time(), event: 'disconnected', sender: $this
@@ -715,15 +715,26 @@ class Client extends EventEmitter
     }
 
     /**
-     * WHOX query (IRCv3 WHO with %fields,label). Returns a Future that
+     * WHOX query (IRCv3 WHO with %fields,token). Returns a Future that
      * resolves with a list of entries keyed by the requested field letters
-     * ('u' user, 'h' host, 'n' nick, 'a' account with `*` mapped to null,
-     * 'f' flags, plus pass-through for the other WHOX letters). It resolves
-     * on RPL_ENDOFWHO (315) for the target, on timeout with whatever
-     * entries arrived so far, or on disconnect.
+     * ('u' user, 'h' host, 'n' nick, 'a' account with the logged-out
+     * sentinels `0` and `*` mapped to null, 'f' flags, plus pass-through
+     * for the other WHOX letters). It resolves on RPL_ENDOFWHO (315) for
+     * the target, on timeout with whatever entries arrived so far, or on
+     * disconnect.
+     *
+     * Wire details per the IRCv3 WHOX spec: 354 replies carry the field
+     * values in the CANONICAL order `t,c,u,i,h,s,n,f,d,l,a,o,r` filtered
+     * to the requested letters — NOT in request order — so replies are
+     * mapped positionally against the canonical order. The `t` (token)
+     * field is always added to the outgoing query as the correlation key
+     * for 354 replies; it is stripped from the returned entries unless
+     * the caller explicitly requested it. The token is a 1-3 digit
+     * numeric string unique among pending queries and never `777`
+     * (Nicks.php's legacy WHOX label).
      *
      * @param string $target channel or mask to query
-     * @param string $fields non-empty field letters, lowercase [a-z] only
+     * @param string $fields non-empty field letters from tcuihsnfdlaor (duplicates collapse)
      * @return \Amp\Future<list<array<string, mixed>>>
      * @throws \InvalidArgumentException on an empty/multi-word target or invalid fields
      */
@@ -731,42 +742,54 @@ class Client extends EventEmitter
     {
         if ($target === '' || str_contains($target, ' '))
             throw new \InvalidArgumentException("whox target must be a single non-empty mask");
-        if (!preg_match('/^[a-z]+$/', $fields))
-            throw new \InvalidArgumentException("whox fields must be non-empty lowercase letters");
+        $canonical = str_split('tcuihsnfdlaor');
+        $letters = str_split($fields);
+        if ($fields === '' || array_diff($letters, $canonical) !== [])
+            throw new \InvalidArgumentException("whox fields must be non-empty letters from the WHOX set tcuihsnfdlaor");
+        $requestedSet = array_flip($letters); //dedupes repeated letters
+        $wantsToken = isset($requestedSet['t']);
+        //the token field always rides the wire as the 354 correlation key
+        $requestedSet['t'] = true;
+        //outgoing letters in canonical reply order so 354 values map positionally
+        $outgoing = implode('', array_filter($canonical, fn(string $l): bool => isset($requestedSet[$l])));
 
-        $label = substr(bin2hex(random_bytes(6)), 0, 8);
-        while (isset($this->whoxPending[$label]))
-            $label = substr(bin2hex(random_bytes(6)), 0, 8);
+        if (count($this->whoxPending) >= 998)
+            throw new \RuntimeException("whox token space exhausted by pending queries");
+        do {
+            //spec: token is digits only, at most 3 chars; never Nicks.php's 777
+            $token = strval(random_int(1, 999));
+        } while ($token === '777' || isset($this->whoxPending[$token]));
 
         /** @var \Amp\DeferredFuture<list<array<string, mixed>>> $deferred */
         $deferred = new \Amp\DeferredFuture();
-        $this->whoxPending[$label] = [
+        $this->whoxPending[$token] = [
             'deferred' => $deferred,
             'target' => $target,
-            'fields' => $fields,
+            'fields' => $outgoing,
+            'wantsToken' => $wantsToken,
             'entries' => [],
             'timer' => null,
         ];
-        $this->whoxPending[$label]['timer'] = EventLoop::delay($this->whoxTimeout, function () use ($label): void {
+        $this->whoxPending[$token]['timer'] = EventLoop::delay($this->whoxTimeout, function () use ($token): void {
             //resolve with whatever entries arrived before the timeout
-            $this->resolveWhox($label);
+            $this->resolveWhox($token);
         });
 
-        $this->send('WHO', $target, "%$fields,$label");
+        $this->send('WHO', $target, "%$outgoing,$token");
         return $deferred->getFuture();
     }
 
     /**
-     * Resolve a pending WHOX query by label: cancel its timeout watcher and
+     * Resolve a pending WHOX query by token: cancel its timeout watcher and
      * complete the future with the entries collected so far. Safe to call
-     * for unknown or already-resolved labels.
+     * for unknown or already-resolved tokens.
      */
-    protected function resolveWhox(string $label): void
+    protected function resolveWhox(string $token): void
     {
-        if (!isset($this->whoxPending[$label]))
+        if (!isset($this->whoxPending[$token]))
             return;
-        $pending = $this->whoxPending[$label];
-        unset($this->whoxPending[$label]);
+        $pending = $this->whoxPending[$token];
+        unset($this->whoxPending[$token]);
         if ($pending['timer'] !== null)
             EventLoop::cancel($pending['timer']);
         $pending['deferred']->complete($pending['entries']);
@@ -811,11 +834,14 @@ class Client extends EventEmitter
     protected bool $waitOnSasl = false;
 
     /**
-     * Pending WHOX queries keyed by label:
+     * Pending WHOX queries keyed by their wire token (PHP normalizes the
+     * digit-string tokens to int array keys):
      * deferred => future to resolve, target => queried target,
-     * fields => requested field letters, entries => replies collected so far,
+     * fields => outgoing field letters in canonical reply order (always
+     * including the internal 't' token), wantsToken => caller explicitly
+     * asked for 't' in the entries, entries => replies collected so far,
      * timer => timeout watcher id
-     * @var array<string, array{deferred: \Amp\DeferredFuture<list<array<string, mixed>>>, target: string, fields: string, entries: list<array<string, mixed>>, timer: string|null}>
+     * @var array<int|string, array{deferred: \Amp\DeferredFuture<list<array<string, mixed>>>, target: string, fields: string, wantsToken: bool, entries: list<array<string, mixed>>, timer: string|null}>
      */
     protected array $whoxPending = [];
     /**
@@ -1180,12 +1206,15 @@ class Client extends EventEmitter
                 ));
                 break;
             case RPL_WHOSPCRPL:
-                //WHOX query reply: args are [client, label, ...requested fields]
-                $label = $message->getArg(1);
-                if ($label === null || !isset($this->whoxPending[$label])) {
+                //WHOX query reply: args are [client, <one value per requested
+                //field in CANONICAL order t,c,u,i,h,s,n,f,d,l,a,o,r filtered
+                //to the requested set>] — never in request order, and the
+                //first value is always our 't' token since we always send it
+                $token = $message->getArg(1);
+                if ($token === null || !isset($this->whoxPending[$token])) {
                     //other clients on the network can issue their own WHOX
                     //queries (e.g. Nicks.php's legacy `%tnchuf,777` backfill);
-                    //354s carrying labels we did not generate are re-emitted
+                    //354s carrying tokens we did not generate are re-emitted
                     //as plain numerics so legacy subscribers still see them
                     $this->emit($message->command, new Event\NumericEvent(
                         time: time(), event: $message->command, sender: $this,
@@ -1193,30 +1222,33 @@ class Client extends EventEmitter
                     ));
                     break;
                 }
-                $whoxPending = $this->whoxPending[$label];
+                $whoxPending = $this->whoxPending[$token];
                 $entry = [];
                 foreach (str_split($whoxPending['fields']) as $i => $letter) {
-                    $value = $message->getArg(2 + $i);
+                    $value = $message->getArg(1 + $i);
                     if ($value === null) {
                         //server sent fewer fields than requested
                         continue;
                     }
-                    if ($letter === 'a' && $value === '*') {
-                        //`*` = not logged into an account
+                    if ($letter === 't' && !$whoxPending['wantsToken'])
+                        continue; //internal correlation token, not a caller field
+                    if ($letter === 'a' && ($value === '0' || $value === '*')) {
+                        //WHOX signals "not logged into an account" with 0
+                        //(spec; some servers send *); both map to null
                         $value = null;
                     }
                     $entry[$letter] = $value;
                 }
-                $this->whoxPending[$label]['entries'][] = $entry;
+                $this->whoxPending[$token]['entries'][] = $entry;
                 break;
             case RPL_ENDOFWHO:
                 //finish any WHOX futures waiting on this target, then keep
                 //the old default-case behavior of emitting the numeric event
                 $endTarget = $message->getArg(1);
                 if ($endTarget !== null) {
-                    foreach ($this->whoxPending as $label => $whoxPending) {
+                    foreach ($this->whoxPending as $token => $whoxPending) {
                         if (strtolower($whoxPending['target']) === strtolower($endTarget))
-                            $this->resolveWhox($label);
+                            $this->resolveWhox((string)$token);
                     }
                 }
                 $this->emit($message->command, new Event\NumericEvent(

@@ -168,7 +168,7 @@ takes shape.
    `account-tag` + `extended-join` CAP REQs, `UserEvent::$account`
    populated on chat/pm/notice/nick/part/quit/kick, extended
    `JoinEvent` (`$account`, `$realname`), and `Client::whox()` returning
-   label-correlated `Amp\Future`s (354/315, per-call unique labels,
+   token-correlated `Amp\Future`s (354/315, per-call unique ≤3-digit numeric tokens per the WHOX spec, replies mapped in canonical field order,
    timeout + disconnect resolution; foreign-label 354s still emit their
    numeric so `Nicks.php`'s legacy WHOX keeps working — note: Nicks has
    its own WHOX with label 777; the engines task should migrate it onto
