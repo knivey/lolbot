@@ -141,6 +141,13 @@ PM-only (PrivCmd): `register`, `auth`, `pass`, `paranoid`,
 `password_hash` (noted, confirm at build). WHOX field set `%uhna`
 (user/host/nick/account; confirm at build).
 
+**Code placement (owner note 2026-09-26):** as these pieces become core
+components everything depends on, they live in lolbot's `library/` (core
+ autoloaded namespace alongside `library/config` etc.); user-facing
+commands for them remain in `scripts/`. Current `scripts/user/` files move
+into `library/` as part of the engines task when the user system core
+takes shape.
+
 ## Foundations build order (decided 2026-09-26)
 
 1. **cmdr** (own repo, `knivey/Cmdr`): middleware pipeline + `#[Acl]`
