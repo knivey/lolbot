@@ -207,9 +207,11 @@ class alias extends script_base
         $act = $alias->act ? "true" : "false";
         $suffix = '';
         try {
+            // live = true: reaching here proves the live row exists, and a
+            // restored alias is live while its timeline still says removed
             $suffix = self::versionSuffix(alias::buildTimeline(
                 $this->loadHistoryRows($alias->nameLowered, $alias->chanLowered)
-            ));
+            ), live: true);
         } catch (\Exception $e) {
             $this->logger->error($e);
         }
@@ -715,19 +717,25 @@ class alias extends script_base
      * Pure helper: the version info showalias() appends to its first reply
      * line (" \2Version:\2 N of M \2Updated:\2 <latest save date>"). Empty
      * string while the alias is removed or has no dated history, so the
-     * existing output is shown unchanged.
+     * existing output is shown unchanged. Callers that have already proven
+     * the live alias row exists pass $live = true: an alias restored via
+     * revertalias is live again while its timeline still says removed
+     * (only a new save clears that flag), and the version info must not
+     * stay suppressed for it.
      *
      * @param array<string, mixed> $timeline
      */
-    public static function versionSuffix(array $timeline): string
+    public static function versionSuffix(array $timeline, bool $live = false): string
     {
         $entries = $timeline['entries'] ?? null;
         if (!is_array($entries)) {
             return '';
         }
-        $removed = $timeline['removed'] ?? false;
-        if (!is_bool($removed) || $removed) {
-            return '';
+        if (!$live) {
+            $removed = $timeline['removed'] ?? false;
+            if (!is_bool($removed) || $removed) {
+                return '';
+            }
         }
         $currentVersion = $timeline['currentVersion'] ?? null;
         $totalSaves = $timeline['totalSaves'] ?? null;

@@ -208,6 +208,28 @@ class AliasHistoryFormatTest extends TestCase
         $this->assertSame('', alias::versionSuffix($timeline));
     }
 
+    public function test_version_suffix_keeps_version_info_for_live_alias_while_timeline_says_removed(): void
+    {
+        // restored via revertalias: the live row exists but only a new save
+        // would clear the timeline's removed flag, so showalias passes live
+        $timeline = alias::buildTimeline([
+            self::historyRow('save', 'one', ['created' => new \DateTimeImmutable('2026-01-01 12:00:00 UTC')]),
+            self::historyRow('removed'),
+        ]);
+        $this->assertSame('', alias::versionSuffix($timeline, false));
+        $this->assertSame(
+            " \2Version:\2 1 of 1 \2Updated:\2 2026-01-01 12:00 UTC",
+            alias::versionSuffix($timeline, true)
+        );
+    }
+
+    public function test_version_suffix_live_flag_still_empty_without_saves(): void
+    {
+        $timeline = alias::buildTimeline([self::historyRow('removed')]);
+        $this->assertSame('', alias::versionSuffix($timeline, true));
+        $this->assertSame('', alias::versionSuffix(alias::buildTimeline([]), true));
+    }
+
     public function test_version_suffix_empty_without_history(): void
     {
         $this->assertSame('', alias::versionSuffix(alias::buildTimeline([])));
