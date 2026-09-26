@@ -181,6 +181,11 @@ class Client extends EventEmitter
         $this->onChannels = [];
         $this->inQ = '';
         $this->caps = [];
+        //WHO replies can never arrive on a dead connection; resolve pending
+        //whox futures with whatever entries they collected (possibly none)
+        foreach (array_keys($this->whoxPending) as $label) {
+            $this->resolveWhox($label);
+        }
         $this->emit('disconnected', new Event\DisconnectedEvent(
             time: time(), event: 'disconnected', sender: $this
         ));
@@ -709,6 +714,64 @@ class Client extends EventEmitter
         return $this;
     }
 
+    /**
+     * WHOX query (IRCv3 WHO with %fields,label). Returns a Future that
+     * resolves with a list of entries keyed by the requested field letters
+     * ('u' user, 'h' host, 'n' nick, 'a' account with `*` mapped to null,
+     * 'f' flags, plus pass-through for the other WHOX letters). It resolves
+     * on RPL_ENDOFWHO (315) for the target, on timeout with whatever
+     * entries arrived so far, or on disconnect.
+     *
+     * @param string $target channel or mask to query
+     * @param string $fields non-empty field letters, lowercase [a-z] only
+     * @return \Amp\Future<list<array<string, mixed>>>
+     * @throws \InvalidArgumentException on an empty/multi-word target or invalid fields
+     */
+    public function whox(string $target, string $fields = 'uhnaf'): \Amp\Future
+    {
+        if ($target === '' || str_contains($target, ' '))
+            throw new \InvalidArgumentException("whox target must be a single non-empty mask");
+        if (!preg_match('/^[a-z]+$/', $fields))
+            throw new \InvalidArgumentException("whox fields must be non-empty lowercase letters");
+
+        $label = substr(bin2hex(random_bytes(6)), 0, 8);
+        while (isset($this->whoxPending[$label]))
+            $label = substr(bin2hex(random_bytes(6)), 0, 8);
+
+        /** @var \Amp\DeferredFuture<list<array<string, mixed>>> $deferred */
+        $deferred = new \Amp\DeferredFuture();
+        $this->whoxPending[$label] = [
+            'deferred' => $deferred,
+            'target' => $target,
+            'fields' => $fields,
+            'entries' => [],
+            'timer' => null,
+        ];
+        $this->whoxPending[$label]['timer'] = EventLoop::delay($this->whoxTimeout, function () use ($label): void {
+            //resolve with whatever entries arrived before the timeout
+            $this->resolveWhox($label);
+        });
+
+        $this->send('WHO', $target, "%$fields,$label");
+        return $deferred->getFuture();
+    }
+
+    /**
+     * Resolve a pending WHOX query by label: cancel its timeout watcher and
+     * complete the future with the entries collected so far. Safe to call
+     * for unknown or already-resolved labels.
+     */
+    protected function resolveWhox(string $label): void
+    {
+        if (!isset($this->whoxPending[$label]))
+            return;
+        $pending = $this->whoxPending[$label];
+        unset($this->whoxPending[$label]);
+        if ($pending['timer'] !== null)
+            EventLoop::cancel($pending['timer']);
+        $pending['deferred']->complete($pending['entries']);
+    }
+
     public function msg(string $target, string $message): static
     {
         $message = str_replace(["\r", "\n"], '', $message);
@@ -746,6 +809,19 @@ class Client extends EventEmitter
     protected ?array $listReply = null;
 
     protected bool $waitOnSasl = false;
+
+    /**
+     * Pending WHOX queries keyed by label:
+     * deferred => future to resolve, target => queried target,
+     * fields => requested field letters, entries => replies collected so far,
+     * timer => timeout watcher id
+     * @var array<string, array{deferred: \Amp\DeferredFuture<list<array<string, mixed>>>, target: string, fields: string, entries: list<array<string, mixed>>, timer: string|null}>
+     */
+    protected array $whoxPending = [];
+    /**
+     * Seconds before a WHOX future resolves with partial entries; 0 = immediate
+     */
+    protected int $whoxTimeout = 15;
 
     protected function handleMessage(Event\MessageEvent $e): void
     {
@@ -1101,6 +1177,46 @@ class Client extends EventEmitter
                     nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
                     text: $message->getArg(0) ?? '', account: $account
+                ));
+                break;
+            case RPL_WHOSPCRPL:
+                //WHOX query reply: args are [client, label, ...requested fields]
+                $label = $message->getArg(1);
+                if ($label === null || !isset($this->whoxPending[$label])) {
+                    //other clients on the network can issue their own WHOX
+                    //queries; 354s carrying labels we did not generate are
+                    //noise and get dropped silently
+                    break;
+                }
+                $whoxPending = $this->whoxPending[$label];
+                $entry = [];
+                foreach (str_split($whoxPending['fields']) as $i => $letter) {
+                    $value = $message->getArg(2 + $i);
+                    if ($value === null) {
+                        //server sent fewer fields than requested
+                        continue;
+                    }
+                    if ($letter === 'a' && $value === '*') {
+                        //`*` = not logged into an account
+                        $value = null;
+                    }
+                    $entry[$letter] = $value;
+                }
+                $this->whoxPending[$label]['entries'][] = $entry;
+                break;
+            case RPL_ENDOFWHO:
+                //finish any WHOX futures waiting on this target, then keep
+                //the old default-case behavior of emitting the numeric event
+                $endTarget = $message->getArg(1);
+                if ($endTarget !== null) {
+                    foreach ($this->whoxPending as $label => $whoxPending) {
+                        if (strtolower($whoxPending['target']) === strtolower($endTarget))
+                            $this->resolveWhox($label);
+                    }
+                }
+                $this->emit($message->command, new Event\NumericEvent(
+                    time: time(), event: $message->command, sender: $this,
+                    message: $message
                 ));
                 break;
             default:

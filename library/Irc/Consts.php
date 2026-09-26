@@ -77,6 +77,7 @@ const RPL_SUMMONING = '342';
 const RPL_VERSION = '351';
 const RPL_WHOREPLY = '352';
 const RPL_NAMREPLY = '353';
+const RPL_WHOSPCRPL = '354';
 const RPL_LINKS = '364';
 const RPL_ENDOFLINKS = '365';
 const RPL_ENDOFNAMES = '366';
