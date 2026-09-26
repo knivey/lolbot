@@ -5,11 +5,83 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 
 use simplehtmldom\HtmlDocument;
+use simplehtmldom\HtmlNode;
 
 //TODO --amt for ud
 
 class urbandict extends \scripts\script_base
 {
+    /**
+     * Parse a urbandictionary define page into definition data.
+     *
+     * 2026 site markup: the exact-term def is an article.group.definition while
+     * feed defs are div.definition (matched together via .definition), the word
+     * is span.word (+ data-word attr on the container), the byline lives in
+     * div.font-medium, and Word of the Day entries are flagged by a
+     * text-gray-600 line. (gh#132)
+     *
+     * @return array<int, array{word: string, meaning: string, example: string, by: string, wotd: bool}>
+     */
+    public static function parseDefs(string $body): array
+    {
+        $doc = new HtmlDocument($body);
+        $defs = @$doc->find('.definition');
+        if (!is_array($defs) || count($defs) < 1) {
+            return [];
+        }
+        $out = [];
+        foreach ($defs as $def) {
+            if (!$def instanceof HtmlNode) {
+                continue;
+            }
+            $out[] = self::parseDef($def);
+        }
+        return $out;
+    }
+
+    /**
+     * @return array{word: string, meaning: string, example: string, by: string, wotd: bool}
+     */
+    private static function parseDef(HtmlNode $def): array
+    {
+        $word = $def->getAttribute('data-word');
+        if (!is_string($word) || $word === '') {
+            $word = self::nodeText($def, 'span.word');
+        }
+        $author = self::nodeAttr($def, 'a[data-grow-author]', 'data-grow-author');
+        $date = '';
+        if (preg_match('/([A-Z][a-z]+ \d{1,2}, \d{4})\s*$/D', self::nodeText($def, 'div.font-medium'), $m)) {
+            $date = $m[1];
+        }
+        return [
+            'word' => html_entity_decode($word, ENT_QUOTES | ENT_HTML5),
+            'meaning' => html_entity_decode(self::nodeText($def, 'div.meaning'), ENT_QUOTES | ENT_HTML5),
+            'example' => html_entity_decode(self::nodeText($def, 'div.example'), ENT_QUOTES | ENT_HTML5),
+            'by' => html_entity_decode(trim("{$author} {$date}"), ENT_QUOTES | ENT_HTML5),
+            'wotd' => str_contains(self::nodeText($def, 'div.text-gray-600'), 'Word of the Day'),
+        ];
+    }
+
+    private static function nodeText(HtmlNode $node, string $selector): string
+    {
+        $found = $node->find($selector, 0);
+        if (!$found instanceof HtmlNode) {
+            return '';
+        }
+        $text = $found->text();
+        return is_string($text) ? $text : '';
+    }
+
+    private static function nodeAttr(HtmlNode $node, string $selector, string $attr): string
+    {
+        $found = $node->find($selector, 0);
+        if (!$found instanceof HtmlNode) {
+            return '';
+        }
+        $value = $found->getAttribute($attr);
+        return is_string($value) ? $value : '';
+    }
+
     #[Cmd("ud", "urban", "urbandict")]
     #[Syntax('<query>...')]
     function ud(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
@@ -31,12 +103,10 @@ class urbandict extends \scripts\script_base
 
             return;
         }
-        $doc = new HtmlDocument($body);
-
-        $defs = @$doc->find('div.definition');
+        $defs = self::parseDefs($body);
 
         // wonder if this would happen after that earlier check?
-        if (!is_array($defs) || count($defs) < 1) {
+        if (count($defs) < 1) {
             $bot->msg($args->chan, "ud: Couldn't find an entry matching {$cmdArgs['query']}");
             return;
         }
@@ -47,21 +117,16 @@ class urbandict extends \scripts\script_base
         $num = 0;
         for ($i = 0; $i < $max && isset($defs[$i]); $i++) {
             $def = $defs[$i];
-            $num++;
-            //Haven't seen this on the pages again, maybe they stopped it
-            if (str_contains($def->find('div.ribbon', 0)?->plaintext, "Word of the Day")) {
+            // WOTD entries are stuffed into the feed, skip them and look one further
+            if ($def['wotd']) {
                 $max++;
                 continue;
             }
-            $meaning = $def->find('div.meaning', 0)->plaintext;
-            $example = $def->find('div.example', 0)->plaintext;
-            $word = $def->find('a.word', 0)->plaintext;
-            $by = $def->find('div.contributor', 0)->plaintext;
-
-            $meaning = html_entity_decode($meaning, ENT_QUOTES | ENT_HTML5);
-            $example = html_entity_decode($example, ENT_QUOTES | ENT_HTML5);
-            $word = html_entity_decode($word, ENT_QUOTES | ENT_HTML5);
-            $by = html_entity_decode($by, ENT_QUOTES | ENT_HTML5);
+            $num++;
+            $meaning = $def['meaning'];
+            $example = $def['example'];
+            $word = $def['word'];
+            $by = $def['by'];
 
             $meaning = trim(str_replace(["\n", "\r"], ' ', $meaning));
 
