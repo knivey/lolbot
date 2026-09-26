@@ -50,8 +50,8 @@ NOT borrowed: policies, containers, ability inheritance.
   need the identity itself (settings, tells); no cmdr parameter injection.
 - Commands without `#[Acl]` are unchanged (fail-closed only for gated ones).
 - `Access::allowed()` remains for ad-hoc checks inside command bodies.
-- cmdr work lands in its own repo first, tagged `v4.x`, pulled here with
-  `composer update knivey/cmdr` (the `^4.0` constraint admits it).
+- Dev loop: local `knivey/Cmdr` clone wired into lolbot via a composer
+  `path` repository with symlink until a new major release is tagged.
 
 ## Auth engines (pluggable chain, per network)
 
@@ -72,18 +72,18 @@ hostmask engine for that account, forcing manual auth each connect.
   on auth the server cycles the user with **QUIT + immediate JOIN** so
   clients see the new host (users *can* disable this to keep their real
   host — so the cycle cannot be relied on; it is a bonus signal).
-- **Host rules** (strict network policy): any host ending `.gamesurge`
-  means the user is services-authed. Hosts ending `.user.gamesurge` carry
-  the account as the first label (`opp.user.gamesurge` → account `opp`) —
-  the fast path. **Vanity hosts** freely replace the `account.user` portion
-  (`zen@zenith.boat.gamesurge`, account `zen`): they prove auth but the
-  account is NOT extractable — WHOX/srvx must resolve it. Vanity labels
-  contain no dots (hyphens for words). Group hosts (e.g. staff subdomains)
-  are likewise not matchable.
-- Hostmask matching is **an aid for quicker tracking, never authoritative**.
+- **Host rules** (strict network policy): hosts matching
+  `(?P<name>[^.]+)\.[^.]+\.gamesurge` are **authoritative** — the account
+  is the first label, the middle label is `user` by default or a
+  user-chosen vanity word (dot-free, hyphens for words):
+  `opp.user.gamesurge` → `opp`, `zenith.boat.gamesurge` → `zenith`.
+  Hosts NOT ending `.gamesurge` mean unauthed or host-hidden (see below).
 - Account renames are undetectable by protocol (extremely rare). Future:
   admin merge/rename tool; autodetection heuristic = the
   `QUIT (Registered)` + immediate rejoin cycle.
+- The lazy command-time fallback stays required regardless: users who hide
+  their host after auth never show a `.gamesurge` host, so a missing
+  binding must still trigger targeted WHOX.
 
 ### Identity cache (decided: events + lazy fallback)
 
@@ -144,7 +144,10 @@ PM-only (PrivCmd): `register`, `auth`, `pass`, `paranoid`,
 ## Foundations build order (decided 2026-09-26)
 
 1. **cmdr** (own repo, `knivey/Cmdr`): middleware pipeline + `#[Acl]`
-   attribute; tag `v4.x`; `composer update knivey/cmdr`.
+   attribute. During development lolbot's composer.json points at the local
+   clone via a `path` repository (symlinked) instead of packagist; release
+   as a **new major version** (past cmdr feature sets bumped majors) and
+   bump the constraint here when ready.
 2. **`Irc\Client`**: WHOX send/parse (354), `account-tag` +
    `extended-join` CAPs, QUIT/JOIN rebinding hook, typed event extensions.
 3. **Core**: `users` + `user_hostmasks` entities + migration,
