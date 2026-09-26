@@ -1,9 +1,9 @@
 # User System — Coalesced Design
 
-Status: **design notes, not yet approved for build.** This document merges
-everywhere the user-system design has lived so there is one source of truth.
-Sources: issue #34, the header comment and stubs in `scripts/user/user.php`
-(2022), `scripts/user/Access.php`, and owner notes recorded 2026-09-26.
+Status: **design approved in brainstorm on 2026-09-26; not yet built.**
+This document is the single source of truth for the user system. Sources:
+issue #34, the header comment and stubs in `scripts/user/user.php` (2022),
+`scripts/user/Access.php`, and the 2026-09-26 design session with the owner.
 
 ## Why we want it
 
@@ -17,104 +17,153 @@ can plan many commands we have been lacking (issue #34's real payoff).
   `user_id` instead of nicks.
 - **Scripts own their own settings** — accounts are NOT centralized settings
   blobs. Each script keeps its own set-commands/tables keyed by `user_id`,
-  exactly like scripts do today keyed by nick.
-- **Flags are ACLs**: a user carries flags; each flag maps to an ACL check.
-  `Access::define()` / `Access::allowed()` (in `scripts/user/Access.php`)
-  is the existing mechanism: scripts register named ACL callables and
-  commands gate on them.
-- Admin ACL first; **channel ACL deferred** ("keeping it simple for now").
+  or (later) registers into the central settings registry below.
+- **Flags are ACLs**: a user carries flags; each flag maps to an ACL check
+  via `Access::define()` / `Access::allowed()` (`scripts/user/Access.php`).
+- Admin ACL first; **channel ACL deferred**.
 
-## Auth engines (pluggable, per network)
+## ACL surface (decided 2026-09-26)
 
-1. **Hostmask matching** — the baseline engine. Users logged in by matching
-   a stored hostmask; needs a hostmask generator (`*!*ident@fullhost`).
-   A per-user setting (`paranoid`, stubbed) decides whether the hostmask is
-   remembered or the user must auth on every connect.
-2. **Manual PM auth** — `register` / `pass` / `auth` (all stubbed as
-   PrivCmds). The bot may also auth users itself on connect.
-3. **Services-based, GameSurge reality** (owner notes): GameSurge HAS
-   services but NO ircv3 caps. Users can be tracked through:
-   - matching a `.*.gamesurge` hostmask (services vhost after auth),
-   - **WHOX** queries (`account` field),
-   - **srvx** commands (AUTHSERVICE etc.).
-4. **ircv3 account-tag** — the eventual clean engine on networks that
-   support it; requires `Irc\Client` work (see Foundations). Optional
-   per-network engine. Old notes: "on networks with services try to use irc
-   caps to auth maybe? will require changing irc lib".
+**Middleware is the mechanism, attributes are the sugar.** cmdr (separate
+repo, `knivey/Cmdr`, currently pinned `^4.0`) gains a wrapping middleware
+pipeline, PSR-15 style:
 
-Old open musing kept for reference: "look at laravel gates for better idea
-on doing things with modular scripts" (inspiration for the ACL surface, not
-a commitment).
+```php
+$router->addMiddleware(fn(Request $req, callable $next) => /* global */ ...);
+$router->addMiddleware($middleware, 'restart');   // per-command, programmatic
+
+#[Cmd("restart")]
+#[Acl("botadmin")]   // sugar: auto-attaches the acl middleware to this command
+```
+
+Execution order: global middlewares → per-command/attribute middlewares →
+command body. The built-in acl middleware resolves the requesting user,
+runs the superadmin `before()` hook, then `Access::allowed()`, then either
+`$next($req)` or a deny notice (PM notice, "auth or ask an admin" style).
+
+Borrowed from Laravel gates (the musing, resolved): named ability closures
+(`Access::define`) and the `before()` interception hook for superadmin
+bypass — one global hook guarantees the owner can never be locked out.
+NOT borrowed: policies, containers, ability inheritance.
+
+- Users resolved **lazily** via a `user($args)` helper for commands that
+  need the identity itself (settings, tells); no cmdr parameter injection.
+- Commands without `#[Acl]` are unchanged (fail-closed only for gated ones).
+- `Access::allowed()` remains for ad-hoc checks inside command bodies.
+- cmdr work lands in its own repo first, tagged `v4.x`, pulled here with
+  `composer update knivey/cmdr` (the `^4.0` constraint admits it).
+
+## Auth engines (pluggable chain, per network)
+
+```
+1. account-tag (ircv3)      authoritative per-message account, where CAP exists
+2. services (GameSurge)     WHOX 354 account field + srvx AUTHSERVICE
+3. hostmask                 stored per-user masks (baseline everywhere)
+4. manual session           .auth via PM, held until invalidated
+```
+
+First engine to yield an answer wins; engines are pure resolvers
+`(network, nick, host) → ?user_id`. `paranoid` (per-user flag) disables the
+hostmask engine for that account, forcing manual auth each connect.
+
+### GameSurge reality (owner-verified mechanics)
+
+- GameSurge has services but **no ircv3 caps**. ircu ircd has no CHGHOST:
+  on auth the server cycles the user with **QUIT + immediate JOIN** so
+  clients see the new host (users *can* disable this to keep their real
+  host — so the cycle cannot be relied on; it is a bonus signal).
+- **Host rules** (strict network policy): any host ending `.gamesurge`
+  means the user is services-authed. Hosts ending `.user.gamesurge` carry
+  the account as the first label (`opp.user.gamesurge` → account `opp`) —
+  the fast path. **Vanity hosts** freely replace the `account.user` portion
+  (`zen@zenith.boat.gamesurge`, account `zen`): they prove auth but the
+  account is NOT extractable — WHOX/srvx must resolve it. Vanity labels
+  contain no dots (hyphens for words). Group hosts (e.g. staff subdomains)
+  are likewise not matchable.
+- Hostmask matching is **an aid for quicker tracking, never authoritative**.
+- Account renames are undetectable by protocol (extremely rare). Future:
+  admin merge/rename tool; autodetection heuristic = the
+  `QUIT (Registered)` + immediate rejoin cycle.
+
+### Identity cache (decided: events + lazy fallback)
+
+Bindings live per `(network_id, nick_lowered) → user_id` with provenance
+and refresh timestamp.
+
+- **NICK change** → carry the binding to the new nick, NO revalidation.
+- **QUIT + immediate JOIN, same nick** (GameSurge Registered cycle) →
+  rebind: re-extract host / targeted WHOX.
+- **QUIT (real)** → drop the binding.
+- **account-tag** (capable networks) → authoritative free refresh.
+- **WHO(X) on channel join** → bulk refresh of everyone present.
+- **Command-time fallback** → targeted WHOX when a binding is missing or
+  stale (TTL); required for users hiding their host after auth.
 
 ## Two-tier settings tracking (accepted messiness)
 
-Users must NOT be forced to auth to use settings. Therefore:
+Users are never forced to auth. **Unauthed**: settings tied to the IRC nick
+(current behavior, `.setlastfm` etc). **Authed**: same settings tied to the
+user account via `user_id`. Proposed (not finally decided): when a nick is
+associated with an account, reads prefer account-owned settings then
+nick-owned; writes go to the account tier. The migration/merge flow for
+existing nick-tier settings is an open question the settings registry spec
+must answer.
 
-- **Unauthed**: settings stay tied to the IRC nick (current behavior,
-  e.g. `.setlastfm`, `.setlocation`).
-- **Authed**: the same kinds of settings are tied to the user account,
-  tracked by `user_id` and not nick.
+## Central settings registry (decided: single registry table)
 
-Owner: "kinda a mess to implement a two tiered tracking system but it will
-probably be worth it." Proposed resolution (NOT yet decided): when a nick is
-associated with an account, lookups prefer account-owned settings; otherwise
-nick-owned. Migration/merge of existing nick settings into accounts is an
-open question.
+One table: `settings(script, key, network_id, chan_lowered, user_id,
+nick_lowered, value JSON, created/updated)` with a tiered resolver
+(the linktitles `SettingsResolver` pattern generalized). New settings need
+zero migrations; one index serves all lookups.
 
-## Central settings registration
+Scripts register declaratively, cmdr-style:
 
-A central way for scripts to register settings, so commands don't
-re-implement the wheel and sets are consistent everywhere; new scripts
-easily register their sets into the system.
+```php
+#[Setting("lastfm", "your last.fm username")]
+#[SettingScope(Setting::USER)]      // also NICK / CHANNEL / NETWORK / GLOBAL
+function validateLastfm(string $value): string|ValidationError { ... }
+```
 
-- Rough shape: like **cmdr** for commands (declare attributes / register,
-  the framework does parsing + help + storage) and like the **linktitles
-  settings table** pattern in the DB today (per network/channel scoping,
-  tiered resolution via `SettingsResolver`).
-- Existing settings commands (`.setlastfm`, `.setlocation`) can remain as
-  they are, or become thin wrappers over the registry.
-- The registry owns storage + resolution; scripts keep owning semantics
-  (defaults, validation hooks).
+The framework generates the `.set <key>` / `.get <key>` surface, help
+entries, storage, and identity-tiered resolution. Existing `.setlastfm`
+style commands may remain or become wrappers over the generated surface.
+Scripts with heavy relational data (portfolios, geo columns) keep their own
+entities and only register command surface if desired.
 
-This is likely its own spec/plan when we get there; it is recorded here
-because its identity model (`user_id` vs nick) depends on this system.
+The registry owns the two-tier resolution rule above — one resolution rule
+in one place, not per script. Likely its own spec/plan; recorded here
+because its identity model depends on this system.
 
-## Command surface (stubbed in 2022, still the plan)
+## Command surface (stubbed 2022, still the plan)
 
 PM-only (PrivCmd): `register`, `auth`, `pass`, `paranoid`,
-`setflags`/`addflags`/`delflags` (flags = ACLs). Once the system lands,
-plan the admin-command backlog that has been blocked on it.
+`setflags`/`addflags`/`delflags` (flags = ACLs). Passwords: argon2id via
+`password_hash` (noted, confirm at build). WHOX field set `%uhna`
+(user/host/nick/account; confirm at build).
 
-## Foundations needed first (Irc\Client and friends)
+## Foundations build order (decided 2026-09-26)
 
-Current `Irc\Client` state: CAP negotiation exists (`CAP LS`, requests
-`multi-prefix` and `sasl`) but nothing else. Needed:
-
-- **WHOX** support (send `WHO #chan %ahn...`, parse the 354 numeric) —
-  feeds the hostmask/account engines.
-- **ircv3 `account-tag` + `extended-join`** CAPs — gives per-message
-  account identity on capable networks; wire into ChatEvent (typed events
-  exist, extend them).
-- **srvx command interface** (GameSurge): auth checks via services bots —
-  needs a small per-network service-command abstraction.
-- Hostmask matcher/generator utility (shared with Ignore matcher concepts).
+1. **cmdr** (own repo, `knivey/Cmdr`): middleware pipeline + `#[Acl]`
+   attribute; tag `v4.x`; `composer update knivey/cmdr`.
+2. **`Irc\Client`**: WHOX send/parse (354), `account-tag` +
+   `extended-join` CAPs, QUIT/JOIN rebinding hook, typed event extensions.
+3. **Core**: `users` + `user_hostmasks` entities + migration,
+   `Access::before()`, hostmask + GameSurge engines, identity cache, PM
+   commands (`register`/`auth`/`pass`/`paranoid`/flags).
+4. **Settings registry**: single table + attributes + generated `.set`
+   surface + two-tier resolution.
+5. **Backlog unlock**: the admin/channel commands that have been waiting.
 
 ## Explicitly not doing (kept as ideas only)
 
-- **Artbot guest-dir segregation** for unauthed art: "we probably wont do
-  but can keep it as an idea — we dont get much new art these days and the
-  current system works fine."
+- **Artbot guest-dir segregation** for unauthed art.
 - Channel ACLs (deferred, not rejected).
-- cmdr middlewares for auth checks: "possibly later" — Access-based checks
-  in command bodies are fine to start.
+- Laravel policies / containers / ability inheritance.
 
 ## Open questions
 
-1. Password storage scheme for `pass`/`register` (argon2id via
-   `password_hash` presumably — confirm).
-2. How WHOX/srvx results are cached and invalidated (WHO on join? on
-   command use? TTL?).
-3. Nick→account setting merge/upgrade flow when a user registers.
-4. Whether `User` objects ride on ChatEvent (eager per-message lookup) or
-   resolve lazily at command time.
-5. Scope of the settings registry spec (separate doc) and its DB shape.
+1. Nick→account settings merge/upgrade flow when a user registers (must be
+   answered by the settings registry spec).
+2. srvx command specifics (AUTHSERVICE query surface) — verify against the
+   live network when building engine 2.
+3. Identity cache TTL value and WHOX batching limits.
