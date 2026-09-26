@@ -14,16 +14,22 @@ class Message
      * @var array<string>
      */
     public array $args = array();
+    /**
+     * @var array<string, string>|null
+     */
+    public ?array $tags = null;
 
     /**
      * @param string $command
      * @param list<string> $args
      * @param string|null $prefix
+     * @param array<string, string>|null $tags
      */
-    public function __construct(string $command, array $args = array(), ?string $prefix = null)
+    public function __construct(string $command, array $args = array(), ?string $prefix = null, ?array $tags = null)
     {
         $this->command = $command;
         $this->args = $args;
+        $this->tags = $tags;
 
         if (!empty($prefix)) {
             if (str_contains($prefix, '!')) {
@@ -95,6 +101,38 @@ class Message
         $args = array();
         $matches = array();
 
+        $tags = null;
+        if (str_starts_with($message, '@')) {
+            // ircv3 message tags: strip the leading '@tags ' block before the
+            // normal prefix/command parsing below runs
+            $sp = strpos($message, ' ');
+            if ($sp !== false) {
+                $tagBlock = substr($message, 1, $sp - 1);
+                $message = substr($message, $sp + 1);
+                $tags = [];
+                foreach (explode(';', $tagBlock) as $entry) {
+                    if ($entry === '')
+                        continue;
+                    $eq = strpos($entry, '=');
+                    if ($eq === false) {
+                        $tags[$entry] = '';
+                        continue;
+                    }
+                    // single-pass replacement so an escaped backslash (\\) survives
+                    // instead of its output being re-read as part of a later
+                    // \: \s \r \n sequence; the final bare \ drops dangling escapes
+                    $tags[substr($entry, 0, $eq)] = strtr(substr($entry, $eq + 1), [
+                        '\\\\' => '\\',
+                        '\\:' => ';',
+                        '\\s' => ' ',
+                        '\\r' => "\r",
+                        '\\n' => "\n",
+                        '\\' => '',
+                    ]);
+                }
+            }
+        }
+
         if (preg_match('/^
             (:(?<prefix>[^ ]+)\s+)?     #the prefix (either "server" or "nick!user@host")
             (?<command>[^ ]+)           #the command (e.g. NOTICE, PRIVMSG)
@@ -122,6 +160,6 @@ class Message
         } else
             return new Message('UNKNOWN', array($message));
 
-        return new Message($command, $args, $prefix);
+        return new Message($command, $args, $prefix, $tags);
     }
 }
