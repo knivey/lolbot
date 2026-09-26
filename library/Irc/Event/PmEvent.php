@@ -15,7 +15,8 @@ class PmEvent extends UserEvent
         string $fullhost,
         public readonly string $to,
         public readonly string $text,
+        ?string $account = null,
     ) {
-        parent::__construct($time, $event, $sender, $nick, $ident, $host, $identhost, $fullhost);
+        parent::__construct($time, $event, $sender, $nick, $ident, $host, $identhost, $fullhost, $account);
     }
 }

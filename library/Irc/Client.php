@@ -848,11 +848,12 @@ class Client extends EventEmitter
                     unset($this->onChannels[$channel]);
                 }
 
+                $account = ($message->tags['account'] ?? null) === '*' ? null : ($message->tags['account'] ?? null);
                 $this->emit("part, part:$channel, part:$nick, part:$channel:$nick", new Event\PartEvent(
                     time: time(), event: "part", sender: $this,
                     nick: $nick, ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    chan: $channel
+                    chan: $channel, account: $account
                 ));
                 break;
             case CMD_KICK:
@@ -870,11 +871,12 @@ class Client extends EventEmitter
                 }
 
                 $kickNick = $nick;
+                $account = ($message->tags['account'] ?? null) === '*' ? null : ($message->tags['account'] ?? null);
                 $this->emit("kick, kick:$channel, kick:$kickNick, kick:$channel:$kickNick", new Event\KickEvent(
                     time: time(), event: "kick", sender: $this,
                     nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    chan: $channel, target: $kickNick
+                    chan: $channel, target: $kickNick, account: $account
                 ));
                 break;
             case CMD_NOTICE:
@@ -887,11 +889,12 @@ class Client extends EventEmitter
                 }
                 $text = $message->getArg(1, '');
 
+                $account = ($message->tags['account'] ?? null) === '*' ? null : ($message->tags['account'] ?? null);
                 $this->emit("notice, notice:$to, notice:$to:$from", new Event\NoticeEvent(
                     time: time(), event: "notice", sender: $this,
                     nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    to: $to, text: $text
+                    to: $to, text: $text, account: $account
                 ));
                 break;
             case CMD_MODE:
@@ -917,13 +920,14 @@ class Client extends EventEmitter
                 if($to === null)
                     break;
                 $text = $message->getArg(1, '');
+                $account = ($message->tags['account'] ?? null) === '*' ? null : ($message->tags['account'] ?? null);
 
                 if ($this->isChannel($to)) {
                     $this->emit("chat, chat:$to, chat:$to:$from", new Event\ChatEvent(
                         time: time(), event: "chat", sender: $this,
                         nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                         identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                        chan: $to, text: $text
+                        chan: $to, text: $text, account: $account
                     ));
                     break;
                 }
@@ -932,7 +936,7 @@ class Client extends EventEmitter
                     time: time(), event: "pm", sender: $this,
                     nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    to: $to, text: $text
+                    to: $to, text: $text, account: $account
                 ));
                 break;
             case RPL_NAMREPLY:
@@ -1063,19 +1067,21 @@ class Client extends EventEmitter
                 if($this->getNick() == $sourceNick) {
                     $this->nick = $newNick;
                 }
+                $account = ($message->tags['account'] ?? null) === '*' ? null : ($message->tags['account'] ?? null);
                 $this->emit("nick", new Event\NickEvent(
                     time: time(), event: "nick", sender: $this,
                     nick: $sourceNick, ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    old: $sourceNick, new: $newNick
+                    old: $sourceNick, new: $newNick, account: $account
                 ));
                 break;
             case "QUIT":
+                $account = ($message->tags['account'] ?? null) === '*' ? null : ($message->tags['account'] ?? null);
                 $this->emit("quit", new Event\QuitEvent(
                     time: time(), event: "quit", sender: $this,
                     nick: $message->nick ?? '', ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    text: $message->getArg(0) ?? ''
+                    text: $message->getArg(0) ?? '', account: $account
                 ));
                 break;
             default:

@@ -15,7 +15,8 @@ class NickEvent extends UserEvent
         string $fullhost,
         public readonly string $old,
         public readonly string $new,
+        ?string $account = null,
     ) {
-        parent::__construct($time, $event, $sender, $nick, $ident, $host, $identhost, $fullhost);
+        parent::__construct($time, $event, $sender, $nick, $ident, $host, $identhost, $fullhost, $account);
     }
 }

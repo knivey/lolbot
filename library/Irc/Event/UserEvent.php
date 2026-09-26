@@ -13,6 +13,7 @@ abstract class UserEvent extends Event
         public readonly string $host,
         public readonly string $identhost,
         public readonly string $fullhost,
+        public readonly ?string $account = null,
     ) {
         parent::__construct($time, $event, $sender);
     }
