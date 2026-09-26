@@ -84,6 +84,26 @@ class MessageTest extends TestCase
         $this->assertSame(['#c', 'x'], $m->args);
     }
 
+    public function test_tags_survive_the_unknown_fallback(): void
+    {
+        // '@a=b ' leaves an empty message after the tag block; it falls back
+        // to UNKNOWN but the parsed tags must still be carried through
+        $m = Message::parse('@a=b ');
+        $this->assertNotNull($m);
+        $this->assertSame('UNKNOWN', $m->command);
+        $this->assertSame(['a' => 'b'], $m->tags);
+    }
+
+    public function test_at_sign_without_space_is_not_a_tag_block(): void
+    {
+        // current behavior: '@' with no following space is not a tag block,
+        // so the line parses as a plain command and tags stay null
+        $m = Message::parse('@foo');
+        $this->assertNotNull($m);
+        $this->assertSame('@foo', $m->command);
+        $this->assertNull($m->tags);
+    }
+
     public function test_constructor_accepts_optional_tags(): void
     {
         $m = new Message('PRIVMSG', ['#chan', 'hi'], 'nick!user@host', ['account' => 'zen']);

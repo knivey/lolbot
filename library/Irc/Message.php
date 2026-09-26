@@ -158,7 +158,7 @@ class Message
             if($spacedArg !== false)
                 $args[] = $spacedArg;
         } else
-            return new Message('UNKNOWN', array($message));
+            return new Message('UNKNOWN', array($message), null, $tags);
 
         return new Message($command, $args, $prefix, $tags);
     }
