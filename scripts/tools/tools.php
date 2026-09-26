@@ -13,30 +13,87 @@ use scripts\script_base;
 
 class tools extends script_base
 {
+    /**
+     * Parse a Wiktionary REST definition body
+     * (en.wiktionary.org/api/rest_v1/page/definition/<word>) into one row per
+     * English part of speech, first definition each, HTML stripped.
+     * Wiktionary is the source because api.dictionaryapi.dev became
+     * unreachable from the bot's network (gh#130).
+     *
+     * @return array<int, array{pos: string, definition: string, example: string}>
+     */
+    public static function parseWiktionaryDefs(string $body): array
+    {
+        $json = json_decode($body, true);
+        if (!is_array($json) || !is_array($json['en'] ?? null)) {
+            return [];
+        }
+        $out = [];
+        foreach ($json['en'] as $section) {
+            if (!is_array($section) || !is_array($section['definitions'] ?? null)) {
+                continue;
+            }
+            $def0 = $section['definitions'][0] ?? null;
+            if (!is_array($def0)) {
+                continue;
+            }
+            $pos = $section['partOfSpeech'] ?? '';
+            $definition = $def0['definition'] ?? '';
+            $examples = $def0['examples'] ?? null;
+            $example = is_array($examples) ? ($examples[0] ?? '') : '';
+            $out[] = [
+                'pos' => is_string($pos) ? $pos : '',
+                'definition' => self::stripWikiHtml(is_string($definition) ? $definition : ''),
+                'example' => self::stripWikiHtml(is_string($example) ? $example : ''),
+            ];
+        }
+        return $out;
+    }
+
+    private static function stripWikiHtml(string $html): string
+    {
+        $text = preg_replace('#<[^>]+>#', '', $html) ?? $html;
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        return trim($text);
+    }
+
     #[Cmd("define", "dictionary")]
     #[Syntax('<query>...')]
-    #[Desc("lookup definitions from api.dictionaryapi.dev")]
+    #[Desc("lookup definitions from en.wiktionary.org")]
     function dictionary(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
-        $word = rawurlencode($cmdArgs['query']);
-        try {
-            $body = \async_get_contents("https://api.dictionaryapi.dev/api/v2/entries/en/$word");
-        } catch (\async_get_exception $e) {
-            if ($e->getCode() == 404)
-                $bot->msg($args->chan, "define: no definitions found");
-            else
+        // Wiktionary titles are case sensitive (hello exists, Hello does not),
+        // so try the query as typed and then common case variants
+        $query = is_string($cmdArgs['query']) ? $cmdArgs['query'] : '';
+        $word = '';
+        $defs = [];
+        foreach (array_unique([$query, lcfirst($query), ucfirst($query), mb_strtolower($query, 'UTF-8')]) as $variant) {
+            try {
+                $body = \async_get_contents("https://en.wiktionary.org/api/rest_v1/page/definition/" . rawurlencode($variant));
+            } catch (\async_get_exception $e) {
+                if ($e->getCode() == 404)
+                    continue;
                 $bot->msg($args->chan, "define error: {$e->getIRCMsg()}");
+                return;
+            }
+            // a page can exist without an English section (foreign-only
+            // entries), only accept a variant that yields definitions
+            $defs = self::parseWiktionaryDefs($body);
+            if ($defs !== []) {
+                $word = $variant;
+                break;
+            }
+        }
+        if ($defs === []) {
+            $bot->msg($args->chan, "define: no definitions found");
             return;
         }
-        $json = json_decode($body)[0];
-        $out = "Define: {$json->word}";
-        if (isset($json->phonetics[0]->text))
-            $out .= " {$json->phonetics[0]->text}";
-        $out .= " - ";
-        foreach ($json->meanings as $m) {
-            $out .= "({$m->partOfSpeech}) {$m->definitions[0]->definition}";
-            if (isset($m->definitions[0]->example))
-                $out .= " Ex: {$m->definitions[0]->example}";
+        $out = "Define: $word - ";
+        foreach (array_slice($defs, 0, 3) as $d) {
+            $out .= "({$d['pos']}) {$d['definition']}";
+            if ($d['example'] !== '')
+                $out .= " Ex: {$d['example']}";
             $out .= " | ";
         }
         $out = rtrim($out, " |");
