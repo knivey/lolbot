@@ -71,4 +71,56 @@ class ParseDefsTest extends TestCase
     {
         $this->assertSame([], urbandict::parseDefs('<html><body>nothing here</body></html>'));
     }
+
+    /**
+     * @return array{word: string, meaning: string, example: string, by: string, wotd: bool}
+     */
+    private static function mkDef(string $word, bool $wotd = false): array
+    {
+        return ['word' => $word, 'meaning' => "m $word", 'example' => "e $word", 'by' => "a $word", 'wotd' => $wotd];
+    }
+
+    public function test_selectDefs_takes_first_non_wotd_defs_in_order(): void
+    {
+        $defs = [
+            self::mkDef('w1', true),
+            self::mkDef('a'),
+            self::mkDef('w2', true),
+            self::mkDef('b'),
+            self::mkDef('c'),
+        ];
+        $sel = urbandict::selectDefs($defs, 2);
+        $this->assertSame(['a', 'b'], array_column($sel, 'word'));
+        $sel = urbandict::selectDefs($defs, 1);
+        $this->assertSame(['a'], array_column($sel, 'word'));
+    }
+
+    public function test_selectDefs_falls_back_to_first_def_when_all_are_wotd(): void
+    {
+        $defs = [
+            self::mkDef('w1', true),
+            self::mkDef('w2', true),
+        ];
+        $sel = urbandict::selectDefs($defs, 2);
+        $this->assertSame(['w1'], array_column($sel, 'word'));
+    }
+
+    public function test_selectDefs_empty_input(): void
+    {
+        $this->assertSame([], urbandict::selectDefs([], 2));
+    }
+
+    public function test_selectDefs_max_zero_selects_nothing(): void
+    {
+        $this->assertSame([], urbandict::selectDefs([self::mkDef('a'), self::mkDef('w', true)], 0));
+        $this->assertSame([], urbandict::selectDefs([self::mkDef('w', true)], 0));
+    }
+
+    public function test_selectDefs_shorter_than_max_and_fallback_at_max_one(): void
+    {
+        $one = [self::mkDef('a')];
+        $this->assertSame(['a'], array_column(urbandict::selectDefs($one, 2), 'word'));
+        $allWotd = [self::mkDef('w1', true), self::mkDef('w2', true)];
+        $this->assertSame(['w1'], array_column(urbandict::selectDefs($allWotd, 1), 'word'));
+    }
 }

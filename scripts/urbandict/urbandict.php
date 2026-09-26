@@ -62,6 +62,35 @@ class urbandict extends \scripts\script_base
         ];
     }
 
+    /**
+     * Pick the first $max non-WOTD defs in order (WOTD entries are stuffed
+     * into the feed). If every def is WOTD — e.g. the term itself was a Word
+     * of the Day — fall back to the first def so output is never empty.
+     *
+     * @param array<int, array{word: string, meaning: string, example: string, by: string, wotd: bool}> $defs
+     * @return array<int, array{word: string, meaning: string, example: string, by: string, wotd: bool}>
+     */
+    public static function selectDefs(array $defs, int $max): array
+    {
+        if ($max < 1) {
+            return [];
+        }
+        $out = [];
+        foreach ($defs as $def) {
+            if (count($out) >= $max) {
+                break;
+            }
+            if ($def['wotd']) {
+                continue;
+            }
+            $out[] = $def;
+        }
+        if ($out === [] && $defs !== []) {
+            $out[] = $defs[0];
+        }
+        return $out;
+    }
+
     private static function nodeText(HtmlNode $node, string $selector): string
     {
         $found = $node->find($selector, 0);
@@ -115,13 +144,7 @@ class urbandict extends \scripts\script_base
         if ($this->server->throttle)
             $max = 1;
         $num = 0;
-        for ($i = 0; $i < $max && isset($defs[$i]); $i++) {
-            $def = $defs[$i];
-            // WOTD entries are stuffed into the feed, skip them and look one further
-            if ($def['wotd']) {
-                $max++;
-                continue;
-            }
+        foreach (self::selectDefs($defs, $max) as $def) {
             $num++;
             $meaning = $def['meaning'];
             $example = $def['example'];
