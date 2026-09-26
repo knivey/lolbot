@@ -171,6 +171,35 @@ class WhoxTest extends TestCase
         ], $two->await(new TimeoutCancellation(2)));
     }
 
+    public function test_foreign_label_354_still_emits_numeric_event(): void
+    {
+        // e.g. Nicks.php runs its own legacy WHOX on joins (`%tnchuf,777`)
+        // and subscribes to the plain '354' numeric event to collect replies
+        $this->feed(':srv 354 testbot 777 #chan H@ userX hostX nickX acctX');
+
+        $this->assertArrayHasKey('354', $this->client->emitted, 'foreign-label 354 must still emit the numeric event');
+        $event = $this->client->emitted['354'] ?? null; // @phpstan-ignore nullCoalesce.offset
+        $this->assertInstanceOf(\Irc\Event\NumericEvent::class, $event);
+        $this->assertSame('354', $event->message->command);
+        $this->assertSame('777', $event->message->getArg(1));
+    }
+
+    public function test_own_label_354_does_not_emit_numeric_event(): void
+    {
+        $future = $this->client->whox('#chan');
+        $label = $this->labelAt(0);
+
+        $this->feed(":srv 354 testbot $label identX hostX nickX acctX H@");
+
+        $this->assertArrayNotHasKey('354', $this->client->emitted, 'own-label 354s are consumed by the future, not re-emitted');
+
+        $this->feed(':srv 315 testbot #chan :End of WHO list');
+        $this->assertTrue($future->isComplete(), 'future still resolves normally');
+        $this->assertSame([
+            ['u' => 'identX', 'h' => 'hostX', 'n' => 'nickX', 'a' => 'acctX', 'f' => 'H@'],
+        ], $future->await(new \Amp\TimeoutCancellation(2)));
+    }
+
     public function test_315_for_untracked_target_is_ignored_without_error(): void
     {
         $future = $this->client->whox('#chan');

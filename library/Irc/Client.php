@@ -1184,8 +1184,13 @@ class Client extends EventEmitter
                 $label = $message->getArg(1);
                 if ($label === null || !isset($this->whoxPending[$label])) {
                     //other clients on the network can issue their own WHOX
-                    //queries; 354s carrying labels we did not generate are
-                    //noise and get dropped silently
+                    //queries (e.g. Nicks.php's legacy `%tnchuf,777` backfill);
+                    //354s carrying labels we did not generate are re-emitted
+                    //as plain numerics so legacy subscribers still see them
+                    $this->emit($message->command, new Event\NumericEvent(
+                        time: time(), event: $message->command, sender: $this,
+                        message: $message
+                    ));
                     break;
                 }
                 $whoxPending = $this->whoxPending[$label];
