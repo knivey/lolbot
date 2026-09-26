@@ -75,14 +75,14 @@ class urbandict extends \scripts\script_base
             if ($this->server->throttle) {
                 // still wrap on throttle, just near the irc line limit so its less lines (gh#133)
                 $lines = explode("\n", wordwrap($meaning, 350));
-                foreach ($lines as $i => $m) {
-                    $leader = $i == 0 ? "├ Meaning: " : "│ ";
+                foreach ($lines as $li => $m) {
+                    $leader = $li == 0 ? "├ Meaning: " : "│ ";
                     $bot->msg($args->chan, " $leader $m");
                 }
                 $lines = explode("\n", wordwrap($example1line, 350));
                 $last = count($lines) - 1;
-                foreach ($lines as $i => $el) {
-                    $leader = $i == $last ? "└ " : "│ ";
+                foreach ($lines as $li => $el) {
+                    $leader = $li == $last ? "└ " : "│ ";
                     $bot->msg($args->chan, " $leader $el");
                 }
             } else {
