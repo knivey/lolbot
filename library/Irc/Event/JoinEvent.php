@@ -14,7 +14,9 @@ class JoinEvent extends UserEvent
         string $identhost,
         string $fullhost,
         public readonly string $chan,
+        ?string $account = null,
+        public readonly ?string $realname = null,
     ) {
-        parent::__construct($time, $event, $sender, $nick, $ident, $host, $identhost, $fullhost);
+        parent::__construct($time, $event, $sender, $nick, $ident, $host, $identhost, $fullhost, $account);
     }
 }

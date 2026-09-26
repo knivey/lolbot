@@ -791,6 +791,14 @@ class Client extends EventEmitter
                         $this->send("CAP REQ :multi-prefix");
                         $req = true;
                     }
+                    if(in_array('account-tag', $caps)) {
+                        $this->send("CAP REQ :account-tag");
+                        $req = true;
+                    }
+                    if(in_array('extended-join', $caps)) {
+                        $this->send("CAP REQ :extended-join");
+                        $req = true;
+                    }
                     if($this->saslPass != "" && in_array('sasl', $caps)) {
                         $this->send("CAP REQ :sasl");
                         $this->waitOnSasl = true;
@@ -829,11 +837,22 @@ class Client extends EventEmitter
                     $this->onChannels[$channel] = $channel;
                 }
 
+                //extended-join adds two params: JOIN #chan account :realname
+                //(`*` account = unauthenticated); they take precedence over
+                //the account tag, which is the fallback on the old 1-param form
+                $tagAccount = ($message->tags['account'] ?? null) === '*' ? null : ($message->tags['account'] ?? null);
+                $account = $tagAccount;
+                $realname = null;
+                if($message->getArg(2) !== null) {
+                    $account = $message->getArg(1) === '*' ? null : $message->getArg(1);
+                    $realname = $message->getArg(2);
+                }
+
                 $this->emit("join, join:$channel, join:$nick, join:$channel:$nick", new Event\JoinEvent(
                     time: time(), event: "join", sender: $this,
                     nick: $nick, ident: $message->name ?? '', host: $message->host ?? '',
                     identhost: $message->getIdentHost(), fullhost: $message->getHostString(),
-                    chan: $channel
+                    chan: $channel, account: $account, realname: $realname
                 ));
                 break;
             case CMD_PART:
