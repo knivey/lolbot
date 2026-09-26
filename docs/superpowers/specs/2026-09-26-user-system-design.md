@@ -144,10 +144,18 @@ PM-only (PrivCmd): `register`, `auth`, `pass`, `paranoid`,
 ## Foundations build order (decided 2026-09-26)
 
 1. **cmdr** (own repo, `knivey/Cmdr`): middleware pipeline + `#[Acl]`
-   attribute. During development lolbot's composer.json points at the local
-   clone via a `path` repository (symlinked) instead of packagist; release
-   as a **new major version** (past cmdr feature sets bumped majors) and
-   bump the constraint here when ready.
+   attribute. **DONE 2026-09-26** — branch `5.x` (pipeline, case-insensitive
+   per-command middleware, lazily-resolved aliased attribute middleware,
+   `MiddlewareAttribute` interface) + lolbot's fail-closed `#[Acl]`
+   attribute, `Access::before()`, userResolver plumbing, `Acl::register()`
+   in BotManager. Untagged; lolbot tracks `5.x-dev` via composer path repo
+   until the v5 release. Engines-task TODO: wire deny output — BotManager's
+   `call()`/`callPriv()` return values are currently discarded at both
+   handlers, so deny strings must be surfaced there (bot-templated text, no
+   `\2\2` marking needed). During development lolbot's composer.json points
+   at the local clone via a `path` repository (symlinked) instead of
+   packagist; release as a **new major version** (past cmdr feature sets
+   bumped majors) and bump the constraint here when ready.
 2. **`Irc\Client`**: WHOX send/parse (354), `account-tag` +
    `extended-join` CAPs, QUIT/JOIN rebinding hook, typed event extensions.
 3. **Core**: `users` + `user_hostmasks` entities + migration,
