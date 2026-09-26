@@ -163,8 +163,17 @@ takes shape.
    at the local clone via a `path` repository (symlinked) instead of
    packagist; release as a **new major version** (past cmdr feature sets
    bumped majors) and bump the constraint here when ready.
-2. **`Irc\Client`**: WHOX send/parse (354), `account-tag` +
-   `extended-join` CAPs, QUIT/JOIN rebinding hook, typed event extensions.
+2. **`Irc\Client`**: **DONE 2026-09-26** — IRCv3 message tags in
+   `Message::parse` (single-pass unescape; UNKNOWN path carries tags),
+   `account-tag` + `extended-join` CAP REQs, `UserEvent::$account`
+   populated on chat/pm/notice/nick/part/quit/kick, extended
+   `JoinEvent` (`$account`, `$realname`), and `Client::whox()` returning
+   label-correlated `Amp\Future`s (354/315, per-call unique labels,
+   timeout + disconnect resolution; foreign-label 354s still emit their
+   numeric so `Nicks.php`'s legacy WHOX keeps working — note: Nicks has
+   its own WHOX with label 777; the engines task should migrate it onto
+   `Client::whox()`). Rebinding detection lives in the engines layer, not
+   the client (owner decision).
 3. **Core**: `users` + `user_hostmasks` entities + migration,
    `Access::before()`, hostmask + GameSurge engines, identity cache, PM
    commands (`register`/`auth`/`pass`/`paranoid`/flags).
