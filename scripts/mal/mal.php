@@ -6,11 +6,47 @@ use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 
 use simplehtmldom\HtmlDocument;
+use simplehtmldom\HtmlNode;
 
 use function knivey\tools\multi_array_padding;
 
 class mal extends \scripts\script_base
 {
+    /**
+     * MAL now 303-redirects exact-title searches straight to the entry page,
+     * where the old div.title flow grabs related-entry manga cards instead of
+     * the anime itself, and the mals results table is not there at all
+     * (gh#131). Detect that landing and return the entry it points to;
+     * regular result-list pages return null and keep using the old flow.
+     *
+     * @return array{id: string, url: string, title: string}|null
+     */
+    public static function detectEntryPage(string $body): ?array
+    {
+        $doc = new HtmlDocument($body);
+        $meta = $doc->find('meta[property=og:url]', 0);
+        if (!$meta instanceof HtmlNode) {
+            return null;
+        }
+        $ogUrl = $meta->getAttribute('content');
+        if (!is_string($ogUrl)) {
+            return null;
+        }
+        // og:url looks like https://myanimelist.net/anime/61192/Title_Slug
+        $parts = explode('/', rtrim($ogUrl, '/'));
+        if (count($parts) < 5 || $parts[3] !== 'anime' || !ctype_digit($parts[4])) {
+            return null;
+        }
+        $id = $parts[4];
+        $title = '';
+        $h1 = $doc->find('h1.title-name', 0);
+        if ($h1 instanceof HtmlNode) {
+            $text = $h1->text();
+            $title = is_string($text) ? trim($text) : '';
+        }
+        return ['id' => $id, 'url' => $ogUrl, 'title' => $title];
+    }
+
     #[Cmd("mals", "myanimelistsearch")]
     #[Syntax("<search>...")]
     #[Desc("search a anime on myanimelist")]
@@ -22,6 +58,12 @@ class mal extends \scripts\script_base
             $body = async_get_contents($url);
         } catch (\async_get_exception $e) {
             $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
+            return;
+        }
+        $entry = self::detectEntryPage($body);
+        if ($entry !== null) {
+            // search redirected straight to a single entry, nothing to list
+            $this->showDetail($args, $bot, $entry['url'], $body);
             return;
         }
         $doc = new HtmlDocument($body);
@@ -45,6 +87,7 @@ class mal extends \scripts\script_base
 
         if(count($results) <= 1) {
             $bot->pm($args->chan, "\2MAL:\2 no results found");
+            return;
         }
 
         $results = array_slice($results, 0, 10);
@@ -71,6 +114,13 @@ class mal extends \scripts\script_base
                 $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
                 return;
             }
+            $entry = self::detectEntryPage($body);
+            if ($entry !== null) {
+                // exact-title searches redirect straight to the entry page
+                // (gh#131); reuse the body we already have
+                $this->showDetail($args, $bot, $entry['url'], $body);
+                return;
+            }
             $doc = new HtmlDocument($body);
             $result = $doc->find('div.title', 0)?->find('a', 0)?->getAttribute('href');
             foreach ($doc->find('div.title') as $e) {
@@ -83,8 +133,13 @@ class mal extends \scripts\script_base
                 return;
             }
         }
+        $this->showDetail($args, $bot, $result);
+    }
+
+    private function showDetail(\Irc\Event\ChatEvent $args, \Irc\Client $bot, string $result, ?string $body = null): void
+    {
         try {
-            $body = async_get_contents($result);
+            $body ??= async_get_contents($result);
         } catch (\async_get_exception $e) {
             if($e->getCode() == 404)
                 $bot->pm($args->chan, "\2MAL:\2 404 anime not found");
