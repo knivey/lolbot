@@ -43,8 +43,10 @@ the repo's config style). One per network plus an `all`:
 | `all` | cross-network isolation checks |
 
 Each profile describes:
-- **network row**: name, pinned `auth_engines` where the test matters,
-  `admin_hostmask_auth` as needed.
+- **network + server rows**: network name, pinned `auth_engines` where
+  the test matters, `admin_hostmask_auth` as needed, and the server
+  endpoint(s) (host/port/TLS) the bot connects to — connection info is
+  seeded as the DB's server rows, same as production shape.
 - **bot row**: dev nick (distinct from prod bots), trigger, test
   channels (test-only channels, never production ones).
 - **driver identity**: nick (+ SASL account where the network has
