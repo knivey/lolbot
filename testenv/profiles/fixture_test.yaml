@@ -1,0 +1,22 @@
+driver:
+  nick: Tester
+networks:
+  - name: FixtureNet
+    servers:
+      - {address: irc.fixture.example, port: 6697, ssl: true}
+    bots:
+      - {name: DevBot1, channels: ["#testchan"]}
+  - name: FixtureNet2
+    seed_users:
+      - {name: Helper, flags: [quotes]}
+      - {name: ShyOne, paranoid: true}
+    servers:
+      - {address: irc2.fixture.example}
+    bots:
+      - {name: DevBot2}
+  - name: FixtureNet3
+    seed_users: none
+    servers:
+      - {address: irc3.fixture.example}
+    bots:
+      - {name: DevBot3}

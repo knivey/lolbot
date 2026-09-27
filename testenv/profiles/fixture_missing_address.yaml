@@ -1,0 +1,8 @@
+driver:
+  nick: Tester
+networks:
+  - name: FixtureNet
+    servers:
+      - {port: 6697, ssl: true}
+    bots:
+      - {name: DevBot1}

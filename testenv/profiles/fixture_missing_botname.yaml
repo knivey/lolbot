@@ -1,0 +1,8 @@
+driver:
+  nick: Tester
+networks:
+  - name: FixtureNet
+    servers:
+      - {address: irc.fixture.example, port: 6697, ssl: true}
+    bots:
+      - {channels: ["#testchan"]}

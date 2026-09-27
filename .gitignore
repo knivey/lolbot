@@ -21,3 +21,5 @@ opencode.json
 .phpunit.cache
 .php-cs-fixer.cache
 .superpowers/
+testenv/run/
+testenv/secrets.yaml
