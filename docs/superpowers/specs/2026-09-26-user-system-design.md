@@ -85,7 +85,32 @@ hostmask engine for that account, forcing manual auth each connect.
   their host after auth never show a `.gamesurge` host, so a missing
   binding must still trigger targeted WHOX.
 
+### Capability degradation (owner note 2026-09-27, from Nicks.php experience)
+
+Some networks don't support WHOX at all — but they typically have SOME
+combination that makes tracking possible. Engines self-disable when their
+capability is absent (probe via the existing `$bot->hasCap()` /
+`$bot->hasOption('WHOX')` ISUPPORT check — the Nicks.php pattern) and the
+chain degrades per network:
+
+| mechanism | detection | yields |
+|---|---|---|
+| account-tag | `hasCap('account-tag')` | per-message account, free |
+| WHOX `a` field | `hasOption('WHOX')` (ISUPPORT) | account per WHO query (via `Client::whox()`) |
+| WHOIS 330 (RPL_WHOISACCOUNT) | services ircds (atheme/anope family); probe by trying | account for one nick, on demand |
+| standard WHO 352 | always available | ident@host only — feeds the hostmask engine |
+| NAMES / JOIN / PM events | always available | incremental ident@host (Nicks-style tracking) |
+| network-specific (GameSurge vhost regex, srvx) | per-network config | account from host / services query |
+
+Engine selection is therefore: configured network engines first (they encode
+operator knowledge), then capability-probed generic engines, then manual
+session, then hostmask. Standard WHO 352 stays the host backfill wherever
+WHOX is absent (current Nicks behavior, preserved through the migration
+onto `Client::whox()`).
+
 ### Identity cache (decided: events + lazy fallback)
+
+
 
 Bindings live per `(network_id, nick_lowered) → user_id` with provenance
 and refresh timestamp.
