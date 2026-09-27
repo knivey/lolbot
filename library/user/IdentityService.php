@@ -14,10 +14,8 @@ class IdentityService
 
     /**
      * @param list<Engine> $engines
-     * @param callable(): int|null $now accepted to keep the wiring signature
-     *   stable; the cache owns the clock that stamps refreshed_at
      */
-    public function __construct(private IdentityCache $cache, array $engines, ?callable $now = null) // @phpstan-ignore constructor.unusedParameter (pinned signature)
+    public function __construct(private IdentityCache $cache, array $engines)
     {
         $this->engines = $engines;
     }
