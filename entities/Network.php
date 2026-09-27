@@ -26,6 +26,20 @@ class Network
     public \DateTimeImmutable $created;
 
     /**
+     * Auth engines enabled for this network (e.g. hostmask, nickserv);
+     * null = none. JSON column matching the ApiKey.scopes precedent.
+     *
+     * @var list<string>|null
+     */
+    #[ORM\Column(type: "json", nullable: true)]
+    public ?array $auth_engines = null;
+
+    // Owner note 2026-09-27: the admins-never-store-hostmasks rule is relaxed
+    // on networks known not to abuse faked hosts.
+    #[ORM\Column]
+    public bool $admin_hostmask_auth = false;
+
+    /**
      * @var Collection<int, Bot>
      */
     #[ORM\OneToMany(targetEntity: Bot::class, mappedBy: "network")]
