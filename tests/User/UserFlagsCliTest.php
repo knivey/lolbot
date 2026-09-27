@@ -2,12 +2,83 @@
 
 namespace Tests\User;
 
+use lolbot\entities\Network;
 use lolbot\entities\User;
+use PHPUnit\Framework\Assert;
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Input\StringInput;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Tests\Config\ConfigTestCase;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-class UserFlagsCliTest extends \PHPUnit\Framework\TestCase
+class UserFlagsCliTest extends ConfigTestCase
 {
+    private int $userId;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $net = new Network();
+        $net->name = 'ScratchNet';
+        $this->em->persist($net);
+        $this->em->flush();
+
+        $user = new User();
+        $user->network_id = $net->id;
+        $user->name = 'Knivey';
+        $user->nameLowered = mb_strtolower('Knivey');
+        $this->em->persist($user);
+        $this->em->flush();
+        $this->userId = $user->id;
+    }
+
+    /**
+     * Run the command with a real tokenized command line (including the
+     * command name, consumed by the synthetic 'command' argument exactly
+     * like the application does).
+     *
+     * @return array{0: int, 1: string} exit code and output
+     */
+    private function runCli(string $commandLine): array
+    {
+        $GLOBALS['entityManager'] = $this->em;
+        $command = new \lolbot\cli_cmds\user_flags();
+        $command->setApplication(new Application('test'));
+        $output = new BufferedOutput();
+        $code = $command->run(new StringInput($commandLine), $output);
+        return [$code, $output->fetch()];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function persistedFlags(): array
+    {
+        $this->em->clear();
+        $user = $this->em->find(User::class, $this->userId);
+        Assert::assertInstanceOf(User::class, $user);
+        return $user->flags;
+    }
+
+    public function test_unknown_flag_is_refused_with_valid_names(): void
+    {
+        // registry guard: the whole batch is refused before anything is
+        // applied, naming the unknown flag and the valid set
+        [$code, $out] = $this->runCli('user:flags ScratchNet Knivey +bogus');
+        $this->assertSame(1, $code, $out);
+        $this->assertStringContainsString('unknown flag(s): bogus', $out);
+        $this->assertStringContainsString('valid:', $out);
+        $this->assertSame([], $this->persistedFlags());
+    }
+
+    public function test_known_flag_still_applies(): void
+    {
+        [$code, $out] = $this->runCli('user:flags ScratchNet Knivey +admin');
+        $this->assertSame(0, $code, $out);
+        $this->assertSame(['admin'], $this->persistedFlags());
+    }
+
     public function test_adds_flag_to_empty_list(): void
     {
         $this->assertSame(['admin'], User::applyFlag([], '+', 'admin'));

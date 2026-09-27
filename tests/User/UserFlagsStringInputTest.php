@@ -4,6 +4,7 @@ namespace Tests\User;
 
 use lolbot\entities\Network;
 use lolbot\entities\User;
+use library\user\Flags;
 use PHPUnit\Framework\Assert;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Input\StringInput;
@@ -25,6 +26,11 @@ class UserFlagsStringInputTest extends ConfigTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // the removal tests need a second registered flag; scripts
+        // register their own flags at load time the same way
+        Flags::reset();
+        Flags::define('trusted', []);
+
         $net = new Network();
         $net->name = 'ScratchNet';
         $this->em->persist($net);
@@ -37,6 +43,12 @@ class UserFlagsStringInputTest extends ConfigTestCase
         $this->em->persist($user);
         $this->em->flush();
         $this->userId = $user->id;
+    }
+
+    protected function tearDown(): void
+    {
+        Flags::reset();
+        parent::tearDown();
     }
 
     /**
@@ -121,5 +133,17 @@ class UserFlagsStringInputTest extends ConfigTestCase
         [$code, $out] = $this->runCli('user:flags ScratchNet Knivey -- -admin');
         $this->assertSame(0, $code);
         $this->assertSame([], $this->persistedFlags());
+    }
+
+    public function test_unknown_removal_flag_is_refused_nothing_persisted(): void
+    {
+        // registry guard covers removal spellings too: '^bogus' must
+        // refuse the batch and leave previously-applied flags intact
+        $this->runCli('user:flags ScratchNet Knivey +admin');
+        [$code, $out] = $this->runCli('user:flags ScratchNet Knivey ^bogus');
+        $this->assertSame(1, $code, $out);
+        $this->assertStringContainsString('unknown flag(s): bogus', $out);
+        $this->assertStringContainsString('valid:', $out);
+        $this->assertSame(['admin'], $this->persistedFlags());
     }
 }

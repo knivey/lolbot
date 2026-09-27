@@ -355,9 +355,25 @@ function applyFlagOps(string $mode, \Irc\Event\UserEvent $args, \Irc\Client $bot
         $bot->pm($args->nick, "no flags given");
         return;
     }
+    // validate the whole batch against the flag registry before touching
+    // anything (all-or-nothing), like the user:flags CLI and cflags
+    /** @var list<array{0: '+'|'-', 1: string}> $parsed */
+    $parsed = [];
+    $unknown = [];
+    foreach ($tokens as $token) {
+        [$op, $flag] = flagOp($mode, $token);
+        $parsed[] = [$op, $flag];
+        if (!Flags::defined($flag)) {
+            $unknown[] = $flag;
+        }
+    }
+    if ($unknown !== []) {
+        $bot->pm($args->nick, 'unknown flag(s): ' . implode(', ', array_values(array_unique($unknown)))
+            . ' (valid: ' . implode(', ', array_keys(Flags::definitions())) . ')');
+        return;
+    }
     try {
-        foreach ($tokens as $token) {
-            [$op, $flag] = flagOp($mode, $token);
+        foreach ($parsed as [$op, $flag]) {
             $user->flags = UserEntity::applyFlag($user->flags, $op, $flag);
         }
     } catch (\InvalidArgumentException $e) {

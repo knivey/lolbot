@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use lolbot\entities\Network;
 use lolbot\entities\User;
+use library\user\Flags;
 
 #[AsCommand("user:flags")]
 class user_flags extends Command
@@ -70,6 +71,11 @@ class user_flags extends Command
             return Command::SUCCESS;
         }
 
+        // normalize every op first, then validate the whole batch against
+        // the flag registry before touching the user (all-or-nothing)
+        /** @var list<array{0: '+'|'-', 1: string}> $parsed */
+        $parsed = [];
+        $unknown = [];
         foreach ($ops as $opArg) {
             if (str_starts_with($opArg, "+")) {
                 $op = "+";
@@ -86,6 +92,17 @@ class user_flags extends Command
                 $op = "+";
                 $flag = $opArg;
             }
+            $parsed[] = [$op, $flag];
+            if (!Flags::defined($flag)) {
+                $unknown[] = $flag;
+            }
+        }
+        if ($unknown !== []) {
+            $output->writeln("<error>unknown flag(s): " . implode(', ', array_values(array_unique($unknown)))
+                . " (valid: " . implode(', ', array_keys(Flags::definitions())) . ")</error>");
+            return Command::FAILURE;
+        }
+        foreach ($parsed as [$op, $flag]) {
             $user->flags = User::applyFlag($user->flags, $op, $flag);
         }
         $entityManager->persist($user);
