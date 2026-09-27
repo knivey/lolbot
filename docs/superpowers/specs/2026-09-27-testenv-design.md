@@ -1,6 +1,9 @@
 # Test Environment System — Design
 
-Status: **design approved in brainstorm on 2026-09-27; not yet built.**
+Status: **design approved in brainstorm on 2026-09-27; BUILT 2026-09-27**
+(`testenv.php`, `testenv/client.php`, `library/testenv/`, committed
+profiles ownnet/gamesurge/libera/all + secrets example; live `up`
+acceptance on `ownnet` pending owner run).
 This document is the single source of truth for the test-env tooling.
 
 ## Why we want it
