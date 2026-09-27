@@ -21,7 +21,7 @@ class user_flags extends Command
     {
         $this->addArgument("network", InputArgument::REQUIRED, "Network name");
         $this->addArgument("name", InputArgument::REQUIRED, "User name");
-        $this->addArgument("flags", InputArgument::IS_ARRAY, "Flag ops: +admin, -superadmin, bare name means add");
+        $this->addArgument("flags", InputArgument::IS_ARRAY, "Flag ops: add via +flag or bare flag, remove via -flag, ^flag or !flag. On the command line put -- before dash-forms (e.g. user:flags net user -- -admin) so they are not parsed as options");
         $this->addOption("list", "l", InputOption::VALUE_NONE, "List current flags");
     }
 
@@ -71,8 +71,15 @@ class user_flags extends Command
         }
 
         foreach ($ops as $opArg) {
-            if (str_starts_with($opArg, "+") || str_starts_with($opArg, "-")) {
-                $op = $opArg[0];
+            if (str_starts_with($opArg, "+")) {
+                $op = "+";
+                $flag = substr($opArg, 1);
+            } elseif (str_starts_with($opArg, "-") || str_starts_with($opArg, "^") || str_starts_with($opArg, "!")) {
+                // '^flag' and '!flag' are removal spellings too: the console
+                // tokenizes leading-dash tokens as options, so removal needs
+                // prefixes that survive parsing. Normalized to the '-' op
+                // applyFlag expects.
+                $op = "-";
                 $flag = substr($opArg, 1);
             } else {
                 // bare flag name means add
