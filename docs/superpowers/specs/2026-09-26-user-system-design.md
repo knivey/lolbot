@@ -57,14 +57,33 @@ NOT borrowed: policies, containers, ability inheritance.
 
 ```
 1. account-tag (ircv3)      authoritative per-message account, where CAP exists
-2. services (GameSurge)     WHOX 354 account field + srvx AUTHSERVICE
+2. services WHOX            WHOX 354 account field (via Client::whox())
 3. hostmask                 stored per-user masks (baseline everywhere)
-4. manual session           .auth via PM, held until invalidated
+4. manual session           .auth via PM (password login), held until invalidated
 ```
 
 First engine to yield an answer wins; engines are pure resolvers
 `(network, nick, host) → ?user_id`. `paranoid` (per-user flag) disables the
 hostmask engine for that account, forcing manual auth each connect.
+
+### Real network landscape (owner note 2026-09-27)
+
+The bots currently run on GameSurge, Libera, and a handful of Ergo
+servers; more may come. **WHOX or account-tag — one or the other — covers
+every services network**: Libera and Ergo have account-tag (no WHOX),
+GameSurge has WHOX (no ircv3 tags). Networks WITHOUT services (EFnet — no
+WHOX, no services, nothing) are where the bot's own PM password login
+(`register`/`auth`/`pass`) is the primary engine, fed by hostmask tracking
+— Nicks.php already proves host/user tracking works fine on EFnet-class
+networks via WHO 352 / NAMES / JOIN / PM events. Consequently:
+
+- **WHOIS 330 (RPL_WHOISACCOUNT)** and **srvx queries** are NOT needed for
+  the current landscape — demoted to deferred ideas (revisit only if a
+  future network has neither WHOX nor account-tag but does have services).
+- Engine presets per network are trivial: GameSurge = WHOX (+ its vhost
+  regex as a free fast-path), Libera/Ergo = account-tag, services-less =
+  manual PM auth + hostmask.
+
 
 ### GameSurge reality (owner-verified mechanics)
 
@@ -97,10 +116,10 @@ chain degrades per network:
 |---|---|---|
 | account-tag | `hasCap('account-tag')` | per-message account, free |
 | WHOX `a` field | `hasOption('WHOX')` (ISUPPORT) | account per WHO query (via `Client::whox()`) |
-| WHOIS 330 (RPL_WHOISACCOUNT) | services ircds (atheme/anope family); probe by trying | account for one nick, on demand |
+| WHOIS 330 (RPL_WHOISACCOUNT) | services ircds (atheme/anope family); probe by trying | account for one nick, on demand — DEFERRED, not needed for current networks |
 | standard WHO 352 | always available | ident@host only — feeds the hostmask engine |
 | NAMES / JOIN / PM events | always available | incremental ident@host (Nicks-style tracking) |
-| network-specific (GameSurge vhost regex, srvx) | per-network config | account from host / services query |
+| network-specific (GameSurge vhost regex) | per-network config | account from host, free fast-path (authoritative per the `[^.]+\.[^.]+\.gamesurge` rule) |
 
 Engine selection is therefore: configured network engines first (they encode
 operator knowledge), then capability-probed generic engines, then manual
@@ -216,6 +235,6 @@ takes shape.
 
 1. Nick→account settings merge/upgrade flow when a user registers (must be
    answered by the settings registry spec).
-2. srvx command specifics (AUTHSERVICE query surface) — verify against the
-   live network when building engine 2.
-3. Identity cache TTL value and WHOX batching limits.
+2. Identity cache TTL value and WHOX batching limits.
+3. ~~srvx command specifics~~ — resolved 2026-09-27: srvx not needed
+   (WHOX covers GameSurge); demoted to a deferred idea alongside WHOIS 330.
