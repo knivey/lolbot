@@ -24,6 +24,14 @@ class Client extends EventEmitter
     const DEFAULT_PORT = '6667';
 
     public bool $exit = false;
+    /**
+     * Per-network user system bundle (library\user\UserSystem) set by
+     * UserSystemFactory at spawn time; the PM commands and the acl user
+     * resolver read it to reach the RIGHT network's identity service.
+     * Typed loosely (null when no user system is wired) so the Irc
+     * namespace stays independent of library\user.
+     */
+    public ?object $userSystem = null;
     protected string $name = 'phpump';
     protected string $realName = 'we pumpin!';
     protected ?string $serverPassword = null;

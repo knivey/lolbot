@@ -50,6 +50,52 @@ class ConfigService
         return $this->em->getRepository(Network::class)->find($id);
     }
 
+    /**
+     * Set the network's pinned auth-engine chain. Null restores
+     * auto-detect. Names are validated against the known engine set up
+     * front — an unknown name would otherwise fail loud at resolve time
+     * and take the bot down at its next spawn. Trims entries and drops
+     * empties so "a, , b" stores as [a, b].
+     *
+     * Entries are typed mixed because the web layer forwards raw POST
+     * values here; non-strings are rejected.
+     *
+     * @param array<int, mixed>|null $engines
+     */
+    public function setNetworkAuthEngines(Network $network, ?array $engines): void
+    {
+        if ($engines !== null) {
+            $known = \library\user\EngineConfig::knownEngines();
+            $clean = [];
+            foreach ($engines as $engine) {
+                if (!is_string($engine)) {
+                    throw new InvalidSettingException("auth_engines entries must be strings");
+                }
+                $engine = trim($engine);
+                if ($engine === '') {
+                    continue;
+                }
+                if (!in_array($engine, $known, true)) {
+                    throw new InvalidSettingException("Unknown auth engine '$engine' (known: " . implode(', ', $known) . ")");
+                }
+                $clean[] = $engine;
+            }
+            $engines = $clean;
+        }
+        $network->auth_engines = $engines;
+        $this->update($network, 'network');
+    }
+
+    /**
+     * Set the admin_hostmask_auth relax flag (admins may store
+     * hostmasks on networks where host faking is not a concern).
+     */
+    public function setNetworkAdminHostmaskAuth(Network $network, bool $relaxed): void
+    {
+        $network->admin_hostmask_auth = $relaxed;
+        $this->update($network, 'network');
+    }
+
     public function deleteNetwork(Network $network): void
     {
         $id = $network->id;

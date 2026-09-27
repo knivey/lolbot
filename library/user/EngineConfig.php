@@ -43,6 +43,20 @@ class EngineConfig
     }
 
     /**
+     * The engine names a pinned auth_engines list may contain (also the
+     * auto-detect order). Exposed for config validation up front — an
+     * unknown name in the list is a configuration error either way
+     * (chain() throws at resolve time); validating at save keeps the
+     * typo from taking the bot down at the next spawn.
+     *
+     * @return list<string>
+     */
+    public static function knownEngines(): array
+    {
+        return self::AUTO_ORDER;
+    }
+
+    /**
      * Default vhost patterns, keyed by lowered network name.
      * @return array<string, string>
      */

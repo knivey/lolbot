@@ -36,7 +36,17 @@ function web_networks_update(int $id): never
     $net->name = trim(is_string($_POST['name'] ?? null) ? $_POST['name'] : $net->name);
     if ($net->name === '') { web_networks_edit($id, 'Name required'); }
     $net->disabled = isset($_POST['disabled']);
-    try { $app['svc']->update($net, 'network'); } catch (\Throwable $e) { web_networks_edit($id, $e->getMessage()); }
+    // comma-separated engine list; empty field = auto-detect (null)
+    $enginesRaw = trim(is_string($_POST['auth_engines'] ?? null) ? $_POST['auth_engines'] : '');
+    $engines = $enginesRaw === '' ? null : array_values(array_filter(
+        array_map('trim', explode(',', $enginesRaw)),
+        fn(string $e): bool => $e !== '',
+    ));
+    try {
+        $app['svc']->setNetworkAuthEngines($net, $engines);
+        $app['svc']->setNetworkAdminHostmaskAuth($net, isset($_POST['admin_hostmask_auth']));
+        $app['svc']->update($net, 'network');
+    } catch (\Throwable $e) { web_networks_edit($id, $e->getMessage()); }
     web_redirect('/networks/' . $id);
 }
 

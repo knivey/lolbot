@@ -16,10 +16,11 @@ class ManualAuthTest extends \PHPUnit\Framework\TestCase
 {
     public function tearDown(): void
     {
-        // reset the Task 5 static service locators so nothing leaks between
-        // tests; Task 6 owns setting them in the real bot
-        IdentityService::$instance = null;
-        UserRepos::$instance = null;
+        // reset the per-network service locator maps so nothing leaks
+        // between tests; the real wiring (UserSystemFactory, Task 6)
+        // populates them per network at spawn time
+        IdentityService::$instances = [];
+        UserRepos::$instances = [];
     }
 
     // ---- ManualEngine PROVENANCE + chain membership ----
@@ -117,16 +118,18 @@ class ManualAuthTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue(ManualEngine::shouldStoreHostmask(false, false, true));
     }
 
-    // ---- static service locators (Task 6 owns setting these) ----
+    // ---- per-network service locator maps (UserSystemFactory populates them) ----
 
-    public function test_identity_service_instance_static_defaults_to_null(): void
+    public function test_identity_service_instance_map_starts_empty(): void
     {
-        $this->assertNull(IdentityService::$instance);
+        $this->assertSame([], IdentityService::$instances);
+        $this->assertNull(IdentityService::forNetwork(1));
     }
 
-    public function test_user_repos_instance_static_defaults_to_null(): void
+    public function test_user_repos_instance_map_starts_empty(): void
     {
-        $this->assertNull(UserRepos::$instance);
+        $this->assertSame([], UserRepos::$instances);
+        $this->assertNull(UserRepos::forNetwork(1));
     }
 
     public function test_user_repos_container_holds_its_repos(): void
@@ -134,11 +137,23 @@ class ManualAuthTest extends \PHPUnit\Framework\TestCase
         $users = new FakeManualUserRepo();
         $masks = new FakeManualMaskRepo();
         $repos = new UserRepos($users, $masks);
-        UserRepos::$instance = $repos;
-        $this->assertSame($repos, UserRepos::$instance);
+        UserRepos::$instances[3] = $repos;
+        $this->assertSame($repos, UserRepos::forNetwork(3));
         $this->assertSame($users, $repos->users);
         $this->assertSame($masks, $repos->masks);
-        $this->assertNull($repos->network, 'network context starts unset; Task 6 wires it');
+        $this->assertNull($repos->network, 'network context starts unset; the factory wiring sets it');
+    }
+
+    public function test_locator_maps_are_keyed_per_network(): void
+    {
+        $svcA = new IdentityService(new IdentityCache(), []);
+        $svcB = new IdentityService(new IdentityCache(), []);
+        IdentityService::$instances[1] = $svcA;
+        IdentityService::$instances[2] = $svcB;
+        // two networks wired in one process never see each other's service
+        $this->assertSame($svcA, IdentityService::forNetwork(1));
+        $this->assertSame($svcB, IdentityService::forNetwork(2));
+        $this->assertNull(IdentityService::forNetwork(3));
     }
 
     // ---- IdentityService manual-bind surface used by the PM commands ----
@@ -146,7 +161,7 @@ class ManualAuthTest extends \PHPUnit\Framework\TestCase
     public function test_bind_and_binding_round_trip(): void
     {
         $svc = new IdentityService(new IdentityCache(), []);
-        IdentityService::$instance = $svc;
+        IdentityService::$instances[1] = $svc;
         $svc->bind(1, 'knivey', 7, ManualEngine::PROVENANCE);
         $hit = $svc->binding(1, 'knivey');
         $this->assertNotNull($hit);
@@ -157,13 +172,16 @@ class ManualAuthTest extends \PHPUnit\Framework\TestCase
     public function test_binding_is_read_from_cache_only(): void
     {
         // a nick with no binding must read null WITHOUT consulting engines:
-        // pass an engine that would auto-register if consulted
-        $svc = new IdentityService(new IdentityCache(), [new ManualEngine()]);
+        // pass a recording engine that would resolve if consulted
+        $engine = new RecordingSpyEngine();
+        $svc = new IdentityService(new IdentityCache(), [$engine]);
         $this->assertNull($svc->binding(1, 'nobody'));
+        $this->assertSame(0, $engine->resolveCalls, 'binding() must never run the engine chain');
         // scoping: other nick and other network do not see the binding
         $svc->bind(1, 'knivey', 7, ManualEngine::PROVENANCE);
         $this->assertNull($svc->binding(1, 'othernick'));
         $this->assertNull($svc->binding(2, 'knivey'));
+        $this->assertSame(0, $engine->resolveCalls);
     }
 
     public function test_bind_overwrites_previous_binding_for_nick(): void
@@ -202,5 +220,22 @@ final class FakeManualMaskRepo implements UserHostmaskRepo
     public function findForHost(int $netId, string $identHost): array
     {
         return [];
+    }
+}
+
+/**
+ * Records resolve() calls and would resolve if consulted; used to prove
+ * IdentityService::binding() reads the cache only and never runs the
+ * engine chain (the Task 5 canary was the always-null ManualEngine,
+ * which could not distinguish consulted from not-consulted).
+ */
+final class RecordingSpyEngine implements \library\user\Engine
+{
+    public int $resolveCalls = 0;
+
+    public function resolve(\library\user\ResolveContext $ctx): int
+    {
+        $this->resolveCalls++;
+        return 42;
     }
 }

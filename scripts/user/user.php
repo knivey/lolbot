@@ -34,9 +34,7 @@ use knivey\cmdr\attributes\Syntax;
 use library\user\Access;
 use library\user\Acl;
 use library\user\engines\ManualEngine;
-use library\user\IdentityService;
-use library\user\UserRepos;
-use lolbot\entities\Network;
+use library\user\UserSystem;
 use lolbot\entities\User as UserEntity;
 use lolbot\entities\UserHostmask;
 
@@ -51,22 +49,19 @@ class User {
 //}
 
 /**
- * Shared context for the PM commands: the identity service, the repos
- * container, the network and the entity manager. Null when the Task 6
- * wiring has not populated the statics / global entity manager yet;
+ * Shared context for the PM commands: the calling bot's user-system
+ * bundle (identity service, repos, network, entity manager) read off
+ * the Irc\Client the router hands the command. Null when the client's
+ * network has not been wired (UserSystemFactory at spawn time);
  * callers reply "user system not ready" in that case.
- *
- * @return array{svc: IdentityService, repos: UserRepos, network: Network, em: \Doctrine\ORM\EntityManager}|null
  */
-function resolveUserSystem(): ?array
+function resolveUserSystem(\Irc\Client $bot): ?UserSystem
 {
-    $svc = IdentityService::$instance;
-    $repos = UserRepos::$instance;
-    $em = $GLOBALS['entityManager'] ?? null;
-    if ($svc === null || $repos === null || $repos->network === null || !$em instanceof \Doctrine\ORM\EntityManager) {
+    $us = $bot->userSystem;
+    if (!$us instanceof UserSystem) {
         return null;
     }
-    return ['svc' => $svc, 'repos' => $repos, 'network' => $repos->network, 'em' => $em];
+    return $us;
 }
 
 /**
@@ -84,23 +79,22 @@ function argString(\knivey\cmdr\Args $cmdArgs, string $name): ?string
 /**
  * Store the sending nick's current hostmask for $user unless the
  * shouldStoreHostmask gate says not to (paranoid, or an admin on a
- * network that has not relaxed the rule). Mask shape *!ident@host per
- * the notes header; already-known masks are skipped so the
+ * network that has not relaxed the rule). Mask shape *!*ident@host per
+ * the notes header (the * before the ident absorbs a server-added ~
+ * prefix); already-known masks are skipped so the
  * (user_id, mask) unique constraint holds.
- *
- * @param array{svc: IdentityService, repos: UserRepos, network: Network, em: \Doctrine\ORM\EntityManager} $sys
  */
-function storeHostmask(array $sys, UserEntity $user, \Irc\Event\ChatEvent $args): void
+function storeHostmask(UserSystem $sys, UserEntity $user, \Irc\Event\UserEvent $args): void
 {
     if (!ManualEngine::shouldStoreHostmask(
         $user->paranoid,
         Access::userHasFlag($user, 'admin'),
-        $sys['network']->admin_hostmask_auth,
+        $sys->network->admin_hostmask_auth,
     )) {
         return;
     }
-    $mask = '*!' . $args->identhost;
-    $known = $sys['em']->getRepository(UserHostmask::class)->findOneBy(['user_id' => $user->id, 'mask' => $mask]);
+    $mask = '*!*' . $args->identhost;
+    $known = $sys->em->getRepository(UserHostmask::class)->findOneBy(['user_id' => $user->id, 'mask' => $mask]);
     if ($known !== null) {
         return;
     }
@@ -108,8 +102,8 @@ function storeHostmask(array $sys, UserEntity $user, \Irc\Event\ChatEvent $args)
     $hostmask->user_id = $user->id;
     $hostmask->mask = $mask;
     $hostmask->addedBy = 'self';
-    $sys['em']->persist($hostmask);
-    $sys['em']->flush();
+    $sys->em->persist($hostmask);
+    $sys->em->flush();
 }
 
 /**
@@ -119,15 +113,15 @@ function storeHostmask(array $sys, UserEntity $user, \Irc\Event\ChatEvent $args)
  * a user other than the one being authed: services identities are
  * automatic and must not be shadowed by a password account.
  *
- * @param array{svc: IdentityService, repos: UserRepos, network: Network, em: \Doctrine\ORM\EntityManager} $sys
+ * @param UserSystem $sys
  */
-function servicesAccountUser(array $sys, ?string $account): ?UserEntity
+function servicesAccountUser(UserSystem $sys, ?string $account): ?UserEntity
 {
     if ($account === null || $account === '') {
         return null;
     }
-    $user = $sys['em']->getRepository(UserEntity::class)->findOneBy([
-        'network_id' => $sys['network']->id,
+    $user = $sys->em->getRepository(UserEntity::class)->findOneBy([
+        'network_id' => $sys->network->id,
         'nameLowered' => mb_strtolower($account),
     ]);
     return $user;
@@ -135,19 +129,19 @@ function servicesAccountUser(array $sys, ?string $account): ?UserEntity
 
 #[PrivCmd("register")]
 #[Syntax("<name> <pass>")]
-function register(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function register(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
-    $sys = resolveUserSystem();
+    $sys = resolveUserSystem($bot);
     if ($sys === null) {
         $bot->pm($args->nick, "user system not ready");
         return;
     }
     $name = argString($cmdArgs, 'name') ?? '';
     $pass = argString($cmdArgs, 'pass') ?? '';
-    $netId = $sys['network']->id;
+    $netId = $sys->network->id;
     $lowered = mb_strtolower($name);
 
-    if ($sys['repos']->users->findForNetwork($netId, $lowered) !== null) {
+    if ($sys->repos->users->findForNetwork($netId, $lowered) !== null) {
         $bot->pm($args->nick, "that name is taken");
         return;
     }
@@ -163,28 +157,28 @@ function register(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
     $user->name = $name;
     $user->nameLowered = $lowered;
     $user->passHash = ManualEngine::hashPassword($pass);
-    $sys['em']->persist($user);
-    $sys['em']->flush();
+    $sys->em->persist($user);
+    $sys->em->flush();
 
     storeHostmask($sys, $user, $args);
-    $sys['svc']->bind($netId, mb_strtolower($args->nick), $user->id, ManualEngine::PROVENANCE);
+    $sys->svc->bind($netId, mb_strtolower($args->nick), $user->id, ManualEngine::PROVENANCE);
     $bot->pm($args->nick, "registered");
 }
 
 #[PrivCmd("auth")]
 #[Syntax("<name> <pass>")]
-function cmd_auth(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function cmd_auth(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
-    $sys = resolveUserSystem();
+    $sys = resolveUserSystem($bot);
     if ($sys === null) {
         $bot->pm($args->nick, "user system not ready");
         return;
     }
     $name = argString($cmdArgs, 'name') ?? '';
     $pass = argString($cmdArgs, 'pass') ?? '';
-    $netId = $sys['network']->id;
+    $netId = $sys->network->id;
 
-    $user = $sys['em']->getRepository(UserEntity::class)->findOneBy([
+    $user = $sys->em->getRepository(UserEntity::class)->findOneBy([
         'network_id' => $netId,
         'nameLowered' => mb_strtolower($name),
     ]);
@@ -200,7 +194,7 @@ function cmd_auth(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
         return;
     }
 
-    $sys['svc']->bind($netId, mb_strtolower($args->nick), $user->id, ManualEngine::PROVENANCE);
+    $sys->svc->bind($netId, mb_strtolower($args->nick), $user->id, ManualEngine::PROVENANCE);
     storeHostmask($sys, $user, $args);
     $bot->pm($args->nick, "authed as {$user->name}");
 }
@@ -208,19 +202,19 @@ function cmd_auth(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
 //a setting for if hostmask should be remembered or they need to auth every upon connection
 #[PrivCmd("paranoid")]
 #[Syntax("[state]")]
-function paranoid(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function paranoid(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
-    $sys = resolveUserSystem();
+    $sys = resolveUserSystem($bot);
     if ($sys === null) {
         $bot->pm($args->nick, "user system not ready");
         return;
     }
-    $binding = $sys['svc']->binding($sys['network']->id, mb_strtolower($args->nick));
+    $binding = $sys->svc->binding($sys->network->id, mb_strtolower($args->nick));
     if ($binding === null) {
         $bot->pm($args->nick, "auth first");
         return;
     }
-    $user = $sys['em']->find(UserEntity::class, $binding['user_id']);
+    $user = $sys->em->find(UserEntity::class, $binding['user_id']);
     if ($user === null) {
         $bot->pm($args->nick, "auth first");
         return;
@@ -236,25 +230,25 @@ function paranoid(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
         $bot->pm($args->nick, "usage: paranoid [on|off]");
         return;
     }
-    $sys['em']->flush();
+    $sys->em->flush();
     $bot->pm($args->nick, $user->paranoid ? "paranoid is now on" : "paranoid is now off");
 }
 
 #[PrivCmd("pass")]
 #[Syntax("<old> <new>")]
-function pass(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function pass(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
-    $sys = resolveUserSystem();
+    $sys = resolveUserSystem($bot);
     if ($sys === null) {
         $bot->pm($args->nick, "user system not ready");
         return;
     }
-    $binding = $sys['svc']->binding($sys['network']->id, mb_strtolower($args->nick));
+    $binding = $sys->svc->binding($sys->network->id, mb_strtolower($args->nick));
     if ($binding === null) {
         $bot->pm($args->nick, "auth first");
         return;
     }
-    $user = $sys['em']->find(UserEntity::class, $binding['user_id']);
+    $user = $sys->em->find(UserEntity::class, $binding['user_id']);
     if ($user === null) {
         $bot->pm($args->nick, "auth first");
         return;
@@ -264,7 +258,7 @@ function pass(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
         return;
     }
     $user->passHash = ManualEngine::hashPassword(argString($cmdArgs, 'new') ?? '');
-    $sys['em']->flush();
+    $sys->em->flush();
     $bot->pm($args->nick, "password updated");
 }
 
@@ -272,7 +266,7 @@ function pass(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $c
 #[PrivCmd("setflags")]
 #[Acl("admin")]
 #[Syntax("<name> <ops>...")]
-function addadmin(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function addadmin(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     applyFlagOps('set', $args, $bot, $cmdArgs);
 }
@@ -280,7 +274,7 @@ function addadmin(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
 #[PrivCmd("addflags")]
 #[Acl("admin")]
 #[Syntax("<name> <ops>...")]
-function addflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function addflags(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     applyFlagOps('add', $args, $bot, $cmdArgs);
 }
@@ -288,7 +282,7 @@ function addflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
 #[PrivCmd("delflags")]
 #[Acl("admin")]
 #[Syntax("<name> <ops>...")]
-function delflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function delflags(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
     applyFlagOps('del', $args, $bot, $cmdArgs);
 }
@@ -300,16 +294,16 @@ function delflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
  * ^/! removal spellings, normalized to '-'), bare tokens add; add/del
  * modes force their op on every token.
  */
-function applyFlagOps(string $mode, \Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+function applyFlagOps(string $mode, \Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
 {
-    $sys = resolveUserSystem();
+    $sys = resolveUserSystem($bot);
     if ($sys === null) {
         $bot->pm($args->nick, "user system not ready");
         return;
     }
     $name = argString($cmdArgs, 'name') ?? '';
-    $user = $sys['em']->getRepository(UserEntity::class)->findOneBy([
-        'network_id' => $sys['network']->id,
+    $user = $sys->em->getRepository(UserEntity::class)->findOneBy([
+        'network_id' => $sys->network->id,
         'nameLowered' => mb_strtolower($name),
     ]);
     if ($user === null) {
@@ -332,7 +326,7 @@ function applyFlagOps(string $mode, \Irc\Event\ChatEvent $args, \Irc\Client $bot
         $bot->pm($args->nick, $e->getMessage());
         return;
     }
-    $sys['em']->flush();
+    $sys->em->flush();
     $flags = implode(',', $user->flags);
     $bot->pm($args->nick, "flags for {$user->name}: " . ($flags === '' ? '(none)' : $flags));
 }

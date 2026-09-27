@@ -10,11 +10,21 @@ namespace library\user;
 class IdentityService
 {
     /**
-     * Service locator for the scripts/user/user.php PM commands until
-     * Task 6 wires per-bot instances. Null (commands reply "user
-     * system not ready") whenever the bot has not been wired.
+     * Per-network service locator keyed by network id, kept current by
+     * UserSystemFactory::create(). Bots are per-network and several
+     * networks can be wired in one process, so a single static would
+     * cross-resolve; the real path is the client's UserSystem bundle
+     * (Client->userSystem), this map is the registry/back-compat
+     * surface. Empty whenever no network is wired.
+     *
+     * @var array<int, IdentityService>
      */
-    public static ?IdentityService $instance = null;
+    public static array $instances = [];
+
+    public static function forNetwork(int $netId): ?self
+    {
+        return self::$instances[$netId] ?? null;
+    }
 
     /** @var list<Engine> */
     private array $engines;

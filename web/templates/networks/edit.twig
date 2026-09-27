@@ -11,6 +11,13 @@
     <input class="form-check-input" type="checkbox" name="disabled" id="net_disabled"{{ net and net.disabled ? ' checked' : '' }}>
     <label class="form-check-label" for="net_disabled">disabled (all bots on this network stop)</label>
   </div>
+  {% if net %}
+  {{ m.field('auth_engines', 'auth engines', net.auth_engines ? net.auth_engines|join(', ') : '', 'text', 'account-tag, vhost, whox, hostmask, manual — comma separated, empty = auto-detect') }}
+  <div class="mb-3 form-check">
+    <input class="form-check-input" type="checkbox" name="admin_hostmask_auth" id="net_admin_hostmask_auth"{{ net.admin_hostmask_auth ? ' checked' : '' }}>
+    <label class="form-check-label" for="net_admin_hostmask_auth">admin_hostmask_auth (admins may store hostmasks on this network)</label>
+  </div>
+  {% endif %}
   {{ m.submit('Save') }}
 </form>
 </div></div>

@@ -104,6 +104,16 @@ class BotManager
         $router->loadFuncs();
         Acl::register($router);
 
+        // Per-network user system: repos + engine chain from the Network
+        // row + this client, pinned on the client so PM commands and the
+        // acl resolver always reach the RIGHT network's service. Caps are
+        // not known until the server answers CAP LS / 005, so wireLifecycle
+        // rebuilds the chain on welcome; wireAccess is network-agnostic.
+        $userSystemFactory = new \library\user\UserSystemFactory($entityManager);
+        $userSystemFactory->create($network, $client);
+        $userSystemFactory->wireLifecycle($client);
+        \library\user\UserSystemFactory::wireAccess();
+
         $bomb_game = new bomb_game($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:bomb_game", [$logHandler]), $nicks, $chans, $router);
         $router->loadMethods($bomb_game);
         $alias = new alias($network, $dbBot, $server, $config, $client, new Logger("{$dbBot->name}:alias", [$logHandler]), $nicks, $chans, $router);
@@ -323,8 +333,11 @@ class BotManager
                 if (is_string($ret)) {
                     $bot->notice($args->nick, $ret);
                 }
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 $bot->notice($args->nick, $e->getMessage());
+            } catch (\Throwable $e) {
+                echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
+                $bot->notice($args->nick, "error running command :(");
             }
         });
         $client->go();
@@ -340,6 +353,19 @@ class BotManager
         $client = $this->clients[$botId] ?? null;
         if ($client === null) {
             return;
+        }
+        // release the per-network locator entries this client's bundle
+        // published (another bot on the same network may hold its own)
+        $us = $client->userSystem;
+        if ($us instanceof \library\user\UserSystem) {
+            $netId = $us->netId();
+            if (\library\user\IdentityService::forNetwork($netId) === $us->svc) {
+                unset(\library\user\IdentityService::$instances[$netId]);
+            }
+            if (\library\user\UserRepos::forNetwork($netId) === $us->repos) {
+                unset(\library\user\UserRepos::$instances[$netId]);
+            }
+            $client->userSystem = null;
         }
         try {
             $client->sendNow("quit :$reason");
@@ -543,6 +569,15 @@ class BotManager
                                 $this->drop((int)$bid, "disabled");
                             } elseif (!isset($this->clients[$bid])) {
                                 $this->spawn($net, $bot);
+                            } else {
+                                // hot-apply engine/auth config: rebuild the
+                                // user-system bundle from the refreshed network
+                                // row. The fresh bundle starts with an empty
+                                // identity cache (fail-closed; bindings
+                                // re-resolve lazily) and the lifecycle hooks
+                                // read the client's current bundle, so they
+                                // keep working across the swap.
+                                (new \library\user\UserSystemFactory($this->em))->create($net, $this->clients[$bid]);
                             }
                         }
                         // Bots created (or previously dropped) while the network was disabled are

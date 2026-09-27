@@ -6,19 +6,30 @@ use lolbot\entities\Network;
 
 /*
  * Tiny container for the user repos plus the network context the
- * scripts/user/user.php PM commands need. Until the per-bot wiring
- * lands (Task 6 owns this), the commands reach everything through the
- * static $instance locator; the bot sets it (and ->network) at spawn
- * time the same way it registers the acl middleware per router.
+ * scripts/user/user.php PM commands need. The commands reach the
+ * network's container through the client's UserSystem bundle
+ * (Client->userSystem, set by UserSystemFactory at spawn time); the
+ * per-network static map below is the registry/back-compat surface.
  */
 
 class UserRepos
 {
-    public static ?UserRepos $instance = null;
+    /**
+     * Per-network containers keyed by network id, kept current by
+     * UserSystemFactory::create(). Empty whenever no network is wired.
+     *
+     * @var array<int, UserRepos>
+     */
+    public static array $instances = [];
+
+    public static function forNetwork(int $netId): ?self
+    {
+        return self::$instances[$netId] ?? null;
+    }
 
     /**
-     * Network the current wiring serves. Null until Task 6's wiring
-     * sets it (and whenever the statics are unset, e.g. in tests).
+     * Network the current wiring serves. Null whenever the wiring has
+     * not set it (e.g. in tests constructing the container directly).
      */
     public ?Network $network = null;
 
