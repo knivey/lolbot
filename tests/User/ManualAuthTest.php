@@ -136,11 +136,13 @@ class ManualAuthTest extends \PHPUnit\Framework\TestCase
     {
         $users = new FakeManualUserRepo();
         $masks = new FakeManualMaskRepo();
-        $repos = new UserRepos($users, $masks);
+        $chans = $this->createStub(\library\user\ChannelFlagRepo::class);
+        $repos = new UserRepos($users, $masks, $chans);
         UserRepos::$instances[3] = $repos;
         $this->assertSame($repos, UserRepos::forNetwork(3));
         $this->assertSame($users, $repos->users);
         $this->assertSame($masks, $repos->masks);
+        $this->assertSame($chans, $repos->channelFlags);
         $this->assertNull($repos->network, 'network context starts unset; the factory wiring sets it');
     }
 

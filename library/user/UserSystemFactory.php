@@ -45,7 +45,8 @@ class UserSystemFactory
     {
         $users = new DoctrineUserRepo($this->em);
         $masks = new DoctrineUserHostmaskRepo($this->em);
-        $repos = new UserRepos($users, $masks);
+        $channelFlags = new DoctrineChannelFlagRepo($this->em);
+        $repos = new UserRepos($users, $masks, $channelFlags);
         $repos->network = $network;
 
         // vhost patterns ship name-keyed (EngineConfig::defaultPatterns);

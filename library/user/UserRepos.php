@@ -33,7 +33,7 @@ class UserRepos
      */
     public ?Network $network = null;
 
-    public function __construct(public UserRepo $users, public UserHostmaskRepo $masks)
+    public function __construct(public UserRepo $users, public UserHostmaskRepo $masks, public ChannelFlagRepo $channelFlags)
     {
     }
 }
