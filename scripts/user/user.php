@@ -34,7 +34,10 @@ use knivey\cmdr\attributes\Syntax;
 use library\user\Access;
 use library\user\Acl;
 use library\user\engines\ManualEngine;
+use library\user\Flags;
+use library\user\ResolveContext;
 use library\user\UserSystem;
+use lolbot\entities\ChannelFlag;
 use lolbot\entities\User as UserEntity;
 use lolbot\entities\UserHostmask;
 
@@ -386,4 +389,146 @@ function flagOp(string $mode, string $token): array
         return [$sign === '+' ? '+' : '-', substr($token, 1)];
     }
     return ['+', $token];
+}
+
+/**
+ * Channel-scoped flag grants (spec 2026-09-27): .cflags <user> [ops].
+ * Viewing shows the target's grants in this channel; ops follow the
+ * user:flags syntax (+flag / -flag / bare flag adds; ^ and ! also
+ * remove). A granter may only grant or revoke flags they themselves
+ * pass in THIS channel (network flags union channel grants, groups
+ * expanded) — bot admins pass everything via the admin wildcard.
+ * Empty grant rows are deleted. All-or-nothing: any invalid or
+ * un-permitted op refuses the whole batch and persists nothing.
+ */
+#[Cmd("cflags")]
+#[Syntax("<user> [ops]...")]
+function cflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
+{
+    $sys = resolveUserSystem($bot);
+    if ($sys === null) {
+        $bot->msg($args->chan, "user system not ready");
+        return;
+    }
+    $chanEntity = $sys->channelByName($args->chan);
+    if ($chanEntity === null) {
+        $bot->msg($args->chan, "I'm not configured for this channel");
+        return;
+    }
+
+    // resolve the granter like the wireAccess resolver does (and cmd_auth
+    // ends up doing via bind): identity service first, entity second
+    $hit = $sys->svc->resolve(new ResolveContext(
+        networkId: $sys->netId(),
+        nick: $args->nick,
+        nickLowered: mb_strtolower($args->nick),
+        identHost: $args->identhost,
+        account: $args->account,
+        client: $bot,
+        allowCreate: true,
+    ));
+    if ($hit === null) {
+        $bot->msg($args->chan, "auth required");
+        return;
+    }
+    $granter = $sys->em->find(UserEntity::class, $hit['user_id']);
+    if ($granter === null) {
+        $bot->msg($args->chan, "auth required");
+        return;
+    }
+
+    // what the granter passes HERE: network flags union their own grant
+    $granterGrant = $sys->repos->channelFlags->findForChannelUser($chanEntity->id, $granter->id);
+    $granterUnion = array_merge(
+        Access::flagArray($granter),
+        $granterGrant !== null ? Access::flagArray($granterGrant) : [],
+    );
+
+    // findForNetwork's interface only promises {id}; hydrate the full
+    // entity for the name and the grant row (identity-map hit, no query)
+    $target = null;
+    $targetRef = $sys->repos->users->findForNetwork($sys->network->id, mb_strtolower((string) argString($cmdArgs, 'user')));
+    if ($targetRef !== null) {
+        $target = $sys->em->find(UserEntity::class, $targetRef->id);
+    }
+    if ($target === null) {
+        $bot->msg($args->chan, "user unknown (they must talk or auth first)");
+        return;
+    }
+
+    $ops = trim(argString($cmdArgs, 'ops') ?? '');
+    if ($ops === '') {
+        // view mode: show the target's grants in this channel
+        $row = $sys->repos->channelFlags->findForChannelUser($chanEntity->id, $target->id);
+        $csv = $row !== null ? implode(',', Access::flagArray($row)) : '';
+        $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: " . ($csv === '' ? 'none' : $csv));
+        return;
+    }
+
+    /** @var list<string> $tokens */
+    $tokens = preg_split('/\s+/', $ops) ?: [];
+    $tokens = array_values(array_filter($tokens, static fn (string $t): bool => $t !== ''));
+
+    // validate the whole batch before touching anything (all-or-nothing)
+    /** @var list<array{0: '+'|'-', 1: string}> $pairs */
+    $pairs = [];
+    $unknown = [];
+    foreach ($tokens as $token) {
+        [$op, $flag] = flagOp('set', $token);
+        $pairs[] = [$op, $flag];
+        if (!Flags::defined($flag)) {
+            $unknown[] = $flag;
+        }
+    }
+    $errors = [];
+    if ($unknown !== []) {
+        $errors[] = 'unknown flag(s): ' . implode(',', array_values(array_unique($unknown)))
+            . ' (valid: ' . implode(',', array_keys(Flags::definitions())) . ')';
+    }
+    foreach ($pairs as [, $flag]) {
+        if (Flags::defined($flag) && !Flags::passes($granterUnion, $flag)) {
+            $errors[] = "you can't change {$flag} here";
+        }
+    }
+    $errors = array_values(array_unique($errors));
+    if ($errors !== []) {
+        $bot->msg($args->chan, implode('; ', $errors));
+        return;
+    }
+
+    // find-or-create the grant row. The channel-flags repo interface
+    // returns a loose {id, flags} shape (fakes in tests may not return
+    // entities); the mutation path needs the managed ChannelFlag
+    // itself, so it goes through the EM — the same findOneBy the
+    // Doctrine repo runs
+    $isNew = false;
+    $row = $sys->em->getRepository(ChannelFlag::class)->findOneBy([
+        'channel_id' => $chanEntity->id,
+        'user_id' => $target->id,
+    ]);
+    if ($row === null) {
+        $row = new ChannelFlag();
+        $row->channel_id = $chanEntity->id;
+        $row->user_id = $target->id;
+        $row->addedBy = $granter->name;
+        $isNew = true;
+    }
+    foreach ($pairs as [$op, $flag]) {
+        $row->flags = UserEntity::applyFlag($row->flags, $op, $flag);
+    }
+    if ($row->flags === []) {
+        // empty grant rows are deleted (and a never-persisted row has
+        // nothing to remove)
+        if (!$isNew) {
+            $sys->em->remove($row);
+            $sys->em->flush();
+        }
+        $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: none");
+        return;
+    }
+    if ($isNew) {
+        $sys->em->persist($row);
+    }
+    $sys->em->flush();
+    $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: " . implode(',', $row->flags));
 }
