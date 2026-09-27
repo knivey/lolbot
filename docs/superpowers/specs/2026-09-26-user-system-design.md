@@ -1,6 +1,8 @@
 # User System — Coalesced Design
 
-Status: **design approved in brainstorm on 2026-09-26; not yet built.**
+Status: **design approved in brainstorm on 2026-09-26; core (steps 1–3) built
+2026-09-26/27. Channel access + settings registry sections approved
+2026-09-27; not yet built.**
 This document is the single source of truth for the user system. Sources:
 issue #34, the header comment and stubs in `scripts/user/user.php` (2022),
 `scripts/user/Access.php`, and the 2026-09-26 design session with the owner.
@@ -20,7 +22,9 @@ can plan many commands we have been lacking (issue #34's real payoff).
   or (later) registers into the central settings registry below.
 - **Flags are ACLs**: a user carries flags; each flag maps to an ACL check
   via `Access::define()` / `Access::allowed()` (`scripts/user/Access.php`).
-- Admin ACL first; **channel ACL deferred**.
+- Admin ACL shipped first; **channel ACL designed 2026-09-27** (section
+  below) — bot admins hold every channel power, finer-grained ACL falls out
+  of the flag-group registry.
 
 ## ACL surface (decided 2026-09-26)
 
@@ -52,6 +56,55 @@ NOT borrowed: policies, containers, ability inheritance.
 - `Access::allowed()` remains for ad-hoc checks inside command bodies.
 - Dev loop: local `knivey/Cmdr` clone wired into lolbot via a composer
   `path` repository with symlink until a new major release is tagged.
+
+## Flag registry & channel-scoped access (decided 2026-09-27)
+
+**Flags are defined in code, optionally granting other flags (groups).**
+`library/user/Flags.php` holds the registry: name → `grants` list.
+`admin` is defined as granting `*` (everything). Future groups (e.g.
+`manager` → `quotes.manage`, `set`, `kick`) are just definitions.
+Definitions live in code — admins *grant* flags, they don't invent them
+(Anope-oper-precedent). Network-only powers get names no channel check
+ever asks for (e.g. `BotManager`) — the naming discipline replaces scope
+bookkeeping.
+
+**Resolution for "does user pass flag X in channel C"** (fall-through +
+groups, uniform):
+
+1. Flag set = user's network flags ∪ their grants in C (same name at
+   network level satisfies the channel check automatically — network
+   `quotes` → channel `quotes` everywhere, network `admin` → everything).
+2. Expand groups transitively within the set (`manager` adds its grants,
+   `admin` adds all; cycle-guarded).
+3. Pass iff X ∈ expanded set.
+
+A group flag held at network level confers its sub-flags in every channel
+("manager-grade power, network-wide" — intended). A small network grant
+cannot balloon into channel admin unless *defined* to.
+
+**Channel-scoped attribute form:** `#[Acl("flag", channel: true)]` —
+resolves the channel from the ChatEvent; via PM it denies ("channel
+only"). Plain `#[Acl("flag")]` stays network-scope. Channel commands act
+only in-channel (owner rule: no PM commands acting on channels).
+
+**Storage:** `channel_flags(user_id FK, channel_id FK, flags JSON,
+added_by)` unique `(user_id, channel_id)` — mirrors `users.flags`
+(one row per user+channel, arbitrary flag strings = the fine-grained
+room).
+
+**Grant surface:** in-channel `.cflags <user> [+flag|-flag|flag ...]`
+(same op syntax as `user:flags` CLI). Rules: a granter may only
+grant/revoke flags they themselves pass in that channel (after group
+expansion — no self-escalation); bot admins unrestricted in any channel;
+target must resolve as a known user on the network ("user unknown, have
+them talk/auth first" — no ghost rows). Bootstrap: initial channel grants
+by a bot admin.
+
+**Grant-time validation:** `.cflags` and `user:flags` share one path that
+validates every op against the flag registry (unknown flag → refused with
+the valid names). **Flag removal:** retired definitions make existing
+grants inert (nothing checks the name — harmless); cleanup is a
+case-by-case migration/sweep over the JSON arrays when a flag is retired.
 
 ## Auth engines (pluggable chain, per network)
 
@@ -146,40 +199,66 @@ and refresh timestamp.
 - **Command-time fallback** → targeted WHOX when a binding is missing or
   stale (TTL); required for users hiding their host after auth.
 
-## Two-tier settings tracking (accepted messiness)
+## Nick-keyed vs account settings (resolved 2026-09-27)
 
-Users are never forced to auth. **Unauthed**: settings tied to the IRC nick
-(current behavior, `.setlastfm` etc). **Authed**: same settings tied to the
-user account via `user_id`. Proposed (not finally decided): when a nick is
-associated with an account, reads prefer account-owned settings then
-nick-owned; writes go to the account tier. The migration/merge flow for
-existing nick-tier settings is an open question the settings registry spec
-must answer.
+Users are never forced to auth — existing nick-keyed commands
+(`.setlocation`, `.setlastfm`, …) keep working **exactly as they are,
+permanently**. No migration, no forced account creation. Later, a command
+may opt into an account override layer: resolution becomes
+`account setting (if the speaker resolves and has one) → nick-keyed store
+(unchanged behavior) → default`. The account tier is purely additive;
+the nick path stays the fallback forever.
 
-## Central settings registry (decided: single registry table)
+## Central settings registry (decided 2026-09-27)
 
-One table: `settings(script, key, network_id, chan_lowered, user_id,
-nick_lowered, value JSON, created/updated)` with a tiered resolver
-(the linktitles `SettingsResolver` pattern generalized). New settings need
-zero migrations; one index serves all lookups.
+Two generic tables (not one mega-table — scopes have different keys):
 
-Scripts register declaratively, cmdr-style:
+- `channel_settings(network_id, channel_id NULL, key, value JSON)` — the
+  network tier is a row with `channel_id` NULL (find-before-save guards
+  the SQL NULL-uniqueness caveat, same as linktitles today).
+- `user_settings(user_id, key, value JSON)` — account tier.
+
+**Resolution:** channel settings = `channel → network → code default`;
+account settings = `user → default`. The registry owns the rule in one
+place; nick-keyed stores are NOT part of the registry (section above).
+
+**Definitions** are declarative, cmdr-style, on the owning command:
 
 ```php
-#[Setting("lastfm", "your last.fm username")]
-#[SettingScope(Setting::USER)]      // also NICK / CHANNEL / NETWORK / GLOBAL
-function validateLastfm(string $value): string|ValidationError { ... }
+#[Setting(name: "lastfm", type: Setting::STRING, default: "",
+          scope: Setting::ACCOUNT,
+          description: "your last.fm username")]
 ```
 
-The framework generates the `.set <key>` / `.get <key>` surface, help
-entries, storage, and identity-tiered resolution. Existing `.setlastfm`
-style commands may remain or become wrappers over the generated surface.
-Scripts with heavy relational data (portfolios, geo columns) keep their own
-entities and only register command surface if desired.
+plus a programmatic registration path for **storage adapters**: a script
+with specialized storage registers definitions backed by its own tables.
+Types validated at set-time (`bool|int|string|enum`); definitions can be
+marked non-IRC (`irc: false`) to expose CLI/web only (raw JSON blobs).
+The framework generates the `.set` surface, help entries, storage (or
+adapter calls) and tiered resolution. Existing `.setlastfm`-style
+commands may remain or become wrappers.
 
-The registry owns the two-tier resolution rule above — one resolution rule
-in one place, not per script. Likely its own spec/plan; recorded here
-because its identity model depends on this system.
+**`.set` surface (context-split scope):** in-channel `.set <key>
+<value...>` = channel setting, gated by the flag the definition declares
+(channel-scoped Acl — channel admins by default, finer flags per
+definition); via PM = the speaker's own account setting (any known user).
+`.set` bare lists settings available in this context with current values
+and resolution source (`#chan` / `network` / `default` / `you`),
+pastebinned past the usual threshold. `.unset <key>` reverts to inherit;
+`.set <key>` shows value + source.
+
+**linktitles (decided: adapter):** registers its existing settings
+(`enabled`, `ai_vision_*`, `url_log_chan`, …) as definitions backed by an
+adapter over its typed `linktitles_settings` table through its existing
+service layer — no data migration, its logic keeps querying its table,
+while `.set` discovery and channel-admin gating come free. The adapter is
+the template for other scripts with specialized storage (weather geo,
+etc.).
+
+**Future (explicitly deferred, needs its own design):** the web panel
+becomes usable by all users — bot-issued recognition URLs (query-param
+auth) for account/channel pages, and list views (aliases, settings)
+rendered by the site instead of pastebins. Tracked as issue #138.
 
 ## Command surface (stubbed 2022, still the plan)
 
@@ -231,20 +310,31 @@ takes shape.
    follow-ups (issues): cross-network user linking (user + admin flows),
    web UI user admin, alias-call deny passthrough, WHOIS-330/srvx deferred
    engines.
-4. **Settings registry**: single table + attributes + generated `.set`
-   surface + two-tier resolution.
-5. **Backlog unlock**: the admin/channel commands that have been waiting.
+4. **Channel access**: flag registry (groups + `*`), `#[Acl(flag,
+   channel: true)]`, `channel_flags` entity + migration, `.cflags` grant
+   surface with grant-time validation, `user:flags` validation hookup.
+   Settings gating (step 5) depends on this.
+5. **Settings registry**: `channel_settings` + `user_settings` entities +
+   migration, `#[Setting]` attribute + programmatic registration with
+   storage adapters, tiered resolver, context-split `.set`/`.unset`
+   surface (pastebin threshold), linktitles adapter registration.
+6. **Backlog unlock**: the admin/channel commands that have been waiting
+   (e.g. #128's per-channel +v restriction uses both channel access and
+   channel settings).
 
 ## Explicitly not doing (kept as ideas only)
 
 - **Artbot guest-dir segregation** for unauthed art.
-- Channel ACLs (deferred, not rejected).
 - Laravel policies / containers / ability inheritance.
+- **Web panel for all users** (bot-issued recognition URLs, site-rendered
+  lists replacing pastebins) — deferred until after the registry; needs
+  its own design session (owner note 2026-09-27).
 
 ## Open questions
 
-1. Nick→account settings merge/upgrade flow when a user registers (must be
-   answered by the settings registry spec).
+1. ~~Nick→account settings merge/upgrade flow~~ — resolved 2026-09-27:
+   no migration, no forced accounts; nick-keyed commands stay as-is
+   forever, with an optional account-override layer for opted-in commands.
 2. Identity cache TTL value and WHOX batching limits.
 3. ~~srvx command specifics~~ — resolved 2026-09-27: srvx not needed
    (WHOX covers GameSurge); demoted to a deferred idea alongside WHOIS 330.
