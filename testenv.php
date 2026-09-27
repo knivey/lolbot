@@ -29,10 +29,13 @@ function testenv_usage(int $code = 1): never
 /**
  * Path of the generated bot config for a profile
  * (testenv/run/<profile>.config.yaml, written next to the run db).
+ * Derived through EnvStore::dbPath() so the profile name carries the same
+ * [A-Za-z0-9_-]+ confinement check as the db path itself — `down`/`reset`
+ * never unlink outside testenv/run/.
  */
 function testenv_config_path(string $profile): string
 {
-    return dirname(__FILE__) . '/testenv/run/' . $profile . '.config.yaml';
+    return dirname(EnvStore::dbPath($profile)) . '/' . $profile . '.config.yaml';
 }
 
 /**

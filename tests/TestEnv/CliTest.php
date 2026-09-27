@@ -4,6 +4,12 @@ use PHPUnit\Framework\TestCase;
 
 class CliTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        // failed assertions must not leak run artifacts (run db + generated config)
+        $this->runCli(['fixture_test', 'reset']);
+    }
+
     /**
      * Run testenv.php as a subprocess; stderr is merged into stdout.
      *
@@ -53,7 +59,44 @@ class CliTest extends TestCase
         }
         $this->assertSame(0, $bootCode, implode("\n", $bootOut));
         $this->assertStringContainsString('BOOTOK', implode("\n", $bootOut));
-        // cleanup
-        $this->runCli(['fixture_test', 'reset']);
+        // cleanup happens in tearDown() so failed assertions can't leak artifacts
+    }
+
+    /**
+     * The config path must be as confined as the db path: a profile name
+     * with path characters may never make `down` unlink outside testenv/run/.
+     */
+    public function test_down_refuses_unconfined_profile_names(): void
+    {
+        // one directory above testenv/run/ — where '../evil_probe' used to land
+        $sentinel = dirname(__DIR__, 2) . '/testenv/evil_probe.config.yaml';
+        file_put_contents($sentinel, "sentinel\n");
+        try {
+            [$out, $code] = $this->runCli(['../evil_probe', 'down']);
+            $this->assertSame(1, $code, $out);
+            $this->assertStringContainsString('../evil_probe', $out);
+            $this->assertFileExists($sentinel);
+        } finally {
+            if (is_file($sentinel)) {
+                unlink($sentinel);
+            }
+        }
+    }
+
+    public function test_reset_refuses_unconfined_profile_names(): void
+    {
+        // same invariant via reset (EnvStore::wipe rejects the name first)
+        $sentinel = dirname(__DIR__, 2) . '/testenv/evil_probe.config.yaml';
+        file_put_contents($sentinel, "sentinel\n");
+        try {
+            [$out, $code] = $this->runCli(['../evil_probe', 'reset']);
+            $this->assertSame(1, $code, $out);
+            $this->assertStringContainsString('../evil_probe', $out);
+            $this->assertFileExists($sentinel);
+        } finally {
+            if (is_file($sentinel)) {
+                unlink($sentinel);
+            }
+        }
     }
 }
