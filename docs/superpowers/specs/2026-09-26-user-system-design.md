@@ -65,6 +65,9 @@ NOT borrowed: policies, containers, ability inheritance.
 First engine to yield an answer wins; engines are pure resolvers
 `(network, nick, host) → ?user_id`. `paranoid` (per-user flag) disables the
 hostmask engine for that account, forcing manual auth each connect.
+Admins additionally never auto-store hostmasks on networks where faked
+hosts are a concern — relaxed via `Networks.admin_hostmask_auth` on
+networks the operator trusts (owner note 2026-09-27).
 
 ### Real network landscape (owner note 2026-09-27)
 
