@@ -1,0 +1,59 @@
+<?php
+// tests/TestEnv/CliTest.php — subprocess-driven tests for the testenv.php CLI
+use PHPUnit\Framework\TestCase;
+
+class CliTest extends TestCase
+{
+    /**
+     * Run testenv.php as a subprocess; stderr is merged into stdout.
+     *
+     * @param array<int, string> $argv
+     * @return array{0: string, 1: int}
+     */
+    private function runCli(array $argv): array
+    {
+        $cmd = 'php ' . escapeshellarg(dirname(__DIR__, 2) . '/testenv.php')
+            . ' ' . implode(' ', array_map('escapeshellarg', $argv)) . ' 2>&1';
+        exec($cmd, $out, $code);
+        return [implode("\n", $out), $code];
+    }
+
+    public function test_no_args_usage(): void
+    {
+        [$out, $code] = $this->runCli([]);
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString('Usage:', $out);
+    }
+
+    public function test_unknown_profile_exits_1_with_message(): void
+    {
+        [$out, $code] = $this->runCli(['nope', 'prepare']);
+        $this->assertSame(1, $code);
+        $this->assertStringContainsString("nope", $out);
+    }
+
+    public function test_prepare_creates_db_and_config_and_boots_bootstrap(): void
+    {
+        [$out, $code] = $this->runCli(['fixture_test', 'prepare']);
+        $this->assertSame(0, $code, $out);
+        $cfg = dirname(__DIR__, 2) . '/testenv/run/fixture_test.config.yaml';
+        $this->assertFileExists($cfg);
+        // Review Focus #4: the generated config boots bootstrap in a subprocess.
+        // bootstrap.php uses relative paths internally (vendor/autoload.php,
+        // migrations.yml), so the child must run from the repo root cwd.
+        // restore to the repo root if getcwd() somehow failed (harmless here)
+        $cwd = getcwd() ?: dirname(__DIR__, 2);
+        chdir(dirname(__DIR__, 2));
+        try {
+            exec('LOLBOT_CONFIG=' . escapeshellarg($cfg) . ' php -r '
+                . escapeshellarg('require "bootstrap.php"; global $entityManager; $entityManager->getConnection()->connect(); echo "BOOTOK";'),
+                $bootOut, $bootCode);
+        } finally {
+            chdir($cwd);
+        }
+        $this->assertSame(0, $bootCode, implode("\n", $bootOut));
+        $this->assertStringContainsString('BOOTOK', implode("\n", $bootOut));
+        // cleanup
+        $this->runCli(['fixture_test', 'reset']);
+    }
+}
