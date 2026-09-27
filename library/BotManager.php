@@ -285,7 +285,13 @@ class BotManager
                 async(function () use ($cmd, $text, $args, $bot, $router, $alias): void {
                     if ($router->cmdExists($cmd)) {
                         try {
-                            $router->call($cmd, $text, $args, $bot);
+                            // middleware deny strings (e.g. acl "auth required")
+                            // flow out of call(); any string return is a
+                            // short-circuit message for the requesting nick
+                            $ret = $router->call($cmd, $text, $args, $bot);
+                            if (is_string($ret)) {
+                                $bot->notice($args->nick, $ret);
+                            }
                         } catch (\Exception $e) {
                             $bot->notice($args->nick, $e->getMessage());
                         } catch (\Throwable $e) {
@@ -311,7 +317,12 @@ class BotManager
             }
 
             try {
-                $router->callPriv($cmd, $text, $args, $bot);
+                // same deny-string convention as the chat path: middleware
+                // short-circuits (e.g. acl) return the message for the nick
+                $ret = $router->callPriv($cmd, $text, $args, $bot);
+                if (is_string($ret)) {
+                    $bot->notice($args->nick, $ret);
+                }
             } catch (Exception $e) {
                 $bot->notice($args->nick, $e->getMessage());
             }

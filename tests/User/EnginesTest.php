@@ -106,6 +106,15 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
         $this->assertSame([], $repo->createCalls);
     }
 
+    public function test_vhost_identhost_without_at_returns_null_without_repo_call(): void
+    {
+        $repo = new FakeEngineUserRepo();
+        $engine = new VhostPatternEngine([1 => $this->gamesurgePattern()], $repo);
+        $this->assertNull($engine->resolve($this->ctx(1, identHost: 'userhost-no-at-sign')));
+        $this->assertSame([], $repo->findCalls);
+        $this->assertSame([], $repo->createCalls);
+    }
+
     public function test_vhost_null_identhost_returns_null_without_repo_call(): void
     {
         $repo = new FakeEngineUserRepo();

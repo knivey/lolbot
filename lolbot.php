@@ -92,6 +92,7 @@ use scripts\imgur\imgur;
 
 require_once 'scripts/translate/translate.php';
 require_once 'scripts/yoda/yoda.php';
+require_once 'scripts/user/user.php';
 
 
 //copied from Cmdr should give it its own function in there later
