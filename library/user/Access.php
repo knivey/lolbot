@@ -67,20 +67,35 @@ class Access {
     }
 
     /**
-     * Check whether a user object carries a flag. Reads $user->flags
-     * defensively: a missing flags property or a non-array value (e.g. a
-     * legacy string shape) denies, non-string entries are filtered out
-     * before a strict in_array so scalars never satisfy by coercion.
+     * Defensive raw-flag extraction: the single place $user->flags is read.
+     * Missing property or non-array value yields [], non-string entries are
+     * filtered out.
+     *
+     * @return array<int, string>
      */
-    public static function userHasFlag(object $user, string $flag): bool
+    public static function flagArray(object $user): array
     {
         if (!property_exists($user, 'flags')) {
-            return false;
+            return [];
         }
         $flags = $user->flags;
         if (!is_array($flags)) {
-            return false;
+            return [];
         }
-        return in_array($flag, array_filter($flags, 'is_string'), true);
+        return array_values(array_filter($flags, 'is_string'));
+    }
+
+    /**
+     * Check whether a user object carries a flag. Reads $user->flags
+     * defensively via flagArray(): a missing flags property or a non-array
+     * value (e.g. a legacy string shape) denies, non-string entries are
+     * filtered out before a strict in_array so scalars never satisfy by
+     * coercion. The check runs through the Flags registry, so it is
+     * group-aware: a held flag grants its defined grants, and 'admin'
+     * grants '*' (everything).
+     */
+    public static function userHasFlag(object $user, string $flag): bool
+    {
+        return Flags::passes(self::flagArray($user), $flag);
     }
 }
