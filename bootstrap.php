@@ -10,7 +10,7 @@ use Doctrine\Migrations\DependencyFactory;
 use Symfony\Component\Yaml\Yaml;
 
 
-$configFile = __DIR__."/config.yaml";
+$configFile = getenv("LOLBOT_CONFIG") ?: __DIR__."/config.yaml";
 if(!file_exists($configFile) || !is_file($configFile))
     die("config.yaml does not exist or is not a file)\n");
 $config = Yaml::parseFile($configFile);
