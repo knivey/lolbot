@@ -17,6 +17,7 @@ use Monolog\Logger;
 use Nicks;
 use Revolt\EventLoop;
 use knivey\cmdr\Cmdr;
+use library\user\Acl;
 use lolbot\config\ConfigChange;
 use lolbot\config\SettingsResolver;
 use lolbot\entities\Bot;
@@ -44,7 +45,6 @@ use scripts\tiktok\tiktok;
 use scripts\tools\tools;
 use scripts\twitter\twitter;
 use scripts\urbandict\urbandict;
-use scripts\user\Acl;
 use scripts\weather\weather;
 use scripts\youtube\youtube;
 

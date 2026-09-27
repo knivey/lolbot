@@ -1,6 +1,6 @@
 <?php
 
-namespace scripts\user;
+namespace library\user;
 
 use knivey\cmdr\Cmdr;
 use knivey\cmdr\MiddlewareAttribute;

@@ -1,6 +1,6 @@
 <?php
 
-namespace scripts\user;
+namespace library\user;
 
 /*
  * ACL system
@@ -64,5 +64,23 @@ class Access {
             return null;
         }
         return (self::$userResolver)($extraArgs);
+    }
+
+    /**
+     * Check whether a user object carries a flag. Reads $user->flags
+     * defensively: a missing flags property or a non-array value (e.g. a
+     * legacy string shape) denies, non-string entries are filtered out
+     * before a strict in_array so scalars never satisfy by coercion.
+     */
+    public static function userHasFlag(object $user, string $flag): bool
+    {
+        if (!property_exists($user, 'flags')) {
+            return false;
+        }
+        $flags = $user->flags;
+        if (!is_array($flags)) {
+            return false;
+        }
+        return in_array($flag, array_filter($flags, 'is_string'), true);
     }
 }

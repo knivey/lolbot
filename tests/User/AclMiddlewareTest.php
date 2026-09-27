@@ -3,8 +3,8 @@ namespace Tests\User;
 
 use knivey\cmdr\Cmdr;
 use knivey\cmdr\Request;
-use scripts\user\Access;
-use scripts\user\Acl;
+use library\user\Access;
+use library\user\Acl;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
