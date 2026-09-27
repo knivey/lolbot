@@ -1,0 +1,12 @@
+# GameSurge — WHOX + vhost pattern engine + AuthServ (lifted limits).
+# Driver is the owner's real account nick (vhost path needs the real
+# account); SASL password goes in testenv/secrets.yaml, never here.
+driver:
+  nick: knivey
+networks:
+  - name: gamesurge
+    auth_engines: [vhost, whox, hostmask, manual]
+    servers:
+      - {address: irc.gamesurge.net, port: 6697, ssl: true}
+    bots:
+      - {name: derpybird-dev, channels: ["#lolbot-dev"]}

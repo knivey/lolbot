@@ -1,0 +1,12 @@
+# Libera — real services: account-tag auto-registration + SASL.
+# Driver is the dedicated test account (owner creates it); SASL password
+# goes in testenv/secrets.yaml, never here.
+driver:
+  nick: libtester
+networks:
+  - name: libera
+    auth_engines: [account-tag, hostmask, manual]
+    servers:
+      - {address: irc.libera.chat, port: 6697, ssl: true}
+    bots:
+      - {name: derpybird-dev, channels: ["#lolbot-dev"]}

@@ -1,0 +1,17 @@
+# Ownnet (birdnest) — default no-services profile: EFnet-class flows with
+# IRCv3 CAPs available. Engines pinned to [hostmask, manual] so account-tag
+# or whox never enter the chain even if the server offers the caps.
+# Endpoint + channel copied read-only from the dev DB (lolbot.db).
+driver:
+  nick: devtester
+networks:
+  - name: birdnest
+    auth_engines: [hostmask, manual]
+    servers:
+      - {address: irc.birdnest.live, port: 6697, ssl: true}
+    bots:
+      - {name: derpybird-dev, channels: ["#knivey"]}
+    # driver admin is declared explicitly here so the hostmask branch of the
+    # seeder is exercised (UserHostmask rows) instead of the bare default
+    seed_users:
+      - {name: devtester, flags: [admin], hostmasks: ["*!*@localhost"]}

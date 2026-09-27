@@ -1,0 +1,26 @@
+# All three networks in one profile (copies, not anchors — these files are
+# read by humans). The driver client connects to networks[0] (birdnest), so
+# the driver nick matches the ownnet one.
+driver:
+  nick: devtester
+networks:
+  - name: birdnest
+    auth_engines: [hostmask, manual]
+    servers:
+      - {address: irc.birdnest.live, port: 6697, ssl: true}
+    bots:
+      - {name: derpybird-dev, channels: ["#knivey"]}
+    seed_users:
+      - {name: devtester, flags: [admin], hostmasks: ["*!*@localhost"]}
+  - name: gamesurge
+    auth_engines: [vhost, whox, hostmask, manual]
+    servers:
+      - {address: irc.gamesurge.net, port: 6697, ssl: true}
+    bots:
+      - {name: derpybird-dev, channels: ["#lolbot-dev"]}
+  - name: libera
+    auth_engines: [account-tag, hostmask, manual]
+    servers:
+      - {address: irc.libera.chat, port: 6697, ssl: true}
+    bots:
+      - {name: derpybird-dev, channels: ["#lolbot-dev"]}
