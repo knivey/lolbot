@@ -221,9 +221,16 @@ takes shape.
    its own WHOX with label 777; the engines task should migrate it onto
    `Client::whox()`). Rebinding detection lives in the engines layer, not
    the client (owner decision).
-3. **Core**: `users` + `user_hostmasks` entities + migration,
-   `Access::before()`, hostmask + GameSurge engines, identity cache, PM
-   commands (`register`/`auth`/`pass`/`paranoid`/flags).
+3. **Core**: **DONE 2026-09-27** — per-network `users`/`user_hostmasks`
+   entities (+ `Networks.auth_engines` JSON and `admin_hostmask_auth` bool),
+   `library/user/` core (IdentityService, IdentityCache, EngineConfig,
+   engines: account-tag / vhost-pattern (GameSurge regex) / whox (lazy) /
+   hostmask / manual), PM commands (register/auth/pass/paranoid/setflags
+   family), `user:flags` CLI, deny UX, web UI engine config with hot
+   rebuild, and the Nicks.php migration onto `Client::whox()`. Known
+   follow-ups (issues): cross-network user linking (user + admin flows),
+   web UI user admin, alias-call deny passthrough, WHOIS-330/srvx deferred
+   engines.
 4. **Settings registry**: single table + attributes + generated `.set`
    surface + two-tier resolution.
 5. **Backlog unlock**: the admin/channel commands that have been waiting.
