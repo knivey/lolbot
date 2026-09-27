@@ -310,10 +310,16 @@ takes shape.
    follow-ups (issues): cross-network user linking (user + admin flows),
    web UI user admin, alias-call deny passthrough, WHOIS-330/srvx deferred
    engines.
-4. **Channel access**: flag registry (groups + `*`), `#[Acl(flag,
-   channel: true)]`, `channel_flags` entity + migration, `.cflags` grant
-   surface with grant-time validation, `user:flags` validation hookup.
-   Settings gating (step 5) depends on this.
+4. **Channel access**: **DONE 2026-09-27** — code-defined flag registry
+   with groups + `*` (`library/user/Flags.php`, `admin` ⇒ `*`, runtime
+   `Flags::define()` for scripts), `#[Acl(flag, channel: true)]` with
+   union resolution (network flags ∪ channel grants → group expansion;
+   superadmin before-hook bypasses channel checks too),
+   `channel_flags` entity/migration (per-bot channel scoping, owner
+   call 2026-09-27) + repos wired into the bundle, `.cflags` in-channel
+   grant command (can't-exceed-your-own-power, all-or-nothing ops,
+   empty-row cleanup), and registry validation on `user:flags` +
+   PM `setflags`. Settings gating (step 5) depends on this.
 5. **Settings registry**: `channel_settings` + `user_settings` entities +
    migration, `#[Setting]` attribute + programmatic registration with
    storage adapters, tiered resolver, context-split `.set`/`.unset`
