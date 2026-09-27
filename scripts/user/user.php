@@ -152,12 +152,12 @@ function register(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
     $netId = $sys->network->id;
     $lowered = mb_strtolower($name);
 
-    if (!preg_match('/^[A-Za-z0-9_\[\]{}^`|-]{1,30}$/', $name)) {
-        $bot->pm($args->nick, "invalid name (1-30 chars, only letters, digits and _[]{}^`|-)");
+    if ($name === '' || mb_strlen($name) > 30) {
+        $bot->pm($args->nick, "invalid name (1-30 chars)");
         return;
     }
-    if (strlen($pass) < 8) {
-        $bot->pm($args->nick, "password must be at least 8 characters");
+    if (strlen($pass) < 6) {
+        $bot->pm($args->nick, "password must be at least 6 characters");
         return;
     }
 
