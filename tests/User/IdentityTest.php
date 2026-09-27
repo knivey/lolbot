@@ -243,7 +243,103 @@ class IdentityTest extends \PHPUnit\Framework\TestCase
 
     // ---- IdentityService ----
 
+    public function test_service_engine_names_lists_chain_provenances_in_order(): void
+    {
+        $service = new IdentityService(new IdentityCache(), [new FakeEngineOne(null), new FakeEngineTwo(5)]);
+        $this->assertSame(['fake-one', 'fake-two'], $service->engineNames());
+    }
+
+    public function test_service_engine_names_empty_chain_is_empty_list(): void
+    {
+        $this->assertSame([], (new IdentityService(new IdentityCache(), []))->engineNames());
+    }
+
     public function test_service_cache_hit_returns_cached_identity_without_calling_engines(): void
+    {
+        $cache = new IdentityCache(static fn (): int => 1);
+        $cache->set(1, 'knivey', 7, 'hostmask');
+        $engine = new FakeEngineOne(42);
+        $service = new IdentityService($cache, [$engine]);
+        // no services account in the context: nothing to upgrade to, the
+        // cached binding is authoritative for this message
+        $this->assertSame(
+            ['user_id' => 7, 'provenance' => 'hostmask'],
+            $service->resolve($this->ctx(1))
+        );
+        $this->assertSame(0, $engine->calls);
+    }
+
+    public function test_service_cache_hit_with_account_upgrades_non_account_tag_binding_via_account_tag_engine(): void
+    {
+        $cache = new IdentityCache(static fn (): int => 1);
+        $cache->set(1, 'knivey', 7, 'hostmask');
+        $accountTag = new FakeAccountTagEngine(9);
+        $spy = new FakeEngineOne(42);
+        $service = new IdentityService($cache, [$accountTag, $spy]);
+        $this->assertSame(
+            ['user_id' => 9, 'provenance' => 'account-tag'],
+            $service->resolve($this->ctx(1, 'knivey'))
+        );
+        $this->assertSame(1, $accountTag->calls, 'the account-tag engine IS consulted on the cache-hit upgrade path');
+        $this->assertSame(0, $spy->calls, 'spy engines for other provenances stay untouched');
+        $hit = $cache->get(1, 'knivey');
+        $this->assertNotNull($hit);
+        $this->assertSame(9, $hit['user_id']);
+        $this->assertSame('account-tag', $hit['provenance'], 'cache was rebound to the authoritative binding');
+        // once rebound the upgrade path skips: no repeat engine queries
+        $this->assertSame(
+            ['user_id' => 9, 'provenance' => 'account-tag'],
+            $service->resolve($this->ctx(1, 'knivey'))
+        );
+        $this->assertSame(1, $accountTag->calls);
+    }
+
+    public function test_service_overbroad_mask_shadow_is_corrected_once_the_account_arrives(): void
+    {
+        // escalation shape from the review: an over-broad stored mask bound
+        // the nick to user 7; after the user logs in to services the next
+        // message must rebind to the true account's row
+        $cache = new IdentityCache(static fn (): int => 1);
+        $cache->set(2, 'victim', 7, 'hostmask');
+        $service = new IdentityService($cache, [new FakeAccountTagEngine(23)]);
+        $this->assertSame(
+            ['user_id' => 23, 'provenance' => 'account-tag'],
+            $service->resolve($this->ctx(2, 'RealAccount', nickLowered: 'victim'))
+        );
+        $this->assertNotSame(7, $cache->get(2, 'victim')['user_id'] ?? null);
+    }
+
+    public function test_service_cache_hit_account_tag_miss_keeps_cached_binding(): void
+    {
+        $cache = new IdentityCache(static fn (): int => 1);
+        $cache->set(1, 'knivey', 7, 'hostmask');
+        $accountTag = new FakeAccountTagEngine(null);
+        $service = new IdentityService($cache, [$accountTag]);
+        $this->assertSame(
+            ['user_id' => 7, 'provenance' => 'hostmask'],
+            $service->resolve($this->ctx(1, 'unknownaccount'))
+        );
+        $this->assertSame(1, $accountTag->calls);
+        $hit = $cache->get(1, 'knivey');
+        $this->assertNotNull($hit);
+        $this->assertSame(7, $hit['user_id']);
+        $this->assertSame('hostmask', $hit['provenance'], 'a miss must not overwrite the cached binding');
+    }
+
+    public function test_service_cache_hit_with_account_tag_provenance_does_not_rerun_engine(): void
+    {
+        $cache = new IdentityCache(static fn (): int => 1);
+        $cache->set(1, 'knivey', 7, 'account-tag');
+        $accountTag = new FakeAccountTagEngine(9);
+        $service = new IdentityService($cache, [$accountTag]);
+        $this->assertSame(
+            ['user_id' => 7, 'provenance' => 'account-tag'],
+            $service->resolve($this->ctx(1, 'knivey'))
+        );
+        $this->assertSame(0, $accountTag->calls);
+    }
+
+    public function test_service_cache_hit_without_account_tag_engine_in_chain_keeps_cached(): void
     {
         $cache = new IdentityCache(static fn (): int => 1);
         $cache->set(1, 'knivey', 7, 'hostmask');
@@ -251,9 +347,9 @@ class IdentityTest extends \PHPUnit\Framework\TestCase
         $service = new IdentityService($cache, [$engine]);
         $this->assertSame(
             ['user_id' => 7, 'provenance' => 'hostmask'],
-            $service->resolve($this->ctx(1))
+            $service->resolve($this->ctx(1, 'someone'))
         );
-        $this->assertSame(0, $engine->calls);
+        $this->assertSame(0, $engine->calls, 'a chain without the account-tag engine has nothing to upgrade to');
     }
 
     public function test_service_first_engine_hit_wins_and_is_cached_with_its_provenance(): void
@@ -368,6 +464,20 @@ final class FakeEngineOne implements Engine
 final class FakeEngineTwo implements Engine
 {
     public const PROVENANCE = 'fake-two';
+    public int $calls = 0;
+
+    public function __construct(private readonly ?int $result) {}
+
+    public function resolve(ResolveContext $ctx): ?int
+    {
+        $this->calls++;
+        return $this->result;
+    }
+}
+
+final class FakeAccountTagEngine implements Engine
+{
+    public const PROVENANCE = 'account-tag';
     public int $calls = 0;
 
     public function __construct(private readonly ?int $result) {}

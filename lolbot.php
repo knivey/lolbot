@@ -147,10 +147,18 @@ function main(): void {
     foreach ($nets as $network) {
         if ($network->disabled)
             continue;
-        foreach ($network->getBots() as $bot) {
-            if ($bot->isDisabled())
-                continue;
-            $mgr->spawn($network, $bot);
+        try {
+            foreach ($network->getBots() as $bot) {
+                if ($bot->isDisabled())
+                    continue;
+                $mgr->spawn($network, $bot);
+            }
+        } catch (\Throwable $e) {
+            // one bad network config (e.g. an unknown pinned auth_engines
+            // name throwing in the user-system factory) must not kill the
+            // whole process — log it and skip to the next network
+            echo "Failed to spawn bots for network {$network->name}: " . $e->getMessage() . "\n";
+            echo "  at " . $e->getFile() . ":" . $e->getLine() . "\n";
         }
     }
 

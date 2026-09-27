@@ -217,9 +217,17 @@ final class FakeManualUserRepo implements UserRepo
 
 final class FakeManualMaskRepo implements UserHostmaskRepo
 {
+    /** @var list<int> */
+    public array $deleteCalls = [];
+
     public function findForHost(int $netId, string $identHost): array
     {
         return [];
+    }
+
+    public function deleteForUser(int $userId): void
+    {
+        $this->deleteCalls[] = $userId;
     }
 }
 

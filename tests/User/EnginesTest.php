@@ -231,7 +231,7 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
     public function test_hostmask_exact_full_string_match_resolves_user(): void
     {
         $repo = new FakeEngineMaskRepo();
-        $repo->masks[1] = [['mask' => 'Knivey!user@host.example', 'user_id' => 7]];
+        $repo->masks[1] = [['mask' => 'Knivey!user@host.example', 'user_id' => 7, 'paranoid' => false]];
         $engine = new HostmaskEngine($repo);
         $this->assertSame(7, $engine->resolve($this->ctx(1)));
     }
@@ -239,7 +239,7 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
     public function test_hostmask_glob_mask_matches(): void
     {
         $repo = new FakeEngineMaskRepo();
-        $repo->masks[1] = [['mask' => '*!*@*.example.com', 'user_id' => 7]];
+        $repo->masks[1] = [['mask' => '*!*@*.example.com', 'user_id' => 7, 'paranoid' => false]];
         $engine = new HostmaskEngine($repo);
         $this->assertSame(7, $engine->resolve($this->ctx(1, nick: 'Anyone', identHost: 'ident@foo.example.com')));
     }
@@ -247,7 +247,7 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
     public function test_hostmask_match_is_case_insensitive(): void
     {
         $repo = new FakeEngineMaskRepo();
-        $repo->masks[1] = [['mask' => 'knivey!*@*.example.com', 'user_id' => 7]];
+        $repo->masks[1] = [['mask' => 'knivey!*@*.example.com', 'user_id' => 7, 'paranoid' => false]];
         $engine = new HostmaskEngine($repo);
         $this->assertSame(7, $engine->resolve($this->ctx(1, nick: 'KNIVEY', identHost: 'user@HOST.Example.Com')));
     }
@@ -255,7 +255,7 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
     public function test_hostmask_no_matching_mask_returns_null(): void
     {
         $repo = new FakeEngineMaskRepo();
-        $repo->masks[1] = [['mask' => 'someone!*@elsewhere.example', 'user_id' => 7]];
+        $repo->masks[1] = [['mask' => 'someone!*@elsewhere.example', 'user_id' => 7, 'paranoid' => false]];
         $engine = new HostmaskEngine($repo);
         $this->assertNull($engine->resolve($this->ctx(1)));
     }
@@ -263,7 +263,7 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
     public function test_hostmask_nick_specific_mask_does_not_match_other_nick(): void
     {
         $repo = new FakeEngineMaskRepo();
-        $repo->masks[1] = [['mask' => 'nicka!*@*.example.com', 'user_id' => 1]];
+        $repo->masks[1] = [['mask' => 'nicka!*@*.example.com', 'user_id' => 1, 'paranoid' => false]];
         $engine = new HostmaskEngine($repo);
         // nickb must not inherit nicka's identity from a nick-anchored mask
         $this->assertNull($engine->resolve($this->ctx(1, nick: 'nickb', identHost: 'user@evil.example.com')));
@@ -273,9 +273,9 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
     {
         $repo = new FakeEngineMaskRepo();
         $repo->masks[1] = [
-            ['mask' => 'other!*@*', 'user_id' => 99],
-            ['mask' => 'Knivey!user@host.example', 'user_id' => 7],
-            ['mask' => '*!*@host.example', 'user_id' => 8],
+            ['mask' => 'other!*@*', 'user_id' => 99, 'paranoid' => false],
+            ['mask' => 'Knivey!user@host.example', 'user_id' => 7, 'paranoid' => false],
+            ['mask' => '*!*@host.example', 'user_id' => 8, 'paranoid' => false],
         ];
         $engine = new HostmaskEngine($repo);
         $this->assertSame(7, $engine->resolve($this->ctx(1)));
@@ -284,7 +284,7 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
     public function test_hostmask_masks_are_scoped_per_network(): void
     {
         $repo = new FakeEngineMaskRepo();
-        $repo->masks[1] = [['mask' => '*!*@host.example', 'user_id' => 7]];
+        $repo->masks[1] = [['mask' => '*!*@host.example', 'user_id' => 7, 'paranoid' => false]];
         $engine = new HostmaskEngine($repo);
         $this->assertNull($engine->resolve($this->ctx(2)));
         $this->assertSame([['netId' => 2, 'identHost' => 'user@host.example']], $repo->findCalls);
@@ -296,6 +296,27 @@ class EnginesTest extends \PHPUnit\Framework\TestCase
         $engine = new HostmaskEngine($repo);
         $this->assertNull($engine->resolve($this->ctx(1, identHost: null)));
         $this->assertSame([], $repo->findCalls);
+    }
+
+    public function test_hostmask_mask_of_paranoid_owner_is_skipped_even_on_exact_match(): void
+    {
+        $repo = new FakeEngineMaskRepo();
+        $repo->masks[1] = [['mask' => 'Knivey!user@host.example', 'user_id' => 7, 'paranoid' => true]];
+        $engine = new HostmaskEngine($repo);
+        // paranoid forces manual auth each connect: a mask stored before
+        // the toggle must never resolve
+        $this->assertNull($engine->resolve($this->ctx(1)));
+    }
+
+    public function test_hostmask_paranoid_mask_skipped_but_later_normal_match_still_resolves(): void
+    {
+        $repo = new FakeEngineMaskRepo();
+        $repo->masks[1] = [
+            ['mask' => '*!*@host.example', 'user_id' => 7, 'paranoid' => true],
+            ['mask' => '*!*@host.example', 'user_id' => 8, 'paranoid' => false],
+        ];
+        $engine = new HostmaskEngine($repo);
+        $this->assertSame(8, $engine->resolve($this->ctx(1)));
     }
 
     private function ctx(
@@ -382,15 +403,23 @@ final class FakeWhoxClient
 
 final class FakeEngineMaskRepo implements UserHostmaskRepo
 {
-    /** @var array<int, list<array{mask: string, user_id: int}>> */
+    /** @var array<int, list<array{mask: string, user_id: int, paranoid: bool}>> */
     public array $masks = [];
 
     /** @var list<array{netId: int, identHost: string}> */
     public array $findCalls = [];
 
+    /** @var list<int> */
+    public array $deleteCalls = [];
+
     public function findForHost(int $netId, string $identHost): array
     {
         $this->findCalls[] = ['netId' => $netId, 'identHost' => $identHost];
         return $this->masks[$netId] ?? [];
+    }
+
+    public function deleteForUser(int $userId): void
+    {
+        $this->deleteCalls[] = $userId;
     }
 }

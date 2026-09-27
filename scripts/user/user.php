@@ -127,6 +127,17 @@ function servicesAccountUser(UserSystem $sys, ?string $account): ?UserEntity
     return $user;
 }
 
+/**
+ * Password registration (services-less networks only): creates a users
+ * row with an argon2id hash and binds the nick manually. Refused
+ * outright when the network's engine chain includes account-tag or
+ * whos: identities there are automatic, and a password row created
+ * under a name the registrant does not own would squat it — the real
+ * owner's later account-tag arrival would auto-bind to the attacker's
+ * row and pick up any `user:flags` bootstrap grant on that name. Name
+ * and pass are sanity-checked before any branch (bad names could
+ * otherwise smuggle control chars into rows and replies).
+ */
 #[PrivCmd("register")]
 #[Syntax("<name> <pass>")]
 function register(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
@@ -140,6 +151,21 @@ function register(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
     $pass = argString($cmdArgs, 'pass') ?? '';
     $netId = $sys->network->id;
     $lowered = mb_strtolower($name);
+
+    if (!preg_match('/^[A-Za-z0-9_\[\]{}^`|-]{1,30}$/', $name)) {
+        $bot->pm($args->nick, "invalid name (1-30 chars, only letters, digits and _[]{}^`|-)");
+        return;
+    }
+    if (strlen($pass) < 8) {
+        $bot->pm($args->nick, "password must be at least 8 characters");
+        return;
+    }
+
+    $chain = $sys->svc->engineNames();
+    if (in_array('account-tag', $chain, true) || in_array('whox', $chain, true)) {
+        $bot->pm($args->nick, "identities on this network are automatic (services) — no registration needed; just use a gated command");
+        return;
+    }
 
     if ($sys->repos->users->findForNetwork($netId, $lowered) !== null) {
         $bot->pm($args->nick, "that name is taken");
@@ -231,7 +257,16 @@ function paranoid(\Irc\Event\UserEvent $args, \Irc\Client $bot, \knivey\cmdr\Arg
         return;
     }
     $sys->em->flush();
-    $bot->pm($args->nick, $user->paranoid ? "paranoid is now on" : "paranoid is now off");
+    if ($user->paranoid) {
+        // paranoid forces manual auth each connect: any stored mask
+        // would keep resolving through the hostmask engine, so drop it
+        // now (the engine also skips paranoid-owned rows as a second
+        // line of defense for masks stored before the toggle)
+        $sys->repos->masks->deleteForUser($user->id);
+        $bot->pm($args->nick, "paranoid is now on (stored hostmasks removed)");
+    } else {
+        $bot->pm($args->nick, "paranoid is now off");
+    }
 }
 
 #[PrivCmd("pass")]

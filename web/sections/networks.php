@@ -27,6 +27,24 @@ function web_networks_edit(int $id, ?string $error = null): never
     web_render('networks/edit.twig', ['active' => 'networks', 'section' => 'Edit ' . $net->name, 'net' => $net, 'error' => $error]);
 }
 
+/**
+ * Parse the auth_engines form field (comma-separated engine names) into
+ * the pinned list, or null for auto-detect. A field that is empty or
+ * filters down to no names at all (e.g. a lone comma) means
+ * auto-detect: storing a pinned EMPTY chain would silently disable
+ * every engine for the network.
+ *
+ * @return list<string>|null
+ */
+function web_networks_parse_auth_engines(string $raw): ?array
+{
+    $engines = array_values(array_filter(
+        array_map('trim', explode(',', $raw)),
+        fn(string $e): bool => $e !== '',
+    ));
+    return $engines === [] ? null : $engines;
+}
+
 function web_networks_update(int $id): never
 {
     $app = web_app();
@@ -36,12 +54,11 @@ function web_networks_update(int $id): never
     $net->name = trim(is_string($_POST['name'] ?? null) ? $_POST['name'] : $net->name);
     if ($net->name === '') { web_networks_edit($id, 'Name required'); }
     $net->disabled = isset($_POST['disabled']);
-    // comma-separated engine list; empty field = auto-detect (null)
-    $enginesRaw = trim(is_string($_POST['auth_engines'] ?? null) ? $_POST['auth_engines'] : '');
-    $engines = $enginesRaw === '' ? null : array_values(array_filter(
-        array_map('trim', explode(',', $enginesRaw)),
-        fn(string $e): bool => $e !== '',
-    ));
+    // comma-separated engine list; empty field (or entries that filter
+    // away entirely) = auto-detect (null)
+    $engines = web_networks_parse_auth_engines(
+        trim(is_string($_POST['auth_engines'] ?? null) ? $_POST['auth_engines'] : '')
+    );
     try {
         $app['svc']->setNetworkAuthEngines($net, $engines);
         $app['svc']->setNetworkAdminHostmaskAuth($net, isset($_POST['admin_hostmask_auth']));

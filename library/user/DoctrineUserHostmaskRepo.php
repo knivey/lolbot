@@ -25,12 +25,12 @@ final class DoctrineUserHostmaskRepo implements UserHostmaskRepo
     /**
      * @param int $netId network id
      * @param string $identHost the ident@host portion (no nick)
-     * @return list<array{mask: string, user_id: int}>
+     * @return list<array{mask: string, user_id: int, paranoid: bool}>
      */
     public function findForHost(int $netId, string $identHost): array
     {
         $rows = $this->em->createQueryBuilder()
-            ->select('m.mask', 'm.user_id')
+            ->select('m.mask', 'm.user_id', 'u.paranoid')
             ->from(UserHostmaskEntity::class, 'm')
             ->innerJoin(UserEntity::class, 'u', Join::WITH, 'u.id = m.user_id')
             ->where('u.network_id = :netId')
@@ -44,10 +44,22 @@ final class DoctrineUserHostmaskRepo implements UserHostmaskRepo
             }
             $mask = $row['mask'] ?? null;
             $userId = $row['user_id'] ?? null;
-            if (is_string($mask) && is_int($userId)) {
-                $out[] = ['mask' => $mask, 'user_id' => $userId];
+            $paranoid = $row['paranoid'] ?? null;
+            // paranoid may hydrate as bool or as 0/1 depending on driver
+            if (is_string($mask) && is_int($userId) && (is_bool($paranoid) || is_int($paranoid))) {
+                $out[] = ['mask' => $mask, 'user_id' => $userId, 'paranoid' => (bool) $paranoid];
             }
         }
         return $out;
+    }
+
+    public function deleteForUser(int $userId): void
+    {
+        $this->em->createQueryBuilder()
+            ->delete(UserHostmaskEntity::class, 'm')
+            ->where('m.user_id = :userId')
+            ->setParameter('userId', $userId)
+            ->getQuery()
+            ->execute();
     }
 }
