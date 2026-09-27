@@ -37,9 +37,10 @@ class Nicks {
     protected \Irc\Client $bot;
 
     /**
-     * @var array<int, string|int|null>
+     * Index of the '352' numeric subscription used on non-WHOX networks,
+     * tracked so a re-welcome can re-subscribe without stacking handlers.
      */
-    protected array $whoHook = [];
+    protected ?int $who352Hook = null;
 
     /**
      * Case-insensitive string key lookup for $this->ppl / $this->tppl shaped arrays.
@@ -60,19 +61,18 @@ class Nicks {
             $this->clearAll();
         });
         $doWho = function($args, $bot) {
-            if(!empty($this->whoHook))
-                $bot->off($this->whoHook[0], null, $this->whoHook[1]);
+            if($this->who352Hook !== null)
+                $bot->off('352', null, $this->who352Hook);
             //If server doesn't have multi-prefix or WHOX then we likely will not be knowing full op/voice state
             //On some servers (ircu) whox will give all the @+
-            $idx = null;
             if($bot->hasOption('WHOX')) {
-                $this->whoHook[0] = '354';
-                $bot->on('354', function(NumericEvent $args, $bot) {$this->whox($args->message);}, $idx);
-            } else {
-                $this->whoHook[0] = '352';
-                $bot->on('352', function(NumericEvent $args, $bot) {$this->who($args->message);}, $idx);
+                //WHOX replies arrive through Client::whox() futures (see the
+                //join hook below), so no 354 subscription is needed here
+                return;
             }
-            $this->whoHook[1] = $idx;
+            $idx = null;
+            $bot->on('352', function(NumericEvent $args, $bot) {$this->who($args->message);}, $idx);
+            $this->who352Hook = $idx;
         };
         $bot->on('422', $doWho);
         $bot->on('376', $doWho);
@@ -82,7 +82,13 @@ class Nicks {
         $bot->on('join', function(JoinEvent $args, $bot) {
             if($bot->isCurrentNick($args->nick)) {
                 if($bot->hasOption('WHOX')) {
-                    $bot->send("WHO {$args->chan} %tnchuf,777");
+                    $future = $bot->whox($args->chan, 'tcuhnf');
+                    //Consume the future in its own fiber: awaiting inline would
+                    //suspend this join handler until the 315 that completes the
+                    //WHOX round trip, stalling the read fiber that must deliver it
+                    \Amp\async(function() use ($future): void {
+                        $this->whoxApply($future->await());
+                    });
                 } else {
                     $bot->send("WHO {$args->chan}");
                 }
@@ -335,31 +341,42 @@ class Nicks {
     }
 
     /**
-     * Handle whox reply
+     * Apply entries from a Client::whox() future (fields keyed by letter:
+     * c=channel, u=ident, h=host, n=nick, f=flags) to the ppl array.
+     * Replaces the old 354 label-777 handler; entries only arrive through
+     * our own token-correlated WHOX queries.
+     *
+     * @param list<array<string, mixed>> $entries
      */
-    function whox(\Irc\Message $msg): void {
-        $args = $msg->args;
-        //            0       1         2       3     4    5    6
-        //:server 354 ourname customnum channel ident host nick flags
-        if ($args[1] != 777) {
-            return; // wasn't our number
+    function whoxApply(array $entries): void {
+        foreach ($entries as $entry) {
+            //future entries are typed array<string, mixed>; skip malformed ones
+            $nick = $entry['n'] ?? null;
+            $chan = $entry['c'] ?? null;
+            $ident = $entry['u'] ?? null;
+            $host = $entry['h'] ?? null;
+            $flags = $entry['f'] ?? null;
+            if (!is_string($nick) || !is_string($chan) || !is_string($ident)
+                || !is_string($host) || !is_string($flags)) {
+                continue; //malformed entry (missing or non-string field)
+            }
+            $key = self::getKey($nick, $this->ppl);
+            if ($key == null) {
+                continue; //Don't add the user we have no idea how they got here
+            }
+            $ckey = self::getKey($chan, $this->ppl[$key]['channels']);
+            if($ckey == null) {
+                continue; //Don't add information that we shouldn't be getting
+            }
+            $this->ppl[$key]['host'] = $ident . '@' . $host;
+            //process the rest of their channel mode (@+)
+            $chanModes = array_intersect(['+','%','@','&','~'], str_split($flags));
+            $chanModes = array_flip($chanModes);
+            foreach ($chanModes as $k => &$v) {
+                $v = $k;
+            }
+            $this->ppl[$key]['channels'][$ckey]['modes'] = $chanModes;
         }
-        $key = self::getKey($args[5], $this->ppl);
-        if ($key == null) {
-            return; //Don't add the user we have no idea how they got here
-        }
-        $ckey = self::getKey($args[2], $this->ppl[$key]['channels']);
-        if($ckey == null) {
-            return; //Don't add information that we shouldn't be getting
-        }
-        $this->ppl[$key]['host'] = $args[3] . '@' . $args[4];
-        //process the rest of their channel mode (@+)
-        $chanModes = array_intersect(['+','%','@','&','~'], str_split($args[6]));
-        $chanModes = array_flip($chanModes);
-        foreach ($chanModes as $k => &$v) {
-            $v = $k;
-        }
-        $this->ppl[$key]['channels'][$ckey]['modes'] = $chanModes;
     }
 
     /**
