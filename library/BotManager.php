@@ -326,19 +326,26 @@ class BotManager
                 return;
             }
 
-            try {
-                // same deny-string convention as the chat path: middleware
-                // short-circuits (e.g. acl) return the message for the nick
-                $ret = $router->callPriv($cmd, $text, $args, $bot);
-                if (is_string($ret)) {
-                    $bot->notice($args->nick, $ret);
+            // dispatch async like the chat path above: the acl middleware
+            // resolves the nick BEFORE any flag check, and on a whox-path
+            // network that awaits a WHOX future whose 354 reply can only
+            // be read by this read fiber — a synchronous callPriv here
+            // freezes ALL input for whoxTimeout (15s) per gated PM
+            async(function () use ($cmd, $text, $args, $bot, $router): void {
+                try {
+                    // same deny-string convention as the chat path: middleware
+                    // short-circuits (e.g. acl) return the message for the nick
+                    $ret = $router->callPriv($cmd, $text, $args, $bot);
+                    if (is_string($ret)) {
+                        $bot->notice($args->nick, $ret);
+                    }
+                } catch (\Exception $e) {
+                    $bot->notice($args->nick, $e->getMessage());
+                } catch (\Throwable $e) {
+                    echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
+                    $bot->notice($args->nick, "error running command :(");
                 }
-            } catch (\Exception $e) {
-                $bot->notice($args->nick, $e->getMessage());
-            } catch (\Throwable $e) {
-                echo "Command error for '{$cmd}': " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n";
-                $bot->notice($args->nick, "error running command :(");
-            }
+            });
         });
         $client->go();
         $this->clients[$dbBot->id] = $client;
