@@ -19,7 +19,7 @@ class Access {
     {
         // before-hook runs first (laravel gates before semantics) so e.g. a
         // superadmin check can never be locked out by a broken/missing acl
-        if (self::$before !== null && (self::$before)(...$args) === true) {
+        if (self::beforeAllows(...$args) === true) {
             return true;
         }
         if(!array_key_exists($name, self::$acls)) {
@@ -41,6 +41,16 @@ class Access {
     static function before(?callable $hook): void
     {
         self::$before = $hook;
+    }
+
+    /**
+     * Public read of the before-hook's verdict: true iff a registered hook
+     * explicitly allowed these args. The acl middleware's channel path uses
+     * this so the superadmin bypass covers channel-scoped checks too.
+     */
+    public static function beforeAllows(object ...$args): bool
+    {
+        return self::$before !== null && (self::$before)(...$args) === true;
     }
 
     /**

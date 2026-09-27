@@ -29,4 +29,24 @@ final class UserSystem
     {
         return $this->network->id;
     }
+
+    /**
+     * The bot's Channel row for a channel name on THIS network (lowered
+     * compare), null when the bot isn't configured for it. Channel rows are
+     * per-bot (Channels.bot FK) — that is the deliberate scoping for
+     * channel_flags grants (owner decision 2026-09-27).
+     */
+    public function channelByName(string $chan): ?\lolbot\entities\Channel
+    {
+        $q = $this->em->createQuery(
+            'SELECT c FROM lolbot\entities\Channel c JOIN c.bot b'
+            . ' WHERE b.network = :net AND LOWER(c.name) = :name',
+        );
+        $q->setParameter('net', $this->network);
+        $q->setParameter('name', mb_strtolower($chan));
+        // getOneOrNullResult() is untyped (mixed) in doctrine/orm 3; narrow
+        // for the declared return — the query can only yield Channel|null
+        $result = $q->getOneOrNullResult();
+        return $result instanceof \lolbot\entities\Channel ? $result : null;
+    }
 }
