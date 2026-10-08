@@ -241,6 +241,9 @@ function testenv_client_main(array $argv): int
                             $send('JOIN ' . implode(',', $channels));
                             $joined = $channels;
                         }
+                        $target = $joined[0] ?? '(no auto-join channel — /join <chan> first)';
+                        echo "*** connected to {$endpoint['address']}:{$endpoint['port']} as {$nick}\n";
+                        echo "*** sending to: {$target} — plain lines go there; /help lists commands\n";
                         foreach ($onConnect as $authLine) {
                             $send($authLine);
                         }
@@ -249,9 +252,6 @@ function testenv_client_main(array $argv): int
                             // passwords; the tester knows what they configured
                             echo "*** sent " . count($onConnect) . " on_connect line(s)\n";
                         }
-                        $target = $joined[0] ?? '(no auto-join channel — /join <chan> first)';
-                        echo "*** connected to {$endpoint['address']}:{$endpoint['port']} as {$nick}\n";
-                        echo "*** sending to: {$target} — plain lines go there; /help lists commands\n";
                     }
                     return;
                 case 'ERROR':
