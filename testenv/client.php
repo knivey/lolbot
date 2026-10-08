@@ -180,12 +180,43 @@ function testenv_client_main(array $argv): int
         }
 
         $send = static function (string $line) use ($socket): void {
-            $socket->write($line . "\r\n");
+            try {
+                $socket->write($line . "\r\n");
+            } catch (\Throwable) {
+                // socket already gone (e.g. broken pipe during the quit
+                // drain) — the read loop's EOF path below handles the exit
+            }
         };
 
         /** @var array<int, string> $joined first entry is where plain lines go */
         $joined = [];
         $bannerDone = false;
+        // set once /quit (or stdin EOF) starts the exit drain: later stdin
+        // lines are ignored and the socket read loop keeps running until the
+        // server closes the connection (or the 3s safety timer below fires)
+        $quitting = false;
+
+        // Issue #142 item 2: fully-buffered stdin + EOF used to exit before
+        // inbound bot replies still in flight got read (v2 scripted macros
+        // pipe all their lines then EOF, so /quit raced the socket). Instead
+        // of closing the socket here, send QUIT and let the read loop below
+        // drain inbound until EOF or the safety bound, then exit.
+        $beginQuit = function () use ($send, &$quitting): void {
+            if ($quitting) {
+                // already draining — stdin EOF after an explicit /quit (or a
+                // second /quit) must not restart or duplicate the drain
+                return;
+            }
+            $quitting = true;
+            $send('QUIT :testenv client closing');
+            echo "*** draining inbound before exit...\n";
+            // safety bound: a server that ignores QUIT and never closes must
+            // not hang the client
+            EventLoop::delay(3, static function (): void {
+                echo "\n*** drain timeout — exiting\n";
+                exit(0);
+            });
+        };
 
         $handleServerLine = function (string $line) use ($send, $nick, $sasl, $endpoint, $channels, $onConnect, &$joined, &$bannerDone): void {
             $msg = Message::parse($line);
@@ -269,7 +300,11 @@ function testenv_client_main(array $argv): int
             }
         };
 
-        $handleInput = function (string $line) use ($send, $socket, &$joined): void {
+        $handleInput = function (string $line) use ($send, $beginQuit, &$joined, &$quitting): void {
+            if ($quitting) {
+                // drain in progress: stdin lines after /quit are ignored
+                return;
+            }
             if ($line === '') {
                 return;
             }
@@ -330,9 +365,9 @@ function testenv_client_main(array $argv): int
                     echo "  /quit                 close and exit\n";
                     return;
                 case 'quit':
-                    $send('QUIT :testenv client closing');
-                    $socket->close();
-                    exit(0);
+                    // send QUIT and drain inbound before exit — see $beginQuit
+                    $beginQuit();
+                    return;
                 default:
                     echo "*** unknown command /{$cmd} — try /help\n";
             }
@@ -365,17 +400,24 @@ function testenv_client_main(array $argv): int
 
         // socket read loop, Irc\Client::doRead()'s inQ/getLine() idiom
         $inQ = '';
-        while (($chunk = $socket->read()) !== null) {
-            $inQ .= $chunk;
-            while (($line = client_next_line($inQ)) !== null) {
-                if ($line !== '') {
-                    $handleServerLine($line);
+        try {
+            while (($chunk = $socket->read()) !== null) {
+                $inQ .= $chunk;
+                while (($line = client_next_line($inQ)) !== null) {
+                    if ($line !== '') {
+                        $handleServerLine($line);
+                    }
                 }
             }
+        } catch (\Throwable) {
+            // an abrupt close (RST) during the drain lands here — treat it
+            // like EOF and fall through to the exit below
         }
         echo "\n*** disconnected\n";
-        // the stdin coroutine would otherwise keep the loop alive
-        exit(1);
+        // the stdin coroutine would otherwise keep the loop alive;
+        // a completed drain (post-/quit disconnect) exits cleanly, an
+        // unexpected disconnect is still an error exit
+        exit($quitting ? 0 : 1);
     });
     EventLoop::run();
     return $code;
