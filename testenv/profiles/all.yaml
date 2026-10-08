@@ -2,25 +2,25 @@
 # read by humans). The driver client connects to networks[0] (birdnest), so
 # the driver nick matches the ownnet one.
 driver:
-  nick: devtester
+  nick: devtesterbird
 networks:
   - name: birdnest
     auth_engines: [hostmask, manual]
     servers:
       - {address: irc.birdnest.live, port: 6697, ssl: true}
     bots:
-      - {name: derpybird-dev, channels: ["#knivey"]}
+      - {name: derpydevbird, trigger: ".", channels: ["#knivey"]}
     seed_users:
-      - {name: devtester, flags: [admin], hostmasks: ["*!*@localhost"]}
+      - {name: devtester, flags: [admin], hostmasks: ["devtesterbird!*"]}
   - name: gamesurge
     auth_engines: [vhost, whox, hostmask, manual]
     servers:
-      - {address: irc.gamesurge.net, port: 6697, ssl: true}
+      - {address: irc.gamesurge.net, port: 6667, ssl: false}
     bots:
-      - {name: derpybird-dev, channels: ["#lolbot-dev"]}
+      - {name: lolbot-dev, trigger: ".", channels: ["#bots"]}
   - name: libera
     auth_engines: [account-tag, hostmask, manual]
     servers:
       - {address: irc.libera.chat, port: 6697, ssl: true}
     bots:
-      - {name: derpybird-dev, channels: ["#lolbot-dev"]}
+      - {name: lolbot-dev, trigger: ".", channels: ["#lolbot-dev"]}
