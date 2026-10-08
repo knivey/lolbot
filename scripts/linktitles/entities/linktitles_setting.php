@@ -10,6 +10,17 @@ use lolbot\entities\Network;
 #[ORM\UniqueConstraint(name: "scope_unique", columns: ["network_id", "channel_id"])]
 class linktitles_setting
 {
+    /**
+     * Writable setting keys (property names) this entity surfaces — the
+     * single source shared by ConfigService, the settings adapter, and
+     * the linktitles:set CLI; a future column is a one-place edit here.
+     */
+    public const WRITABLE_KEYS = [
+        'enabled', 'url_log_chan', 'ai_vision_disabled',
+        'ai_vision_model', 'ai_vision_prompt',
+        'ai_vision_reasoning_effort', 'ai_vision_reasoning',
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(updatable: false)]

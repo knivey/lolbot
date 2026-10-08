@@ -33,12 +33,6 @@ use function lolbot\config\build_change_notifier;
  */
 class LinktitlesSettingStorage implements SettingStorage
 {
-    /** Writable keys this adapter surfaces (linktitles_setting columns). */
-    private const KEYS = [
-        'enabled', 'ai_vision_disabled', 'url_log_chan', 'ai_vision_model',
-        'ai_vision_prompt', 'ai_vision_reasoning_effort', 'ai_vision_reasoning',
-    ];
-
     /**
      * Constructed with the caller's EntityManager, or with null to
      * resolve bootstrap.php's global $entityManager lazily at call time
@@ -94,15 +88,23 @@ class LinktitlesSettingStorage implements SettingStorage
     }
 
     /**
-     * Resolve the tier ids to their entities. A null (or unknown) id
-     * means that tier is skipped — matching the ?Network/?Channel
-     * signatures ConfigService already accepts.
+     * Resolve the tier ids to their entities. A null id means that tier
+     * is skipped — matching the ?Network/?Channel signatures
+     * ConfigService already accepts. An id that names no row is NOT a
+     * skip: an unknown network id would silently degrade the write to
+     * the global tier, so it throws instead.
      *
      * @return array{0: Network|null, 1: Channel|null}
      */
     private function resolve(?int $networkId, ?int $channelId): array
     {
-        $network = $networkId !== null ? $this->em()->find(Network::class, $networkId) : null;
+        $network = null;
+        if ($networkId !== null) {
+            $network = $this->em()->find(Network::class, $networkId);
+            if ($network === null) {
+                throw new \RuntimeException("unknown network id {$networkId}");
+            }
+        }
         $channel = $channelId !== null ? $this->em()->find(Channel::class, $channelId) : null;
         return [$network, $channel];
     }
@@ -111,7 +113,7 @@ class LinktitlesSettingStorage implements SettingStorage
     private function key(string $name): string
     {
         $key = str_starts_with($name, 'linktitles.') ? substr($name, strlen('linktitles.')) : $name;
-        if (!in_array($key, self::KEYS, true)) {
+        if (!in_array($key, linktitles_setting::WRITABLE_KEYS, true)) {
             throw new \InvalidArgumentException("unknown linktitles setting: $name");
         }
         return $key;

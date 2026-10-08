@@ -21,15 +21,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class linktitles_set extends Command
 {
     /** @var array<string> */
-    public array $settings = [
-        "ai_vision_disabled",
-        "enabled",
-        "url_log_chan",
-        "ai_vision_model",
-        "ai_vision_prompt",
-        "ai_vision_reasoning_effort",
-        "ai_vision_reasoning",
-    ];
+    public array $settings = linktitles_setting::WRITABLE_KEYS;
 
     protected function configure(): void
     {

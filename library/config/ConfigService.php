@@ -571,13 +571,6 @@ class ConfigService
 
     // ---------------- Script settings (linktitles) ----------------
 
-    /** Writable linktitles_setting keys (property names). */
-    private const LINKTITLES_KEYS = [
-        'enabled', 'url_log_chan', 'ai_vision_disabled',
-        'ai_vision_model', 'ai_vision_prompt',
-        'ai_vision_reasoning_effort', 'ai_vision_reasoning',
-    ];
-
     private function findOrCreateLinktitlesSetting(?Network $network, ?Channel $channel): linktitles_setting
     {
         $repo = $this->em->getRepository(linktitles_setting::class);
@@ -596,7 +589,7 @@ class ConfigService
 
     public function setLinktitlesSetting(?Network $network, ?Channel $channel, string $key, mixed $value): linktitles_setting
     {
-        if (!in_array($key, self::LINKTITLES_KEYS, true)) {
+        if (!in_array($key, linktitles_setting::WRITABLE_KEYS, true)) {
             throw new InvalidSettingException("Unknown linktitles setting: $key");
         }
         $setting = $this->findOrCreateLinktitlesSetting($network, $channel);
@@ -623,7 +616,7 @@ class ConfigService
 
     public function resetLinktitlesSetting(?Network $network, ?Channel $channel, string $key): void
     {
-        if (!in_array($key, self::LINKTITLES_KEYS, true)) {
+        if (!in_array($key, linktitles_setting::WRITABLE_KEYS, true)) {
             throw new InvalidSettingException("Unknown linktitles setting: $key");
         }
         $repo = $this->em->getRepository(linktitles_setting::class);
@@ -633,8 +626,8 @@ class ConfigService
         ]);
         if ($setting !== null) {
             // A reset means "inherit": clear the field to null so resolution
-            // falls through to the next tier. $key is narrowed to LINKTITLES_KEYS
-            // by the in_array guard above.
+            // falls through to the next tier. $key is narrowed to
+            // linktitles_setting::WRITABLE_KEYS by the in_array guard above.
             match ($key) {
                 'enabled' => $setting->enabled = null,
                 'ai_vision_disabled' => $setting->ai_vision_disabled = null,

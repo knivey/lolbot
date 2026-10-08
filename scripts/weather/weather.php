@@ -261,6 +261,7 @@ class weather extends script_base
                 // outranks the nick-keyed row: it stores a free-text query,
                 // so it geocodes through the same path an explicit
                 // .weather <query> takes; null falls to the row as before
+                // units follow the API's si/uk/us setting; the location override does not change units
                 $us = $bot->userSystem instanceof UserSystem ? $bot->userSystem : null;
                 $override = weather_location_for($us, $args);
                 if ($override !== null) {

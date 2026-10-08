@@ -104,7 +104,7 @@ function settingsArgString(\knivey\cmdr\Args $cmdArgs, string $name): ?string
 
 /**
  * Emit the registry's irc-visible settings for one scope, each as
- * "<key>: <display> (source)", behind a header naming the context.
+ * "<key>: <display> (source: X)", behind a header naming the context.
  * Over 20 lines (or --web) the list goes to the paste service when one
  * is configured, falling back to inline lines on paste failure (the
  * alias.php pattern). Reply lines are fully templated — keys come from
@@ -133,7 +133,7 @@ function settingsList(
             \assert($userId !== null);
             $got = $store->getUserSetting($userId, $name);
         }
-        $lines[] = "$name: " . SettingValue::display($got['value']) . " ({$got['source']})";
+        $lines[] = "$name: " . SettingValue::display($got['value']) . " (source: {$got['source']})";
     }
     if ($lines === []) {
         $reply("no settings registered");

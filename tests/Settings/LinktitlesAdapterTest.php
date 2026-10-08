@@ -25,6 +25,7 @@ use lolbot\entities\Bot;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
 use PHPUnit\Framework\TestCase;
+use scripts\linktitles\entities\linktitles_setting;
 
 class LinktitlesAdapterTest extends TestCase
 {
@@ -275,5 +276,46 @@ class LinktitlesAdapterTest extends TestCase
             ['value' => LinktitlesDefaults::PROMPT, 'source' => 'default'],
             $this->store->getChannelSetting(self::$net, self::$chan, 'linktitles.ai_vision_prompt')
         );
+    }
+
+    // 7. an unknown network id must fail loud: resolve() used to hand
+    // back a null Network for a missing row, silently degrading the
+    // read (and any write) to the global tier (issue #144 item 4)
+    public function test_get_with_unknown_network_id_throws(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('unknown network id 424242');
+        $this->store->getChannelSetting(424242, null, 'linktitles.enabled');
+    }
+
+    // 8. the null-network-id path is the legitimate global tier, not an
+    // error: a write lands on the (NULL, NULL) row and reads back —
+    // only ids that name no Network row throw
+    public function test_null_network_id_still_reaches_the_global_tier(): void
+    {
+        $storage = new \scripts\linktitles\LinktitlesSettingStorage(self::$em);
+        $storage->set('linktitles.enabled', false);
+        $this->assertFalse($storage->get('linktitles.enabled'));
+    }
+
+    // 9. WRITABLE_KEYS is the single writable-key list (ConfigService,
+    // the adapter, and the linktitles:set CLI all reference it): every
+    // entry must be a registered definition the adapter accepts, and
+    // every registered channel-scope linktitles definition must pass
+    // the const-backed key check — drift in either direction throws
+    // through this store round
+    public function test_writable_keys_const_matches_registered_definitions(): void
+    {
+        foreach (linktitles_setting::WRITABLE_KEYS as $key) {
+            $got = $this->store->getChannelSetting(self::$net, null, "linktitles.$key");
+            $this->assertArrayHasKey('source', $got, "linktitles.$key");
+        }
+        foreach (array_keys(SettingsRegistry::all(scope: 'channel')) as $name) {
+            if (!str_starts_with($name, 'linktitles.')) {
+                continue;
+            }
+            $got = $this->store->getChannelSetting(self::$net, null, $name);
+            $this->assertArrayHasKey('source', $got, $name);
+        }
     }
 }
