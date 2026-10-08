@@ -115,7 +115,8 @@ class Profile
      */
     public function driverOnConnect(): array
     {
-        $onConnect = $this->data['driver']['on_connect'] ?? null;
+        $driver = $this->data['driver'] ?? null;
+        $onConnect = is_array($driver) ? ($driver['on_connect'] ?? null) : null;
         if (is_string($onConnect) && $onConnect !== '') {
             return [$onConnect];
         }
