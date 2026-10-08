@@ -3,15 +3,15 @@
 # or whox never enter the chain even if the server offers the caps.
 # Endpoint + channel copied read-only from the dev DB (lolbot.db).
 driver:
-  nick: devtester
+  nick: devtesterbird
 networks:
   - name: birdnest
     auth_engines: [hostmask, manual]
     servers:
       - {address: irc.birdnest.live, port: 6697, ssl: true}
     bots:
-      - {name: derpybird-dev, channels: ["#knivey"]}
+      - {name: derpydevbird, trigger: ".", channels: ["#knivey"]}
     # driver admin is declared explicitly here so the hostmask branch of the
     # seeder is exercised (UserHostmask rows) instead of the bare default
     seed_users:
-      - {name: devtester, flags: [admin], hostmasks: ["*!*@localhost"]}
+      - {name: devtesterbird, flags: [admin], hostmasks: ["devtesterbird!*@*"]}

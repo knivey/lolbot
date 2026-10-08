@@ -7,11 +7,11 @@ driver:
   # can't hold passwords: set `networks.0.bots.0.on_connect` (bot) and
   # `driver.on_connect` (client) in testenv/secrets.yaml — see
   # testenv/secrets.example.yaml.
-  nick: knivey
+  nick: devtester
 networks:
   - name: gamesurge
     auth_engines: [vhost, whox, hostmask, manual]
     servers:
-      - {address: irc.gamesurge.net, port: 6697, ssl: true}
+      - {address: irc.gamesurge.net, port: 6667, ssl: false}
     bots:
-      - {name: derpybird-dev, channels: ["#lolbot-dev"]}
+      - {name: lolbot-dev, trigger: ".", channels: ["#bots"]}
