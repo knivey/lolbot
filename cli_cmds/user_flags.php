@@ -114,7 +114,7 @@ class user_flags extends Command
 
     private function formatFlags(User $user, Network $network): string
     {
-        $flags = $user->flags === [] ? "(none)" : implode(", ", $user->flags);
+        $flags = $user->flags === [] ? "(none)" : Flags::formatList($user->flags);
         return "Flags for {$user->name} on {$network->name}: $flags";
     }
 }

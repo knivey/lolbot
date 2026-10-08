@@ -464,7 +464,7 @@ function testenv_client_main(array $argv): int
                     echo "  /part <chan>[,<chan>...] leave channel(s)\n";
                     echo "  /raw <line>           send a raw IRC line\n";
                     echo "  /help                 this help\n";
-                    echo "  /quit                 close and exit\n";
+                    echo "  /quit                 close and exit (drains inbound first)\n";
                     return;
                 case 'quit':
                     // send QUIT and drain inbound before exit — see $beginQuit

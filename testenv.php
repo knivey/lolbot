@@ -114,6 +114,10 @@ $commands = [
     'reset' => static function (string $profile): int {
         EnvStore::wipe($profile);
         testenv_unlink_config($profile);
+        // unlink_config resolves the config path through dbPath() (create
+        // mode), which re-touches the run db wipe() just removed — clear
+        // that 0-byte artifact so the end state is truly no sqlite file
+        @unlink(EnvStore::dbPath($profile, create: false));
         printf("reset profile '%s' (run db + generated config removed)\n", $profile);
         return 0;
     },
@@ -124,6 +128,9 @@ $commands = [
         } else {
             echo "no generated config present\n";
         }
+        // same artifact guard as reset: config_path's dbPath() touch may
+        // have left a 0-byte run db behind — down must not leave one either
+        @unlink(EnvStore::dbPath($profile, create: false));
         return 0;
     },
 ];

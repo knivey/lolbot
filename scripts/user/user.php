@@ -479,8 +479,8 @@ function cflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
     if ($ops === '') {
         // view mode: show the target's grants in this channel
         $row = $sys->repos->channelFlags->findForChannelUser($chanEntity->id, $target->id);
-        $csv = $row !== null ? Flags::formatList(Access::flagArray($row)) : '';
-        $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: " . ($csv === '' ? 'none' : $csv));
+        $flagsList = $row !== null ? Flags::formatList(Access::flagArray($row)) : '';
+        $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: " . ($flagsList === '' ? 'none' : $flagsList));
         return;
     }
 

@@ -1,5 +1,6 @@
 <?php
 // tests/TestEnv/CliTest.php — subprocess-driven tests for the testenv.php CLI
+use library\testenv\EnvStore;
 use PHPUnit\Framework\TestCase;
 
 class CliTest extends TestCase
@@ -98,5 +99,39 @@ class CliTest extends TestCase
                 unlink($sentinel);
             }
         }
+    }
+
+    /**
+     * Issue #146: reset/down used to leave a 0-byte sqlite behind —
+     * unlink_config resolves the config path through EnvStore::dbPath()
+     * (create mode), which re-touches the run db that was just removed.
+     * The end state of both commands must be: no sqlite file at all.
+     */
+    public function test_reset_leaves_no_run_db_artifact(): void
+    {
+        // seed a real db + generated config first so reset has something
+        // to remove (and tearDown re-resets regardless of assertion outcome)
+        [$out, $code] = $this->runCli(['fixture_test', 'prepare']);
+        $this->assertSame(0, $code, $out);
+        [$out, $code] = $this->runCli(['fixture_test', 'reset']);
+        $this->assertSame(0, $code, $out);
+        $this->assertStringContainsString("reset profile 'fixture_test'", $out);
+        $root = dirname(__DIR__, 2);
+        $this->assertFileDoesNotExist($root . '/testenv/run/fixture_test.sqlite');
+        $this->assertFileDoesNotExist($root . '/testenv/run/fixture_test.config.yaml');
+    }
+
+    public function test_down_leaves_no_run_db_artifact(): void
+    {
+        // db gone but config present: down's config removal re-touches the
+        // db path via testenv_config_path() — that artifact must be cleared
+        $root = dirname(__DIR__, 2);
+        EnvStore::wipe('fixture_test');
+        file_put_contents($root . '/testenv/run/fixture_test.config.yaml', "stale\n");
+        [$out, $code] = $this->runCli(['fixture_test', 'down']);
+        $this->assertSame(0, $code, $out);
+        $this->assertStringContainsString('removed generated config', $out);
+        $this->assertFileDoesNotExist($root . '/testenv/run/fixture_test.sqlite');
+        $this->assertFileDoesNotExist($root . '/testenv/run/fixture_test.config.yaml');
     }
 }

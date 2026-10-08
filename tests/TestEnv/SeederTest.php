@@ -18,6 +18,19 @@ class SeederTest extends TestCase
         EnvStore::dbPath('../evil');
     }
 
+    public function test_db_path_create_false_is_pure_path(): void
+    {
+        // issue #146: create:false must resolve the path with no filesystem
+        // side effect, so reset/down can unlink leftovers without
+        // re-creating the artifact they are cleaning up
+        $path = EnvStore::dbPath('pure_path_probe', create: false);
+        $this->assertStringEndsWith('testenv/run/pure_path_probe.sqlite', $path);
+        $this->assertFileDoesNotExist($path);
+        // profile-name confinement must hold in pure-path mode too
+        $this->expectException(\InvalidArgumentException::class);
+        EnvStore::dbPath('../evil', create: false);
+    }
+
     public function test_seed_migrates_then_inserts(): void
     {
         $p = Profile::load('fixture_test');

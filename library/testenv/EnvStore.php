@@ -18,9 +18,18 @@ class EnvStore
     /**
      * Absolute path of the run db for a profile. The profile name is
      * restricted to [A-Za-z0-9_-]+ so the returned path can never escape
-     * testenv/run/. Creates the run directory on demand.
+     * testenv/run/.
+     *
+     * Side effects, all gated on $create (default true, so every existing
+     * caller keeps the historical behavior): the run directory is created
+     * on demand, and a missing db file is touched into existence and
+     * chmod'd 0600 — run DBs can hold sasl_pass values merged in from the
+     * secrets overlay, so the db perms must never depend on the umask.
+     * With $create=false this is a pure path resolver with no filesystem
+     * side effect — safe to call on a profile that was just wiped (e.g.
+     * to unlink a leftover artifact).
      */
-    public static function dbPath(string $profile): string
+    public static function dbPath(string $profile, bool $create = true): string
     {
         if (!preg_match('/^[A-Za-z0-9_-]+$/', $profile)) {
             throw new \InvalidArgumentException(
@@ -31,11 +40,11 @@ class EnvStore
         // 0700 dir / 0600 db: run DBs can hold sasl_pass values merged in
         // from the secrets overlay, so perms must never depend on the
         // umask (the old bare 0777 mkdir was)
-        if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+        if ($create && !is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
             throw new \RuntimeException(sprintf("cannot create run directory %s", $dir));
         }
         $path = $dir . '/' . $profile . '.sqlite';
-        if (!file_exists($path)) {
+        if ($create && !file_exists($path)) {
             touch($path);
             chmod($path, 0600);
         }
