@@ -8,7 +8,7 @@ networks:
   - name: birdnest
     auth_engines: [hostmask, manual]
     servers:
-      - {address: irc.birdnest.live, port: 6697, ssl: true}
+      - {address: irc.birdnest.live, port: 6697, ssl: true, throttle: false}
     bots:
       - {name: derpydevbird, trigger: ".", channels: ["#knivey"]}
     # driver admin is declared explicitly here so the hostmask branch of the

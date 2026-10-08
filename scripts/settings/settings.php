@@ -10,6 +10,7 @@ use library\settings\Setting;
 use library\settings\SettingsRegistry;
 use library\settings\SettingsStore;
 use library\settings\SettingValue;
+use library\user\Access;
 use library\user\ChannelAccess;
 use library\user\ResolveContext;
 use library\user\UserSystem;
@@ -287,8 +288,17 @@ function settingsApply(bool $isUnset, \Irc\Event\UserEvent $args, \Irc\Client $b
             $reply("auth required");
             return;
         }
-        if (!ChannelAccess::passesInChannel($sys, $user, $chan, $definition->flag)) {
-            $reply("access denied");
+        // network_only settings gate on NETWORK flags alone (plus the
+        // superadmin before-hook) — a channel admin's in-channel grant
+        // must not satisfy them (operator money/steering, e.g. the
+        // vision model); everything else gates in-channel as before
+        $passes = $definition->network_only
+            ? (Access::beforeAllows($user) || Access::userHasFlag($user, $definition->flag))
+            : ChannelAccess::passesInChannel($sys, $user, $chan, $definition->flag);
+        if (!$passes) {
+            $reply($definition->network_only
+                ? "access denied — '{$definition->name}' can only be changed by network admins"
+                : "access denied");
             return;
         }
     }

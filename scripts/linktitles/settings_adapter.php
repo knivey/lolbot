@@ -187,7 +187,7 @@ function linktitles_register_settings(?EntityManager $em = null): void
         description: 'channel to mirror seen URLs into (empty disables)',
     ), $storage);
     SettingsRegistry::define(new Setting(
-        'linktitles.ai_vision_model', type: 'string', default: LinktitlesDefaults::MODEL, scope: 'channel', flag: 'admin',
+        'linktitles.ai_vision_model', type: 'string', default: LinktitlesDefaults::MODEL, scope: 'channel', flag: 'admin', network_only: true,
         description: 'AI vision model override (empty uses the default)',
     ), $storage);
     SettingsRegistry::define(new Setting(
@@ -195,7 +195,7 @@ function linktitles_register_settings(?EntityManager $em = null): void
         description: 'AI vision prompt override (empty uses the default)',
     ), $storage);
     SettingsRegistry::define(new Setting(
-        'linktitles.ai_vision_reasoning_effort', type: 'string', default: '', scope: 'channel', flag: 'admin',
+        'linktitles.ai_vision_reasoning_effort', type: 'string', default: '', scope: 'channel', flag: 'admin', network_only: true,
         description: 'AI vision reasoning effort override (empty uses the default)',
     ), $storage);
     SettingsRegistry::define(new Setting(

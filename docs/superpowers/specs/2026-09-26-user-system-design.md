@@ -222,13 +222,20 @@ Two generic tables (not one mega-table — scopes have different keys):
 account settings = `user → default`. The registry owns the rule in one
 place; nick-keyed stores are NOT part of the registry (section above).
 
-**Definitions** are declarative, cmdr-style, on the owning command:
+  **Definitions** are declarative, cmdr-style, on the owning command:
 
 ```php
 #[Setting(name: "lastfm", type: Setting::STRING, default: "",
           scope: Setting::ACCOUNT,
           description: "your last.fm username")]
 ```
+
+Definitions may declare `network_only: true` — the setting gates on
+NETWORK flags alone (channel admins, even channel-`admin` wildcard
+holders, can read but never write it; only network admins or the
+superadmin hook). Used for operator money/steering (vision model,
+reasoning effort); `ai_vision_prompt` stays channel-admin for now
+(owner 2026-10-08: lock later if it becomes a problem).
 
 plus a programmatic registration path for **storage adapters**: a script
 with specialized storage registers definitions backed by its own tables.

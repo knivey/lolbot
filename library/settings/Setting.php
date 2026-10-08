@@ -17,6 +17,7 @@ class Setting
         public string $description = '',
         public bool $irc = true,
         public array $enum_of = [],
+        public bool $network_only = false,
     ) {
     }
 
