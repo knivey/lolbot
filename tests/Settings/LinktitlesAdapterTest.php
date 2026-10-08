@@ -20,6 +20,7 @@ use Doctrine\ORM\ORMSetup;
 use library\settings\SettingsRegistry;
 use library\settings\SettingsStore;
 use library\testenv\EnvStore;
+use lolbot\config\LinktitlesDefaults;
 use lolbot\entities\Bot;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
@@ -226,13 +227,17 @@ class LinktitlesAdapterTest extends TestCase
             SettingsRegistry::all(scope: 'channel', irc: true)
         );
 
-        // every definition carries the pinned shape
+        // every definition carries the pinned shape. Defaults for fields
+        // with a LinktitlesDefaults counterpart mirror the constant — the
+        // runtime resolver's own cascade bottom — so `.set`-reported
+        // defaults match live behavior; nullable-override fields keep ''
+        // (the runtime cascade bottoms out at null for those).
         $expected = [
-            'linktitles.enabled' => ['bool', true, true],
-            'linktitles.ai_vision_disabled' => ['bool', false, true],
+            'linktitles.enabled' => ['bool', LinktitlesDefaults::ENABLED, true],
+            'linktitles.ai_vision_disabled' => ['bool', LinktitlesDefaults::AI_VISION_DISABLED, true],
             'linktitles.url_log_chan' => ['string', '', true],
-            'linktitles.ai_vision_model' => ['string', '', true],
-            'linktitles.ai_vision_prompt' => ['string', '', true],
+            'linktitles.ai_vision_model' => ['string', LinktitlesDefaults::MODEL, true],
+            'linktitles.ai_vision_prompt' => ['string', LinktitlesDefaults::PROMPT, true],
             'linktitles.ai_vision_reasoning_effort' => ['string', '', true],
             'linktitles.ai_vision_reasoning' => ['string', '', false],
         ];
@@ -246,5 +251,29 @@ class LinktitlesAdapterTest extends TestCase
             $this->assertSame($irc, $def->irc, $name);
             $this->assertNotSame('', $def->description, $name);
         }
+    }
+
+    // 6. with no rows anywhere, the .set-level read reports the runtime
+    // default (the LinktitlesDefaults constant) with source 'default' —
+    // what `.set linktitles.enabled` shows must match what the live
+    // resolver actually falls back to
+    public function test_no_rows_read_reports_linktitles_default_with_default_source(): void
+    {
+        $this->assertSame(
+            ['value' => LinktitlesDefaults::ENABLED, 'source' => 'default'],
+            $this->store->getChannelSetting(self::$net, self::$chan, 'linktitles.enabled')
+        );
+        $this->assertSame(
+            ['value' => LinktitlesDefaults::AI_VISION_DISABLED, 'source' => 'default'],
+            $this->store->getChannelSetting(self::$net, self::$chan, 'linktitles.ai_vision_disabled')
+        );
+        $this->assertSame(
+            ['value' => LinktitlesDefaults::MODEL, 'source' => 'default'],
+            $this->store->getChannelSetting(self::$net, self::$chan, 'linktitles.ai_vision_model')
+        );
+        $this->assertSame(
+            ['value' => LinktitlesDefaults::PROMPT, 'source' => 'default'],
+            $this->store->getChannelSetting(self::$net, self::$chan, 'linktitles.ai_vision_prompt')
+        );
     }
 }

@@ -7,9 +7,12 @@ use library\settings\Setting;
 use library\settings\SettingsRegistry;
 use library\settings\SettingStorage;
 use lolbot\config\ConfigService;
+use lolbot\config\LinktitlesDefaults;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
 use scripts\linktitles\entities\linktitles_setting;
+
+use function lolbot\config\build_change_notifier;
 
 /*
  * Storage adapter surfacing linktitles' own linktitles_settings table
@@ -133,9 +136,12 @@ class LinktitlesSettingStorage implements SettingStorage
 
     private function config(): ConfigService
     {
-        // the NoopChangeNotifier default keeps this headless-safe: no
-        // HTTP push out of whatever process happens to mutate settings
-        return new ConfigService($this->em());
+        // build_change_notifier() degrades to the NoopChangeNotifier when
+        // config.yaml lacks listen/control_key, keeping this headless-safe
+        // (no HTTP push out of an unconfigured process), while a configured
+        // control server receives the linktitles_setting event so the
+        // running bot reloads its cached gates on .set/.unset writes
+        return new ConfigService($this->em(), build_change_notifier());
     }
 
     private function em(): EntityManager
@@ -164,12 +170,16 @@ class LinktitlesSettingStorage implements SettingStorage
 function linktitles_register_settings(?EntityManager $em = null): void
 {
     $storage = new LinktitlesSettingStorage($em);
+    // Defaults with a LinktitlesDefaults counterpart reference the constant
+    // (the bottom tier of the runtime resolver's cascade) so .set-reported
+    // defaults match live behavior; the nullable-override fields keep ''
+    // because their runtime cascade bottoms out at null, not a constant.
     SettingsRegistry::define(new Setting(
-        'linktitles.enabled', type: 'bool', default: true, scope: 'channel', flag: 'admin',
+        'linktitles.enabled', type: 'bool', default: LinktitlesDefaults::ENABLED, scope: 'channel', flag: 'admin',
         description: 'enable or disable link titles in a channel',
     ), $storage);
     SettingsRegistry::define(new Setting(
-        'linktitles.ai_vision_disabled', type: 'bool', default: false, scope: 'channel', flag: 'admin',
+        'linktitles.ai_vision_disabled', type: 'bool', default: LinktitlesDefaults::AI_VISION_DISABLED, scope: 'channel', flag: 'admin',
         description: 'disable AI image descriptions in a channel',
     ), $storage);
     SettingsRegistry::define(new Setting(
@@ -177,11 +187,11 @@ function linktitles_register_settings(?EntityManager $em = null): void
         description: 'channel to mirror seen URLs into (empty disables)',
     ), $storage);
     SettingsRegistry::define(new Setting(
-        'linktitles.ai_vision_model', type: 'string', default: '', scope: 'channel', flag: 'admin',
+        'linktitles.ai_vision_model', type: 'string', default: LinktitlesDefaults::MODEL, scope: 'channel', flag: 'admin',
         description: 'AI vision model override (empty uses the default)',
     ), $storage);
     SettingsRegistry::define(new Setting(
-        'linktitles.ai_vision_prompt', type: 'string', default: '', scope: 'channel', flag: 'admin',
+        'linktitles.ai_vision_prompt', type: 'string', default: LinktitlesDefaults::PROMPT, scope: 'channel', flag: 'admin',
         description: 'AI vision prompt override (empty uses the default)',
     ), $storage);
     SettingsRegistry::define(new Setting(
