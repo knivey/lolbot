@@ -203,6 +203,14 @@ class MinAccessTest extends TestCase
         $this->assertNull(SettingsRegistry::storage('minmode'));
     }
 
+    public function testDefineSettingThrowsOnDuplicate(): void
+    {
+        MinAccess::defineSetting();
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Setting already defined: minmode');
+        MinAccess::defineSetting();
+    }
+
     public function testStoreResolvesMinmodeTiers(): void
     {
         MinAccess::defineSetting();

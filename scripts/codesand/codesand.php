@@ -88,20 +88,25 @@ class codesand extends script_base
         // the command open, + % @ & ~ require the caller to hold that
         // channel status or higher. Channel tier over network tier; a
         // channel with no row resolves through the network tier.
-        $mode = '';
-        $sys = $this->client->userSystem;
-        if ($sys instanceof UserSystem) {
-            $chanEntity = $sys->channelByName($args->chan);
-            if ($chanEntity !== null) {
-                $store = new SettingsStore($sys->em);
-                $mode = (string) $store->getChannelSetting($sys->netId(), $chanEntity->id, 'minmode')['value'];
-            }
-        }
+        // Everything corrupt (out-of-enum string, non-string JSON row,
+        // scalar() violation) refuses and logs — the gate never opens
+        // on bad data.
         try {
+            $mode = '';
+            $sys = $this->client->userSystem;
+            if ($sys instanceof UserSystem) {
+                $chanEntity = $sys->channelByName($args->chan);
+                if ($chanEntity !== null) {
+                    $store = new SettingsStore($sys->em);
+                    $value = $store->getChannelSetting($sys->netId(), $chanEntity->id, 'minmode')['value'];
+                    if (!is_string($value)) {
+                        throw new \InvalidArgumentException('minmode row is not a string');
+                    }
+                    $mode = $value;
+                }
+            }
             return MinAccess::met($this->nicks, $args->nick, $args->chan, $mode);
         } catch (\InvalidArgumentException $e) {
-            // a stored value outside the enum is a corrupt row, not a
-            // reason to open the gate — refuse and log it
             $this->logger->warning("codesand canRun: {$e->getMessage()}");
             return false;
         }
