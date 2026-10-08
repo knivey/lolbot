@@ -10,6 +10,9 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Desc;
 use knivey\cmdr\attributes\Syntax;
 use League\Uri\UriString;
+use library\settings\MinAccess;
+use library\settings\SettingsStore;
+use library\user\UserSystem;
 use scripts\script_base;
 use Symfony\Component\Yaml\Yaml;
 
@@ -80,28 +83,28 @@ class codesand extends script_base
         if (!($config['bots'][$this->bot->id]['codesand'] ?? false)) {
             return false;
         }
-        if (isset($config['bots'][$this->bot->id]['codesandMinAccess'])) {
-            if (!is_string($config['bots'][$this->bot->id]['codesandMinAccess']) ||
-                strlen($config['bots'][$this->bot->id]['codesandMinAccess']) > 1 ||
-                !str_contains('~&@%+', $config['bots'][$this->bot->id]['codesandMinAccess'])
-            ) {
-                echo "codesandMinAccess configured incorrectly, must be one of ~&@%+\n";
-                return false;
-            }
-            switch ($config['bots'][$this->bot->id]['codesandMinAccess']) {
-                case '~':
-                    return $this->nicks->isOwner($args->nick, $args->chan);
-                case '&':
-                    return $this->nicks->isAdminOrHigher($args->nick, $args->chan);
-                case '@':
-                    return $this->nicks->isOpOrHigher($args->nick, $args->chan);
-                case '%':
-                    return $this->nicks->isHalfOpOrHigher($args->nick, $args->chan);
-                case '+':
-                    return $this->nicks->isVoiceOrHigher($args->nick, $args->chan);
+        // minmode channel setting (#128) replaced the per-network
+        // codesandMinAccess config key (hard cut): '' (default) leaves
+        // the command open, + % @ & ~ require the caller to hold that
+        // channel status or higher. Channel tier over network tier; a
+        // channel with no row resolves through the network tier.
+        $mode = '';
+        $sys = $this->client->userSystem;
+        if ($sys instanceof UserSystem) {
+            $chanEntity = $sys->channelByName($args->chan);
+            if ($chanEntity !== null) {
+                $store = new SettingsStore($sys->em);
+                $mode = (string) $store->getChannelSetting($sys->netId(), $chanEntity->id, 'minmode')['value'];
             }
         }
-        return true;
+        try {
+            return MinAccess::met($this->nicks, $args->nick, $args->chan, $mode);
+        } catch (\InvalidArgumentException $e) {
+            // a stored value outside the enum is a corrupt row, not a
+            // reason to open the gate — refuse and log it
+            $this->logger->warning("codesand canRun: {$e->getMessage()}");
+            return false;
+        }
     }
 
     #[Cmd("php")]
@@ -373,3 +376,7 @@ using namespace std;
         }
     }
 }
+// minmode is codesand's gate today and the generic restricted-command
+// gate going forward (artbot follows in #128's wake) — defined here so
+// the definition ships with its first consumer, like linktitles does.
+\library\settings\MinAccess::defineSetting();
