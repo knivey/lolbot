@@ -38,12 +38,30 @@ final class Flags
     }
 
     /**
+     * Non-string grants and '' are dropped (empty grants never surface in expand()).
+     *
      * @param list<string> $grants
      */
     public static function define(string $name, array $grants): void
     {
         self::definitions(); // ensure initialized before write
-        self::$definitions[$name] = array_values(array_filter($grants, 'is_string'));
+        // drop non-strings ('is_string' callable keeps phpstan from
+        // second-guessing the defensive check), then drop '' grants
+        self::$definitions[$name] = array_values(array_filter(
+            array_filter($grants, 'is_string'),
+            fn ($g) => $g !== '',
+        ));
+    }
+
+    /**
+     * One place flag lists are formatted for display — every user-facing
+     * flag list (user:flags, PM setflags, .cflags) renders through this.
+     *
+     * @param array<int, string> $flags
+     */
+    public static function formatList(array $flags): string
+    {
+        return implode(', ', $flags);
     }
 
     public static function reset(): void

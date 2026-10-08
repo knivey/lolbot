@@ -70,4 +70,18 @@ class FlagsTest extends TestCase
         Flags::reset();
         $this->assertSame(['*'], Flags::definitions()['admin']);
     }
+
+    public function test_define_filters_empty_string_grants(): void
+    {
+        Flags::reset();
+        Flags::define('grp', ['ok', '']);
+        $this->assertSame(['ok'], Flags::definitions()['grp']);
+        $this->assertSame(['grp', 'ok'], Flags::expand(['grp'])); // '' never surfaces
+    }
+
+    public function test_format_list_uses_comma_space(): void
+    {
+        $this->assertSame('a, b, c', Flags::formatList(['a', 'b', 'c']));
+        $this->assertSame('', Flags::formatList([]));
+    }
 }

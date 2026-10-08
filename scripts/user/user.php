@@ -371,8 +371,8 @@ function applyFlagOps(string $mode, \Irc\Event\UserEvent $args, \Irc\Client $bot
         }
     }
     if ($unknown !== []) {
-        $bot->pm($args->nick, 'unknown flag(s): ' . implode(', ', array_values(array_unique($unknown)))
-            . ' (valid: ' . implode(', ', array_keys(Flags::definitions())) . ')');
+        $bot->pm($args->nick, 'unknown flag(s): ' . Flags::formatList(array_values(array_unique($unknown)))
+            . ' (valid: ' . Flags::formatList(array_keys(Flags::definitions())) . ')');
         return;
     }
     try {
@@ -384,7 +384,7 @@ function applyFlagOps(string $mode, \Irc\Event\UserEvent $args, \Irc\Client $bot
         return;
     }
     $sys->em->flush();
-    $flags = implode(',', $user->flags);
+    $flags = Flags::formatList($user->flags);
     $bot->pm($args->nick, "flags for {$user->name}: " . ($flags === '' ? '(none)' : $flags));
 }
 
@@ -479,7 +479,7 @@ function cflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
     if ($ops === '') {
         // view mode: show the target's grants in this channel
         $row = $sys->repos->channelFlags->findForChannelUser($chanEntity->id, $target->id);
-        $csv = $row !== null ? implode(',', Access::flagArray($row)) : '';
+        $csv = $row !== null ? Flags::formatList(Access::flagArray($row)) : '';
         $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: " . ($csv === '' ? 'none' : $csv));
         return;
     }
@@ -501,8 +501,8 @@ function cflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
     }
     $errors = [];
     if ($unknown !== []) {
-        $errors[] = 'unknown flag(s): ' . implode(',', array_values(array_unique($unknown)))
-            . ' (valid: ' . implode(',', array_keys(Flags::definitions())) . ')';
+        $errors[] = 'unknown flag(s): ' . Flags::formatList(array_values(array_unique($unknown)))
+            . ' (valid: ' . Flags::formatList(array_keys(Flags::definitions())) . ')';
     }
     foreach ($pairs as [, $flag]) {
         if (Flags::defined($flag) && !Flags::passes($granterUnion, $flag)) {
@@ -549,5 +549,5 @@ function cflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
         $sys->em->persist($row);
     }
     $sys->em->flush();
-    $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: " . implode(',', $row->flags));
+    $bot->msg($args->chan, "flags for {$target->name} in {$args->chan}: " . Flags::formatList($row->flags));
 }

@@ -98,8 +98,8 @@ class user_flags extends Command
             }
         }
         if ($unknown !== []) {
-            $output->writeln("<error>unknown flag(s): " . implode(', ', array_values(array_unique($unknown)))
-                . " (valid: " . implode(', ', array_keys(Flags::definitions())) . ")</error>");
+            $output->writeln("<error>unknown flag(s): " . Flags::formatList(array_values(array_unique($unknown)))
+                . " (valid: " . Flags::formatList(array_keys(Flags::definitions())) . ")</error>");
             return Command::FAILURE;
         }
         foreach ($parsed as [$op, $flag]) {
