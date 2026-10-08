@@ -26,6 +26,13 @@ final class TargetResolver
         }
         if ($spec[0] === '*') {
             $name = substr($spec, 1);
+            // same sanity bound register uses (1-30, no control chars) —
+            // keeps masks/junk out of rows and replies
+            if ($name === '' || mb_strlen($name) > 30
+                || preg_match('/[\x00-\x1f\x7f]/', $name) === 1
+            ) {
+                throw new TargetResolutionException('no user given');
+            }
             $ref = $us->repos->users->findForNetwork($us->netId(), mb_strtolower($name));
             if ($ref !== null) {
                 $full = $us->em->find(UserEntity::class, $ref->id);
@@ -56,7 +63,18 @@ final class TargetResolver
         // bare nick: no identhost/account of the TARGET is knowable here,
         // so the context carries nulls and engines degrade by design —
         // account-tag/vhost/hostmask can't fire, whox answers for online
-        // nicks, and the cache serves anyone previously resolved
+        // nicks, and the cache serves anyone previously resolved.
+        // Nick-shape gate first: a spec like '#chan', '&x', 'a*,b' or
+        // 'nick*' is a WHOX mask (channel/wildcard/list), not a nick —
+        // sending it would query whatever matches first (wrong-target
+        // grants) and lets anyone fire wildcard WHO queries
+        if (preg_match('/^[#&+~]/', $spec) === 1
+            || preg_match('/[*,?#\s]/', $spec) === 1
+        ) {
+            throw new TargetResolutionException(
+                "user unknown (they must talk or auth first)",
+            );
+        }
         $hit = $us->svc->resolve(new ResolveContext(
             networkId: $us->netId(),
             nick: $spec,
