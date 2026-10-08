@@ -22,7 +22,7 @@ chdir(dirname(__FILE__));
 
 function testenv_usage(int $code = 1): never
 {
-    fwrite(STDERR, "Usage: php testenv.php <profile> up|prepare|client|reset|down\n");
+    fwrite(STDERR, "Usage: php testenv.php <profile> up|prepare|client|macro <file>|reset|down\n");
     exit($code);
 }
 
@@ -93,6 +93,22 @@ $commands = [
             return 1;
         }
         passthru('php testenv/client.php ' . escapeshellarg($profile), $code);
+        return $code;
+    },
+    // v2 macro runner: scripted, verifiable acceptance run through the
+    // same driver client (see testenv/client.php's header). Exit code is
+    // the macro run's: 0 pass, 1 expectation failure, 2 parse error.
+    'macro' => static function (string $profile): int {
+        $argv = $_SERVER['argv'] ?? null;
+        $file = is_array($argv) ? ($argv[3] ?? '') : '';
+        if (!is_string($file) || $file === '') {
+            fwrite(STDERR, "Usage: php testenv.php <profile> macro <file>\n");
+            return 2;
+        }
+        passthru(
+            'php testenv/client.php ' . escapeshellarg($profile) . ' ' . escapeshellarg($file),
+            $code,
+        );
         return $code;
     },
     'reset' => static function (string $profile): int {

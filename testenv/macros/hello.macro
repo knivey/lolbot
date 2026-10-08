@@ -1,0 +1,5 @@
+# hello.macro — minimal smoke: the bot is up, in the channel, and the
+# trigger works. .set with no key answers with the channel's settings
+# list header, which is deterministic on every profile.
+.set
+.expect /settings for/ 15

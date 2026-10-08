@@ -11,6 +11,14 @@
 //   /msg <nick> <text>, /join <chan>, /part <chan>, /raw <line>, /help, /quit
 // PINGs are answered automatically.
 //
+// Macro mode: `php testenv/client.php <profile> <macrofile>` replaces the
+// interactive stdin feed with a scripted run (v2 macros) — steps replay
+// through the exact REPL handlers (.send / plain lines / REPL verbs),
+// .expect //pattern// [timeout] blocks the feeder until an inbound raw
+// line matches, .wait pauses. Exit code 0 = every expectation met,
+// 1 = an expectation timed out, 2 = macro file/parse error. Wire traffic
+// is echoed (<< inbound / >> outbound) as the run transcript.
+//
 // Like testenv.php this script only needs the autoloader — it must NEVER
 // require bootstrap.php, so it never boots against a real bot config or
 // the dev database.
@@ -20,11 +28,15 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 use function Amp\async;
 use Amp\ByteStream\StreamException;
 use function Amp\ByteStream\getStdin;
+use function Amp\delay;
+use Amp\DeferredFuture;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\ClientTlsContext;
 use function Amp\Socket\connect;
 use Irc\Message;
 use library\testenv\ClientFormat;
+use library\testenv\Macro;
+use library\testenv\MacroException;
 use library\testenv\Profile;
 use library\testenv\ProfileException;
 use Revolt\EventLoop;
@@ -117,7 +129,7 @@ function testenv_client_main(array $argv): int
 {
     $profileName = $argv[1] ?? '';
     if ($profileName === '') {
-        fwrite(STDERR, "Usage: php testenv/client.php <profile>\n");
+        fwrite(STDERR, "Usage: php testenv/client.php <profile> [macrofile]\n");
         return 1;
     }
     try {
@@ -125,6 +137,24 @@ function testenv_client_main(array $argv): int
     } catch (ProfileException $e) {
         fwrite(STDERR, $e->getMessage() . "\n");
         return 1;
+    }
+
+    // v2 macro mode: a file path replaces interactive stdin with a
+    // scripted, verifiable run (parse errors are exit 2 — nothing ran)
+    $macro = null;
+    $macroFile = $argv[2] ?? '';
+    if ($macroFile !== '') {
+        $text = @file_get_contents($macroFile);
+        if ($text === false) {
+            fwrite(STDERR, "macro file not readable: {$macroFile}\n");
+            return 2;
+        }
+        try {
+            $macro = new Macro(Macro::parse($text));
+        } catch (MacroException $e) {
+            fwrite(STDERR, $e->getMessage() . "\n");
+            return 2;
+        }
     }
 
     $driver = $profile->driver();
@@ -154,7 +184,7 @@ function testenv_client_main(array $argv): int
     $code = 0;
     // lolbot.php's idiom: spawn the session as an Amp coroutine from main,
     // then run the loop until it drains
-    async(function () use ($nick, $sasl, $endpoint, $channels, $onConnect, &$code): void {
+    async(function () use ($nick, $sasl, $endpoint, $channels, $onConnect, $macro, &$code): void {
         // connect + TLS idiom copied from Irc\Client::go()/__construct():
         // ConnectContext, ClientTlsContext without peer verification,
         // setupTls() right after the socket opens
@@ -180,7 +210,14 @@ function testenv_client_main(array $argv): int
             return;
         }
 
-        $send = static function (string $line) use ($socket): void {
+        $send = static function (string $line, bool $echo = true) use ($socket, $macro): void {
+            // macro mode echoes the wire both ways — the transcript IS the
+            // run's evidence. Credential-bearing lines (on_connect auth,
+            // SASL payloads) opt out: the transcript gets pasted as run
+            // evidence and must never carry passwords
+            if ($macro !== null && $echo) {
+                echo ">> {$line}\n";
+            }
             try {
                 $socket->write($line . "\r\n");
             } catch (StreamException) {
@@ -213,13 +250,32 @@ function testenv_client_main(array $argv): int
             echo "*** draining inbound before exit...\n";
             // safety bound: a server that ignores QUIT and never closes must
             // not hang the client
-            EventLoop::delay(3, static function (): void {
+            EventLoop::delay(3, function () use (&$exitCode): void {
                 echo "\n*** drain timeout — exiting\n";
-                exit(0);
+                exit($exitCode);
             });
         };
 
-        $handleServerLine = function (string $line) use ($send, $nick, $sasl, $endpoint, $channels, $onConnect, &$joined, &$bannerDone): void {
+        // macro-run state: the feeder resolves the currently-awaited
+        // expectation from the read loop through this deferred; $exitCode
+        // carries 1 out through the drain paths when an expectation fails
+        /** @var null|DeferredFuture<bool> $expectDeferred */
+        $expectDeferred = null;
+        $exitCode = 0;
+        /** @var null|\Closure(): void $startMacro */
+        $startMacro = null;
+
+        $handleServerLine = function (string $line) use ($send, $nick, $sasl, $endpoint, $channels, $onConnect, $macro, &$joined, &$bannerDone, &$expectDeferred, &$startMacro): void {
+            // macro mode: every raw inbound line feeds the matcher first
+            // (raw, so NOTICEs match too) and echoes as the transcript;
+            // the formatted PRIVMSG echo below is suppressed so lines
+            // aren't shown twice
+            if ($macro !== null) {
+                echo "<< {$line}\n";
+                if ($macro->onInbound($line) && $expectDeferred !== null && !$expectDeferred->isComplete()) {
+                    $expectDeferred->complete(true);
+                }
+            }
             $msg = Message::parse($line);
             if ($msg === null) {
                 return;
@@ -230,6 +286,10 @@ function testenv_client_main(array $argv): int
                     $send('PONG ' . $msg->getArg(0, $endpoint['address']));
                     return;
                 case 'PRIVMSG':
+                    if ($macro !== null) {
+                        // transcript already showed the raw line above
+                        return;
+                    }
                     $formatted = client_format_message($line);
                     if ($formatted !== null) {
                         $target = $msg->getArg(0) ?? '';
@@ -245,7 +305,9 @@ function testenv_client_main(array $argv): int
                     if ($sasl !== null && strcasecmp($sub, 'ACK') === 0 && stripos($caps, 'sasl') !== false) {
                         $send('AUTHENTICATE PLAIN');
                     } elseif (strcasecmp($sub, 'NAK') === 0) {
-                        echo "<< {$line}\n";
+                        if ($macro === null) {
+                            echo "<< {$line}\n";
+                        }
                         echo "*** server refused the CAP request — continuing without SASL (/raw for NickServ)\n";
                         $send('CAP END');
                     }
@@ -254,18 +316,24 @@ function testenv_client_main(array $argv): int
                     // server asks for the payload with '+'
                     if ($sasl !== null && ($msg->getArg(0) ?? '') === '+') {
                         // authzid \0 authcid \0 password, same layout as Irc\Client
-                        $send('AUTHENTICATE ' . base64_encode("{$sasl[0]}\x00{$sasl[0]}\x00{$sasl[1]}"));
+                        $send('AUTHENTICATE ' . base64_encode("{$sasl[0]}\x00{$sasl[0]}\x00{$sasl[1]}"), echo: false);
                     }
                     return;
                 case '903':
-                    echo "<< {$line}\n*** SASL login ok\n";
+                    if ($macro === null) {
+                        echo "<< {$line}\n";
+                    }
+                    echo "*** SASL login ok\n";
                     $send('CAP END');
                     return;
                 case '904':
                 case '905':
                 case '906':
                 case '907':
-                    echo "<< {$line}\n*** SASL failed — continue manually: /raw PRIVMSG NickServ :IDENTIFY <pass>\n";
+                    if ($macro === null) {
+                        echo "<< {$line}\n";
+                    }
+                    echo "*** SASL failed — continue manually: /raw PRIVMSG NickServ :IDENTIFY <pass>\n";
                     $send('CAP END');
                     return;
                 case '001':
@@ -279,23 +347,32 @@ function testenv_client_main(array $argv): int
                         echo "*** connected to {$endpoint['address']}:{$endpoint['port']} as {$nick}\n";
                         echo "*** sending to: {$target} — plain lines go there; /help lists commands\n";
                         foreach ($onConnect as $authLine) {
-                            $send($authLine);
+                            $send($authLine, echo: false);
                         }
                         if ($onConnect !== []) {
                             // don't echo the lines themselves — they carry
                             // passwords; the tester knows what they configured
                             echo "*** sent " . count($onConnect) . " on_connect line(s)\n";
                         }
+                        // macro feeder starts once registration + joins are
+                        // on the wire — the same point the human starts typing
+                        if ($startMacro !== null) {
+                            $startMacro();
+                        }
                     }
                     return;
                 case 'ERROR':
-                    echo "<< {$line}\n";
+                    if ($macro === null) {
+                        echo "<< {$line}\n";
+                    }
                     return;
                 default:
                     // surface registration/join failures; MOTD and other
                     // chatter stays quiet
                     if (preg_match('/^[45]\d\d$/', $msg->command) === 1) {
-                        echo "<< {$line}\n";
+                        if ($macro === null) {
+                            echo "<< {$line}\n";
+                        }
                         if ($msg->command === '433') {
                             echo "*** nickname already in use — recover with /raw NICK <newnick>\n";
                         }
@@ -407,21 +484,121 @@ function testenv_client_main(array $argv): int
         $send("NICK {$nick}");
         $send("USER {$nick} {$nick} {$nick} :{$nick}");
 
+        // v2 macro feeder: walks the parsed steps in order once the 001
+        // handler fires $startMacro(). send steps replay through the exact
+        // REPL handlers, wait steps pause, expect steps block the feeder on
+        // a deferred that $handleServerLine's matcher resolves — the read
+        // loop keeps running (PINGs, services chatter) while we wait.
+        if ($macro !== null) {
+            $startMacro = function () use ($macro, $handleInput, &$expectDeferred, &$exitCode, &$startMacro): void {
+                // one-shot: a second 001 (reconnect) must not re-run steps
+                $startMacro = null;
+                \Amp\async(function () use ($macro, $handleInput, &$expectDeferred, &$exitCode): void {
+                    // this feeder's own count of expect steps reached so far
+                    // (the CURRENT step included, 0-based) — compared against
+                    // fulfilledCount() to detect burst fulfillment: several
+                    // matching lines in one socket chunk advance the macro
+                    // past expectations not armed yet, and arming those
+                    // would dead-wait for a match that already happened
+                    $expectOrdinal = 0;
+                    foreach ($macro->steps() as $step) {
+                        $type = $step['type'] ?? '';
+                        if ($type === 'send') {
+                            $sendLine = $step['line'] ?? null;
+                            if (is_string($sendLine)) {
+                                $handleInput($sendLine);
+                            }
+                            continue;
+                        }
+                        if ($type === 'wait') {
+                            $secs = $step['seconds'] ?? null;
+                            if (is_int($secs) || is_float($secs)) {
+                                delay((float) $secs);
+                            }
+                            continue;
+                        }
+                        if ($type !== 'expect') {
+                            continue;
+                        }
+                        $pattern = is_string($step['pattern'] ?? null) ? $step['pattern'] : '';
+                        $ordinal = $expectOrdinal;
+                        $expectOrdinal++;
+                        if ($macro->fulfilledCount() > $ordinal) {
+                            // already matched by an inbound burst while an
+                            // earlier expectation was armed
+                            echo "*** ok: /{$pattern}/ (burst)\n";
+                            continue;
+                        }
+                        $timeout = $step['timeout'] ?? 10.0;
+                        $timeoutSecs = is_int($timeout) || is_float($timeout) ? (float) $timeout : 10.0;
+                        // expect: one deferred settled from two sides — the
+                        // read loop's matcher completes it true; a delay()
+                        // racing fiber completes it false. The racing-fiber
+                        // shape is deliberately used over a raw
+                        // EventLoop::delay callback: during development a
+                        // timer registered from this nested fiber failed to
+                        // fire (intermittently reproducible; see the
+                        // probes referenced in git history), and the racer
+                        // needs no cancellation either — after a match it
+                        // just wakes late and no-ops
+                        $settled = new DeferredFuture();
+                        $expectDeferred = $settled;
+                        \Amp\async(function () use ($macro, $timeoutSecs, $settled): void {
+                            delay($timeoutSecs);
+                            if (!$settled->isComplete()) {
+                                $macro->failCurrentExpectation();
+                                $settled->complete(false);
+                            }
+                        })->ignore();
+                        $matched = $settled->getFuture()->await();
+                        $expectDeferred = null;
+                        if (!$matched) {
+                            $exitCode = 1;
+                            // the timer just marked this expectation failed,
+                            // so the report exists; the guard keeps the
+                            // level-9 shape honest if that ever changes
+                            $report = $macro->failureReport($timeoutSecs)
+                                ?? ['pattern' => $pattern, 'timeout' => $timeoutSecs, 'tail' => []];
+                            echo "\n*** MACRO FAIL: expected /{$report['pattern']}/ within {$report['timeout']}s — last inbound lines:\n";
+                            if ($report['tail'] === []) {
+                                echo "<< (nothing received)\n";
+                            }
+                            foreach ($report['tail'] as $tailLine) {
+                                echo "<< {$tailLine}\n";
+                            }
+                            $handleInput('/quit');
+                            return;
+                        }
+                        echo "*** ok: /{$pattern}/\n";
+                    }
+                    if ($macro->done()) {
+                        echo "*** MACRO PASS\n";
+                    }
+                    // /quit is idempotent ($quitting guard) so appending it
+                    // is safe even when the macro's last line was /quit
+                    $handleInput('/quit');
+                });
+            };
+        }
+
         // stdin coroutine: chunked reads split on newline into input lines
-        \Amp\async(function () use ($handleInput): void {
-            $stdin = getStdin();
-            $buf = '';
-            while (($chunk = $stdin->read()) !== null) {
-                $buf .= $chunk;
-                while (($nl = strpos($buf, "\n")) !== false) {
-                    $line = substr($buf, 0, $nl);
-                    $buf = substr($buf, $nl + 1);
-                    $handleInput(rtrim($line, "\r"));
+        // (interactive mode only — macro mode has no stdin feed)
+        if ($macro === null) {
+            \Amp\async(function () use ($handleInput): void {
+                $stdin = getStdin();
+                $buf = '';
+                while (($chunk = $stdin->read()) !== null) {
+                    $buf .= $chunk;
+                    while (($nl = strpos($buf, "\n")) !== false) {
+                        $line = substr($buf, 0, $nl);
+                        $buf = substr($buf, $nl + 1);
+                        $handleInput(rtrim($line, "\r"));
+                    }
                 }
-            }
-            // stdin EOF (Ctrl-D) behaves like /quit
-            $handleInput('/quit');
-        });
+                // stdin EOF (Ctrl-D) behaves like /quit
+                $handleInput('/quit');
+            });
+        }
 
         // socket read loop, Irc\Client::doRead()'s inQ/getLine() idiom
         $inQ = '';
@@ -440,10 +617,10 @@ function testenv_client_main(array $argv): int
             // \Throwable so real bugs in handleServerLine still surface
         }
         echo "\n*** disconnected\n";
-        // the stdin coroutine would otherwise keep the loop alive;
+        // the feeder/stdin coroutine would otherwise keep the loop alive;
         // a completed drain (post-/quit disconnect) exits cleanly, an
         // unexpected disconnect is still an error exit
-        exit($quitting ? 0 : 1);
+        exit($quitting ? $exitCode : 1);
     });
     EventLoop::run();
     return $code;
