@@ -2,6 +2,11 @@
 # Driver is the owner's real account nick (vhost path needs the real
 # account); SASL password goes in testenv/secrets.yaml, never here.
 driver:
+  # SASL does not exist on GameSurge — the bot and the driver both auth
+  # via AuthServ AFTER welcome (Bot.onConnect). The committed profile
+  # can't hold passwords: set `networks.0.bots.0.on_connect` (bot) and
+  # `driver.on_connect` (client) in testenv/secrets.yaml — see
+  # testenv/secrets.example.yaml.
   nick: knivey
 networks:
   - name: gamesurge

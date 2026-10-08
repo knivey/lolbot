@@ -146,11 +146,14 @@ function testenv_client_main(array $argv): int
         return 1;
     }
     $channels = client_channels($profile);
+    // post-001 auth lines (GameSurge AuthServ — no SASL there; auth
+    // happens after welcome)
+    $onConnect = $profile->driverOnConnect();
 
     $code = 0;
     // lolbot.php's idiom: spawn the session as an Amp coroutine from main,
     // then run the loop until it drains
-    async(function () use ($nick, $sasl, $endpoint, $channels, &$code): void {
+    async(function () use ($nick, $sasl, $endpoint, $channels, $onConnect, &$code): void {
         // connect + TLS idiom copied from Irc\Client::go()/__construct():
         // ConnectContext, ClientTlsContext without peer verification,
         // setupTls() right after the socket opens
@@ -184,7 +187,7 @@ function testenv_client_main(array $argv): int
         $joined = [];
         $bannerDone = false;
 
-        $handleServerLine = function (string $line) use ($send, $nick, $sasl, $endpoint, $channels, &$joined, &$bannerDone): void {
+        $handleServerLine = function (string $line) use ($send, $nick, $sasl, $endpoint, $channels, $onConnect, &$joined, &$bannerDone): void {
             $msg = Message::parse($line);
             if ($msg === null) {
                 return;
@@ -237,6 +240,14 @@ function testenv_client_main(array $argv): int
                         if ($channels !== []) {
                             $send('JOIN ' . implode(',', $channels));
                             $joined = $channels;
+                        }
+                        foreach ($onConnect as $authLine) {
+                            $send($authLine);
+                        }
+                        if ($onConnect !== []) {
+                            // don't echo the lines themselves — they carry
+                            // passwords; the tester knows what they configured
+                            echo "*** sent " . count($onConnect) . " on_connect line(s)\n";
                         }
                         $target = $joined[0] ?? '(no auto-join channel — /join <chan> first)';
                         echo "*** connected to {$endpoint['address']}:{$endpoint['port']} as {$nick}\n";

@@ -106,6 +106,32 @@ class Profile
     }
 
     /**
+     * Raw lines the driver client sends right after 001 (e.g. GameSurge
+     * AuthServ — that network has no SASL; auth happens post-welcome).
+     * Accepts a single string or a list; non-string/empty entries are
+     * dropped; absent or garbage yields no lines.
+     *
+     * @return list<string>
+     */
+    public function driverOnConnect(): array
+    {
+        $onConnect = $this->data['driver']['on_connect'] ?? null;
+        if (is_string($onConnect) && $onConnect !== '') {
+            return [$onConnect];
+        }
+        if (!is_array($onConnect)) {
+            return [];
+        }
+        $lines = [];
+        foreach ($onConnect as $line) {
+            if (is_string($line) && $line !== '') {
+                $lines[] = $line;
+            }
+        }
+        return $lines;
+    }
+
+    /**
      * Walk the required keys and throw ProfileException naming the first
      * missing or malformed key path.
      */

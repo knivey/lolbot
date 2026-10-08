@@ -61,4 +61,21 @@ class ProfileTest extends TestCase
         $this->expectException(ProfileException::class);
         Profile::load('no_such_profile');
     }
+
+    public function test_driver_on_connect_normalizes(): void
+    {
+        $base = ['nick' => 'Tester'];
+        // absent -> no lines
+        $p = new Profile('t', ['driver' => $base, 'networks' => [['name' => 'n', 'servers' => [['address' => 'a']], 'bots' => [['name' => 'b']]]]]);
+        $this->assertSame([], $p->driverOnConnect());
+        // string -> single line
+        $p = new Profile('t', ['driver' => $base + ['on_connect' => 'AUTHSERV AUTH me pw'], 'networks' => [['name' => 'n', 'servers' => [['address' => 'a']], 'bots' => [['name' => 'b']]]]]);
+        $this->assertSame(['AUTHSERV AUTH me pw'], $p->driverOnConnect());
+        // list -> non-empty string entries kept, junk filtered
+        $p = new Profile('t', ['driver' => $base + ['on_connect' => ['AUTHSERV AUTH me pw', '', 5, null, 'PRIVMSG NickServ :IDENTIFY x']], 'networks' => [['name' => 'n', 'servers' => [['address' => 'a']], 'bots' => [['name' => 'b']]]]]);
+        $this->assertSame(['AUTHSERV AUTH me pw', 'PRIVMSG NickServ :IDENTIFY x'], $p->driverOnConnect());
+        // garbage type -> no lines
+        $p = new Profile('t', ['driver' => $base + ['on_connect' => 42], 'networks' => [['name' => 'n', 'servers' => [['address' => 'a']], 'bots' => [['name' => 'b']]]]]);
+        $this->assertSame([], $p->driverOnConnect());
+    }
 }
