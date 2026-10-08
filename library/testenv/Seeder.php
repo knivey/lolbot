@@ -213,10 +213,17 @@ class Seeder
             return null;
         }
         if (!is_array($list)) {
-            return null;
+            // fail fast: a typo'd scalar (e.g. `auth_engines: account-tag`)
+            // must not silently seed an empty list
+            throw new \RuntimeException("Seeder: '{$key}' must be a list of strings");
+        }
+        foreach ($list as $item) {
+            if (!is_string($item)) {
+                throw new \RuntimeException("Seeder: '{$key}' must be a list of strings");
+            }
         }
         /** @var list<string> $strings */
-        $strings = array_values(array_filter($list, 'is_string'));
+        $strings = array_values($list);
         return $strings;
     }
 

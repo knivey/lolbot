@@ -233,7 +233,9 @@ function testenv_client_main(array $argv): int
                     $formatted = client_format_message($line);
                     if ($formatted !== null) {
                         $target = $msg->getArg(0) ?? '';
-                        $isChannel = $target !== '' && ($target[0] === '#' || $target[0] === '&');
+                        // any IRC chantype (# + ! &) marks channel output;
+                        // a nick/account target is a [PM]
+                        $isChannel = $target !== '' && strpbrk($target[0], '#+!&') !== false;
                         echo ($isChannel ? '' : '[PM] ') . $formatted, "\n";
                     }
                     return;
@@ -332,21 +334,43 @@ function testenv_client_main(array $argv): int
                     return;
                 case 'join':
                     if ($rest === '') {
-                        echo "*** usage: /join <chan>\n";
+                        echo "*** usage: /join <chan>[,<chan>...]\n";
                         return;
                     }
                     $send("JOIN {$rest}");
-                    if (!in_array($rest, $joined, true)) {
-                        $joined[] = $rest;
+                    // comma-lists stay one JOIN on the wire but bookkeep
+                    // per channel; channel names are case-insensitive, so
+                    // joining #Gate then #gate must not double-bookkeep.
+                    // Only chantype-prefixed items are channels — a key
+                    // arg (`/join #a,#b k1,k2`) is not bookkept.
+                    $known = array_map('strtolower', $joined);
+                    foreach (explode(',', $rest) as $chan) {
+                        $chan = trim($chan);
+                        if ($chan === '' || strpbrk($chan[0], '#+!&') === false) {
+                            continue;
+                        }
+                        if (in_array(strtolower($chan), $known, true)) {
+                            continue;
+                        }
+                        $known[] = strtolower($chan);
+                        $joined[] = $chan;
                     }
                     return;
                 case 'part':
                     if ($rest === '') {
-                        echo "*** usage: /part <chan>\n";
+                        echo "*** usage: /part <chan>[,<chan>...]\n";
                         return;
                     }
                     $send("PART {$rest}");
-                    $joined = array_values(array_diff($joined, [$rest]));
+                    // mirror /join: comma-lists, case-insensitive removal
+                    $leaving = array_map('strtolower', array_filter(
+                        array_map('trim', explode(',', $rest)),
+                        static fn (string $chan): bool => $chan !== ''
+                    ));
+                    $joined = array_values(array_filter(
+                        $joined,
+                        static fn (string $chan): bool => !in_array(strtolower($chan), $leaving, true)
+                    ));
                     return;
                 case 'raw':
                     if ($rest === '') {
@@ -359,8 +383,8 @@ function testenv_client_main(array $argv): int
                     echo "commands:\n";
                     echo "  <plain line>          send to the first joined channel\n";
                     echo "  /msg <nick> <text>    send a private message\n";
-                    echo "  /join <chan>          join a channel\n";
-                    echo "  /part <chan>          leave a channel\n";
+                    echo "  /join <chan>[,<chan>...] join channel(s)\n";
+                    echo "  /part <chan>[,<chan>...] leave channel(s)\n";
                     echo "  /raw <line>           send a raw IRC line\n";
                     echo "  /help                 this help\n";
                     echo "  /quit                 close and exit\n";

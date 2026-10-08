@@ -8,7 +8,7 @@ networks:
       - {name: DevBot1, channels: ["#testchan"]}
   - name: FixtureNet2
     seed_users:
-      - {name: Helper, flags: [quotes]}
+      - {name: Helper, flags: [quotes], hostmasks: ["Helper!h@irc2.fixture.example", "*!helper@irc2.fixture.example"]}
       - {name: ShyOne, paranoid: true}
     servers:
       - {address: irc2.fixture.example}

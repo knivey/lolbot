@@ -28,10 +28,18 @@ class EnvStore
             );
         }
         $dir = self::baseDir();
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
+        // 0700 dir / 0600 db: run DBs can hold sasl_pass values merged in
+        // from the secrets overlay, so perms must never depend on the
+        // umask (the old bare 0777 mkdir was)
+        if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+            throw new \RuntimeException(sprintf("cannot create run directory %s", $dir));
         }
-        return $dir . '/' . $profile . '.sqlite';
+        $path = $dir . '/' . $profile . '.sqlite';
+        if (!file_exists($path)) {
+            touch($path);
+            chmod($path, 0600);
+        }
+        return $path;
     }
 
     /**
