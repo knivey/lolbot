@@ -396,7 +396,14 @@ class alias extends script_base
                 $value = trim($value . ' ' . trim($optStr));
             }
             try {
-                $this->router->call($alias->cmd, $value, $args, $bot);
+                // middleware deny strings (e.g. acl "auth required")
+                // flow out of call(); any string return is a
+                // short-circuit message for the requesting nick — same
+                // convention as BotManager's chat/pm handlers
+                $ret = $this->router->call($alias->cmd, $value, $args, $bot);
+                if (is_string($ret)) {
+                    $bot->notice($args->nick, $ret);
+                }
             } catch (\Exception $e) {
                 $bot->notice($args->nick, $e->getMessage());
             }
