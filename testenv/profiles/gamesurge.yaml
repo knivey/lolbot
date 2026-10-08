@@ -15,3 +15,8 @@ networks:
       - {address: irc.gamesurge.net, port: 6667, ssl: false}
     bots:
       - {name: lolbot-dev, trigger: ".", channels: ["#bots"]}
+    # the vhost engine resolves the ACCOUNT label from the host
+    # (lolbot-devclient.user.gamesurge) — the admin seed must be named
+    # after the account, not the driver nick
+    seed_users:
+      - {name: lolbot-devclient, flags: [admin]}

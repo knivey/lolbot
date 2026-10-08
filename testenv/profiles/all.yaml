@@ -18,9 +18,13 @@ networks:
       - {address: irc.gamesurge.net, port: 6667, ssl: false}
     bots:
       - {name: lolbot-dev, trigger: ".", channels: ["#bots"]}
+    seed_users:
+      - {name: lolbot-devclient, flags: [admin]}
   - name: libera
     auth_engines: [account-tag, hostmask, manual]
     servers:
       - {address: irc.libera.chat, port: 6697, ssl: true}
     bots:
       - {name: lolbot-dev, trigger: ".", channels: ["#lolbot-dev"]}
+    seed_users:
+      - {name: lolbot-dev, flags: [admin]}

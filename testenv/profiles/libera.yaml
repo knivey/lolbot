@@ -9,4 +9,8 @@ networks:
     servers:
       - {address: irc.libera.chat, port: 6697, ssl: true}
     bots:
-      - {name: derpybird-dev, channels: ["#lolbot-dev"]}
+      - {name: derpybird-dev, trigger: ".", channels: ["#lolbot-dev"]}
+    # account-tag resolves the ACCOUNT name, not the nick — the admin
+    # seed must be named after the account (lolbot-dev)
+    seed_users:
+      - {name: lolbot-dev, flags: [admin]}
