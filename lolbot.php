@@ -95,6 +95,11 @@ require_once 'scripts/yoda/yoda.php';
 require_once 'scripts/user/user.php';
 require_once 'scripts/settings/settings.php';
 
+// class file, but required (not left to autoload) so its file-level
+// #[Setting] definition is declared before the attribute scan below —
+// autoload would only load it at spawn time, after the permanent latch
+require_once 'scripts/weather/weather.php';
+
 
 //copied from Cmdr should give it its own function in there later
 /**

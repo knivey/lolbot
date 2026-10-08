@@ -62,7 +62,13 @@ class RegistryTest extends TestCase
         SettingsRegistry::define(new Setting('chan', scope: 'channel', irc: false));
         SettingsRegistry::define(new Setting('webchan', scope: 'channel', irc: false));
         SettingsRegistry::define(new Setting('normal', scope: 'channel'));
-        $this->assertCount(2, SettingsRegistry::all(scope: 'account'));
+        // membership, not exact counts: script files loaded earlier in
+        // the process contribute their own #[Setting] definitions to the
+        // shared registry (e.g. weather.location once weather.php loads)
+        $accountScope = SettingsRegistry::all(scope: 'account');
+        $this->assertArrayHasKey('test.one', $accountScope);
+        $this->assertArrayHasKey('acct', $accountScope);
+        $this->assertArrayNotHasKey('chan', $accountScope);
         $this->assertArrayNotHasKey('chan', SettingsRegistry::all(irc: true));
         $this->assertArrayHasKey('chan', SettingsRegistry::all(irc: false));
     }

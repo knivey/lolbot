@@ -8,6 +8,10 @@ use knivey\cmdr\attributes\Cmd;
 use knivey\cmdr\attributes\Syntax;
 use knivey\cmdr\attributes\CallWrap;
 use knivey\cmdr\attributes\Options;
+use library\settings\Setting;
+use library\settings\SettingsStore;
+use library\user\ResolveContext;
+use library\user\UserSystem;
 use lolbot\entities\Network;
 use scripts\script_base;
 use scripts\weather\entities\location;
@@ -16,6 +20,52 @@ use function knivey\tools\microtime_float;
 use function Symfony\Component\String\u;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
+#[Setting('weather.location', type: 'string', default: '', scope: 'account', flag: 'admin', description: 'account-level location override for .weather')]
+function weather_account_location_setting(): void
+{
+}
+
+/*
+ * The account tier of .weather's layered location read: resolves the
+ * speaking nick through the client's user-system bundle (allowCreate
+ * FALSE — weather must never auto-register an identity) and returns the
+ * weather.location user setting when it holds a non-empty string, as a
+ * free-text query for the caller to geocode exactly like an explicit
+ * .weather <query>. Every miss — no bundle wired, identity unresolved,
+ * setting at its '' default, or any error in the lookup — returns null
+ * so the nick-keyed setlocation row decides as before: the override is
+ * a pure add-on and must never break weather for users without the
+ * user system.
+ */
+function weather_location_for(?UserSystem $us, \Irc\Event\UserEvent $args): ?string
+{
+    if ($us === null) {
+        return null;
+    }
+    try {
+        $hit = $us->svc->resolve(new ResolveContext(
+            networkId: $us->netId(),
+            nick: $args->nick,
+            nickLowered: mb_strtolower($args->nick),
+            identHost: $args->identhost,
+            account: $args->account,
+            client: $args->sender,
+            allowCreate: false,
+        ));
+        if ($hit === null) {
+            return null;
+        }
+        $store = new SettingsStore($us->em);
+        $got = $store->getUserSetting($hit['user_id'], 'weather.location');
+        $value = $got['value'];
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+        return null;
+    } catch (\Throwable) {
+        return null;
+    }
+}
 
 class weather extends script_base
 {
@@ -207,12 +257,36 @@ class weather extends script_base
         try {
             if ($query == '') {
                 $nick = u($args->nick)->lower();
-                $location = $entityManager->getRepository(location::class)->findOneBy(["nick" => $nick, "network" => $this->network]);
-                if (!$location) {
-                    $bot->msg($args->chan, "You don't have a location set use .setlocation");
-                    return;
+                // account-level weather.location override (set via PM .set)
+                // outranks the nick-keyed row: it stores a free-text query,
+                // so it geocodes through the same path an explicit
+                // .weather <query> takes; null falls to the row as before
+                $us = $bot->userSystem instanceof UserSystem ? $bot->userSystem : null;
+                $override = weather_location_for($us, $args);
+                if ($override !== null) {
+                    try {
+                        $loc = self::getLocation($override)->await();
+                    } catch (\async_get_exception $error) {
+                        echo $error;
+                        $bot->pm($args->chan, "\2wz:\2 {$error->getIRCMsg()}");
+                        return;
+                    }
+                    if (!is_array($loc)) {
+                        $bot->pm($args->chan, $loc);
+                        return;
+                    }
+                    $location = new location();
+                    $location->name = $loc['location'];
+                    $location->lat = $loc['lat'];
+                    $location->long = $loc['lon'];
+                } else {
+                    $location = $entityManager->getRepository(location::class)->findOneBy(["nick" => $nick, "network" => $this->network]);
+                    if (!$location) {
+                        $bot->msg($args->chan, "You don't have a location set use .setlocation");
+                        return;
+                    }
+                    $si = $location->si;
                 }
-                $si = $location->si;
             } else {
                 if ($query[0] == '@') {
                     //lookup for another person's setlocation
