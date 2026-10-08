@@ -320,10 +320,16 @@ takes shape.
    grant command (can't-exceed-your-own-power, all-or-nothing ops,
    empty-row cleanup), and registry validation on `user:flags` +
    PM `setflags`. Settings gating (step 5) depends on this.
-5. **Settings registry**: `channel_settings` + `user_settings` entities +
-   migration, `#[Setting]` attribute + programmatic registration with
-   storage adapters, tiered resolver, context-split `.set`/`.unset`
-   surface (pastebin threshold), linktitles adapter registration.
+5. **Settings registry**: **DONE 2026-10-08** — `library/settings/`
+   (Setting attribute, SettingsRegistry with reflection scan + storage
+   adapters, tiered SettingsStore channel→network→default /
+   user→default, SettingValue coercion), `channel_settings` +
+   `user_settings` entities/migration, context-split `.set`/`.unset`
+   (paste-backed lists, per-definition channel-scoped gating,
+   `--net` tier), the linktitles storage adapter (typed table kept,
+   `.set` surface + gating for free), and weather's
+   `weather.location` account override layered over `.setlocation`
+   (read path only — the nick-keyed commands are untouched forever).
 6. **Backlog unlock**: the admin/channel commands that have been waiting
    (e.g. #128's per-channel +v restriction uses both channel access and
    channel settings).
