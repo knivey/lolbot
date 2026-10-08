@@ -25,7 +25,9 @@ require_once __DIR__ . '/../../library/paste.php';
  *  - in a channel: channel-scoped settings, resolved channel-tier first,
  *    then the network tier, then the definition default. Writes are
  *    gated by the setting definition's flag in THAT channel
- *    (ChannelAccess: network flags union channel grants).
+ *    (ChannelAccess: network flags union channel grants);
+ *    network_only definitions instead gate on NETWORK flags alone —
+ *    channel admins can read but never write those.
  *  - via PM: account-scoped settings for the speaking user (any known
  *    user may set their own).
  *

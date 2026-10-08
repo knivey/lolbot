@@ -222,7 +222,7 @@ Two generic tables (not one mega-table — scopes have different keys):
 account settings = `user → default`. The registry owns the rule in one
 place; nick-keyed stores are NOT part of the registry (section above).
 
-  **Definitions** are declarative, cmdr-style, on the owning command:
+**Definitions** are declarative, cmdr-style, on the owning command:
 
 ```php
 #[Setting(name: "lastfm", type: Setting::STRING, default: "",
