@@ -416,7 +416,9 @@ function flagOp(string $mode, string $token): array
  * user:flags syntax (+flag / -flag / bare flag adds; ^ and ! also
  * remove). A granter may only grant or revoke flags they themselves
  * pass in THIS channel (network flags union channel grants, groups
- * expanded) — bot admins pass everything via the admin wildcard.
+ * expanded) — bot admins pass everything via the admin wildcard, and
+ * a registered superadmin before-hook passes everything too (checked
+ * first, mirroring Acl::middleware's channel path — #140).
  * Empty grant rows are deleted. All-or-nothing: any invalid or
  * un-permitted op refuses the whole batch and persists nothing.
  */
@@ -505,7 +507,10 @@ function cflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
             . ' (valid: ' . Flags::formatList(array_keys(Flags::definitions())) . ')';
     }
     foreach ($pairs as [, $flag]) {
-        if (Flags::defined($flag) && !Flags::passes($granterUnion, $flag)) {
+        // the superadmin before-hook bypasses the channel-union check
+        // too (owner can never be locked out) — checked first, same
+        // gate rule and order as Acl::middleware's channel path
+        if (Flags::defined($flag) && !Access::beforeAllows($granter) && !Flags::passes($granterUnion, $flag)) {
             $errors[] = "you can't change {$flag} here";
         }
     }
