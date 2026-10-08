@@ -79,6 +79,9 @@ class SettingsRegistry
      *
      * Idempotent: names already defined (programmatically or by a previous
      * scan) are skipped so double calls and pre-existing defines are safe.
+     *
+     * The latch is permanent: functions declared after the first scan are
+     * not picked up; call this only after all script files are loaded.
      */
     public static function loadAttributeSettings(): void
     {

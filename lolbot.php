@@ -93,6 +93,7 @@ use scripts\imgur\imgur;
 require_once 'scripts/translate/translate.php';
 require_once 'scripts/yoda/yoda.php';
 require_once 'scripts/user/user.php';
+require_once 'scripts/settings/settings.php';
 
 
 //copied from Cmdr should give it its own function in there later
@@ -123,6 +124,12 @@ function parseOpts(string &$msg, array $validOpts = []): array {
 require_once 'library/Nicks.php';
 require_once 'library/Channels.php';
 require_once 'library/extract_opts_and_args.php';
+
+// Load every #[Setting] attribute definition from the required scripts
+// before any command can run. The scan latch is permanent (functions
+// declared after it are never picked up), so this call must stay after
+// ALL script requires.
+\library\settings\SettingsRegistry::loadAttributeSettings();
 
 \Revolt\EventLoop::setErrorHandler(function(\Throwable $error) {
     echo "Uncaught error: " . $error->getMessage() . "\n";

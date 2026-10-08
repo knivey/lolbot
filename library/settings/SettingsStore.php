@@ -81,6 +81,9 @@ class SettingsStore
             $storage->set($name, $value, $networkId, $channelId);
             return;
         }
+        // narrow BEFORE find/persist: a scalar() throw on the insert path
+        // must not leave a pending half-built entity in the EM
+        $value = $this->scalar($value);
         $row = $this->findChannelRow($networkId, $channelId, $name);
         if ($row === null) {
             $row = new ChannelSetting();
@@ -89,7 +92,7 @@ class SettingsStore
             $row->settingKey = $name;
             $this->em->persist($row);
         }
-        $row->value = $this->scalar($value);
+        $row->value = $value;
         $row->updated = new \DateTimeImmutable();
         $this->em->flush();
     }
@@ -102,6 +105,9 @@ class SettingsStore
             $storage->set($name, $value, $networkId, null);
             return;
         }
+        // narrow BEFORE find/persist: a scalar() throw on the insert path
+        // must not leave a pending half-built entity in the EM
+        $value = $this->scalar($value);
         $row = $this->findChannelRow($networkId, null, $name);
         if ($row === null) {
             $row = new ChannelSetting();
@@ -110,7 +116,7 @@ class SettingsStore
             $row->settingKey = $name;
             $this->em->persist($row);
         }
-        $row->value = $this->scalar($value);
+        $row->value = $value;
         $row->updated = new \DateTimeImmutable();
         $this->em->flush();
     }
@@ -153,6 +159,9 @@ class SettingsStore
             $storage->set($name, $value, null, null, $userId);
             return;
         }
+        // narrow BEFORE find/persist: a scalar() throw on the insert path
+        // must not leave a pending half-built entity in the EM
+        $value = $this->scalar($value);
         $row = $this->em->getRepository(UserSetting::class)->findOneBy([
             'user_id' => $userId,
             'settingKey' => $name,
@@ -163,7 +172,7 @@ class SettingsStore
             $row->settingKey = $name;
             $this->em->persist($row);
         }
-        $row->value = $this->scalar($value);
+        $row->value = $value;
         $row->updated = new \DateTimeImmutable();
         $this->em->flush();
     }
