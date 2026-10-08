@@ -17,6 +17,7 @@ use library\user\UserHostmaskRepo;
 use library\user\UserRepo;
 use library\user\UserRepos;
 use library\user\UserSystem;
+use lolbot\entities\Bot;
 use lolbot\entities\Channel;
 use lolbot\entities\Network;
 
@@ -79,8 +80,14 @@ class AclMiddlewareTest extends \PHPUnit\Framework\TestCase
         $channelFlags->method('findForChannelUser')->willReturn($grant);
         $network = new Network();
         $network->name = 'TestNet';
+        // the bundle's bot: channelByName is scoped to it (#139), though
+        // this stubbed-EM harness never reaches the DQL's :bot binding
+        $bot = new Bot();
+        $bot->name = 'TestBot';
+        $bot->network = $network;
         return new UserSystem(
             $network,
+            $bot,
             new IdentityService(new IdentityCache(), []),
             new UserRepos(
                 $this->createStub(UserRepo::class),

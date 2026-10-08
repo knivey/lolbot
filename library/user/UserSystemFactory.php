@@ -12,6 +12,7 @@ use library\user\engines\HostmaskEngine;
 use library\user\engines\ManualEngine;
 use library\user\engines\VhostPatternEngine;
 use library\user\engines\WhoxEngine;
+use lolbot\entities\Bot;
 use lolbot\entities\Network;
 use lolbot\entities\User as UserEntity;
 
@@ -30,7 +31,7 @@ class UserSystemFactory
     }
 
     /**
-     * Build the bundle for one network+client and store it as the
+     * Build the bundle for one network+bot+client and store it as the
      * client's userSystem. Also refreshes the per-network static
      * locator maps (IdentityService::$instances / UserRepos::$instances,
      * keyed by network id).
@@ -41,7 +42,7 @@ class UserSystemFactory
      * subscriptions installed by wireLifecycle() read the client's
      * current bundle at event time, so they survive a rebuild.
      */
-    public function create(Network $network, Client $client): UserSystem
+    public function create(Network $network, Bot $bot, Client $client): UserSystem
     {
         $users = new DoctrineUserRepo($this->em);
         $masks = new DoctrineUserHostmaskRepo($this->em);
@@ -78,7 +79,7 @@ class UserSystemFactory
         IdentityService::$instances[$network->id] = $svc;
         UserRepos::$instances[$network->id] = $repos;
 
-        $bundle = new UserSystem($network, $svc, $repos, $cache, $this->em);
+        $bundle = new UserSystem($network, $bot, $svc, $repos, $cache, $this->em);
         $client->userSystem = $bundle;
         return $bundle;
     }
@@ -104,7 +105,10 @@ class UserSystemFactory
             if (!$us instanceof UserSystem) {
                 return;
             }
-            $this->create($us->network, $bot);
+            // $bot is the Client; the Bot ENTITY for the rebuild comes
+            // off the live bundle so channelByName keeps its per-bot
+            // scope across hot-applied rebuilds (#139)
+            $this->create($us->network, $us->bot, $bot);
             $fresh = $bot->userSystem;
             if ($fresh instanceof UserSystem) {
                 $fresh->cache->flushNetwork($fresh->netId());

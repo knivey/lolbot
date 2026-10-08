@@ -109,8 +109,10 @@ class BotManager
         // acl resolver always reach the RIGHT network's service. Caps are
         // not known until the server answers CAP LS / 005, so wireLifecycle
         // rebuilds the chain on welcome; wireAccess is network-agnostic.
+        // The bundle is scoped to THIS bot ($dbBot) so channel lookups
+        // (channelByName) hit this bot's channel rows only (#139).
         $userSystemFactory = new \library\user\UserSystemFactory($entityManager);
-        $userSystemFactory->create($network, $client);
+        $userSystemFactory->create($network, $dbBot, $client);
         $userSystemFactory->wireLifecycle($client);
         \library\user\UserSystemFactory::wireAccess();
 
@@ -583,8 +585,10 @@ class BotManager
                                 // identity cache (fail-closed; bindings
                                 // re-resolve lazily) and the lifecycle hooks
                                 // read the client's current bundle, so they
-                                // keep working across the swap.
-                                (new \library\user\UserSystemFactory($this->em))->create($net, $this->clients[$bid]);
+                                // keep working across the swap. The held $bot
+                                // entity keeps the bundle scoped to this
+                                // bot's channel rows (#139).
+                                (new \library\user\UserSystemFactory($this->em))->create($net, $bot, $this->clients[$bid]);
                             }
                         }
                         // Bots created (or previously dropped) while the network was disabled are
