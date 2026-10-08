@@ -16,9 +16,9 @@ class BotManagerApplyTest extends ConfigTestCase
 {
     protected function tearDown(): void
     {
-        // The spawn test sets bot-runtime globals; don't leak a closed EM or
+        // The spawn tests set bot-runtime globals; don't leak a closed EM or
         // stubs into later tests in this process.
-        unset($GLOBALS['logHandler'], $GLOBALS['config'], $GLOBALS['entityManager']);
+        unset($GLOBALS['logHandler'], $GLOBALS['config'], $GLOBALS['entityManager'], $GLOBALS['ignoreCache']);
         parent::tearDown();
     }
 
@@ -198,7 +198,7 @@ class BotManagerApplyTest extends ConfigTestCase
         $this->assertSame('new.example.net:6697 ssl', $client2->getServerDesc());
     }
 
-    public function test_linktitles_setting_update_refreshes_enabled_holder(): void
+    public function test_linktitles_setting_update_clears_per_channel_gate_cache(): void
     {
         $svc = new ConfigService($this->em);
         $net = $svc->createNetwork('N');
@@ -208,13 +208,155 @@ class BotManagerApplyTest extends ConfigTestCase
         $mgr->bots[$bot->id] = $bot;
         $mgr->networks[$bot->id] = $net;
         $mgr->state[$bot->id] = new \stdClass();
-        $mgr->state[$bot->id]->linktitlesEnabled = false;
+        // stale seeded cache entry as a warmed gate would leave behind
+        $mgr->state[$bot->id]->linktitlesEnabled = [123 => true];
         $svc->setLinktitlesSetting($net, null, 'enabled', true);
         // Find the linktitles_setting id so apply can resolve the network.
         $setting = $this->em->getRepository(\scripts\linktitles\entities\linktitles_setting::class)->findOneBy(['network' => $net]);
         $this->assertNotNull($setting);
         $mgr->apply(new ConfigChange('linktitles_setting', $setting->id, 'update'));
-        $this->assertTrue($mgr->state[$bot->id]->linktitlesEnabled);
+        // clear-on-change: the next chat event re-resolves its channel
+        $this->assertSame([], $mgr->state[$bot->id]->linktitlesEnabled);
+    }
+
+    /**
+     * Spawns a real bot (as the fresh-server-list test does) with the globals
+     * the chat handler reads and a fresh event-loop driver, so the async
+     * dispatch fibers this test drains stay scoped to this test.
+     *
+     * @return array{0: BotManager, 1: \Irc\Client, 2: LinktitlesSpyConfig}
+     */
+    private function spawnWithChatHarness(Network $net, Bot $bot): array
+    {
+        \Revolt\EventLoop::setDriver(new \Revolt\EventLoop\Driver\StreamSelectDriver());
+        $spy = new LinktitlesSpyConfig();
+        // spawn hands $config to script constructors typed as array, so the
+        // real array goes in; the spy takes over the global afterwards and
+        // linktitles() re-reads `global $config` per dispatched call.
+        $GLOBALS['logHandler'] = $this->createStub(\Monolog\Handler\HandlerInterface::class);
+        $GLOBALS['config'] = [];
+        $GLOBALS['entityManager'] = $this->em;
+        // same cache lolbot.php pins for the chat handler's ignore check
+        $GLOBALS['ignoreCache'] = new \Symfony\Component\Cache\Adapter\ArrayAdapter(
+            defaultLifetime: 5,
+            storeSerialized: false,
+            maxLifetime: 10,
+            maxItems: 100,
+        );
+        $mgr = new BotManager($this->em);
+        // tell's chat listener (registered during spawn) queries its table on
+        // the global EM; create it on the scratch EM so emitted chat events
+        // pass through cleanly.
+        (new \Doctrine\ORM\Tools\SchemaTool($this->em))
+            ->createSchema([$this->em->getClassMetadata(\scripts\tell\entities\tell::class)]);
+        $client = $mgr->spawn($net, $bot);
+        $GLOBALS['config'] = $spy;
+        return [$mgr, $client, $spy];
+    }
+
+    private function emitChat(\Irc\Client $client, string $chan, string $text): void
+    {
+        $client->emit('chat', new \Irc\Event\ChatEvent(
+            time(),
+            'chat',
+            $client,
+            'nick',
+            'ident',
+            'host',
+            'ident@host',
+            'nick!ident@host',
+            $chan,
+            $text,
+        ));
+    }
+
+    /**
+     * Run the queued microtasks (the chat gate dispatches linktitles via
+     * async(), which queues one) exactly once, then stop the loop before
+     * spawn's nick-repeat watcher can spin it forever.
+     */
+    private function drainAsyncDispatch(): void
+    {
+        \Revolt\EventLoop::defer(static fn () => \Revolt\EventLoop::getDriver()->stop());
+        \Revolt\EventLoop::run();
+    }
+
+    public function test_chat_linktitles_gate_is_channel_tier_aware(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b');
+        $chanA = $svc->addChannel($bot, '#a');
+        $chanB = $svc->addChannel($bot, '#b');
+        $svc->addServer($net, '127.0.0.1', 1, false, true, null);
+        $bot->trigger = '.';
+        $this->em->flush();
+        $svc->setLinktitlesSetting($net, null, 'enabled', true);
+        // channel A opts out at its own tier; B has no row (inherits network)
+        $svc->setLinktitlesSetting($net, $chanA, 'enabled', false);
+        [$mgr, $client, $spy] = $this->spawnWithChatHarness($net, $bot);
+
+        $this->emitChat($client, '#a', 'look https://example.com/a');
+        $this->drainAsyncDispatch();
+        $this->assertSame(0, $spy->rateLimitReads, 'channel-tier disabled must gate linktitles off in #a');
+
+        $this->emitChat($client, '#b', 'look https://example.com/b');
+        $this->drainAsyncDispatch();
+        $this->assertSame(1, $spy->rateLimitReads, 'channel without its own row inherits the network tier in #b');
+
+        // the gate cache resolved per channel through the real handler
+        $this->assertFalse($mgr->state[$bot->id]->linktitlesEnabled[$chanA->id]);
+        $this->assertTrue($mgr->state[$bot->id]->linktitlesEnabled[$chanB->id]);
+    }
+
+    public function test_chat_linktitles_gate_channel_tier_overrides_disabled_network(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b');
+        $chanA = $svc->addChannel($bot, '#a');
+        $svc->addServer($net, '127.0.0.1', 1, false, true, null);
+        $bot->trigger = '.';
+        $this->em->flush();
+        $svc->setLinktitlesSetting($net, null, 'enabled', false);
+        // channel A opts back in over the disabled network tier
+        $svc->setLinktitlesSetting($net, $chanA, 'enabled', true);
+        [$mgr, $client, $spy] = $this->spawnWithChatHarness($net, $bot);
+
+        $this->emitChat($client, '#a', 'look https://example.com/a');
+        $this->drainAsyncDispatch();
+        $this->assertSame(1, $spy->rateLimitReads, 'channel-tier enabled must gate linktitles on in #a despite the network tier');
+
+        $this->assertTrue($mgr->state[$bot->id]->linktitlesEnabled[$chanA->id]);
+    }
+
+    public function test_chat_linktitles_gate_reload_follows_flipped_channel_row(): void
+    {
+        $svc = new ConfigService($this->em);
+        $net = $svc->createNetwork('N');
+        $bot = $svc->createBot($net, 'b');
+        $chanA = $svc->addChannel($bot, '#a');
+        $svc->addServer($net, '127.0.0.1', 1, false, true, null);
+        $bot->trigger = '.';
+        $this->em->flush();
+        $svc->setLinktitlesSetting($net, null, 'enabled', true);
+        $svc->setLinktitlesSetting($net, $chanA, 'enabled', false);
+        [$mgr, $client, $spy] = $this->spawnWithChatHarness($net, $bot);
+
+        $this->emitChat($client, '#a', 'look https://example.com/a');
+        $this->drainAsyncDispatch();
+        $this->assertSame(0, $spy->rateLimitReads);
+
+        // flip the channel-tier row out-of-band, then deliver the push
+        $svc->setLinktitlesSetting($net, $chanA, 'enabled', true);
+        $setting = $this->em->getRepository(\scripts\linktitles\entities\linktitles_setting::class)->findOneBy(['channel' => $chanA]);
+        $this->assertNotNull($setting);
+        $mgr->apply(new ConfigChange('linktitles_setting', $setting->id, 'update'));
+        $this->assertSame([], $mgr->state[$bot->id]->linktitlesEnabled, 'reload must clear the cached channel gate');
+
+        $this->emitChat($client, '#a', 'look https://example.com/a2');
+        $this->drainAsyncDispatch();
+        $this->assertSame(1, $spy->rateLimitReads, 'next event after reload must follow the flipped channel tier');
     }
 
     public function test_bot_update_disabled_drops_client(): void
@@ -386,6 +528,42 @@ class BotManagerApplyTest extends ConfigTestCase
         // network's bots collection re-query, so 'gone' is not ghost-spawned and
         // 'added' (created by another process) is spawned.
         $this->assertSame([$createdId, $addedId], $mgr->spawned);
+    }
+}
+
+/**
+ * ArrayAccess stand-in for $GLOBALS['config'] that makes a dispatched
+ * linktitles() run observably reach its rate-limit read: the read is counted
+ * and answered with 0, so the fiber stops at the rate limiter (logUrl is a
+ * no-op without a url_log_chan) and never performs HTTP. Every other key
+ * behaves as absent, matching the empty-array config the spawn tests use.
+ *
+ * @implements \ArrayAccess<string, mixed>
+ */
+class LinktitlesSpyConfig implements \ArrayAccess
+{
+    public int $rateLimitReads = 0;
+
+    public function offsetExists(mixed $offset): bool
+    {
+        return $offset === 'linktitles_rate_urls' || $offset === 'linktitles_rate_seconds';
+    }
+
+    public function offsetGet(mixed $offset): mixed
+    {
+        if ($offset === 'linktitles_rate_urls') {
+            $this->rateLimitReads++;
+            return 0;
+        }
+        return 2;
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
     }
 }
 

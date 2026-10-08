@@ -66,7 +66,7 @@ class BotManager
     public array $bots = [];
     /** @var array<int, \lolbot\entities\Network> */
     public array $networks = [];
-    /** @var array<int, \stdClass> per-bot mutable state (linktitlesEnabled) */
+    /** @var array<int, \stdClass> per-bot mutable state (linktitlesEnabled: array<int, bool> — lazy per-channel linktitles gate cache, keyed by Channel id, 0 when the event's chan has no Channel row) */
     public array $state = [];
 
     public function __construct(private \Doctrine\ORM\EntityManager $em)
@@ -80,9 +80,11 @@ class BotManager
         /** @var array<string, mixed> $config */
         $config = $GLOBALS['config'];
         $entityManager = $this->em;
-        $linktitlesEnabled = (new \lolbot\config\SettingsResolver($entityManager))->linktitlesEnabled($network, null);
         $st = new \stdClass();
-        $st->linktitlesEnabled = $linktitlesEnabled;
+        // linktitles gate: lazy per-channel cache resolved channel → network
+        // → global on the first message in each channel; ConfigChange clears
+        // it via reloadLinktitlesEnabled().
+        $st->linktitlesEnabled = [];
         $this->refreshNetworkServers($network);
         //TODO add support and check for per bot servers first
         $server = $network->selectServer();
@@ -252,7 +254,26 @@ class BotManager
                 }
 
 
-                if ($st->linktitlesEnabled) {
+                // channel-tier aware gate (#144): resolve channel row →
+                // network → global lazily per channel and cache on the
+                // per-bot state; ConfigChange clears the cache. The old
+                // net-tier-only flag let a channel tier never gate.
+                $chanRow = null;
+                foreach ($dbBot->getChannels() as $c) {
+                    if (mb_strtolower($c->name) === mb_strtolower($args->chan)) {
+                        $chanRow = $c;
+                        break;
+                    }
+                }
+                $key = $chanRow->id ?? 0;
+                /** @var array<int, bool> $linktitlesEnabled */
+                $linktitlesEnabled = $st->linktitlesEnabled;
+                if (!array_key_exists($key, $linktitlesEnabled)) {
+                    $linktitlesEnabled[$key] = (new \lolbot\config\SettingsResolver($entityManager))
+                        ->linktitlesEnabled($dbBot->network, $chanRow);
+                    $st->linktitlesEnabled = $linktitlesEnabled;
+                }
+                if ($linktitlesEnabled[$key]) {
                     async(fn () => $linktitles->linktitles($bot, $args->nick, $args->chan, $args->identhost, $args->text));
                 }
 
@@ -500,13 +521,18 @@ class BotManager
         }
     }
 
+    /**
+     * Clear the per-channel linktitles gate cache after a linktitles_setting
+     * ConfigChange: resolution cascades per field across channel → network →
+     * global tiers, so any tier flip must invalidate every cached channel;
+     * the next chat event in each channel re-resolves its own value.
+     */
     public function reloadLinktitlesEnabled(int $botId): void
     {
         if (!isset($this->state[$botId]) || !isset($this->bots[$botId])) {
             return;
         }
-        $resolver = new \lolbot\config\SettingsResolver($this->em);
-        $this->state[$botId]->linktitlesEnabled = $resolver->linktitlesEnabled($this->bots[$botId]->network, null);
+        $this->state[$botId]->linktitlesEnabled = [];
     }
 
     public function apply(\lolbot\config\ConfigChange $c): void
