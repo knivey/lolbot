@@ -20,6 +20,8 @@ use scripts\script_base;
 
 use function Amp\Future\awaitAll;
 
+require_once __DIR__ . '/settings_adapter.php';
+
 class linktitles extends script_base
 {
     public \Psr\EventDispatcher\EventDispatcherInterface $eventDispatcher;
