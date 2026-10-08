@@ -18,6 +18,7 @@
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 use function Amp\async;
+use Amp\ByteStream\StreamException;
 use function Amp\ByteStream\getStdin;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\ClientTlsContext;
@@ -182,7 +183,7 @@ function testenv_client_main(array $argv): int
         $send = static function (string $line) use ($socket): void {
             try {
                 $socket->write($line . "\r\n");
-            } catch (\Throwable) {
+            } catch (StreamException) {
                 // socket already gone (e.g. broken pipe during the quit
                 // drain) — the read loop's EOF path below handles the exit
             }
@@ -409,9 +410,10 @@ function testenv_client_main(array $argv): int
                     }
                 }
             }
-        } catch (\Throwable) {
+        } catch (StreamException) {
             // an abrupt close (RST) during the drain lands here — treat it
-            // like EOF and fall through to the exit below
+            // like EOF and fall through to the exit below; narrower than
+            // \Throwable so real bugs in handleServerLine still surface
         }
         echo "\n*** disconnected\n";
         // the stdin coroutine would otherwise keep the loop alive;

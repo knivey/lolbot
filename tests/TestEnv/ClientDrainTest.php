@@ -22,9 +22,9 @@ class ClientDrainTest extends TestCase
         $this->assertStringContainsString('INFLIGHT-REPLY', $out, "stdout: {$out}");
         // the reply that arrives after QUIT is the one the old race dropped
         $this->assertStringContainsString('TRAILING-REPLY-AFTER-QUIT', $out, "stdout: {$out}");
-        // the server closed the connection, so the drain must end on EOF
-        // long before the 3s safety bound
-        $this->assertLessThan(3.0, $elapsed);
+        // the server closed the connection, so the drain must end on EOF,
+        // not on the 3s safety bound
+        $this->assertStringNotContainsString('*** drain timeout', $out, "stdout: {$out}");
     }
 
     public function test_drain_times_out_when_server_never_closes(): void
