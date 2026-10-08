@@ -36,6 +36,8 @@ use library\user\Acl;
 use library\user\engines\ManualEngine;
 use library\user\Flags;
 use library\user\ResolveContext;
+use library\user\TargetResolutionException;
+use library\user\TargetResolver;
 use library\user\UserSystem;
 use lolbot\entities\ChannelFlag;
 use lolbot\entities\User as UserEntity;
@@ -340,12 +342,13 @@ function applyFlagOps(string $mode, \Irc\Event\UserEvent $args, \Irc\Client $bot
         return;
     }
     $name = argString($cmdArgs, 'name') ?? '';
-    $user = $sys->em->getRepository(UserEntity::class)->findOneBy([
-        'network_id' => $sys->network->id,
-        'nameLowered' => mb_strtolower($name),
-    ]);
-    if ($user === null) {
-        $bot->pm($args->nick, "no such user");
+    // target resolution (issue #143): '<nick>' resolves via the identity
+    // system, '*account' hits the account row directly (creating it on
+    // services-capable chains)
+    try {
+        $user = TargetResolver::resolve($sys, $bot, $name);
+    } catch (TargetResolutionException $e) {
+        $bot->pm($args->nick, $e->getMessage());
         return;
     }
     /** @var list<string> $tokens */
@@ -460,15 +463,15 @@ function cflags(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args 
         $granterGrant !== null ? Access::flagArray($granterGrant) : [],
     );
 
-    // findForNetwork's interface only promises {id}; hydrate the full
-    // entity for the name and the grant row (identity-map hit, no query)
-    $target = null;
-    $targetRef = $sys->repos->users->findForNetwork($sys->network->id, mb_strtolower((string) argString($cmdArgs, 'user')));
-    if ($targetRef !== null) {
-        $target = $sys->em->find(UserEntity::class, $targetRef->id);
-    }
-    if ($target === null) {
-        $bot->msg($args->chan, "user unknown (they must talk or auth first)");
+    // target resolution (issue #143): '<nick>' resolves via the identity
+    // system, '*account' hits the account row directly (creating it on
+    // services-capable chains) — findForNetwork's interface only promises
+    // {id}, so hydrate the full entity for the name and the grant row
+    // (identity-map hit, no query)
+    try {
+        $target = TargetResolver::resolve($sys, $bot, (string) argString($cmdArgs, 'user'));
+    } catch (TargetResolutionException $e) {
+        $bot->msg($args->chan, $e->getMessage());
         return;
     }
 
