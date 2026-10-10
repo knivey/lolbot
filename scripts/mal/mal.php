@@ -76,17 +76,31 @@ class mal extends \scripts\script_base
         return ['id' => $id, 'url' => $ogUrl, 'title' => $title, 'type' => $type, 'eps' => $eps, 'score' => $score];
     }
 
+    /**
+     * MAL answers HTTP 404 (with the normal search page as the body) when a
+     * query matches nothing, so the empty-results paths below never see a
+     * 200. Map that 404 to the same "no results found" message users got
+     * when empty tables still returned 200; anything else keeps the raw
+     * error line.
+     */
+    public static function searchFetchMsg(\async_get_exception $e): string
+    {
+        if ($e->getCode() === 404) {
+            return "no results found";
+        }
+        return $e->getIRCMsg();
+    }
+
     #[Cmd("mals", "myanimelistsearch")]
     #[Syntax("<search>...")]
     #[Desc("search a anime on myanimelist")]
     function mals(\Irc\Event\ChatEvent $args, \Irc\Client $bot, \knivey\cmdr\Args $cmdArgs): void
     {
-        var_dump(urlencode($cmdArgs["search"]));
         $url = "https://myanimelist.net/anime.php?cat=anime&q=" . urlencode($cmdArgs["search"]);
         try {
             $body = async_get_contents($url);
         } catch (\async_get_exception $e) {
-            $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
+            $bot->pm($args->chan, "\2MAL:\2 " . self::searchFetchMsg($e));
             return;
         }
         $results[] = ["ID", "Type", "Eps", "Title", "Score"];
@@ -141,7 +155,7 @@ class mal extends \scripts\script_base
             try {
                 $body = async_get_contents($url);
             } catch (\async_get_exception $e) {
-                $bot->pm($args->chan, "\2MAL:\2 {$e->getIRCMsg()}");
+                $bot->pm($args->chan, "\2MAL:\2 " . self::searchFetchMsg($e));
                 return;
             }
             $entry = self::detectEntryPage($body);
